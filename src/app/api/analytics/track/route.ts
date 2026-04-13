@@ -21,6 +21,11 @@ type TrackPayload = {
   city?: string;
 };
 
+type BotDetection = {
+  isSuspectedBot: boolean;
+  reason: string;
+};
+
 function sanitizeText(value: unknown, fallback: string, maxLength = 120): string {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();
@@ -40,6 +45,46 @@ function readHeader(headers: Headers, keys: string[]): string {
     }
   }
   return "";
+}
+
+function decodeHeaderValue(value: string): string {
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value.replace(/\+/g, "%20"));
+  } catch {
+    return value;
+  }
+}
+
+function detectSuspiciousTraffic(params: {
+  userAgent: string;
+  deviceType: string;
+  os: string;
+  browser: string;
+  countryCode: string;
+  city: string;
+  userId: string | null;
+}): BotDetection {
+  const ua = params.userAgent.toLowerCase();
+  const botUaPattern = /bot|crawler|spider|headless|lighthouse|uptime|monitor|curl|wget|python-requests|node-fetch|axios|postman/;
+  if (botUaPattern.test(ua)) {
+    return { isSuspectedBot: true, reason: "bot-like user agent" };
+  }
+
+  const cityLower = params.city.toLowerCase();
+  const isDatacenterLikePattern =
+    !params.userId &&
+    params.deviceType.toLowerCase() === "desktop" &&
+    params.os.toLowerCase() === "linux" &&
+    params.browser.toLowerCase() === "chrome" &&
+    params.countryCode.toUpperCase() === "US" &&
+    cityLower.includes("san jose");
+
+  if (isDatacenterLikePattern) {
+    return { isSuspectedBot: true, reason: "datacenter-like traffic pattern" };
+  }
+
+  return { isSuspectedBot: false, reason: "" };
 }
 
 export async function POST(request: Request) {
@@ -88,6 +133,22 @@ export async function POST(request: Request) {
     "cf-ipcity",
     "x-city",
   ]);
+  const userAgent = sanitizeText(request.headers.get("user-agent") || "", "", 320);
+
+  const countryCode = sanitizeText(body.countryCode || countryCodeFromHeaders, "", 4).toUpperCase();
+  const country = sanitizeText(decodeHeaderValue(body.country || countryFromHeaders), "", 120);
+  const region = sanitizeText(decodeHeaderValue(body.region || regionFromHeaders), "", 120);
+  const city = sanitizeText(decodeHeaderValue(body.city || cityFromHeaders), "", 120);
+
+  const botDetection = detectSuspiciousTraffic({
+    userAgent,
+    deviceType: sanitizeText(body.deviceType, "unknown", 24),
+    os: sanitizeText(body.os, "", 48),
+    browser: sanitizeText(body.browser, "", 48),
+    countryCode,
+    city,
+    userId: sanitizeText(body.userId ?? "", "", 64) || null,
+  });
 
   const payload = {
     session_id: sessionId,
@@ -101,10 +162,13 @@ export async function POST(request: Request) {
     path: sanitizeText(body.path, "/", 180),
     referrer: sanitizeText(body.referrer, "", 500),
     timezone: sanitizeText(body.timezone, "", 64),
-    country_code: sanitizeText(body.countryCode || countryCodeFromHeaders, "", 4).toUpperCase(),
-    country: sanitizeText(body.country || countryFromHeaders, "", 120),
-    region: sanitizeText(body.region || regionFromHeaders, "", 120),
-    city: sanitizeText(body.city || cityFromHeaders, "", 120),
+    country_code: countryCode,
+    country,
+    region,
+    city,
+    user_agent: userAgent,
+    is_suspected_bot: botDetection.isSuspectedBot,
+    traffic_reason: botDetection.reason,
   };
 
   const { data: existing } = await supabase

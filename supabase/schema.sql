@@ -481,6 +481,9 @@ create table if not exists public.website_live_sessions (
   country text not null default '',
   region text not null default '',
   city text not null default '',
+  user_agent text not null default '',
+  is_suspected_bot boolean not null default false,
+  traffic_reason text not null default '',
   path text not null default '/',
   referrer text not null default '',
   first_seen timestamptz not null default timezone('utc', now()),
@@ -505,6 +508,9 @@ create table if not exists public.website_analytics_events (
   country text not null default '',
   region text not null default '',
   city text not null default '',
+  user_agent text not null default '',
+  is_suspected_bot boolean not null default false,
+  traffic_reason text not null default '',
   path text not null default '/',
   referrer text not null default '',
   created_at timestamptz not null default timezone('utc', now())
@@ -515,14 +521,20 @@ alter table public.website_live_sessions
   add column if not exists country_code text not null default '',
   add column if not exists country text not null default '',
   add column if not exists region text not null default '',
-  add column if not exists city text not null default '';
+  add column if not exists city text not null default '',
+  add column if not exists user_agent text not null default '',
+  add column if not exists is_suspected_bot boolean not null default false,
+  add column if not exists traffic_reason text not null default '';
 
 alter table public.website_analytics_events
   add column if not exists timezone text not null default '',
   add column if not exists country_code text not null default '',
   add column if not exists country text not null default '',
   add column if not exists region text not null default '',
-  add column if not exists city text not null default '';
+  add column if not exists city text not null default '',
+  add column if not exists user_agent text not null default '',
+  add column if not exists is_suspected_bot boolean not null default false,
+  add column if not exists traffic_reason text not null default '';
 
 create index if not exists website_live_sessions_last_seen_idx
   on public.website_live_sessions (last_seen desc);
@@ -539,6 +551,9 @@ create index if not exists website_live_sessions_country_idx
 create index if not exists website_live_sessions_city_idx
   on public.website_live_sessions (city);
 
+create index if not exists website_live_sessions_suspected_bot_idx
+  on public.website_live_sessions (is_suspected_bot);
+
 create index if not exists website_analytics_events_created_idx
   on public.website_analytics_events (created_at desc);
 
@@ -553,6 +568,9 @@ create index if not exists website_analytics_events_path_idx
 
 create index if not exists website_analytics_events_country_idx
   on public.website_analytics_events (country);
+
+create index if not exists website_analytics_events_suspected_bot_idx
+  on public.website_analytics_events (is_suspected_bot);
 
 drop trigger if exists set_website_live_sessions_updated_at on public.website_live_sessions;
 create trigger set_website_live_sessions_updated_at

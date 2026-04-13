@@ -44,7 +44,7 @@ export async function GET() {
   const [{ data: sessions }, { count: totalEvents }] = await Promise.all([
     supabase
       .from("website_live_sessions")
-      .select("session_id,anonymous_id,user_id,is_logged_in,device_type,browser,os,path,last_seen,first_seen,page_views,country_code,country,region,city,timezone"),
+      .select("session_id,anonymous_id,user_id,is_logged_in,device_type,browser,os,path,last_seen,first_seen,page_views,country_code,country,region,city,timezone,is_suspected_bot,traffic_reason"),
     supabase
       .from("website_analytics_events")
       .select("id", { count: "exact", head: true }),
@@ -68,6 +68,8 @@ export async function GET() {
 
   const currentLoggedIn = currentRows.filter((row) => Boolean(row.user_id) || Boolean(row.is_logged_in));
   const currentGuests = currentRows.filter((row) => !row.user_id && !row.is_logged_in);
+  const currentSuspectedBots = currentRows.filter((row) => Boolean((row as { is_suspected_bot?: boolean }).is_suspected_bot));
+  const currentLikelyHumans = currentRows.filter((row) => !Boolean((row as { is_suspected_bot?: boolean }).is_suspected_bot));
 
   const nowDate = new Date();
   const dayStart = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate())).getTime();
@@ -146,6 +148,8 @@ export async function GET() {
       },
       live: {
         currentOnline: currentRows.length,
+        currentLikelyHumans: currentLikelyHumans.length,
+        currentSuspectedBots: currentSuspectedBots.length,
         currentLoggedIn: currentLoggedIn.length,
         currentGuests: currentGuests.length,
       },
@@ -172,6 +176,8 @@ export async function GET() {
         region: (row as { region?: string }).region || "",
         city: (row as { city?: string }).city || "",
         timezone: (row as { timezone?: string }).timezone || "",
+        isSuspectedBot: Boolean((row as { is_suspected_bot?: boolean }).is_suspected_bot),
+        trafficReason: (row as { traffic_reason?: string }).traffic_reason || "",
         path: row.path,
         lastSeen: row.last_seen,
       })),

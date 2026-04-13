@@ -1,8 +1,41 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
+import {
+  ArrowsClockwise,
+  CheckCircle,
+  ClockCounterClockwise,
+  CopySimple,
+  Database,
+  DownloadSimple,
+  FloppyDisk,
+  ImageSquare,
+  Link,
+  MagnifyingGlass,
+  NotePencil,
+  Package,
+  Plus,
+  Rows,
+  SignOut,
+  Sparkle,
+  SquaresFour,
+  Tag,
+  TextT,
+  Trash,
+  UploadSimple,
+  WarningCircle,
+} from "@phosphor-icons/react";
 
-import type { Note, Perfume } from "@/types/catalog";
+import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
 
 type AdminPanelClientProps = {
   configured: boolean;
@@ -11,73 +44,615 @@ type AdminPanelClientProps = {
   initialNotesJson: string;
 };
 
-type AdminView = "perfumes" | "notes";
-
 type PerfumeDraft = Perfume;
 type NoteDraft = Note;
+type AdminView = "perfumes" | "notes";
+type AdminLocale = "az" | "en";
+type PerfumeEditorTab = "basics" | "notes" | "media";
+type NoteEditorTab = "content" | "media";
+type PerfumeListFilter = "all" | "missingImage" | "missingNotes" | "outOfStock";
+type NoteListFilter = "all" | "linked" | "unlinked" | "missingImage";
+type StatusTone = "neutral" | "success" | "error";
+type StatusState = {
+  tone: StatusTone;
+  message: string;
+};
+
+const ui = {
+  shell:
+    "overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-white/92 shadow-[0_24px_60px_rgba(17,24,39,0.08)] backdrop-blur",
+  card:
+    "rounded-[1.6rem] border border-zinc-200/80 bg-white/96 p-5 shadow-[0_18px_40px_rgba(17,24,39,0.06)] sm:p-6",
+  soft:
+    "rounded-[1.35rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(250,250,249,0.92)_0%,rgba(244,244,245,0.96)_100%)]",
+  input:
+    "h-12 w-full rounded-2xl border border-zinc-300 bg-[#f7f7f5] px-4 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white",
+  textarea:
+    "w-full rounded-[1.4rem] border border-zinc-300 bg-[#f7f7f5] px-4 py-3 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white",
+  primaryButton:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+  secondaryButton:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-zinc-400 hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+  dangerButton:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition duration-200 hover:-translate-y-[1px] hover:border-rose-300 hover:bg-rose-100 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+  tab:
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition duration-200",
+  chip:
+    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
+};
+
+function cx(...values: Array<string | false | null | undefined>) {
+  return values.filter(Boolean).join(" ");
+}
+
+const ADMIN_LOCALE_STORAGE_KEY = "perfoumer-admin-locale";
+
+const adminCopy = {
+  az: {
+    localeLabel: "Dil",
+    adminWorkspace: "İdarəetmə Paneli",
+    professionalWorkspace: "Peşəkar İdarəetmə Paneli",
+    notEnabledTitle: "Admin panel aktiv deyil",
+    notEnabledDescription:
+      "Mühit dəyişənlərində `ADMIN_PASSWORD` təyin edin, tətbiqi yenidən başladın və panel açılacaq.",
+    loginHeroTitle:
+      "Ətirləri, notları, şəkilləri və CSV əməliyyatlarını idarə etmək üçün daha çevik iş sahəsi.",
+    loginHeroDescription:
+      "Strukturlaşdırılmış redaktorlar, şəkil yükləmə, CSV import/export və daha təmiz admin axını üçün daxil olun.",
+    loginTitle: "Admin giriş",
+    loginDescription: "İş sahəsinə daxil olmaq üçün admin şifrənizi istifadə edin.",
+    username: "İstifadəçi adı",
+    password: "Şifrə",
+    enterWorkspace: "İş sahəsinə daxil ol",
+    signingIn: "Daxil olunur...",
+    editing: "Redaktə",
+    assets: "Media",
+    bulkOps: "Kütləvi əməliyyat",
+    twoDatasets: "2 dataset",
+    perfumesAndNotesOneView: "Ətirlər və notlar bir paneldə",
+    mediaReady: "Media hazırdır",
+    uploadDirect: "Şəkilləri birbaşa paneldən yüklə",
+    csvImport: "CSV import",
+    moveDataFast: "Məlumatları sürətli içəri və çölə daşı",
+    heroTitle: "Stok və not məzmununu bir hamar React iş sahəsində idarə edin.",
+    heroDescription:
+      "Axtarın, məlumatı yerində redaktə edin, şəkil yükləyin, CSV ilə işləyin və səhifədən çıxmadan saxlayın.",
+    unsavedChanges: "Saxlanmamış dəyişikliklər",
+    everythingSaved: "Hər şey saxlanıb",
+    refresh: "Yenilə",
+    reset: "Sıfırla",
+    saveChanges: "Dəyişiklikləri saxla",
+    saving: "Saxlanılır...",
+    logout: "Çıxış",
+    perfumes: "Ətirlər",
+    notes: "Notlar",
+    linkedNotes: "Bağlı notlar",
+    visibleInSearch: "{count} nəticə görünür",
+    linkedNoteDetail: "Ətirlərdə istifadə olunan unikal not slug-ları",
+    assetCoverage: "Şəkli olan qeydlər",
+    dataOperations: "Məlumat əməliyyatları",
+    dataOperationsDescription:
+      "Strukturlaşdırılmış məlumatı iş sahəsindən çıxmadan import və export edin.",
+    exportPerfumesCsv: "Ətirləri CSV export et",
+    exportNotesCsv: "Notları CSV export et",
+    importPerfumesCsv: "Ətir CSV import et",
+    importNotesCsv: "Not CSV import et",
+    importingPerfumes: "Ətirlər import olunur...",
+    importingNotes: "Notlar import olunur...",
+    workspaceRecords: "İş sahəsi qeydləri",
+    workspaceRecordsDescription:
+      "Datasetləri dəyişin, sürətli axtarın və səhifə yenilənmədən qeydlər arasında keçin.",
+    searchPerfumes: "Ətir axtar...",
+    searchNotes: "Not axtar...",
+    addPerfume: "Ətir əlavə et",
+    duplicate: "Kopyala",
+    delete: "Sil",
+    addNote: "Not əlavə et",
+    perfumeList: "Ətir siyahısı",
+    noteList: "Not siyahısı",
+    all: "Hamısı",
+    missingImage: "Şəkilsiz",
+    missingNotes: "Notsuz",
+    outOfStock: "Stokda yoxdur",
+    linked: "Bağlı",
+    unlinked: "Bağsız",
+    recordsShown: "{shown}/{total} göstərilir",
+    updating: "yenilənir",
+    noPerfumesFound: "Ətir tapılmadı",
+    noPerfumesFoundDescription:
+      "Axtarışı dəyişin və ya yeni ətir draftı yaradın.",
+    noNotesFound: "Not tapılmadı",
+    noNotesFoundDescription:
+      "Daha geniş axtarış edin və ya yeni not draftı yaradın.",
+    perfumeEditor: "Ətir redaktoru",
+    noteEditor: "Not redaktoru",
+    copySlug: "Slug kopyala",
+    copyImageUrl: "Şəkil URL-ni kopyala",
+    basics: "Əsas",
+    perfumeNotes: "Notlar",
+    media: "Media",
+    coreDetails: "Əsas məlumatlar",
+    coreDetailsDescription:
+      "Kataloqda görünən əsas məlumatları vahid və səliqəli saxlayın.",
+    perfumeName: "Ətir adı",
+    brand: "Brend",
+    slug: "Slug",
+    slugHint: "Saytda istifadə olunan kiçik hərf URL açarı",
+    gender: "Cins",
+    stockStatus: "Stok statusu",
+    inventoryFlag: "Stok göstəricisi",
+    inStock: "Stokda var",
+    outStock: "Stokda yoxdur",
+    externalLink: "Xarici keçid",
+    sizeMatrix: "Ölçü cədvəli",
+    sizeMatrixDescription: "Satış ölçülərini və qiymətləri bir siyahıda saxlayın.",
+    addSize: "Ölçü əlavə et",
+    label: "Etiket",
+    ml: "ML",
+    price: "Qiymət",
+    remove: "Sil",
+    topNotes: "Üst notlar",
+    heartNotes: "Ürək notları",
+    baseNotes: "Baza notları",
+    attachNotesDetail: "{group} qatını qurmaq üçün not slug-ları əlavə edin.",
+    noLinkedGroupNotes: "{group} üçün hələ not bağlanmayıb.",
+    addNoteSlug: "Not slug əlavə et",
+    existingSlugs: "{count} mövcud not slug seçimi",
+    addLinkedNote: "Not əlavə et",
+    mediaQuickActions: "Sürətli media əməliyyatları",
+    uploadImage: "Şəkil yüklə",
+    imageMetadata: "Şəkil məlumatı",
+    imageMetadataDescription:
+      "Yüklənmiş şəkilin keçidini və alt mətnini idarə edin.",
+    imageUrl: "Şəkil URL",
+    imageAlt: "Şəkil alt mətni",
+    uploadPerfumePreview: "Ətir şəkli yükləyin, önizləmə burada görünəcək.",
+    uploadNotePreview: "Not şəkli yükləyin, önizləmə burada görünəcək.",
+    noteContent: "Not məzmunu",
+    noteContentDescription:
+      "Not adı və təsvirini sayt boyu istifadə üçün redaktə edin.",
+    noteName: "Not adı",
+    content: "Məzmun",
+    usageMap: "İstifadə xəritəsi",
+    usageMapDescription: "Bu notu istifadə edən ətirlər.",
+    noLinkedPerfumes: "Bağlı ətir yoxdur",
+    noLinkedPerfumesDescription:
+      "Bu notu ətir redaktorunun notlar bölməsindən əlavə edin.",
+    noPerfumeSelected: "Ətir seçilməyib",
+    noPerfumeSelectedDescription:
+      "Siyahıdan ətir seçin və ya yenisini yaradın.",
+    noNoteSelected: "Not seçilməyib",
+    noNoteSelectedDescription:
+      "Siyahıdan not seçin və ya yenisini yaradın.",
+    statusNoValueToCopy: "{label} üçün kopyalanacaq dəyər yoxdur.",
+    statusCopied: "{label} kopyalandı.",
+    statusCopyFailed: "{label} kopyalanmadı.",
+    statusNewPerfumeCreated: "Yeni ətir draftı yaradıldı.",
+    statusPerfumeDuplicated: "Ətir yeni draft kimi kopyalandı.",
+    statusPerfumeRemoved: "Ətir iş sahəsindən silindi.",
+    statusNewNoteCreated: "Yeni not draftı yaradıldı.",
+    statusNoteDuplicated: "Not yeni draft kimi kopyalandı.",
+    statusNoteRemoved: "Not iş sahəsindən silindi.",
+    statusWorkspaceReset: "İş sahəsi son saxlanmış vəziyyətə qaytarıldı.",
+    statusUploadingPerfumeImage: "Ətir şəkli yüklənir...",
+    statusPerfumeImageUploaded: "Ətir şəkli yükləndi.",
+    statusUploadingNoteImage: "Not şəkli yüklənir...",
+    statusNoteImageUploaded: "Not şəkli yükləndi.",
+    statusWorkspaceReady: "Admin iş sahəsi hazırdır.",
+    statusLoginFailed: "Giriş sorğusu uğursuz oldu. Yenidən yoxlayın.",
+    statusClosingSession: "Admin sessiyası bağlanır...",
+    statusLoggedOut: "Çıxış edildi.",
+    statusLogoutFailed: "Çıxış alınmadı. Yenidən cəhd edin.",
+    statusRefreshing: "Saxlanmış admin məlumatları yenilənir...",
+    statusRefreshFailed: "Yeniləmə alınmadı.",
+    statusWorkspaceSynced: "İş sahəsi saxlanmış admin məlumatları ilə sinxronlaşdırıldı.",
+    statusAlreadySaved: "Bütün dəyişikliklər artıq saxlanılıb.",
+    statusSaving: "Dəyişikliklər saxlanılır və səhifələr yenilənir...",
+    statusSaveFailed: "Saxlama uğursuz oldu.",
+    statusSaved: "Uğurla saxlanıldı. İctimai səhifələr yeniləndi.",
+    statusPreparingExport: "{type} CSV export hazırlanır...",
+    statusExportFailed: "Export sorğusu uğursuz oldu.",
+    statusExportedPerfumes: "Ətir CSV export edildi.",
+    statusExportedNotes: "Not CSV export edildi.",
+    statusImportingCsv: "{type} CSV import olunur...",
+    statusImportFailed: "Import sorğusu uğursuz oldu.",
+    statusImportedPerfumes: "Ətir CSV import edildi.",
+    statusImportedNotes: "Not CSV import edildi.",
+    confirmReload: "Yeniləmə saxlanmamış dəyişiklikləri siləcək. Davam edilsin?",
+    confirmDeletePerfume: '"{name}" ətiri silinsin?',
+    confirmDeleteNote: '"{name}" notu silinsin?',
+    loginFailed: "Giriş alınmadı.",
+    refreshFailed: "Yeniləmə alınmadı.",
+    saveFailed: "Saxlama uğursuz oldu.",
+    exportFailed: "Export alınmadı.",
+    importFailed: "CSV import uğursuz oldu.",
+    uploadFailed: "Yükləmə uğursuz oldu.",
+    loggedInDataFailed: "Giriş edildi, amma admin məlumatları yüklənmədi.",
+    usePassword: "İş sahəsinə daxil olmaq üçün admin şifrənizi istifadə edin.",
+    assetCoverageDetail: "{count} qeyd şəkillə tamamlanıb",
+    perfumeMetaFallback: "Brend və cins hələ əlavə edilməyib",
+    noPricing: "Qiymət yoxdur",
+    fromPrice: "{price} AZN-dən",
+    usedByPerfumes: "{count} ətirdə istifadə olunur",
+    noteLinksCount: "{count} not bağlantısı",
+    sizeCount: "{count} ölçü",
+  },
+  en: {
+    localeLabel: "Language",
+    adminWorkspace: "Admin Workspace",
+    professionalWorkspace: "Professional Admin Workspace",
+    notEnabledTitle: "Admin panel is not enabled",
+    notEnabledDescription:
+      "Set `ADMIN_PASSWORD` in your environment, restart the app, and the workspace will unlock.",
+    loginHeroTitle:
+      "A smoother workspace for managing perfumes, notes, media, and CSV operations.",
+    loginHeroDescription:
+      "Sign in to work with structured editors, image uploads, CSV import/export, and a cleaner admin flow.",
+    loginTitle: "Admin login",
+    loginDescription: "Use your admin password to enter the workspace.",
+    username: "Username",
+    password: "Password",
+    enterWorkspace: "Enter workspace",
+    signingIn: "Signing in...",
+    editing: "Editing",
+    assets: "Assets",
+    bulkOps: "Bulk ops",
+    twoDatasets: "2 datasets",
+    perfumesAndNotesOneView: "Perfumes and notes in one view",
+    mediaReady: "Media-ready",
+    uploadDirect: "Upload images directly from the panel",
+    csvImport: "CSV import",
+    moveDataFast: "Move data in and out quickly",
+    heroTitle: "Manage inventory and note content from one smooth React workspace.",
+    heroDescription:
+      "Search instantly, edit in place, upload imagery, run CSV jobs, and save without leaving the page.",
+    unsavedChanges: "Unsaved changes",
+    everythingSaved: "Everything saved",
+    refresh: "Refresh",
+    reset: "Reset",
+    saveChanges: "Save changes",
+    saving: "Saving...",
+    logout: "Log out",
+    perfumes: "Perfumes",
+    notes: "Notes",
+    linkedNotes: "Linked notes",
+    visibleInSearch: "{count} visible in search",
+    linkedNoteDetail: "Unique note slugs referenced by perfumes",
+    assetCoverage: "Asset coverage",
+    dataOperations: "Data operations",
+    dataOperationsDescription:
+      "Import and export structured data without leaving the workspace.",
+    exportPerfumesCsv: "Export perfumes CSV",
+    exportNotesCsv: "Export notes CSV",
+    importPerfumesCsv: "Import perfumes CSV",
+    importNotesCsv: "Import notes CSV",
+    importingPerfumes: "Importing perfumes...",
+    importingNotes: "Importing notes...",
+    workspaceRecords: "Workspace records",
+    workspaceRecordsDescription:
+      "Switch datasets, search quickly, and move between records without page reloads.",
+    searchPerfumes: "Search perfumes...",
+    searchNotes: "Search notes...",
+    addPerfume: "Add perfume",
+    duplicate: "Duplicate",
+    delete: "Delete",
+    addNote: "Add note",
+    perfumeList: "Perfume list",
+    noteList: "Note list",
+    all: "All",
+    missingImage: "Missing image",
+    missingNotes: "Missing notes",
+    outOfStock: "Out of stock",
+    linked: "Linked",
+    unlinked: "Unlinked",
+    recordsShown: "{shown}/{total} shown",
+    updating: "updating",
+    noPerfumesFound: "No perfumes found",
+    noPerfumesFoundDescription:
+      "Adjust the search or create a new perfume draft.",
+    noNotesFound: "No notes found",
+    noNotesFoundDescription:
+      "Try a broader search or create a new note draft.",
+    perfumeEditor: "Perfume editor",
+    noteEditor: "Note editor",
+    copySlug: "Copy slug",
+    copyImageUrl: "Copy image URL",
+    basics: "Basics",
+    perfumeNotes: "Notes",
+    media: "Media",
+    coreDetails: "Core details",
+    coreDetailsDescription:
+      "Keep the core catalog identity clean and consistent.",
+    perfumeName: "Perfume name",
+    brand: "Brand",
+    slug: "Slug",
+    slugHint: "Lowercase URL key used across the site",
+    gender: "Gender",
+    stockStatus: "Stock status",
+    inventoryFlag: "Inventory flag",
+    inStock: "In stock",
+    outStock: "Out of stock",
+    externalLink: "External link",
+    sizeMatrix: "Size matrix",
+    sizeMatrixDescription: "Maintain sale sizes and prices in one list.",
+    addSize: "Add size",
+    label: "Label",
+    ml: "ML",
+    price: "Price",
+    remove: "Remove",
+    topNotes: "Top notes",
+    heartNotes: "Heart notes",
+    baseNotes: "Base notes",
+    attachNotesDetail: "Attach note slugs to build the {group} layer.",
+    noLinkedGroupNotes: "No {group} notes linked yet.",
+    addNoteSlug: "Add note slug",
+    existingSlugs: "{count} note slug options available",
+    addLinkedNote: "Add note",
+    mediaQuickActions: "Media quick actions",
+    uploadImage: "Upload image",
+    imageMetadata: "Image metadata",
+    imageMetadataDescription:
+      "Control the uploaded image reference and alt text.",
+    imageUrl: "Image URL",
+    imageAlt: "Image alt text",
+    uploadPerfumePreview: "Upload a perfume image to preview it here.",
+    uploadNotePreview: "Upload a note image to preview it here.",
+    noteContent: "Note content",
+    noteContentDescription:
+      "Edit the note label and descriptive copy used across the site.",
+    noteName: "Note name",
+    content: "Content",
+    usageMap: "Usage map",
+    usageMapDescription: "Perfumes currently referencing this note.",
+    noLinkedPerfumes: "No linked perfumes yet",
+    noLinkedPerfumesDescription:
+      "Attach this note from the perfume editor notes tab.",
+    noPerfumeSelected: "No perfume selected",
+    noPerfumeSelectedDescription:
+      "Pick a perfume from the list or create a new one.",
+    noNoteSelected: "No note selected",
+    noNoteSelectedDescription:
+      "Pick a note from the list or create a new one.",
+    statusNoValueToCopy: "There is no {label} to copy yet.",
+    statusCopied: "{label} copied to clipboard.",
+    statusCopyFailed: "Unable to copy {label}.",
+    statusNewPerfumeCreated: "New perfume draft created.",
+    statusPerfumeDuplicated: "Perfume duplicated into a new draft.",
+    statusPerfumeRemoved: "Perfume removed from the workspace.",
+    statusNewNoteCreated: "New note draft created.",
+    statusNoteDuplicated: "Note duplicated into a new draft.",
+    statusNoteRemoved: "Note removed from the workspace.",
+    statusWorkspaceReset: "Workspace reset to the latest saved state.",
+    statusUploadingPerfumeImage: "Uploading perfume image...",
+    statusPerfumeImageUploaded: "Perfume image uploaded.",
+    statusUploadingNoteImage: "Uploading note image...",
+    statusNoteImageUploaded: "Note image uploaded.",
+    statusWorkspaceReady: "Admin workspace ready.",
+    statusLoginFailed: "Login request failed. Please try again.",
+    statusClosingSession: "Closing your admin session...",
+    statusLoggedOut: "Logged out.",
+    statusLogoutFailed: "Logout failed. Please try again.",
+    statusRefreshing: "Refreshing saved admin data...",
+    statusRefreshFailed: "Refresh failed.",
+    statusWorkspaceSynced: "Workspace synced with saved admin data.",
+    statusAlreadySaved: "Everything is already saved.",
+    statusSaving: "Saving changes and revalidating public pages...",
+    statusSaveFailed: "Save failed.",
+    statusSaved: "Saved successfully. Public pages have been revalidated.",
+    statusPreparingExport: "Preparing {type} CSV export...",
+    statusExportFailed: "Export request failed.",
+    statusExportedPerfumes: "Perfumes CSV exported.",
+    statusExportedNotes: "Notes CSV exported.",
+    statusImportingCsv: "Importing {type} CSV...",
+    statusImportFailed: "Import request failed.",
+    statusImportedPerfumes: "Perfumes CSV imported.",
+    statusImportedNotes: "Notes CSV imported.",
+    confirmReload: "Reloading will discard unsaved changes. Continue?",
+    confirmDeletePerfume: 'Delete perfume "{name}"?',
+    confirmDeleteNote: 'Delete note "{name}"?',
+    loginFailed: "Login failed.",
+    refreshFailed: "Refresh failed.",
+    saveFailed: "Save failed.",
+    exportFailed: "Export failed.",
+    importFailed: "CSV import failed.",
+    uploadFailed: "Upload failed.",
+    loggedInDataFailed: "Logged in, but failed to load admin data.",
+    usePassword: "Use your configured admin password to enter the workspace.",
+    assetCoverageDetail: "{count} records currently have an image",
+    perfumeMetaFallback: "Brand and gender not added yet",
+    noPricing: "No pricing",
+    fromPrice: "from {price} AZN",
+    usedByPerfumes: "Used by {count} perfumes",
+    noteLinksCount: "{count} note links",
+    sizeCount: "{count} sizes",
+  },
+} satisfies Record<AdminLocale, Record<string, string>>;
 
 function cloneDeep<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function normalizeSlug(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "");
+function interpolate(
+  template: string,
+  values: Record<string, string | number>,
+) {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ""));
 }
 
-function safeParsePerfumes(input: string): PerfumeDraft[] {
+function normalizeString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeSlug(value: unknown) {
+  return normalizeString(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function normalizeStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as string[];
+  }
+
+  return value.map((item) => normalizeSlug(item)).filter(Boolean);
+}
+
+function normalizeSize(value: unknown): PerfumeSize | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const size = value as { ml?: unknown; price?: unknown; label?: unknown };
+  const ml = Number(size.ml);
+  const price = Number(size.price);
+
+  if (!Number.isFinite(ml) || !Number.isFinite(price)) {
+    return null;
+  }
+
+  return {
+    ml,
+    price,
+    label: normalizeString(size.label) || `${ml}ML`,
+  };
+}
+
+function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const perfume = value as {
+    id?: unknown;
+    slug?: unknown;
+    name?: unknown;
+    brand?: unknown;
+    gender?: unknown;
+    image?: unknown;
+    imageAlt?: unknown;
+    stockStatus?: unknown;
+    inStock?: unknown;
+    externalLink?: unknown;
+    sizes?: unknown;
+    noteSlugs?: { top?: unknown; heart?: unknown; base?: unknown };
+  };
+
+  const slug = normalizeSlug(perfume.slug) || normalizeSlug(perfume.name);
+  if (!slug) {
+    return null;
+  }
+
+  const sizes = Array.isArray(perfume.sizes)
+    ? perfume.sizes
+        .map(normalizeSize)
+        .filter((item): item is PerfumeSize => item !== null)
+        .sort((left, right) => left.ml - right.ml)
+    : [];
+
+  return {
+    id: normalizeString(perfume.id) || slug,
+    slug,
+    name: normalizeString(perfume.name) || "Untitled perfume",
+    brand: normalizeString(perfume.brand),
+    gender: normalizeString(perfume.gender) || "Unisex",
+    image: normalizeString(perfume.image),
+    imageAlt: normalizeString(perfume.imageAlt),
+    stockStatus: normalizeString(perfume.stockStatus) || "Available",
+    inStock: Boolean(perfume.inStock),
+    externalLink: normalizeString(perfume.externalLink),
+    sizes: sizes.length ? sizes : [{ label: "50ML", ml: 50, price: 0 }],
+    noteSlugs: {
+      top: normalizeStringArray(perfume.noteSlugs?.top),
+      heart: normalizeStringArray(perfume.noteSlugs?.heart),
+      base: normalizeStringArray(perfume.noteSlugs?.base),
+    },
+  };
+}
+
+function normalizeNoteDraft(value: unknown): NoteDraft | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const note = value as {
+    slug?: unknown;
+    name?: unknown;
+    image?: unknown;
+    imageAlt?: unknown;
+    content?: unknown;
+  };
+
+  const slug = normalizeSlug(note.slug) || normalizeSlug(note.name);
+  if (!slug) {
+    return null;
+  }
+
+  return {
+    slug,
+    name: normalizeString(note.name) || "Untitled note",
+    image: normalizeString(note.image),
+    imageAlt: normalizeString(note.imageAlt),
+    content: normalizeString(note.content),
+  };
+}
+
+function safeParsePerfumes(raw: string) {
   try {
-    const parsed = JSON.parse(input) as unknown;
+    const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
-      return [];
+      return [] as PerfumeDraft[];
     }
 
     return parsed
-      .map((item) => item as PerfumeDraft)
-      .filter((item) => item && typeof item.slug === "string" && item.slug.trim().length > 0);
+      .map(normalizePerfumeDraft)
+      .filter((item): item is PerfumeDraft => item !== null);
   } catch {
-    return [];
+    return [] as PerfumeDraft[];
   }
 }
 
-function safeParseNotes(input: string): NoteDraft[] {
+function safeParseNotes(raw: string) {
   try {
-    const parsed = JSON.parse(input) as unknown;
+    const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
-      return [];
+      return [] as NoteDraft[];
     }
 
     return parsed
-      .map((item) => item as NoteDraft)
-      .filter((item) => item && typeof item.slug === "string" && item.slug.trim().length > 0);
+      .map(normalizeNoteDraft)
+      .filter((item): item is NoteDraft => item !== null);
   } catch {
-    return [];
+    return [] as NoteDraft[];
+  }
+}
+
+async function parseResponse(response: Response) {
+  try {
+    return (await response.json()) as Record<string, unknown>;
+  } catch {
+    return {} as Record<string, unknown>;
   }
 }
 
 function createEmptyPerfume(): PerfumeDraft {
-  const uid = Date.now();
+  const seed = Date.now().toString(36);
+  const slug = `perfume-${seed}`;
+
   return {
-    id: `perfume-${uid}`,
-    slug: `new-perfume-${uid}`,
-    name: "New Perfume",
+    id: slug,
+    slug,
+    name: "New perfume",
     brand: "",
     gender: "Unisex",
     image: "",
     imageAlt: "",
-    stockStatus: "Stock var",
+    stockStatus: "Available",
     inStock: true,
     externalLink: "",
-    sizes: [
-      { label: "15ML", ml: 15, price: 0 },
-      { label: "30ML", ml: 30, price: 0 },
-    ],
+    sizes: [{ label: "50ML", ml: 50, price: 0 }],
     noteSlugs: {
       top: [],
       heart: [],
@@ -87,22 +662,244 @@ function createEmptyPerfume(): PerfumeDraft {
 }
 
 function createEmptyNote(): NoteDraft {
-  const uid = Date.now();
+  const seed = Date.now().toString(36);
+
   return {
-    slug: `new-note-${uid}`,
-    name: "New Note",
+    slug: `note-${seed}`,
+    name: "New note",
     image: "",
     imageAlt: "",
     content: "",
   };
 }
 
-async function parseResponse(response: Response) {
-  try {
-    return (await response.json()) as { error?: string; [key: string]: unknown };
-  } catch {
-    return {} as { error?: string; [key: string]: unknown };
+function formatStartingPrice(perfume: PerfumeDraft, copy: (typeof adminCopy)[AdminLocale]) {
+  const price = perfume.sizes
+    .map((size) => size.price)
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => left - right)[0];
+
+  return Number.isFinite(price)
+    ? interpolate(copy.fromPrice, { price })
+    : copy.noPricing;
+}
+
+function formatPerfumeMeta(perfume: PerfumeDraft, copy: (typeof adminCopy)[AdminLocale]) {
+  const parts = [perfume.brand, perfume.gender].filter(Boolean);
+  if (!parts.length) {
+    return copy.perfumeMetaFallback;
   }
+  return parts.join(" • ");
+}
+
+function toneClasses(tone: StatusTone) {
+  if (tone === "success") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (tone === "error") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  return "border-zinc-200 bg-zinc-50 text-zinc-600";
+}
+
+function StatusIcon({ tone }: { tone: StatusTone }) {
+  if (tone === "success") {
+    return <CheckCircle size={16} weight="fill" />;
+  }
+
+  if (tone === "error") {
+    return <WarningCircle size={16} weight="fill" />;
+  }
+
+  return <Sparkle size={16} weight="fill" />;
+}
+
+function WorkspaceStat({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-white/70 bg-white/80 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-700">
+          {icon}
+        </span>
+        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+          {label}
+        </span>
+      </div>
+      <p className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-zinc-950">{value}</p>
+      <p className="mt-1 text-sm text-zinc-500">{detail}</p>
+    </div>
+  );
+}
+
+function SectionLabel({
+  icon,
+  title,
+  detail,
+  action,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-900">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600">
+            {icon}
+          </span>
+          {title}
+        </div>
+        {detail ? <p className="mt-2 text-sm leading-6 text-zinc-500">{detail}</p> : null}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-zinc-700">{label}</span>
+      {children}
+      {hint ? <span className="mt-2 block text-xs text-zinc-500">{hint}</span> : null}
+    </label>
+  );
+}
+
+function TabButton({
+  active,
+  icon,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  icon: ReactNode;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cx(
+        ui.tab,
+        active
+          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_12px_26px_rgba(17,24,39,0.18)]"
+          : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50",
+      )}
+      onClick={onClick}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function RecordButton({
+  active,
+  title,
+  subtitle,
+  meta,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  subtitle: string;
+  meta: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cx(
+        "w-full rounded-[1.35rem] border p-4 text-left transition duration-200",
+        active
+          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_14px_28px_rgba(17,24,39,0.18)]"
+          : "border-zinc-200 bg-white hover:-translate-y-[1px] hover:border-zinc-300 hover:bg-zinc-50",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{title}</p>
+          <p className={cx("mt-1 truncate text-xs", active ? "text-zinc-300" : "text-zinc-500")}>
+            {subtitle}
+          </p>
+        </div>
+        <span
+          className={cx(
+            "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
+            active
+              ? "border-white/15 bg-white/10 text-white"
+              : "border-zinc-200 bg-zinc-50 text-zinc-500",
+          )}
+        >
+          {meta}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function EmptyState({
+  title,
+  detail,
+  action,
+}: {
+  title: string;
+  detail: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-dashed border-zinc-300 bg-zinc-50/80 px-4 py-8 text-center">
+      <p className="text-sm font-semibold text-zinc-800">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-500">{detail}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+    </div>
+  );
+}
+
+function ImagePreview({
+  src,
+  alt,
+  emptyLabel,
+}: {
+  src: string;
+  alt: string;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-zinc-100">
+      {src ? (
+        <img src={src} alt={alt || emptyLabel} className="aspect-[4/3] h-full w-full object-cover" />
+      ) : (
+        <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_top,rgba(228,228,231,0.95),rgba(244,244,245,0.92))] px-6 text-center text-sm text-zinc-500">
+          {emptyLabel}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function AdminPanelClient({
@@ -111,84 +908,262 @@ export function AdminPanelClient({
   initialPerfumesJson,
   initialNotesJson,
 }: AdminPanelClientProps) {
-  const initialPerfumes = safeParsePerfumes(initialPerfumesJson);
-  const initialNotes = safeParseNotes(initialNotesJson);
+  const initialPerfumes = useMemo(
+    () => safeParsePerfumes(initialPerfumesJson),
+    [initialPerfumesJson],
+  );
+  const initialNotes = useMemo(() => safeParseNotes(initialNotesJson), [initialNotesJson]);
 
-  const [view, setView] = useState<AdminView>("perfumes");
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
+  const [locale, setLocale] = useState<AdminLocale>("az");
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [view, setView] = useState<AdminView>("perfumes");
+  const [perfumeEditorTab, setPerfumeEditorTab] = useState<PerfumeEditorTab>("basics");
+  const [noteEditorTab, setNoteEditorTab] = useState<NoteEditorTab>("content");
+  const [perfumeListFilter, setPerfumeListFilter] = useState<PerfumeListFilter>("all");
+  const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>("all");
   const [perfumes, setPerfumes] = useState<PerfumeDraft[]>(initialPerfumes);
   const [notes, setNotes] = useState<NoteDraft[]>(initialNotes);
   const [savedPerfumes, setSavedPerfumes] = useState<PerfumeDraft[]>(cloneDeep(initialPerfumes));
   const [savedNotes, setSavedNotes] = useState<NoteDraft[]>(cloneDeep(initialNotes));
-  const [selectedPerfumeId, setSelectedPerfumeId] = useState<string>(
+  const [selectedPerfumeId, setSelectedPerfumeId] = useState(
     initialPerfumes[0]?.id || initialPerfumes[0]?.slug || "",
   );
-  const [selectedNoteSlug, setSelectedNoteSlug] = useState<string>(
-    initialNotes[0]?.slug || "",
-  );
+  const [selectedNoteSlug, setSelectedNoteSlug] = useState(initialNotes[0]?.slug || "");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState<StatusState | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState<"perfumes" | "notes" | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [tokenInput, setTokenInput] = useState<{ top: string; heart: string; base: string }>({
-    top: "",
-    heart: "",
-    base: "",
-  });
+  const [tokenInput, setTokenInput] = useState({ top: "", heart: "", base: "" });
+
   const perfumeImportRef = useRef<HTMLInputElement | null>(null);
   const noteImportRef = useRef<HTMLInputElement | null>(null);
+  const perfumeImageInputRef = useRef<HTMLInputElement | null>(null);
+  const noteImageInputRef = useRef<HTMLInputElement | null>(null);
 
-  const cosmetics = useMemo(
-    () => ({
-      card: "rounded-3xl border border-zinc-200 bg-white p-5 shadow-[0_14px_34px_rgba(24,24,24,0.06)] sm:p-6",
-      input:
-        "w-full rounded-2xl border border-zinc-300 bg-[#f5f5f4] px-4 py-3 text-zinc-800 outline-none transition focus:border-zinc-500 focus:bg-white",
-      button:
-        "inline-flex min-h-11 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 px-6 text-sm font-semibold text-white transition md:hover:bg-zinc-800 disabled:opacity-60",
-      secondaryButton:
-        "inline-flex min-h-11 items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-sm font-semibold text-zinc-700 transition md:hover:bg-zinc-100 disabled:opacity-60",
-      tab: "inline-flex min-h-10 items-center justify-center rounded-full border px-4 text-sm font-semibold transition",
-      softCard: "rounded-2xl border border-zinc-200 bg-zinc-50/60 p-3",
-    }),
-    [],
+  const deferredSearch = useDeferredValue(search);
+  const normalizedSearch = deferredSearch.trim().toLowerCase();
+  const isWorking = busy || uploading || importing !== null;
+  const isFiltering = search.trim() !== deferredSearch.trim();
+  const copy = adminCopy[locale];
+  const t = (key: keyof typeof copy, values: Record<string, string | number> = {}) =>
+    interpolate(copy[key], values);
+
+  const selectedPerfume = useMemo(
+    () =>
+      perfumes.find((item) => item.id === selectedPerfumeId || item.slug === selectedPerfumeId) ||
+      perfumes[0] ||
+      null,
+    [perfumes, selectedPerfumeId],
+  );
+  const selectedNote = useMemo(
+    () => notes.find((item) => item.slug === selectedNoteSlug) || notes[0] || null,
+    [notes, selectedNoteSlug],
   );
 
-  const selectedPerfume =
-    perfumes.find((item) => item.id === selectedPerfumeId || item.slug === selectedPerfumeId) ||
-    perfumes[0] ||
-    null;
-  const selectedNote = notes.find((item) => item.slug === selectedNoteSlug) || notes[0] || null;
+  const filteredPerfumes = useMemo(() => {
+    const searchMatched = perfumes.filter((item) => {
+      const pool = [
+        item.name,
+        item.slug,
+        item.brand,
+        item.gender,
+        item.stockStatus,
+        item.noteSlugs.top.join(" "),
+        item.noteSlugs.heart.join(" "),
+        item.noteSlugs.base.join(" "),
+      ]
+        .join(" ")
+        .toLowerCase();
 
-  const filteredPerfumes = perfumes.filter((item) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      item.name.toLowerCase().includes(q) ||
-      item.slug.toLowerCase().includes(q) ||
-      item.brand.toLowerCase().includes(q)
+      return pool.includes(normalizedSearch);
+    });
+
+    return searchMatched.filter((item) => {
+      if (perfumeListFilter === "missingImage") {
+        return !item.image;
+      }
+
+      if (perfumeListFilter === "missingNotes") {
+        return (
+          item.noteSlugs.top.length + item.noteSlugs.heart.length + item.noteSlugs.base.length === 0
+        );
+      }
+
+      if (perfumeListFilter === "outOfStock") {
+        return !item.inStock;
+      }
+
+      return true;
+    });
+  }, [normalizedSearch, perfumeListFilter, perfumes]);
+
+  const noteUsageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const perfume of perfumes) {
+      for (const slug of [
+        ...perfume.noteSlugs.top,
+        ...perfume.noteSlugs.heart,
+        ...perfume.noteSlugs.base,
+      ]) {
+        counts.set(slug, (counts.get(slug) || 0) + 1);
+      }
+    }
+
+    return counts;
+  }, [perfumes]);
+
+  const filteredNotes = useMemo(() => {
+    const searchMatched = notes.filter((item) =>
+      [item.name, item.slug, item.content].join(" ").toLowerCase().includes(normalizedSearch),
     );
-  });
 
-  const filteredNotes = notes.filter((item) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return item.name.toLowerCase().includes(q) || item.slug.toLowerCase().includes(q);
-  });
+    return searchMatched.filter((item) => {
+      if (noteListFilter === "linked") {
+        return (noteUsageCounts.get(item.slug) || 0) > 0;
+      }
 
-  const noteSlugOptions = notes.map((item) => item.slug).sort();
+      if (noteListFilter === "unlinked") {
+        return (noteUsageCounts.get(item.slug) || 0) === 0;
+      }
 
-  const markDirty = () => {
-    setDirty(true);
+      if (noteListFilter === "missingImage") {
+        return !item.image;
+      }
+
+      return true;
+    });
+  }, [normalizedSearch, noteListFilter, noteUsageCounts, notes]);
+
+  const noteSlugOptions = useMemo(
+    () =>
+      Array.from(new Set(notes.map((item) => normalizeSlug(item.slug)).filter(Boolean))).sort(),
+    [notes],
+  );
+
+  const perfumesLinkedToSelectedNote = useMemo(() => {
+    if (!selectedNote) {
+      return [] as PerfumeDraft[];
+    }
+
+    return perfumes.filter((item) =>
+      [
+        ...item.noteSlugs.top,
+        ...item.noteSlugs.heart,
+        ...item.noteSlugs.base,
+      ].includes(selectedNote.slug),
+    );
+  }, [perfumes, selectedNote]);
+
+  const dirty = useMemo(() => {
+    return (
+      JSON.stringify(perfumes) !== JSON.stringify(savedPerfumes) ||
+      JSON.stringify(notes) !== JSON.stringify(savedNotes)
+    );
+  }, [notes, perfumes, savedNotes, savedPerfumes]);
+
+  const stats = useMemo(() => {
+    const linkedNotes = new Set<string>();
+    let perfumeImages = 0;
+    let noteImages = 0;
+
+    for (const perfume of perfumes) {
+      if (perfume.image) {
+        perfumeImages += 1;
+      }
+
+      for (const slug of [
+        ...perfume.noteSlugs.top,
+        ...perfume.noteSlugs.heart,
+        ...perfume.noteSlugs.base,
+      ]) {
+        linkedNotes.add(slug);
+      }
+    }
+
+    for (const note of notes) {
+      if (note.image) {
+        noteImages += 1;
+      }
+    }
+
+    return {
+      perfumes: perfumes.length,
+      notes: notes.length,
+      linkedNotes: linkedNotes.size,
+      assetCoverage: `${perfumeImages + noteImages}/${perfumes.length + notes.length || 0}`,
+    };
+  }, [notes, perfumes]);
+
+  useEffect(() => {
+    const savedLocale = window.localStorage.getItem(ADMIN_LOCALE_STORAGE_KEY);
+    if (savedLocale === "az" || savedLocale === "en") {
+      setLocale(savedLocale);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(ADMIN_LOCALE_STORAGE_KEY, locale);
+  }, [locale]);
+
+  useEffect(() => {
+    if (!perfumes.length) {
+      if (selectedPerfumeId) {
+        setSelectedPerfumeId("");
+      }
+      return;
+    }
+
+    if (
+      !selectedPerfumeId ||
+      !perfumes.some((item) => item.id === selectedPerfumeId || item.slug === selectedPerfumeId)
+    ) {
+      setSelectedPerfumeId(perfumes[0]?.id || perfumes[0]?.slug || "");
+    }
+  }, [perfumes, selectedPerfumeId]);
+
+  useEffect(() => {
+    if (!notes.length) {
+      if (selectedNoteSlug) {
+        setSelectedNoteSlug("");
+      }
+      return;
+    }
+
+    if (!selectedNoteSlug || !notes.some((item) => item.slug === selectedNoteSlug)) {
+      setSelectedNoteSlug(notes[0]?.slug || "");
+    }
+  }, [notes, selectedNoteSlug]);
+
+  const applyServerData = (nextPerfumes: PerfumeDraft[], nextNotes: NoteDraft[]) => {
+    setPerfumes(nextPerfumes);
+    setNotes(nextNotes);
+    setSavedPerfumes(cloneDeep(nextPerfumes));
+    setSavedNotes(cloneDeep(nextNotes));
+    setSelectedPerfumeId((current) => {
+      if (nextPerfumes.some((item) => item.id === current || item.slug === current)) {
+        return current;
+      }
+      return nextPerfumes[0]?.id || nextPerfumes[0]?.slug || "";
+    });
+    setSelectedNoteSlug((current) => {
+      if (nextNotes.some((item) => item.slug === current)) {
+        return current;
+      }
+      return nextNotes[0]?.slug || "";
+    });
   };
 
   const setPerfumeField = <K extends keyof PerfumeDraft>(key: K, value: PerfumeDraft[K]) => {
-    if (!selectedPerfume) return;
-    setPerfumes((prev) =>
-      prev.map((item) =>
+    if (!selectedPerfume) {
+      return;
+    }
+
+    setPerfumes((current) =>
+      current.map((item) =>
         item.id === selectedPerfume.id
           ? {
               ...item,
@@ -197,78 +1172,75 @@ export function AdminPanelClient({
           : item,
       ),
     );
-    markDirty();
   };
 
-  const setPerfumeNoteSlugs = (group: "top" | "heart" | "base", values: string[]) => {
-    if (!selectedPerfume) return;
-    setPerfumes((prev) =>
-      prev.map((item) =>
-        item.id === selectedPerfume.id
-          ? {
-              ...item,
-              noteSlugs: {
-                ...item.noteSlugs,
-                [group]: values,
-              },
-            }
-          : item,
-      ),
-    );
-    markDirty();
-  };
+  const setPerfumeSizeField = (
+    index: number,
+    field: keyof PerfumeSize,
+    value: string,
+  ) => {
+    if (!selectedPerfume) {
+      return;
+    }
 
-  const setPerfumeSizeField = (index: number, field: "ml" | "price" | "label", value: string) => {
-    if (!selectedPerfume) return;
-
-    setPerfumes((prev) =>
-      prev.map((item) => {
+    setPerfumes((current) =>
+      current.map((item) => {
         if (item.id !== selectedPerfume.id) {
           return item;
         }
 
         const nextSizes = [...item.sizes];
-        const current = nextSizes[index];
-        if (!current) {
+        const currentSize = nextSizes[index];
+
+        if (!currentSize) {
           return item;
         }
 
         if (field === "label") {
-          nextSizes[index] = { ...current, label: value };
+          nextSizes[index] = { ...currentSize, label: value };
         } else {
           const parsed = Number(value);
           nextSizes[index] = {
-            ...current,
+            ...currentSize,
             [field]: Number.isFinite(parsed) ? parsed : 0,
           };
         }
 
-        return { ...item, sizes: nextSizes };
+        return {
+          ...item,
+          sizes: nextSizes.sort((left, right) => left.ml - right.ml),
+        };
       }),
     );
-
-    markDirty();
   };
 
   const addPerfumeSize = () => {
-    if (!selectedPerfume) return;
-    setPerfumes((prev) =>
-      prev.map((item) =>
+    if (!selectedPerfume) {
+      return;
+    }
+
+    setPerfumes((current) =>
+      current.map((item) =>
         item.id === selectedPerfume.id
           ? {
               ...item,
-              sizes: [...item.sizes, { ml: 100, price: 0, label: "100ML" }],
+              sizes: [
+                ...item.sizes,
+                { label: "100ML", ml: 100, price: 0 },
+              ].sort((left, right) => left.ml - right.ml),
             }
           : item,
       ),
     );
-    markDirty();
   };
 
   const removePerfumeSize = (index: number) => {
-    if (!selectedPerfume) return;
-    setPerfumes((prev) =>
-      prev.map((item) =>
+    if (!selectedPerfume) {
+      return;
+    }
+
+    setPerfumes((current) =>
+      current.map((item) =>
         item.id === selectedPerfume.id
           ? {
               ...item,
@@ -277,63 +1249,189 @@ export function AdminPanelClient({
           : item,
       ),
     );
-    markDirty();
   };
 
-  const addPerfume = () => {
-    const fresh = createEmptyPerfume();
-    setPerfumes((prev) => [fresh, ...prev]);
-    setSelectedPerfumeId(fresh.id);
-    setView("perfumes");
-    markDirty();
-  };
+  const setPerfumeNoteSlugs = (group: "top" | "heart" | "base", values: string[]) => {
+    if (!selectedPerfume) {
+      return;
+    }
 
-  const duplicatePerfume = () => {
-    if (!selectedPerfume) return;
-    const cloned: PerfumeDraft = {
-      ...selectedPerfume,
-      id: `${selectedPerfume.id}-copy-${Date.now()}`,
-      slug: `${selectedPerfume.slug}-copy-${Date.now().toString().slice(-4)}`,
-      name: `${selectedPerfume.name} Copy`,
-      sizes: selectedPerfume.sizes.map((size) => ({ ...size })),
-      noteSlugs: {
-        top: [...selectedPerfume.noteSlugs.top],
-        heart: [...selectedPerfume.noteSlugs.heart],
-        base: [...selectedPerfume.noteSlugs.base],
-      },
-    };
-
-    setPerfumes((prev) => [cloned, ...prev]);
-    setSelectedPerfumeId(cloned.id);
-    markDirty();
-  };
-
-  const deletePerfume = () => {
-    if (!selectedPerfume) return;
-    if (!window.confirm(`Delete perfume: ${selectedPerfume.name}?`)) return;
-
-    setPerfumes((prev) => {
-      const next = prev.filter((item) => item.id !== selectedPerfume.id);
-      const fallback = next[0];
-      setSelectedPerfumeId(fallback ? fallback.id : "");
-      return next;
-    });
-    markDirty();
-  };
-
-  const setNoteField = <K extends keyof NoteDraft>(key: K, value: NoteDraft[K]) => {
-    if (!selectedNote) return;
-    setNotes((prev) =>
-      prev.map((item) =>
-        item.slug === selectedNote.slug
+    setPerfumes((current) =>
+      current.map((item) =>
+        item.id === selectedPerfume.id
           ? {
               ...item,
-              [key]: value,
+              noteSlugs: {
+                ...item.noteSlugs,
+                [group]: Array.from(new Set(values.map((value) => normalizeSlug(value)).filter(Boolean))),
+              },
             }
           : item,
       ),
     );
-    markDirty();
+  };
+
+  const addTokenToGroup = (group: "top" | "heart" | "base") => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    const token = normalizeSlug(tokenInput[group]);
+    if (!token) {
+      return;
+    }
+
+    if (!selectedPerfume.noteSlugs[group].includes(token)) {
+      setPerfumeNoteSlugs(group, [...selectedPerfume.noteSlugs[group], token]);
+    }
+
+    setTokenInput((current) => ({ ...current, [group]: "" }));
+  };
+
+  const removeTokenFromGroup = (group: "top" | "heart" | "base", token: string) => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    setPerfumeNoteSlugs(
+      group,
+      selectedPerfume.noteSlugs[group].filter((item) => item !== token),
+    );
+  };
+
+  const setNoteField = <K extends keyof NoteDraft>(key: K, value: NoteDraft[K]) => {
+    if (!selectedNote) {
+      return;
+    }
+
+    const nextValue =
+      key === "slug" ? (normalizeSlug(value) as NoteDraft[K]) : value;
+
+    setNotes((current) =>
+      current.map((item) =>
+        item.slug === selectedNote.slug
+          ? {
+              ...item,
+              [key]: nextValue,
+            }
+          : item,
+      ),
+    );
+
+    if (key === "slug" && typeof nextValue === "string") {
+      setSelectedNoteSlug(nextValue);
+    }
+  };
+
+  const addPerfume = () => {
+    const fresh = createEmptyPerfume();
+    setPerfumes((current) => [fresh, ...current]);
+    startTransition(() => {
+      setView("perfumes");
+      setPerfumeEditorTab("basics");
+      setSelectedPerfumeId(fresh.id);
+    });
+    setStatus({ tone: "neutral", message: "New perfume draft created." });
+  };
+
+  const duplicatePerfume = () => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    const seed = Date.now().toString(36);
+    const cloned: PerfumeDraft = {
+      ...cloneDeep(selectedPerfume),
+      id: `${selectedPerfume.id}-copy-${seed}`,
+      slug: `${selectedPerfume.slug}-copy-${seed.slice(-4)}`,
+      name: `${selectedPerfume.name} Copy`,
+    };
+
+    setPerfumes((current) => [cloned, ...current]);
+    startTransition(() => {
+      setView("perfumes");
+      setPerfumeEditorTab("basics");
+      setSelectedPerfumeId(cloned.id);
+    });
+    setStatus({ tone: "neutral", message: "Perfume duplicated into a new draft." });
+  };
+
+  const deletePerfume = () => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    if (!window.confirm(`Delete perfume "${selectedPerfume.name}"?`)) {
+      return;
+    }
+
+    setPerfumes((current) => current.filter((item) => item.id !== selectedPerfume.id));
+    setStatus({ tone: "neutral", message: "Perfume removed from the workspace." });
+  };
+
+  const addNote = () => {
+    const fresh = createEmptyNote();
+    setNotes((current) => [fresh, ...current]);
+    startTransition(() => {
+      setView("notes");
+      setNoteEditorTab("content");
+      setSelectedNoteSlug(fresh.slug);
+    });
+    setStatus({ tone: "neutral", message: "New note draft created." });
+  };
+
+  const duplicateNote = () => {
+    if (!selectedNote) {
+      return;
+    }
+
+    const seed = Date.now().toString(36);
+    const cloned: NoteDraft = {
+      ...cloneDeep(selectedNote),
+      slug: `${selectedNote.slug}-copy-${seed.slice(-4)}`,
+      name: `${selectedNote.name} Copy`,
+    };
+
+    setNotes((current) => [cloned, ...current]);
+    startTransition(() => {
+      setView("notes");
+      setNoteEditorTab("content");
+      setSelectedNoteSlug(cloned.slug);
+    });
+    setStatus({ tone: "neutral", message: "Note duplicated into a new draft." });
+  };
+
+  const deleteNote = () => {
+    if (!selectedNote) {
+      return;
+    }
+
+    if (!window.confirm(`Delete note "${selectedNote.name}"?`)) {
+      return;
+    }
+
+    setNotes((current) => current.filter((item) => item.slug !== selectedNote.slug));
+    setStatus({ tone: "neutral", message: "Note removed from the workspace." });
+  };
+
+  const cancelEditing = () => {
+    setPerfumes(cloneDeep(savedPerfumes));
+    setNotes(cloneDeep(savedNotes));
+    setStatus({ tone: "neutral", message: "Workspace reset to the latest saved state." });
+  };
+
+  const copyToClipboard = async (value: string, label: string) => {
+    if (!value) {
+      setStatus({ tone: "error", message: `There is no ${label.toLowerCase()} to copy yet.` });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus({ tone: "success", message: `${label} copied to clipboard.` });
+    } catch {
+      setStatus({ tone: "error", message: `Unable to copy ${label.toLowerCase()}.` });
+    }
   };
 
   const uploadImage = async (file: File, folder: "perfumes" | "notes") => {
@@ -349,13 +1447,13 @@ export function AdminPanelClient({
     const body = await parseResponse(response);
 
     if (!response.ok || typeof body.url !== "string") {
-      throw new Error(body.error || "Upload failed.");
+      throw new Error(String(body.error || "Upload failed."));
     }
 
     return body.url;
   };
 
-  const onUploadPerfumeImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onUploadPerfumeImage = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!selectedPerfume) {
       return;
     }
@@ -368,24 +1466,27 @@ export function AdminPanelClient({
     }
 
     setUploading(true);
-    setStatus("");
+    setStatus({ tone: "neutral", message: "Uploading perfume image..." });
 
     try {
       const url = await uploadImage(file, "perfumes");
       setPerfumeField("image", url);
       if (!selectedPerfume.imageAlt) {
-        setPerfumeField("imageAlt", selectedPerfume.name || file.name.replace(/\.[^.]+$/, ""));
+        setPerfumeField(
+          "imageAlt",
+          selectedPerfume.name || file.name.replace(/\.[^.]+$/, ""),
+        );
       }
-      setStatus("Perfume image uploaded.");
+      setStatus({ tone: "success", message: "Perfume image uploaded." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed.";
-      setStatus(message);
+      setStatus({ tone: "error", message });
     } finally {
       setUploading(false);
     }
   };
 
-  const onUploadNoteImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onUploadNoteImage = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!selectedNote) {
       return;
     }
@@ -398,7 +1499,7 @@ export function AdminPanelClient({
     }
 
     setUploading(true);
-    setStatus("");
+    setStatus({ tone: "neutral", message: "Uploading note image..." });
 
     try {
       const url = await uploadImage(file, "notes");
@@ -406,86 +1507,19 @@ export function AdminPanelClient({
       if (!selectedNote.imageAlt) {
         setNoteField("imageAlt", selectedNote.name || file.name.replace(/\.[^.]+$/, ""));
       }
-      setStatus("Note image uploaded.");
+      setStatus({ tone: "success", message: "Note image uploaded." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed.";
-      setStatus(message);
+      setStatus({ tone: "error", message });
     } finally {
       setUploading(false);
     }
   };
 
-  const addNote = () => {
-    const fresh = createEmptyNote();
-    setNotes((prev) => [fresh, ...prev]);
-    setSelectedNoteSlug(fresh.slug);
-    setView("notes");
-    markDirty();
-  };
-
-  const deleteNote = () => {
-    if (!selectedNote) return;
-    if (!window.confirm(`Delete note: ${selectedNote.name}?`)) return;
-
-    setNotes((prev) => {
-      const next = prev.filter((item) => item.slug !== selectedNote.slug);
-      const fallback = next[0];
-      setSelectedNoteSlug(fallback ? fallback.slug : "");
-      return next;
-    });
-    markDirty();
-  };
-
-  const addTokenToGroup = (group: "top" | "heart" | "base") => {
-    if (!selectedPerfume) return;
-    const token = normalizeSlug(tokenInput[group]);
-    if (!token) return;
-
-    const current = selectedPerfume.noteSlugs[group];
-    if (!current.includes(token)) {
-      setPerfumeNoteSlugs(group, [...current, token]);
-    }
-
-    setTokenInput((prev) => ({ ...prev, [group]: "" }));
-  };
-
-  const removeTokenFromGroup = (group: "top" | "heart" | "base", token: string) => {
-    if (!selectedPerfume) return;
-    setPerfumeNoteSlugs(
-      group,
-      selectedPerfume.noteSlugs[group].filter((item) => item !== token),
-    );
-  };
-
-  const cancelEditing = () => {
-    const nextPerfumes = cloneDeep(savedPerfumes);
-    const nextNotes = cloneDeep(savedNotes);
-
-    setPerfumes(nextPerfumes);
-    setNotes(nextNotes);
-
-    setSelectedPerfumeId((prev) => {
-      if (nextPerfumes.some((item) => item.id === prev || item.slug === prev)) {
-        return prev;
-      }
-      return nextPerfumes[0]?.id || nextPerfumes[0]?.slug || "";
-    });
-
-    setSelectedNoteSlug((prev) => {
-      if (nextNotes.some((item) => item.slug === prev)) {
-        return prev;
-      }
-      return nextNotes[0]?.slug || "";
-    });
-
-    setDirty(false);
-    setStatus("Unsaved changes discarded.");
-  };
-
   const onLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
-    setStatus("");
+    setStatus({ tone: "neutral", message: "Signing in..." });
 
     try {
       const response = await fetch("/api/admin/login", {
@@ -497,32 +1531,35 @@ export function AdminPanelClient({
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus(body.error || "Login failed.");
+        setStatus({ tone: "error", message: String(body.error || "Login failed.") });
         return;
       }
 
       const dataResponse = await fetch("/api/admin/data", { method: "GET" });
       const dataBody = await parseResponse(dataResponse);
 
-      if (dataResponse.ok) {
-        const fetchedPerfumes = JSON.stringify(dataBody.perfumes ?? [], null, 2);
-        const fetchedNotes = JSON.stringify(dataBody.notes ?? [], null, 2);
-        const nextPerfumes = safeParsePerfumes(fetchedPerfumes);
-        const nextNotes = safeParseNotes(fetchedNotes);
-        setPerfumes(nextPerfumes);
-        setNotes(nextNotes);
-        setSavedPerfumes(cloneDeep(nextPerfumes));
-        setSavedNotes(cloneDeep(nextNotes));
-        setSelectedPerfumeId(nextPerfumes[0]?.id || nextPerfumes[0]?.slug || "");
-        setSelectedNoteSlug(nextNotes[0]?.slug || "");
-        setDirty(false);
+      if (!dataResponse.ok) {
+        setStatus({
+          tone: "error",
+          message: String(dataBody.error || "Logged in, but failed to load admin data."),
+        });
+        return;
       }
 
+      const nextPerfumes = safeParsePerfumes(
+        JSON.stringify(dataBody.perfumes ?? [], null, 2),
+      );
+      const nextNotes = safeParseNotes(JSON.stringify(dataBody.notes ?? [], null, 2));
+
+      applyServerData(nextPerfumes, nextNotes);
       setAuthenticated(true);
       setPassword("");
-      setStatus("Logged in.");
+      setStatus({ tone: "success", message: "Admin workspace ready." });
     } catch {
-      setStatus("Login request failed. Check connection and try again.");
+      setStatus({
+        tone: "error",
+        message: "Login request failed. Check your connection and try again.",
+      });
     } finally {
       setBusy(false);
     }
@@ -530,25 +1567,59 @@ export function AdminPanelClient({
 
   const onLogout = async () => {
     setBusy(true);
-    setStatus("");
+    setStatus({ tone: "neutral", message: "Closing your admin session..." });
 
     try {
-      await fetch("/api/admin/logout", {
-        method: "POST",
-      });
-
+      await fetch("/api/admin/logout", { method: "POST" });
       setAuthenticated(false);
-      setStatus("Logged out.");
+      setPassword("");
+      setStatus({ tone: "success", message: "Logged out." });
     } catch {
-      setStatus("Logout failed. Please try again.");
+      setStatus({ tone: "error", message: "Logout failed. Please try again." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onReload = async () => {
+    if (dirty && !window.confirm("Reloading will discard unsaved changes. Continue?")) {
+      return;
+    }
+
+    setBusy(true);
+    setStatus({ tone: "neutral", message: "Refreshing saved admin data..." });
+
+    try {
+      const response = await fetch("/api/admin/data", { method: "GET" });
+      const body = await parseResponse(response);
+
+      if (!response.ok) {
+        setStatus({ tone: "error", message: String(body.error || "Refresh failed.") });
+        return;
+      }
+
+      const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
+      const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
+      applyServerData(nextPerfumes, nextNotes);
+      setStatus({ tone: "success", message: "Workspace synced with saved admin data." });
+    } catch {
+      setStatus({
+        tone: "error",
+        message: "Refresh request failed. Check your connection and try again.",
+      });
     } finally {
       setBusy(false);
     }
   };
 
   const onSave = async () => {
+    if (!dirty) {
+      setStatus({ tone: "neutral", message: "Everything is already saved." });
+      return;
+    }
+
     setBusy(true);
-    setStatus("");
+    setStatus({ tone: "neutral", message: "Saving changes and revalidating public pages..." });
 
     const perfumesPayload = perfumes.map((item) => ({
       ...item,
@@ -564,62 +1635,70 @@ export function AdminPanelClient({
       const response = await fetch("/api/admin/data", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ perfumes: perfumesPayload, notes: notesPayload }),
+        body: JSON.stringify({
+          perfumes: perfumesPayload,
+          notes: notesPayload,
+        }),
       });
 
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus(body.error || "Save failed.");
+        setStatus({ tone: "error", message: String(body.error || "Save failed.") });
         return;
       }
 
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
-      setPerfumes(nextPerfumes);
-      setNotes(nextNotes);
-      setSavedPerfumes(cloneDeep(nextPerfumes));
-      setSavedNotes(cloneDeep(nextNotes));
-      setSelectedPerfumeId((prev) => prev || nextPerfumes[0]?.id || nextPerfumes[0]?.slug || "");
-      setSelectedNoteSlug((prev) => prev || nextNotes[0]?.slug || "");
-      setDirty(false);
-      setStatus("Saved successfully. Public pages are revalidated.");
+      applyServerData(nextPerfumes, nextNotes);
+      setStatus({
+        tone: "success",
+        message: "Saved successfully. Public pages have been revalidated.",
+      });
     } catch {
-      setStatus("Save request failed. Check connection and try again.");
+      setStatus({
+        tone: "error",
+        message: "Save request failed. Check your connection and try again.",
+      });
     } finally {
       setBusy(false);
     }
   };
 
   const downloadCsv = async (type: "perfumes" | "notes") => {
-    setStatus("");
+    setStatus({ tone: "neutral", message: `Preparing ${type} CSV export...` });
 
     try {
       const response = await fetch(`/api/admin/export?type=${type}`);
+
       if (!response.ok) {
         const body = await parseResponse(response);
-        setStatus(body.error || "Export failed.");
+        setStatus({ tone: "error", message: String(body.error || "Export failed.") });
         return;
       }
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${type}-export.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${type}-export.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
       URL.revokeObjectURL(url);
-      setStatus(`${type === "perfumes" ? "Perfumes" : "Notes"} CSV exported.`);
+
+      setStatus({
+        tone: "success",
+        message: `${type === "perfumes" ? "Perfumes" : "Notes"} CSV exported.`,
+      });
     } catch {
-      setStatus("Export request failed.");
+      setStatus({ tone: "error", message: "Export request failed." });
     }
   };
 
   const importCsv = async (type: "perfumes" | "notes", file: File) => {
     setImporting(type);
-    setStatus("");
+    setStatus({ tone: "neutral", message: `Importing ${type} CSV...` });
 
     try {
       const formData = new FormData();
@@ -633,22 +1712,19 @@ export function AdminPanelClient({
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus(body.error || "CSV import failed.");
+        setStatus({ tone: "error", message: String(body.error || "CSV import failed.") });
         return;
       }
 
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
-      setPerfumes(nextPerfumes);
-      setNotes(nextNotes);
-      setSavedPerfumes(cloneDeep(nextPerfumes));
-      setSavedNotes(cloneDeep(nextNotes));
-      setSelectedPerfumeId((prev) => prev || nextPerfumes[0]?.id || nextPerfumes[0]?.slug || "");
-      setSelectedNoteSlug((prev) => prev || nextNotes[0]?.slug || "");
-      setDirty(false);
-      setStatus(`${type === "perfumes" ? "Perfumes" : "Notes"} CSV imported.`);
+      applyServerData(nextPerfumes, nextNotes);
+      setStatus({
+        tone: "success",
+        message: `${type === "perfumes" ? "Perfumes" : "Notes"} CSV imported.`,
+      });
     } catch {
-      setStatus("Import request failed.");
+      setStatus({ tone: "error", message: "Import request failed." });
     } finally {
       setImporting(null);
     }
@@ -656,523 +1732,1072 @@ export function AdminPanelClient({
 
   if (!configured) {
     return (
-      <section className={cosmetics.card}>
-        <h1 className="text-2xl font-semibold text-zinc-900">Admin Panel</h1>
-        <p className="mt-3 text-zinc-600">Set ADMIN_PASSWORD in your environment and restart the server to enable admin access.</p>
+      <section className={ui.card}>
+        <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-950">Admin panel is not enabled</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
+          Set <code>ADMIN_PASSWORD</code> in your environment, restart the app, and this workspace
+          will unlock.
+        </p>
       </section>
     );
   }
 
   if (!authenticated) {
     return (
-      <section className={cosmetics.card}>
-        <h1 className="text-2xl font-semibold text-zinc-900">Admin Login</h1>
-        <p className="mt-2 text-zinc-600">Sign in to manage perfumes, notes, and all editable website data.</p>
+      <section className={cx(ui.shell, "mx-auto max-w-[68rem]")}>
+        <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="border-b border-zinc-200/80 bg-[radial-gradient(circle_at_top_left,rgba(244,244,245,0.95),rgba(255,255,255,0.92))] p-6 sm:p-8 lg:border-b-0 lg:border-r">
+            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              <Database size={14} weight="bold" />
+              Admin Workspace
+            </div>
+            <h1 className="mt-5 text-[2.3rem] font-semibold leading-tight tracking-[-0.06em] text-zinc-950">
+              A smoother workspace for managing perfumes, notes, media, and imports.
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-600">
+              Sign in to work with structured editors, image uploads, CSV import/export, and a
+              cleaner production-style admin flow.
+            </p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              <WorkspaceStat
+                icon={<SquaresFour size={18} weight="bold" />}
+                label="Editing"
+                value="2 datasets"
+                detail="Perfumes and notes in one view"
+              />
+              <WorkspaceStat
+                icon={<UploadSimple size={18} weight="bold" />}
+                label="Assets"
+                value="Media-ready"
+                detail="Upload images directly from the panel"
+              />
+              <WorkspaceStat
+                icon={<Rows size={18} weight="bold" />}
+                label="Bulk Ops"
+                value="CSV import"
+                detail="Move data in and out quickly"
+              />
+            </div>
+          </div>
 
-        <form className="mt-5 space-y-3" onSubmit={onLogin}>
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-zinc-600">Username</span>
-            <input
-              className={cosmetics.input}
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              required
-            />
-          </label>
+          <div className="p-6 sm:p-8">
+            <div className="max-w-md">
+              <h2 className="text-xl font-semibold tracking-[-0.04em] text-zinc-950">
+                Admin login
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                Use your configured admin password to enter the workspace.
+              </p>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-zinc-600">Password</span>
-            <input
-              type="password"
-              className={cosmetics.input}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </label>
+              <form className="mt-6 space-y-4" onSubmit={onLogin}>
+                <Field label="Username">
+                  <input
+                    className={ui.input}
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    autoComplete="username"
+                    required
+                  />
+                </Field>
 
-          <button type="submit" className={cosmetics.button} disabled={busy}>
-            {busy ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
+                <Field label="Password">
+                  <input
+                    type="password"
+                    className={ui.input}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </Field>
 
-        {status ? <p className="mt-3 text-sm text-zinc-600">{status}</p> : null}
+                <button type="submit" className={ui.primaryButton} disabled={busy}>
+                  <Sparkle size={16} weight="bold" />
+                  {busy ? "Signing in..." : "Enter workspace"}
+                </button>
+              </form>
+
+              {status ? (
+                <div
+                  className={cx(
+                    "mt-5 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium",
+                    toneClasses(status.tone),
+                  )}
+                >
+                  <StatusIcon tone={status.tone} />
+                  {status.message}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="space-y-5">
-      <div className={cosmetics.card}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="space-y-6">
+      <div className={ui.shell}>
+        <div className="relative overflow-hidden px-5 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(226,232,240,0.72),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(244,244,245,0.98),transparent_40%)]" />
+
+          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                <Database size={14} weight="bold" />
+                Professional Admin Workspace
+              </div>
+              <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.06em] text-zinc-950 sm:text-[2.6rem]">
+                Manage inventory and note content from one smooth React workspace.
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
+                Search records instantly, edit structured fields in place, upload imagery, run CSV
+                imports, and save everything without leaving the page.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cx(ui.chip, dirty ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
+                {dirty ? <WarningCircle size={14} weight="fill" /> : <CheckCircle size={14} weight="fill" />}
+                {dirty ? "Unsaved changes" : "Everything saved"}
+              </span>
+              <button
+                type="button"
+                className={ui.secondaryButton}
+                onClick={onReload}
+                disabled={isWorking}
+              >
+                <ArrowsClockwise size={16} weight="bold" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                className={ui.secondaryButton}
+                onClick={cancelEditing}
+                disabled={!dirty || isWorking}
+              >
+                <ClockCounterClockwise size={16} weight="bold" />
+                Reset
+              </button>
+              <button
+                type="button"
+                className={ui.primaryButton}
+                onClick={onSave}
+                disabled={!dirty || isWorking}
+              >
+                <FloppyDisk size={16} weight="bold" />
+                {busy ? "Saving..." : "Save changes"}
+              </button>
+              <button
+                type="button"
+                className={ui.secondaryButton}
+                onClick={onLogout}
+                disabled={busy}
+              >
+                <SignOut size={16} weight="bold" />
+                Log out
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceStat
+              icon={<Package size={18} weight="bold" />}
+              label="Perfumes"
+              value={String(stats.perfumes)}
+              detail={`${filteredPerfumes.length} visible in current search`}
+            />
+            <WorkspaceStat
+              icon={<NotePencil size={18} weight="bold" />}
+              label="Notes"
+              value={String(stats.notes)}
+              detail={`${filteredNotes.length} visible in current search`}
+            />
+            <WorkspaceStat
+              icon={<Tag size={18} weight="bold" />}
+              label="Linked Notes"
+              value={String(stats.linkedNotes)}
+              detail="Unique note slugs referenced by perfumes"
+            />
+            <WorkspaceStat
+              icon={<ImageSquare size={18} weight="bold" />}
+              label="Assets"
+              value={stats.assetCoverage}
+              detail="Records currently carrying an image"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className={ui.card}>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-900">Admin Workspace</h1>
-            <p className="mt-2 text-zinc-600">Manage perfumes and notes from structured editors with real rows and forms.</p>
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
+              Data operations
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Import and export structured data without leaving the workspace.
+            </p>
           </div>
+
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
-              {dirty ? "Unsaved changes" : "Saved"}
-            </span>
-            {dirty ? (
-              <>
-                <button className={cosmetics.button} onClick={onSave} disabled={busy || uploading || Boolean(importing)} type="button">
-                  {busy ? "Saving..." : "Save changes"}
-                </button>
-                <button
-                  className={cosmetics.secondaryButton}
-                  onClick={cancelEditing}
-                  disabled={busy || uploading || Boolean(importing)}
-                  type="button"
-                >
-                  Cancel editing
-                </button>
-              </>
-            ) : null}
-            <button className={cosmetics.secondaryButton} onClick={onLogout} disabled={busy}>
-              Log out
+            <button
+              className={ui.secondaryButton}
+              type="button"
+              onClick={() => downloadCsv("perfumes")}
+              disabled={isWorking}
+            >
+              <DownloadSimple size={16} weight="bold" />
+              Export perfumes CSV
             </button>
+            <button
+              className={ui.secondaryButton}
+              type="button"
+              onClick={() => downloadCsv("notes")}
+              disabled={isWorking}
+            >
+              <DownloadSimple size={16} weight="bold" />
+              Export notes CSV
+            </button>
+            <button
+              className={ui.secondaryButton}
+              type="button"
+              onClick={() => perfumeImportRef.current?.click()}
+              disabled={isWorking}
+            >
+              <UploadSimple size={16} weight="bold" />
+              {importing === "perfumes" ? "Importing perfumes..." : "Import perfumes CSV"}
+            </button>
+            <button
+              className={ui.secondaryButton}
+              type="button"
+              onClick={() => noteImportRef.current?.click()}
+              disabled={isWorking}
+            >
+              <UploadSimple size={16} weight="bold" />
+              {importing === "notes" ? "Importing notes..." : "Import notes CSV"}
+            </button>
+            <input
+              ref={perfumeImportRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) {
+                  void importCsv("perfumes", file);
+                }
+              }}
+            />
+            <input
+              ref={noteImportRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) {
+                  void importCsv("notes", file);
+                }
+              }}
+            />
           </div>
         </div>
+
+        {status ? (
+          <div
+            className={cx(
+              "mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium",
+              toneClasses(status.tone),
+            )}
+          >
+            <StatusIcon tone={status.tone} />
+            {status.message}
+          </div>
+        ) : null}
       </div>
 
-      <div className={cosmetics.card}>
-        <div className="flex flex-wrap items-center gap-2">
-          <button className={cosmetics.secondaryButton} type="button" onClick={() => downloadCsv("perfumes")} disabled={busy || uploading || Boolean(importing)}>
-            Export Perfumes CSV
-          </button>
-          <button className={cosmetics.secondaryButton} type="button" onClick={() => downloadCsv("notes")} disabled={busy || uploading || Boolean(importing)}>
-            Export Notes CSV
-          </button>
-          <button
-            className={cosmetics.secondaryButton}
-            type="button"
-            onClick={() => perfumeImportRef.current?.click()}
-            disabled={busy || uploading || Boolean(importing)}
-          >
-            {importing === "perfumes" ? "Importing..." : "Import Perfumes CSV"}
-          </button>
-          <button
-            className={cosmetics.secondaryButton}
-            type="button"
-            onClick={() => noteImportRef.current?.click()}
-            disabled={busy || uploading || Boolean(importing)}
-          >
-            {importing === "notes" ? "Importing..." : "Import Notes CSV"}
-          </button>
-          <input
-            ref={perfumeImportRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) {
-                importCsv("perfumes", file);
-              }
-            }}
-          />
-          <input
-            ref={noteImportRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) {
-                importCsv("notes", file);
-              }
-            }}
-          />
-        </div>
-      </div>
+      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className={ui.card}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
+                Workspace records
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Switch datasets, search quickly, and move between records without page reloads.
+              </p>
+            </div>
+          </div>
 
-      <div className={cosmetics.card}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2">
-            <button
-              type="button"
-              className={[
-                cosmetics.tab,
-                view === "perfumes"
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-300 bg-white text-zinc-700 md:hover:bg-zinc-100",
-              ].join(" ")}
-              onClick={() => setView("perfumes")}
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <TabButton
+              active={view === "perfumes"}
+              icon={<SquaresFour size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("perfumes"));
+              }}
             >
               Perfumes
-            </button>
-            <button
-              type="button"
-              className={[
-                cosmetics.tab,
-                view === "notes"
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-300 bg-white text-zinc-700 md:hover:bg-zinc-100",
-              ].join(" ")}
-              onClick={() => setView("notes")}
+            </TabButton>
+            <TabButton
+              active={view === "notes"}
+              icon={<Rows size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("notes"));
+              }}
             >
               Notes
-            </button>
+            </TabButton>
           </div>
 
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={view === "perfumes" ? "Search perfumes..." : "Search notes..."}
-            className="h-10 w-full rounded-xl border border-zinc-300 bg-[#f5f5f4] px-3 text-sm text-zinc-800 outline-none focus:border-zinc-500 sm:w-72"
-          />
-        </div>
+          <label className="relative mt-5 block">
+            <span className="sr-only">Search admin records</span>
+            <MagnifyingGlass
+              size={16}
+              weight="bold"
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+            />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={view === "perfumes" ? "Search perfumes..." : "Search notes..."}
+              className={cx(ui.input, "pl-11")}
+            />
+          </label>
 
-        {status ? <p className="mt-3 text-sm text-zinc-600">{status}</p> : null}
-
-        {view === "perfumes" ? (
-          <div className="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[390px_minmax(0,1fr)]">
-            <div className={[
-              cosmetics.softCard,
-              "xl:max-h-[76vh] xl:overflow-hidden",
-            ].join(" ")}>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">Perfume Items</h2>
-                <button className={cosmetics.secondaryButton} type="button" onClick={addPerfume}>
-                  Add
+          <div className="mt-5 flex flex-wrap gap-2">
+            {view === "perfumes" ? (
+              <>
+                <button type="button" className={ui.primaryButton} onClick={addPerfume}>
+                  <Plus size={16} weight="bold" />
+                  Add perfume
                 </button>
-              </div>
+                <button
+                  type="button"
+                  className={ui.secondaryButton}
+                  onClick={duplicatePerfume}
+                  disabled={!selectedPerfume}
+                >
+                  <CopySimple size={16} weight="bold" />
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className={ui.dangerButton}
+                  onClick={deletePerfume}
+                  disabled={!selectedPerfume}
+                >
+                  <Trash size={16} weight="bold" />
+                  Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className={ui.primaryButton} onClick={addNote}>
+                  <Plus size={16} weight="bold" />
+                  Add note
+                </button>
+                <button
+                  type="button"
+                  className={ui.secondaryButton}
+                  onClick={duplicateNote}
+                  disabled={!selectedNote}
+                >
+                  <CopySimple size={16} weight="bold" />
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className={ui.dangerButton}
+                  onClick={deleteNote}
+                  disabled={!selectedNote}
+                >
+                  <Trash size={16} weight="bold" />
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
 
-              <div className="max-h-[58vh] space-y-2 overflow-auto pr-1 xl:max-h-[66vh]">
-                {filteredPerfumes.map((item) => {
-                  const active = selectedPerfume && (item.id === selectedPerfume.id || item.slug === selectedPerfume.slug);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedPerfumeId(item.id)}
-                      className={[
-                        "w-full rounded-xl border px-3 py-2 text-left transition",
-                        active
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 bg-white text-zinc-700 md:hover:border-zinc-400",
-                      ].join(" ")}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={[
-                          "h-9 w-9 shrink-0 overflow-hidden rounded-lg border",
-                          active ? "border-zinc-700 bg-zinc-800" : "border-zinc-200 bg-zinc-100",
-                        ].join(" ")}>
-                          {item.image ? (
-                            <img src={item.image} alt={item.imageAlt || item.name} className="h-full w-full object-cover" loading="lazy" />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{item.name || "Untitled perfume"}</p>
-                          <p className={active ? "mt-0.5 text-xs text-zinc-300" : "mt-0.5 text-xs text-zinc-500"}>{item.slug}</p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-                {!filteredPerfumes.length ? <p className="px-1 py-3 text-sm text-zinc-500">No perfumes found.</p> : null}
-              </div>
+          <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-2">
+            <div className="mb-2 flex items-center justify-between px-2 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+              <span>{view === "perfumes" ? "Perfume list" : "Note list"}</span>
+              <span>{view === "perfumes" ? filteredPerfumes.length : filteredNotes.length}</span>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 2xl:p-6">
-              {!selectedPerfume ? (
-                <p className="text-zinc-500">Select a perfume to edit.</p>
+            <div className="space-y-2">
+              {view === "perfumes" ? (
+                filteredPerfumes.length ? (
+                  filteredPerfumes.map((item) => (
+                    <RecordButton
+                      key={item.id}
+                      active={selectedPerfume?.id === item.id}
+                      title={item.name}
+                      subtitle={formatPerfumeMeta(item)}
+                      meta={formatStartingPrice(item)}
+                      onClick={() => {
+                        startTransition(() => {
+                          setView("perfumes");
+                          setSelectedPerfumeId(item.id);
+                        });
+                      }}
+                    />
+                  ))
+                ) : (
+                  <EmptyState
+                    title="No perfumes found"
+                    detail="Adjust the search term or create a new perfume draft."
+                    action={
+                      <button type="button" className={ui.secondaryButton} onClick={addPerfume}>
+                        <Plus size={16} weight="bold" />
+                        Add perfume
+                      </button>
+                    }
+                  />
+                )
+              ) : filteredNotes.length ? (
+                filteredNotes.map((item) => (
+                  <RecordButton
+                    key={item.slug}
+                    active={selectedNote?.slug === item.slug}
+                    title={item.name}
+                    subtitle={item.slug}
+                    meta={`${noteUsageCounts.get(item.slug) || 0} uses`}
+                    onClick={() => {
+                      startTransition(() => {
+                        setView("notes");
+                        setSelectedNoteSlug(item.slug);
+                      });
+                    }}
+                  />
+                ))
               ) : (
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-zinc-900">Perfume Editor</h3>
-                    <div className="flex gap-2">
-                      <button className={cosmetics.secondaryButton} type="button" onClick={duplicatePerfume}>
-                        Duplicate
-                      </button>
-                      <button className={cosmetics.secondaryButton} type="button" onClick={deletePerfume}>
-                        Delete
-                      </button>
+                <EmptyState
+                  title="No notes found"
+                  detail="Try a broader search or create a new note draft."
+                  action={
+                    <button type="button" className={ui.secondaryButton} onClick={addNote}>
+                      <Plus size={16} weight="bold" />
+                      Add note
+                    </button>
+                  }
+                />
+              )}
+            </div>
+          </div>
+        </aside>
+
+        <div className="space-y-6">
+          {view === "perfumes" ? (
+            selectedPerfume ? (
+              <div className={ui.card}>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      <Package size={14} weight="bold" />
+                      Perfume editor
                     </div>
+                    <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                      {selectedPerfume.name}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-zinc-500">
+                      {formatPerfumeMeta(selectedPerfume)} • {selectedPerfume.sizes.length} size
+                      {selectedPerfume.sizes.length === 1 ? "" : "s"} •{" "}
+                      {selectedPerfume.noteSlugs.top.length +
+                        selectedPerfume.noteSlugs.heart.length +
+                        selectedPerfume.noteSlugs.base.length}{" "}
+                      note links
+                    </p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Name</span>
-                      <input className={cosmetics.input} value={selectedPerfume.name} onChange={(event) => setPerfumeField("name", event.target.value)} />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Brand</span>
-                      <input className={cosmetics.input} value={selectedPerfume.brand} onChange={(event) => setPerfumeField("brand", event.target.value)} />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Slug</span>
-                      <input
-                        className={cosmetics.input}
-                        value={selectedPerfume.slug}
-                        onChange={(event) => {
-                          const nextSlug = normalizeSlug(event.target.value);
-                          setPerfumeField("slug", nextSlug);
-                          setPerfumeField("id", selectedPerfume.id || nextSlug);
-                        }}
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Gender</span>
-                      <input className={cosmetics.input} value={selectedPerfume.gender} onChange={(event) => setPerfumeField("gender", event.target.value)} />
-                    </label>
-                    <label className="block sm:col-span-2 2xl:col-span-3">
-                      <span className="mb-1 block text-sm text-zinc-600">Image URL</span>
-                      <input className={cosmetics.input} value={selectedPerfume.image} onChange={(event) => setPerfumeField("image", event.target.value)} />
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition md:hover:bg-zinc-100">
-                          {uploading ? "Uploading..." : "Upload from PC"}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={onUploadPerfumeImage}
-                            disabled={uploading || busy}
-                          />
-                        </label>
-                        <span className="text-xs text-zinc-500">PNG, JPG, WEBP, GIF up to 8MB</span>
-                      </div>
-                    </label>
-                    <label className="block sm:col-span-2 2xl:col-span-3">
-                      <span className="mb-1 block text-sm text-zinc-600">Image Alt</span>
-                      <input className={cosmetics.input} value={selectedPerfume.imageAlt} onChange={(event) => setPerfumeField("imageAlt", event.target.value)} />
-                    </label>
-                    <label className="block sm:col-span-2 2xl:col-span-3">
-                      <span className="mb-1 block text-sm text-zinc-600">External Link</span>
-                      <input className={cosmetics.input} value={selectedPerfume.externalLink} onChange={(event) => setPerfumeField("externalLink", event.target.value)} />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Stock Status Text</span>
-                      <input className={cosmetics.input} value={selectedPerfume.stockStatus} onChange={(event) => setPerfumeField("stockStatus", event.target.value)} />
-                    </label>
-                    <label className="flex items-center gap-2 rounded-2xl border border-zinc-300 bg-[#f5f5f4] px-4 py-3 text-sm text-zinc-700">
-                      <input
-                        type="checkbox"
-                        checked={selectedPerfume.inStock}
-                        onChange={(event) => setPerfumeField("inStock", event.target.checked)}
-                      />
-                      In stock
-                    </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className={ui.secondaryButton}
+                      onClick={() => void copyToClipboard(selectedPerfume.slug, "Slug")}
+                    >
+                      <CopySimple size={16} weight="bold" />
+                      Copy slug
+                    </button>
+                    <button
+                      type="button"
+                      className={ui.secondaryButton}
+                      onClick={() => void copyToClipboard(selectedPerfume.image, "Image URL")}
+                    >
+                      <ImageSquare size={16} weight="bold" />
+                      Copy image URL
+                    </button>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-500">Sizes & Prices</h4>
-                      <button className={cosmetics.secondaryButton} onClick={addPerfumeSize} type="button">
-                        Add Size
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {selectedPerfume.sizes.map((size, index) => (
-                        <div key={`${size.label}-${index}`} className="grid gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-2 lg:grid-cols-[140px_1fr_1fr_auto]">
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <TabButton
+                    active={perfumeEditorTab === "basics"}
+                    icon={<TextT size={15} weight="bold" />}
+                    onClick={() => startTransition(() => setPerfumeEditorTab("basics"))}
+                  >
+                    Basics
+                  </TabButton>
+                  <TabButton
+                    active={perfumeEditorTab === "notes"}
+                    icon={<Tag size={15} weight="bold" />}
+                    onClick={() => startTransition(() => setPerfumeEditorTab("notes"))}
+                  >
+                    Notes
+                  </TabButton>
+                  <TabButton
+                    active={perfumeEditorTab === "media"}
+                    icon={<ImageSquare size={15} weight="bold" />}
+                    onClick={() => startTransition(() => setPerfumeEditorTab("media"))}
+                  >
+                    Media
+                  </TabButton>
+                </div>
+
+                {perfumeEditorTab === "basics" ? (
+                  <div className="mt-6 space-y-6">
+                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                      <SectionLabel
+                        icon={<TextT size={16} weight="bold" />}
+                        title="Core details"
+                        detail="Keep the main catalog identity clean and consistent across the storefront."
+                      />
+
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <Field label="Perfume name">
                           <input
-                            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500"
-                            value={size.label}
-                            onChange={(event) => setPerfumeSizeField(index, "label", event.target.value)}
-                            placeholder="15ML"
+                            className={ui.input}
+                            value={selectedPerfume.name}
+                            onChange={(event) => setPerfumeField("name", event.target.value)}
+                            placeholder="Maison Francis Kurkdjian Baccarat Rouge 540"
                           />
+                        </Field>
+                        <Field label="Brand">
                           <input
-                            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500"
-                            type="number"
-                            value={size.ml}
-                            onChange={(event) => setPerfumeSizeField(index, "ml", event.target.value)}
-                            placeholder="ml"
+                            className={ui.input}
+                            value={selectedPerfume.brand}
+                            onChange={(event) => setPerfumeField("brand", event.target.value)}
+                            placeholder="Maison Francis Kurkdjian"
                           />
+                        </Field>
+                        <Field label="Slug" hint="Lowercase URL key used across the site">
                           <input
-                            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500"
-                            type="number"
-                            value={size.price}
-                            onChange={(event) => setPerfumeSizeField(index, "price", event.target.value)}
-                            placeholder="price"
+                            className={ui.input}
+                            value={selectedPerfume.slug}
+                            onChange={(event) =>
+                              setPerfumeField("slug", normalizeSlug(event.target.value))
+                            }
+                            placeholder="baccarat-rouge-540"
                           />
+                        </Field>
+                        <Field label="Gender">
+                          <input
+                            className={ui.input}
+                            value={selectedPerfume.gender}
+                            onChange={(event) => setPerfumeField("gender", event.target.value)}
+                            placeholder="Unisex"
+                          />
+                        </Field>
+                        <Field label="Stock status">
+                          <input
+                            className={ui.input}
+                            value={selectedPerfume.stockStatus}
+                            onChange={(event) =>
+                              setPerfumeField("stockStatus", event.target.value)
+                            }
+                            placeholder="Available"
+                          />
+                        </Field>
+                        <Field label="Inventory flag">
                           <button
                             type="button"
-                            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 md:hover:bg-zinc-100"
-                            onClick={() => removePerfumeSize(index)}
+                            className={cx(
+                              "flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-medium transition duration-200",
+                              selectedPerfume.inStock
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-zinc-300 bg-[#f7f7f5] text-zinc-600",
+                            )}
+                            onClick={() => setPerfumeField("inStock", !selectedPerfume.inStock)}
                           >
-                            Remove
+                            <span>{selectedPerfume.inStock ? "In stock" : "Out of stock"}</span>
+                            {selectedPerfume.inStock ? (
+                              <CheckCircle size={18} weight="fill" />
+                            ) : (
+                              <WarningCircle size={18} weight="fill" />
+                            )}
                           </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                        </Field>
+                      </div>
 
-                  {(["top", "heart", "base"] as const).map((group) => (
-                    <div key={group} className="space-y-2">
-                      <h4 className="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-500">{group} notes</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedPerfume.noteSlugs[group].map((token) => (
-                          <span key={token} className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs text-zinc-700">
-                            {token}
-                            <button type="button" onClick={() => removeTokenFromGroup(group, token)} className="text-zinc-500 md:hover:text-zinc-900">
-                              x
-                            </button>
-                          </span>
+                      <div className="mt-4">
+                        <Field label="External link">
+                          <input
+                            className={ui.input}
+                            value={selectedPerfume.externalLink}
+                            onChange={(event) =>
+                              setPerfumeField("externalLink", event.target.value)
+                            }
+                            placeholder="https://..."
+                          />
+                        </Field>
+                      </div>
+                    </div>
+
+                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                      <SectionLabel
+                        icon={<Rows size={16} weight="bold" />}
+                        title="Size matrix"
+                        detail="Maintain sale sizes and prices in a single structured list."
+                        action={
+                          <button
+                            type="button"
+                            className={ui.secondaryButton}
+                            onClick={addPerfumeSize}
+                          >
+                            <Plus size={16} weight="bold" />
+                            Add size
+                          </button>
+                        }
+                      />
+
+                      <div className="mt-5 space-y-3">
+                        {selectedPerfume.sizes.map((size, index) => (
+                          <div
+                            key={`${size.label}-${index}`}
+                            className="grid gap-3 rounded-[1.2rem] border border-zinc-200 bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
+                          >
+                            <Field label="Label">
+                              <input
+                                className={ui.input}
+                                value={size.label}
+                                onChange={(event) =>
+                                  setPerfumeSizeField(index, "label", event.target.value)
+                                }
+                                placeholder="50ML"
+                              />
+                            </Field>
+                            <Field label="ML">
+                              <input
+                                type="number"
+                                className={ui.input}
+                                value={size.ml}
+                                onChange={(event) =>
+                                  setPerfumeSizeField(index, "ml", event.target.value)
+                                }
+                                min="0"
+                              />
+                            </Field>
+                            <Field label="Price">
+                              <input
+                                type="number"
+                                className={ui.input}
+                                value={size.price}
+                                onChange={(event) =>
+                                  setPerfumeSizeField(index, "price", event.target.value)
+                                }
+                                min="0"
+                              />
+                            </Field>
+                            <div className="flex items-end">
+                              <button
+                                type="button"
+                                className={ui.dangerButton}
+                                onClick={() => removePerfumeSize(index)}
+                                disabled={selectedPerfume.sizes.length <= 1}
+                              >
+                                <Trash size={16} weight="bold" />
+                                Remove
+                              </button>
+                            </div>
+                          </div>
                         ))}
                       </div>
-                      <div className="flex gap-2">
-                        <input
-                          list="note-slug-options"
-                          className="w-full rounded-xl border border-zinc-300 bg-[#f5f5f4] px-3 py-2 text-sm outline-none focus:border-zinc-500"
-                          value={tokenInput[group]}
-                          onChange={(event) =>
-                            setTokenInput((prev) => ({
-                              ...prev,
-                              [group]: event.target.value,
-                            }))
-                          }
-                          placeholder={`Add ${group} note slug`}
+                    </div>
+                  </div>
+                ) : null}
+
+                {perfumeEditorTab === "notes" ? (
+                  <div className="mt-6 space-y-4">
+                    {(["top", "heart", "base"] as const).map((group) => (
+                      <div key={group} className={cx(ui.soft, "p-4 sm:p-5")}>
+                        <SectionLabel
+                          icon={<Tag size={16} weight="bold" />}
+                          title={`${group[0]?.toUpperCase()}${group.slice(1)} notes`}
+                          detail={`Attach note slugs to build the ${group} layer for this perfume.`}
                         />
-                        <button
-                          type="button"
-                          className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 md:hover:bg-zinc-100"
-                          onClick={() => addTokenToGroup(group)}
-                        >
-                          Add
-                        </button>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {selectedPerfume.noteSlugs[group].length ? (
+                            selectedPerfume.noteSlugs[group].map((token) => (
+                              <button
+                                key={token}
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
+                                onClick={() => removeTokenFromGroup(group, token)}
+                              >
+                                <span>{token}</span>
+                                <span className="text-zinc-400">Remove</span>
+                              </button>
+                            ))
+                          ) : (
+                            <span className="text-sm text-zinc-500">
+                              No {group} notes linked yet.
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                          <Field
+                            label="Add note slug"
+                            hint={`${noteSlugOptions.length} existing note slug${noteSlugOptions.length === 1 ? "" : "s"} available for autocomplete`}
+                          >
+                            <input
+                              list={`note-options-${group}`}
+                              className={ui.input}
+                              value={tokenInput[group]}
+                              onChange={(event) =>
+                                setTokenInput((current) => ({
+                                  ...current,
+                                  [group]: event.target.value,
+                                }))
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  addTokenToGroup(group);
+                                }
+                              }}
+                              placeholder="bergamot"
+                            />
+                          </Field>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              className={ui.secondaryButton}
+                              onClick={() => addTokenToGroup(group)}
+                            >
+                              <Plus size={16} weight="bold" />
+                              Add note
+                            </button>
+                          </div>
+                        </div>
+
+                        <datalist id={`note-options-${group}`}>
+                          {noteSlugOptions.map((slug) => (
+                            <option key={slug} value={slug} />
+                          ))}
+                        </datalist>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {perfumeEditorTab === "media" ? (
+                  <div className="mt-6 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+                    <div className="space-y-4">
+                      <ImagePreview
+                        src={selectedPerfume.image}
+                        alt={selectedPerfume.imageAlt || selectedPerfume.name}
+                        emptyLabel="Upload a perfume image to preview it here."
+                      />
+                      <div className={cx(ui.soft, "p-4")}>
+                        <p className="text-sm font-semibold text-zinc-900">Media quick actions</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={ui.primaryButton}
+                            onClick={() => perfumeImageInputRef.current?.click()}
+                            disabled={uploading}
+                          >
+                            <UploadSimple size={16} weight="bold" />
+                            {uploading ? "Uploading..." : "Upload image"}
+                          </button>
+                          <button
+                            type="button"
+                            className={ui.secondaryButton}
+                            onClick={() => void copyToClipboard(selectedPerfume.image, "Image URL")}
+                          >
+                            <CopySimple size={16} weight="bold" />
+                            Copy URL
+                          </button>
+                        </div>
+                        <input
+                          ref={perfumeImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            void onUploadPerfumeImage(event);
+                          }}
+                        />
                       </div>
                     </div>
-                  ))}
 
-                  <datalist id="note-slug-options">
-                    {noteSlugOptions.map((slug) => (
-                      <option key={slug} value={slug} />
-                    ))}
-                  </datalist>
+                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                      <SectionLabel
+                        icon={<ImageSquare size={16} weight="bold" />}
+                        title="Image metadata"
+                        detail="Control how the uploaded image is referenced and announced."
+                      />
+
+                      <div className="mt-5 grid gap-4">
+                        <Field label="Image URL">
+                          <input
+                            className={ui.input}
+                            value={selectedPerfume.image}
+                            onChange={(event) => setPerfumeField("image", event.target.value)}
+                            placeholder="/uploads/admin/perfumes/..."
+                          />
+                        </Field>
+                        <Field label="Image alt text">
+                          <input
+                            className={ui.input}
+                            value={selectedPerfume.imageAlt}
+                            onChange={(event) =>
+                              setPerfumeField("imageAlt", event.target.value)
+                            }
+                            placeholder="Elegant perfume bottle on neutral background"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className={ui.card}>
+                <EmptyState
+                  title="No perfume selected"
+                  detail="Pick a perfume from the list or create a new one to start editing."
+                  action={
+                    <button type="button" className={ui.primaryButton} onClick={addPerfume}>
+                      <Plus size={16} weight="bold" />
+                      Add perfume
+                    </button>
+                  }
+                />
+              </div>
+            )
+          ) : selectedNote ? (
+            <div className={ui.card}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    <NotePencil size={14} weight="bold" />
+                    Note editor
+                  </div>
+                  <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                    {selectedNote.name}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">
+                    {selectedNote.slug} • Used by {perfumesLinkedToSelectedNote.length} perfume
+                    {perfumesLinkedToSelectedNote.length === 1 ? "" : "s"}
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[390px_minmax(0,1fr)]">
-            <div className={[
-              cosmetics.softCard,
-              "xl:max-h-[76vh] xl:overflow-hidden",
-            ].join(" ")}>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">Note Items</h2>
-                <button className={cosmetics.secondaryButton} type="button" onClick={addNote}>
-                  Add
-                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className={ui.secondaryButton}
+                    onClick={() => void copyToClipboard(selectedNote.slug, "Slug")}
+                  >
+                    <CopySimple size={16} weight="bold" />
+                    Copy slug
+                  </button>
+                  <button
+                    type="button"
+                    className={ui.secondaryButton}
+                    onClick={() => void copyToClipboard(selectedNote.image, "Image URL")}
+                  >
+                    <ImageSquare size={16} weight="bold" />
+                    Copy image URL
+                  </button>
+                </div>
               </div>
 
-              <div className="max-h-[58vh] space-y-2 overflow-auto pr-1 xl:max-h-[66vh]">
-                {filteredNotes.map((item) => {
-                  const active = selectedNote && item.slug === selectedNote.slug;
-                  return (
-                    <button
-                      key={item.slug}
-                      type="button"
-                      onClick={() => setSelectedNoteSlug(item.slug)}
-                      className={[
-                        "w-full rounded-xl border px-3 py-2 text-left transition",
-                        active
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 bg-white text-zinc-700 md:hover:border-zinc-400",
-                      ].join(" ")}
-                    >
-                      <p className="truncate text-sm font-semibold">{item.name || "Untitled note"}</p>
-                      <p className={active ? "mt-0.5 text-xs text-zinc-300" : "mt-0.5 text-xs text-zinc-500"}>{item.slug}</p>
-                    </button>
-                  );
-                })}
-                {!filteredNotes.length ? <p className="px-1 py-3 text-sm text-zinc-500">No notes found.</p> : null}
+              <div className="mt-6 flex flex-wrap gap-2">
+                <TabButton
+                  active={noteEditorTab === "content"}
+                  icon={<TextT size={15} weight="bold" />}
+                  onClick={() => startTransition(() => setNoteEditorTab("content"))}
+                >
+                  Content
+                </TabButton>
+                <TabButton
+                  active={noteEditorTab === "media"}
+                  icon={<ImageSquare size={15} weight="bold" />}
+                  onClick={() => startTransition(() => setNoteEditorTab("media"))}
+                >
+                  Media
+                </TabButton>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 2xl:p-6">
-              {!selectedNote ? (
-                <p className="text-zinc-500">Select a note to edit.</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-zinc-900">Note Editor</h3>
-                    <button className={cosmetics.secondaryButton} type="button" onClick={deleteNote}>
-                      Delete
-                    </button>
+              {noteEditorTab === "content" ? (
+                <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                    <SectionLabel
+                      icon={<TextT size={16} weight="bold" />}
+                      title="Note content"
+                      detail="Edit the note label and descriptive copy shown throughout the site."
+                    />
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <Field label="Note name">
+                        <input
+                          className={ui.input}
+                          value={selectedNote.name}
+                          onChange={(event) => setNoteField("name", event.target.value)}
+                          placeholder="Saffron"
+                        />
+                      </Field>
+                      <Field label="Slug">
+                        <input
+                          className={ui.input}
+                          value={selectedNote.slug}
+                          onChange={(event) =>
+                            setNoteField("slug", normalizeSlug(event.target.value))
+                          }
+                          placeholder="saffron"
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="mt-4">
+                      <Field label="Content" hint="Used in note detail pages and explanatory panels">
+                        <textarea
+                          className={cx(ui.textarea, "min-h-[260px]")}
+                          value={selectedNote.content}
+                          onChange={(event) => setNoteField("content", event.target.value)}
+                          placeholder="Describe the note, its character, and how it behaves in fragrance compositions."
+                        />
+                      </Field>
+                    </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Name</span>
-                      <input className={cosmetics.input} value={selectedNote.name} onChange={(event) => setNoteField("name", event.target.value)} />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-zinc-600">Slug</span>
+                  <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                    <SectionLabel
+                      icon={<Link size={16} weight="bold" />}
+                      title="Usage map"
+                      detail="Perfumes currently referencing this note."
+                    />
+
+                    <div className="mt-4 space-y-2">
+                      {perfumesLinkedToSelectedNote.length ? (
+                        perfumesLinkedToSelectedNote.slice(0, 8).map((perfume) => (
+                          <button
+                            key={perfume.id}
+                            type="button"
+                            className="w-full rounded-[1.2rem] border border-zinc-200 bg-white px-4 py-3 text-left transition hover:border-zinc-300 hover:bg-zinc-50"
+                            onClick={() => {
+                              startTransition(() => {
+                                setView("perfumes");
+                                setSelectedPerfumeId(perfume.id);
+                                setPerfumeEditorTab("notes");
+                              });
+                            }}
+                          >
+                            <p className="text-sm font-semibold text-zinc-900">{perfume.name}</p>
+                            <p className="mt-1 text-xs text-zinc-500">{formatPerfumeMeta(perfume)}</p>
+                          </button>
+                        ))
+                      ) : (
+                        <EmptyState
+                          title="No linked perfumes yet"
+                          detail="Attach this note to any perfume in the notes editor tab."
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {noteEditorTab === "media" ? (
+                <div className="mt-6 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+                  <div className="space-y-4">
+                    <ImagePreview
+                      src={selectedNote.image}
+                      alt={selectedNote.imageAlt || selectedNote.name}
+                      emptyLabel="Upload a note image to preview it here."
+                    />
+                    <div className={cx(ui.soft, "p-4")}>
+                      <p className="text-sm font-semibold text-zinc-900">Media quick actions</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className={ui.primaryButton}
+                          onClick={() => noteImageInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <UploadSimple size={16} weight="bold" />
+                          {uploading ? "Uploading..." : "Upload image"}
+                        </button>
+                        <button
+                          type="button"
+                          className={ui.secondaryButton}
+                          onClick={() => void copyToClipboard(selectedNote.image, "Image URL")}
+                        >
+                          <CopySimple size={16} weight="bold" />
+                          Copy URL
+                        </button>
+                      </div>
                       <input
-                        className={cosmetics.input}
-                        value={selectedNote.slug}
+                        ref={noteImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
                         onChange={(event) => {
-                          const nextSlug = normalizeSlug(event.target.value);
-                          setNoteField("slug", nextSlug);
-                          setSelectedNoteSlug(nextSlug);
+                          void onUploadNoteImage(event);
                         }}
                       />
-                    </label>
-                    <label className="block sm:col-span-2 2xl:col-span-3">
-                      <span className="mb-1 block text-sm text-zinc-600">Image URL</span>
-                      <input className={cosmetics.input} value={selectedNote.image} onChange={(event) => setNoteField("image", event.target.value)} />
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition md:hover:bg-zinc-100">
-                          {uploading ? "Uploading..." : "Upload from PC"}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={onUploadNoteImage}
-                            disabled={uploading || busy}
-                          />
-                        </label>
-                        <span className="text-xs text-zinc-500">PNG, JPG, WEBP, GIF up to 8MB</span>
-                      </div>
-                    </label>
-                    <label className="block sm:col-span-2 2xl:col-span-3">
-                      <span className="mb-1 block text-sm text-zinc-600">Image Alt</span>
-                      <input className={cosmetics.input} value={selectedNote.imageAlt} onChange={(event) => setNoteField("imageAlt", event.target.value)} />
-                    </label>
-                    <label className="block sm:col-span-2 2xl:col-span-3">
-                      <span className="mb-1 block text-sm text-zinc-600">Description</span>
-                      <textarea
-                        className="min-h-[180px] w-full rounded-2xl border border-zinc-300 bg-[#f5f5f4] px-4 py-3 text-zinc-800 outline-none transition focus:border-zinc-500 focus:bg-white"
-                        value={selectedNote.content}
-                        onChange={(event) => setNoteField("content", event.target.value)}
-                      />
-                    </label>
+                    </div>
+                  </div>
+
+                  <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                    <SectionLabel
+                      icon={<ImageSquare size={16} weight="bold" />}
+                      title="Image metadata"
+                      detail="Keep the note artwork and alt text in sync with the content."
+                    />
+
+                    <div className="mt-5 grid gap-4">
+                      <Field label="Image URL">
+                        <input
+                          className={ui.input}
+                          value={selectedNote.image}
+                          onChange={(event) => setNoteField("image", event.target.value)}
+                          placeholder="/uploads/admin/notes/..."
+                        />
+                      </Field>
+                      <Field label="Image alt text">
+                        <input
+                          className={ui.input}
+                          value={selectedNote.imageAlt}
+                          onChange={(event) => setNoteField("imageAlt", event.target.value)}
+                          placeholder="Illustration representing the note"
+                        />
+                      </Field>
+                    </div>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
-          </div>
-        )}
-      </div>
-
-      <div className={cosmetics.card}>
-        <div className="flex flex-wrap items-center gap-3">
-          {dirty ? (
-            <>
-              <button
-                className={cosmetics.button}
-                onClick={onSave}
-                disabled={busy || uploading || Boolean(importing)}
-                type="button"
-              >
-                {busy ? "Saving..." : "Save all changes"}
-              </button>
-              <button
-                className={cosmetics.secondaryButton}
-                onClick={cancelEditing}
-                disabled={busy || uploading || Boolean(importing)}
-                type="button"
-              >
-                Cancel editing
-              </button>
-            </>
-          ) : null}
-          <p className="text-sm text-zinc-500">Changes are persisted into admin data files and immediately used by the website.</p>
+          ) : (
+            <div className={ui.card}>
+              <EmptyState
+                title="No note selected"
+                detail="Pick a note from the list or create a new one to start editing."
+                action={
+                  <button type="button" className={ui.primaryButton} onClick={addNote}>
+                    <Plus size={16} weight="bold" />
+                    Add note
+                  </button>
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
     </section>

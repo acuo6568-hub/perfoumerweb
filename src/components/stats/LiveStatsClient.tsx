@@ -11,6 +11,8 @@ type StatsPayload = {
   };
   live: {
     currentOnline: number;
+    currentLikelyHumans: number;
+    currentSuspectedBots: number;
     currentLoggedIn: number;
     currentGuests: number;
   };
@@ -37,6 +39,8 @@ type StatsPayload = {
     region: string;
     city: string;
     timezone: string;
+    isSuspectedBot: boolean;
+    trafficReason: string;
     path: string;
     lastSeen: string;
   }>;
@@ -106,10 +110,15 @@ export function LiveStatsClient() {
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Current online" value={stats?.live.currentOnline ?? 0} />
+        <StatCard label="Likely humans" value={stats?.live.currentLikelyHumans ?? 0} />
+        <StatCard label="Suspected bots" value={stats?.live.currentSuspectedBots ?? 0} />
         <StatCard label="Current logged in" value={stats?.live.currentLoggedIn ?? 0} />
         <StatCard label="Current guests" value={stats?.live.currentGuests ?? 0} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total unique visitors" value={stats?.visitors.totalUnique ?? 0} hint="All-time based on anonymous IDs" />
       </div>
 
@@ -236,7 +245,9 @@ export function LiveStatsClient() {
               {(stats?.currentUsers || []).map((row) => (
                 <tr key={row.sessionId} className="border-b border-zinc-100 text-zinc-700">
                   <td className="px-2 py-2">
-                    {row.isLoggedIn ? (
+                    {row.isSuspectedBot ? (
+                      <span title={row.trafficReason || "Suspected automated traffic"} className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">Suspected bot</span>
+                    ) : row.isLoggedIn ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Logged in</span>
                     ) : (
                       <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600">Guest</span>
