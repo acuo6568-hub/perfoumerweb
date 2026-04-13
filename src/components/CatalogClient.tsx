@@ -179,6 +179,55 @@ function scoreSmartMatch(perfume: Perfume, intent: SmartSearchIntent): number {
   return score;
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function toSearchPool(perfume: Perfume) {
+  return normalizeSearchText(
+    [
+      perfume.name,
+      perfume.brand,
+      perfume.slug,
+      ...perfume.noteSlugs.top,
+      ...perfume.noteSlugs.heart,
+      ...perfume.noteSlugs.base,
+    ].join(" "),
+  );
+}
+
+function scoreQueryRelevance(perfume: Perfume, normalizedQuery: string, smartScore: number): number {
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const normalizedName = normalizeSearchText(perfume.name);
+  const normalizedBrand = normalizeSearchText(perfume.brand);
+  const brandThenName = `${normalizedBrand} ${normalizedName}`.trim();
+  const nameThenBrand = `${normalizedName} ${normalizedBrand}`.trim();
+  const pool = toSearchPool(perfume);
+  const tokens = normalizedQuery.split(" ").filter(Boolean);
+  const hasAllTokens = tokens.every((token) => pool.includes(token));
+
+  let score = smartScore;
+
+  if (brandThenName === normalizedQuery || nameThenBrand === normalizedQuery) score += 500;
+  else if (normalizedName === normalizedQuery) score += 430;
+  else if (brandThenName.includes(normalizedQuery) || nameThenBrand.includes(normalizedQuery)) score += 320;
+  else if (normalizedName.includes(normalizedQuery)) score += 260;
+  else if (pool.includes(normalizedQuery)) score += 170;
+
+  if (hasAllTokens) {
+    score += 120;
+  }
+
+  return score;
+}
+
 function PillButton({
   active,
   children,
@@ -518,15 +567,18 @@ export function CatalogClient({
   );
 
   const filteredPerfumes = useMemo(() => {
-    const normalizedQuery = deferredQuery.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(deferredQuery);
 
     const filtered = perfumes.filter((perfume) => {
       const smartScore = scoreSmartMatch(perfume, smartSearchIntent);
+      const searchPool = toSearchPool(perfume);
+      const queryTokens = normalizedQuery.split(" ").filter(Boolean);
+      const hasAllQueryTokens = queryTokens.every((token) => searchPool.includes(token));
+      const hasExactQuery = searchPool.includes(normalizedQuery);
       const matchesQuery =
         !normalizedQuery ||
-        perfume.name.toLowerCase().includes(normalizedQuery) ||
-        perfume.brand.toLowerCase().includes(normalizedQuery) ||
-        smartScore >= 24;
+        hasExactQuery ||
+        hasAllQueryTokens;
 
       const matchesGender =
         selectedGender === "all" ||
@@ -583,6 +635,18 @@ export function CatalogClient({
 
     if (sortBy === "price-desc") {
       filtered.sort((a, b) => getStartingPrice(b) - getStartingPrice(a));
+    }
+
+    if (sortBy === "featured" && normalizedQuery) {
+      filtered.sort((a, b) => {
+        const scoreA = scoreQueryRelevance(a, normalizedQuery, scoreSmartMatch(a, smartSearchIntent));
+        const scoreB = scoreQueryRelevance(b, normalizedQuery, scoreSmartMatch(b, smartSearchIntent));
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
     }
 
     return filtered;

@@ -50,7 +50,7 @@ type AdminView = "perfumes" | "notes";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
-type PerfumeListFilter = "all" | "missingImage" | "missingNotes" | "outOfStock";
+type PerfumeListFilter = "all" | "missingImage" | "missingNotes";
 type NoteListFilter = "all" | "linked" | "unlinked" | "missingImage";
 type StatusTone = "neutral" | "success" | "error";
 type StatusState = {
@@ -89,9 +89,9 @@ const ADMIN_LOCALE_STORAGE_KEY = "perfoumer-admin-locale";
 
 const adminCopy = {
   az: {
-    localeLabel: "Dil",
+    localeLabel: "Dil seçimi",
     adminWorkspace: "İdarəetmə Paneli",
-    professionalWorkspace: "Peşəkar İdarəetmə Paneli",
+    professionalWorkspace: "Satış və Məzmun İdarəetməsi",
     notEnabledTitle: "Admin panel aktiv deyil",
     notEnabledDescription:
       "Mühit dəyişənlərində `ADMIN_PASSWORD` təyin edin, tətbiqi yenidən başladın və panel açılacaq.",
@@ -114,11 +114,11 @@ const adminCopy = {
     uploadDirect: "Şəkilləri birbaşa paneldən yüklə",
     csvImport: "CSV import",
     moveDataFast: "Məlumatları sürətli içəri və çölə daşı",
-    heroTitle: "Stok və not məzmununu bir hamar React iş sahəsində idarə edin.",
+    heroTitle: "Stok, məhsul kartları və not məlumatlarını bir paneldən idarə edin.",
     heroDescription:
-      "Axtarın, məlumatı yerində redaktə edin, şəkil yükləyin, CSV ilə işləyin və səhifədən çıxmadan saxlayın.",
+      "Axtarın, yerində düzəliş edin, şəkil yükləyin, CSV ilə yeniləyin və dəyişiklikləri dərhal saxlayın.",
     unsavedChanges: "Saxlanmamış dəyişikliklər",
-    everythingSaved: "Hər şey saxlanıb",
+    everythingSaved: "Bütün dəyişikliklər saxlanıb",
     refresh: "Yenilə",
     reset: "Sıfırla",
     saveChanges: "Dəyişiklikləri saxla",
@@ -127,8 +127,8 @@ const adminCopy = {
     perfumes: "Ətirlər",
     notes: "Notlar",
     linkedNotes: "Bağlı notlar",
-    visibleInSearch: "{count} nəticə görünür",
-    linkedNoteDetail: "Ətirlərdə istifadə olunan unikal not slug-ları",
+    visibleInSearch: "Axtarışda {count} qeyd görünür",
+    linkedNoteDetail: "Ətirlərdə istifadə olunan fərqli not sayı",
     assetCoverage: "Şəkli olan qeydlər",
     dataOperations: "Məlumat əməliyyatları",
     dataOperationsDescription:
@@ -280,7 +280,7 @@ const adminCopy = {
   en: {
     localeLabel: "Language",
     adminWorkspace: "Admin Workspace",
-    professionalWorkspace: "Professional Admin Workspace",
+    professionalWorkspace: "Inventory and Content Control",
     notEnabledTitle: "Admin panel is not enabled",
     notEnabledDescription:
       "Set `ADMIN_PASSWORD` in your environment, restart the app, and the workspace will unlock.",
@@ -303,11 +303,11 @@ const adminCopy = {
     uploadDirect: "Upload images directly from the panel",
     csvImport: "CSV import",
     moveDataFast: "Move data in and out quickly",
-    heroTitle: "Manage inventory and note content from one smooth React workspace.",
+    heroTitle: "Manage stock, product details, and notes from one admin panel.",
     heroDescription:
-      "Search instantly, edit in place, upload imagery, run CSV jobs, and save without leaving the page.",
+      "Search records, edit in place, upload images, update with CSV, and save changes instantly.",
     unsavedChanges: "Unsaved changes",
-    everythingSaved: "Everything saved",
+    everythingSaved: "All changes saved",
     refresh: "Refresh",
     reset: "Reset",
     saveChanges: "Save changes",
@@ -316,8 +316,8 @@ const adminCopy = {
     perfumes: "Perfumes",
     notes: "Notes",
     linkedNotes: "Linked notes",
-    visibleInSearch: "{count} visible in search",
-    linkedNoteDetail: "Unique note slugs referenced by perfumes",
+    visibleInSearch: "{count} records visible in search",
+    linkedNoteDetail: "Unique notes currently used by perfumes",
     assetCoverage: "Asset coverage",
     dataOperations: "Data operations",
     dataOperationsDescription:
@@ -481,6 +481,101 @@ function interpolate(
 
 function normalizeString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function searchTokens(value: string) {
+  return normalizeSearchText(value)
+    .split(" ")
+    .filter(Boolean);
+}
+
+function matchesSearchPool(pool: string, query: string) {
+  if (!query) {
+    return true;
+  }
+
+  if (pool.includes(query)) {
+    return true;
+  }
+
+  const tokens = searchTokens(query);
+  if (!tokens.length) {
+    return true;
+  }
+
+  return tokens.every((token) => pool.includes(token));
+}
+
+function scorePerfumeSearch(item: PerfumeDraft, normalizedQuery: string) {
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const normalizedName = normalizeSearchText(item.name);
+  const normalizedBrand = normalizeSearchText(item.brand);
+  const normalizedSlug = normalizeSearchText(item.slug);
+  const brandThenName = `${normalizedBrand} ${normalizedName}`.trim();
+  const nameThenBrand = `${normalizedName} ${normalizedBrand}`.trim();
+  const pool = normalizeSearchText(
+    [
+      item.name,
+      item.brand,
+      item.slug,
+      item.gender,
+      item.stockStatus,
+      item.noteSlugs.top.join(" "),
+      item.noteSlugs.heart.join(" "),
+      item.noteSlugs.base.join(" "),
+    ].join(" "),
+  );
+
+  let score = 0;
+
+  if (brandThenName === normalizedQuery || nameThenBrand === normalizedQuery) score += 520;
+  else if (normalizedName === normalizedQuery || normalizedSlug === normalizedQuery) score += 460;
+  else if (brandThenName.includes(normalizedQuery) || nameThenBrand.includes(normalizedQuery)) score += 340;
+  else if (normalizedName.includes(normalizedQuery)) score += 260;
+  else if (normalizedBrand.includes(normalizedQuery)) score += 180;
+  else if (pool.includes(normalizedQuery)) score += 120;
+
+  const tokens = searchTokens(normalizedQuery);
+  if (tokens.length && tokens.every((token) => pool.includes(token))) {
+    score += 100;
+  }
+
+  return score;
+}
+
+function scoreNoteSearch(item: NoteDraft, normalizedQuery: string) {
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const normalizedName = normalizeSearchText(item.name);
+  const normalizedSlug = normalizeSearchText(item.slug);
+  const pool = normalizeSearchText([item.name, item.slug, item.content].join(" "));
+
+  let score = 0;
+
+  if (normalizedName === normalizedQuery || normalizedSlug === normalizedQuery) score += 420;
+  else if (normalizedName.includes(normalizedQuery)) score += 240;
+  else if (normalizedSlug.includes(normalizedQuery)) score += 210;
+  else if (pool.includes(normalizedQuery)) score += 120;
+
+  const tokens = searchTokens(normalizedQuery);
+  if (tokens.length && tokens.every((token) => pool.includes(token))) {
+    score += 80;
+  }
+
+  return score;
 }
 
 function normalizeSlug(value: unknown) {
@@ -944,7 +1039,7 @@ export function AdminPanelClient({
   const noteImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const deferredSearch = useDeferredValue(search);
-  const normalizedSearch = deferredSearch.trim().toLowerCase();
+  const normalizedSearch = normalizeSearchText(deferredSearch);
   const isWorking = busy || uploading || importing !== null;
   const isFiltering = search.trim() !== deferredSearch.trim();
   const copy = adminCopy[locale];
@@ -965,23 +1060,22 @@ export function AdminPanelClient({
 
   const filteredPerfumes = useMemo(() => {
     const searchMatched = perfumes.filter((item) => {
-      const pool = [
-        item.name,
-        item.slug,
-        item.brand,
-        item.gender,
-        item.stockStatus,
-        item.noteSlugs.top.join(" "),
-        item.noteSlugs.heart.join(" "),
-        item.noteSlugs.base.join(" "),
-      ]
-        .join(" ")
-        .toLowerCase();
+      const pool = normalizeSearchText(
+        [
+          item.name,
+          item.slug,
+          item.brand,
+          item.gender,
+          item.noteSlugs.top.join(" "),
+          item.noteSlugs.heart.join(" "),
+          item.noteSlugs.base.join(" "),
+        ].join(" "),
+      );
 
-      return pool.includes(normalizedSearch);
+      return matchesSearchPool(pool, normalizedSearch);
     });
 
-    return searchMatched.filter((item) => {
+    const filtered = searchMatched.filter((item) => {
       if (perfumeListFilter === "missingImage") {
         return !item.image;
       }
@@ -992,12 +1086,22 @@ export function AdminPanelClient({
         );
       }
 
-      if (perfumeListFilter === "outOfStock") {
-        return !item.inStock;
-      }
-
       return true;
     });
+
+    if (normalizedSearch) {
+      filtered.sort((left, right) => {
+        const scoreRight = scorePerfumeSearch(right, normalizedSearch);
+        const scoreLeft = scorePerfumeSearch(left, normalizedSearch);
+        if (scoreRight !== scoreLeft) {
+          return scoreRight - scoreLeft;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+    }
+
+    return filtered;
   }, [normalizedSearch, perfumeListFilter, perfumes]);
 
   const noteUsageCounts = useMemo(() => {
@@ -1017,11 +1121,12 @@ export function AdminPanelClient({
   }, [perfumes]);
 
   const filteredNotes = useMemo(() => {
-    const searchMatched = notes.filter((item) =>
-      [item.name, item.slug, item.content].join(" ").toLowerCase().includes(normalizedSearch),
-    );
+    const searchMatched = notes.filter((item) => {
+      const pool = normalizeSearchText([item.name, item.slug, item.content].join(" "));
+      return matchesSearchPool(pool, normalizedSearch);
+    });
 
-    return searchMatched.filter((item) => {
+    const filtered = searchMatched.filter((item) => {
       if (noteListFilter === "linked") {
         return (noteUsageCounts.get(item.slug) || 0) > 0;
       }
@@ -1036,6 +1141,20 @@ export function AdminPanelClient({
 
       return true;
     });
+
+    if (normalizedSearch) {
+      filtered.sort((left, right) => {
+        const scoreRight = scoreNoteSearch(right, normalizedSearch);
+        const scoreLeft = scoreNoteSearch(left, normalizedSearch);
+        if (scoreRight !== scoreLeft) {
+          return scoreRight - scoreLeft;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+    }
+
+    return filtered;
   }, [normalizedSearch, noteListFilter, noteUsageCounts, notes]);
 
   const noteSlugOptions = useMemo(
@@ -1331,7 +1450,7 @@ export function AdminPanelClient({
       setPerfumeEditorTab("basics");
       setSelectedPerfumeId(fresh.id);
     });
-    setStatus({ tone: "neutral", message: "New perfume draft created." });
+    setStatus({ tone: "neutral", message: t("statusNewPerfumeCreated") });
   };
 
   const duplicatePerfume = () => {
@@ -1353,7 +1472,7 @@ export function AdminPanelClient({
       setPerfumeEditorTab("basics");
       setSelectedPerfumeId(cloned.id);
     });
-    setStatus({ tone: "neutral", message: "Perfume duplicated into a new draft." });
+    setStatus({ tone: "neutral", message: t("statusPerfumeDuplicated") });
   };
 
   const deletePerfume = () => {
@@ -1361,12 +1480,12 @@ export function AdminPanelClient({
       return;
     }
 
-    if (!window.confirm(`Delete perfume "${selectedPerfume.name}"?`)) {
+    if (!window.confirm(t("confirmDeletePerfume", { name: selectedPerfume.name }))) {
       return;
     }
 
     setPerfumes((current) => current.filter((item) => item.id !== selectedPerfume.id));
-    setStatus({ tone: "neutral", message: "Perfume removed from the workspace." });
+    setStatus({ tone: "neutral", message: t("statusPerfumeRemoved") });
   };
 
   const addNote = () => {
@@ -1377,7 +1496,7 @@ export function AdminPanelClient({
       setNoteEditorTab("content");
       setSelectedNoteSlug(fresh.slug);
     });
-    setStatus({ tone: "neutral", message: "New note draft created." });
+    setStatus({ tone: "neutral", message: t("statusNewNoteCreated") });
   };
 
   const duplicateNote = () => {
@@ -1398,7 +1517,7 @@ export function AdminPanelClient({
       setNoteEditorTab("content");
       setSelectedNoteSlug(cloned.slug);
     });
-    setStatus({ tone: "neutral", message: "Note duplicated into a new draft." });
+    setStatus({ tone: "neutral", message: t("statusNoteDuplicated") });
   };
 
   const deleteNote = () => {
@@ -1406,31 +1525,31 @@ export function AdminPanelClient({
       return;
     }
 
-    if (!window.confirm(`Delete note "${selectedNote.name}"?`)) {
+    if (!window.confirm(t("confirmDeleteNote", { name: selectedNote.name }))) {
       return;
     }
 
     setNotes((current) => current.filter((item) => item.slug !== selectedNote.slug));
-    setStatus({ tone: "neutral", message: "Note removed from the workspace." });
+    setStatus({ tone: "neutral", message: t("statusNoteRemoved") });
   };
 
   const cancelEditing = () => {
     setPerfumes(cloneDeep(savedPerfumes));
     setNotes(cloneDeep(savedNotes));
-    setStatus({ tone: "neutral", message: "Workspace reset to the latest saved state." });
+    setStatus({ tone: "neutral", message: t("statusWorkspaceReset") });
   };
 
   const copyToClipboard = async (value: string, label: string) => {
     if (!value) {
-      setStatus({ tone: "error", message: `There is no ${label.toLowerCase()} to copy yet.` });
+      setStatus({ tone: "error", message: t("statusNoValueToCopy", { label }) });
       return;
     }
 
     try {
       await navigator.clipboard.writeText(value);
-      setStatus({ tone: "success", message: `${label} copied to clipboard.` });
+      setStatus({ tone: "success", message: t("statusCopied", { label }) });
     } catch {
-      setStatus({ tone: "error", message: `Unable to copy ${label.toLowerCase()}.` });
+      setStatus({ tone: "error", message: t("statusCopyFailed", { label }) });
     }
   };
 
@@ -1447,7 +1566,7 @@ export function AdminPanelClient({
     const body = await parseResponse(response);
 
     if (!response.ok || typeof body.url !== "string") {
-      throw new Error(String(body.error || "Upload failed."));
+      throw new Error(String(body.error || t("uploadFailed")));
     }
 
     return body.url;
@@ -1466,7 +1585,7 @@ export function AdminPanelClient({
     }
 
     setUploading(true);
-    setStatus({ tone: "neutral", message: "Uploading perfume image..." });
+    setStatus({ tone: "neutral", message: t("statusUploadingPerfumeImage") });
 
     try {
       const url = await uploadImage(file, "perfumes");
@@ -1477,9 +1596,9 @@ export function AdminPanelClient({
           selectedPerfume.name || file.name.replace(/\.[^.]+$/, ""),
         );
       }
-      setStatus({ tone: "success", message: "Perfume image uploaded." });
+      setStatus({ tone: "success", message: t("statusPerfumeImageUploaded") });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Upload failed.";
+      const message = error instanceof Error ? error.message : t("uploadFailed");
       setStatus({ tone: "error", message });
     } finally {
       setUploading(false);
@@ -1499,7 +1618,7 @@ export function AdminPanelClient({
     }
 
     setUploading(true);
-    setStatus({ tone: "neutral", message: "Uploading note image..." });
+    setStatus({ tone: "neutral", message: t("statusUploadingNoteImage") });
 
     try {
       const url = await uploadImage(file, "notes");
@@ -1507,9 +1626,9 @@ export function AdminPanelClient({
       if (!selectedNote.imageAlt) {
         setNoteField("imageAlt", selectedNote.name || file.name.replace(/\.[^.]+$/, ""));
       }
-      setStatus({ tone: "success", message: "Note image uploaded." });
+      setStatus({ tone: "success", message: t("statusNoteImageUploaded") });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Upload failed.";
+      const message = error instanceof Error ? error.message : t("uploadFailed");
       setStatus({ tone: "error", message });
     } finally {
       setUploading(false);
@@ -1519,7 +1638,7 @@ export function AdminPanelClient({
   const onLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
-    setStatus({ tone: "neutral", message: "Signing in..." });
+    setStatus({ tone: "neutral", message: t("signingIn") });
 
     try {
       const response = await fetch("/api/admin/login", {
@@ -1531,7 +1650,7 @@ export function AdminPanelClient({
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus({ tone: "error", message: String(body.error || "Login failed.") });
+        setStatus({ tone: "error", message: String(body.error || t("loginFailed")) });
         return;
       }
 
@@ -1541,7 +1660,7 @@ export function AdminPanelClient({
       if (!dataResponse.ok) {
         setStatus({
           tone: "error",
-          message: String(dataBody.error || "Logged in, but failed to load admin data."),
+          message: String(dataBody.error || t("loggedInDataFailed")),
         });
         return;
       }
@@ -1554,11 +1673,11 @@ export function AdminPanelClient({
       applyServerData(nextPerfumes, nextNotes);
       setAuthenticated(true);
       setPassword("");
-      setStatus({ tone: "success", message: "Admin workspace ready." });
+      setStatus({ tone: "success", message: t("statusWorkspaceReady") });
     } catch {
       setStatus({
         tone: "error",
-        message: "Login request failed. Check your connection and try again.",
+        message: t("statusLoginFailed"),
       });
     } finally {
       setBusy(false);
@@ -1567,45 +1686,45 @@ export function AdminPanelClient({
 
   const onLogout = async () => {
     setBusy(true);
-    setStatus({ tone: "neutral", message: "Closing your admin session..." });
+    setStatus({ tone: "neutral", message: t("statusClosingSession") });
 
     try {
       await fetch("/api/admin/logout", { method: "POST" });
       setAuthenticated(false);
       setPassword("");
-      setStatus({ tone: "success", message: "Logged out." });
+      setStatus({ tone: "success", message: t("statusLoggedOut") });
     } catch {
-      setStatus({ tone: "error", message: "Logout failed. Please try again." });
+      setStatus({ tone: "error", message: t("statusLogoutFailed") });
     } finally {
       setBusy(false);
     }
   };
 
   const onReload = async () => {
-    if (dirty && !window.confirm("Reloading will discard unsaved changes. Continue?")) {
+    if (dirty && !window.confirm(t("confirmReload"))) {
       return;
     }
 
     setBusy(true);
-    setStatus({ tone: "neutral", message: "Refreshing saved admin data..." });
+    setStatus({ tone: "neutral", message: t("statusRefreshing") });
 
     try {
       const response = await fetch("/api/admin/data", { method: "GET" });
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus({ tone: "error", message: String(body.error || "Refresh failed.") });
+        setStatus({ tone: "error", message: String(body.error || t("refreshFailed")) });
         return;
       }
 
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
       applyServerData(nextPerfumes, nextNotes);
-      setStatus({ tone: "success", message: "Workspace synced with saved admin data." });
+      setStatus({ tone: "success", message: t("statusWorkspaceSynced") });
     } catch {
       setStatus({
         tone: "error",
-        message: "Refresh request failed. Check your connection and try again.",
+        message: t("statusRefreshFailed"),
       });
     } finally {
       setBusy(false);
@@ -1614,12 +1733,12 @@ export function AdminPanelClient({
 
   const onSave = async () => {
     if (!dirty) {
-      setStatus({ tone: "neutral", message: "Everything is already saved." });
+      setStatus({ tone: "neutral", message: t("statusAlreadySaved") });
       return;
     }
 
     setBusy(true);
-    setStatus({ tone: "neutral", message: "Saving changes and revalidating public pages..." });
+    setStatus({ tone: "neutral", message: t("statusSaving") });
 
     const perfumesPayload = perfumes.map((item) => ({
       ...item,
@@ -1644,7 +1763,7 @@ export function AdminPanelClient({
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus({ tone: "error", message: String(body.error || "Save failed.") });
+        setStatus({ tone: "error", message: String(body.error || t("saveFailed")) });
         return;
       }
 
@@ -1653,12 +1772,12 @@ export function AdminPanelClient({
       applyServerData(nextPerfumes, nextNotes);
       setStatus({
         tone: "success",
-        message: "Saved successfully. Public pages have been revalidated.",
+        message: t("statusSaved"),
       });
     } catch {
       setStatus({
         tone: "error",
-        message: "Save request failed. Check your connection and try again.",
+        message: t("statusSaveFailed"),
       });
     } finally {
       setBusy(false);
@@ -1666,14 +1785,19 @@ export function AdminPanelClient({
   };
 
   const downloadCsv = async (type: "perfumes" | "notes") => {
-    setStatus({ tone: "neutral", message: `Preparing ${type} CSV export...` });
+    setStatus({
+      tone: "neutral",
+      message: t("statusPreparingExport", {
+        type: type === "perfumes" ? copy.perfumes : copy.notes,
+      }),
+    });
 
     try {
       const response = await fetch(`/api/admin/export?type=${type}`);
 
       if (!response.ok) {
         const body = await parseResponse(response);
-        setStatus({ tone: "error", message: String(body.error || "Export failed.") });
+        setStatus({ tone: "error", message: String(body.error || t("exportFailed")) });
         return;
       }
 
@@ -1689,16 +1813,21 @@ export function AdminPanelClient({
 
       setStatus({
         tone: "success",
-        message: `${type === "perfumes" ? "Perfumes" : "Notes"} CSV exported.`,
+        message: type === "perfumes" ? t("statusExportedPerfumes") : t("statusExportedNotes"),
       });
     } catch {
-      setStatus({ tone: "error", message: "Export request failed." });
+      setStatus({ tone: "error", message: t("statusExportFailed") });
     }
   };
 
   const importCsv = async (type: "perfumes" | "notes", file: File) => {
     setImporting(type);
-    setStatus({ tone: "neutral", message: `Importing ${type} CSV...` });
+    setStatus({
+      tone: "neutral",
+      message: t("statusImportingCsv", {
+        type: type === "perfumes" ? copy.perfumes : copy.notes,
+      }),
+    });
 
     try {
       const formData = new FormData();
@@ -1712,7 +1841,7 @@ export function AdminPanelClient({
       const body = await parseResponse(response);
 
       if (!response.ok) {
-        setStatus({ tone: "error", message: String(body.error || "CSV import failed.") });
+        setStatus({ tone: "error", message: String(body.error || t("importFailed")) });
         return;
       }
 
@@ -1721,10 +1850,10 @@ export function AdminPanelClient({
       applyServerData(nextPerfumes, nextNotes);
       setStatus({
         tone: "success",
-        message: `${type === "perfumes" ? "Perfumes" : "Notes"} CSV imported.`,
+        message: type === "perfumes" ? t("statusImportedPerfumes") : t("statusImportedNotes"),
       });
     } catch {
-      setStatus({ tone: "error", message: "Import request failed." });
+      setStatus({ tone: "error", message: t("statusImportFailed") });
     } finally {
       setImporting(null);
     }
@@ -1733,10 +1862,9 @@ export function AdminPanelClient({
   if (!configured) {
     return (
       <section className={ui.card}>
-        <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-950">Admin panel is not enabled</h1>
+        <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-950">{copy.notEnabledTitle}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-          Set <code>ADMIN_PASSWORD</code> in your environment, restart the app, and this workspace
-          will unlock.
+          {copy.notEnabledDescription}
         </p>
       </section>
     );
@@ -1749,33 +1877,32 @@ export function AdminPanelClient({
           <div className="border-b border-zinc-200/80 bg-[radial-gradient(circle_at_top_left,rgba(244,244,245,0.95),rgba(255,255,255,0.92))] p-6 sm:p-8 lg:border-b-0 lg:border-r">
             <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
               <Database size={14} weight="bold" />
-              Admin Workspace
+              {copy.adminWorkspace}
             </div>
             <h1 className="mt-5 text-[2.3rem] font-semibold leading-tight tracking-[-0.06em] text-zinc-950">
-              A smoother workspace for managing perfumes, notes, media, and imports.
+              {copy.loginHeroTitle}
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-600">
-              Sign in to work with structured editors, image uploads, CSV import/export, and a
-              cleaner production-style admin flow.
+              {copy.loginHeroDescription}
             </p>
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               <WorkspaceStat
                 icon={<SquaresFour size={18} weight="bold" />}
-                label="Editing"
-                value="2 datasets"
-                detail="Perfumes and notes in one view"
+                label={copy.editing}
+                value={copy.twoDatasets}
+                detail={copy.perfumesAndNotesOneView}
               />
               <WorkspaceStat
                 icon={<UploadSimple size={18} weight="bold" />}
-                label="Assets"
-                value="Media-ready"
-                detail="Upload images directly from the panel"
+                label={copy.assets}
+                value={copy.mediaReady}
+                detail={copy.uploadDirect}
               />
               <WorkspaceStat
                 icon={<Rows size={18} weight="bold" />}
-                label="Bulk Ops"
-                value="CSV import"
-                detail="Move data in and out quickly"
+                label={copy.bulkOps}
+                value={copy.csvImport}
+                detail={copy.moveDataFast}
               />
             </div>
           </div>
@@ -1783,14 +1910,35 @@ export function AdminPanelClient({
           <div className="p-6 sm:p-8">
             <div className="max-w-md">
               <h2 className="text-xl font-semibold tracking-[-0.04em] text-zinc-950">
-                Admin login
+                {copy.loginTitle}
               </h2>
               <p className="mt-2 text-sm leading-6 text-zinc-500">
-                Use your configured admin password to enter the workspace.
+                {copy.loginDescription}
               </p>
 
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                  {copy.localeLabel}
+                </span>
+                {(["az", "en"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={cx(
+                      "rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] transition",
+                      locale === option
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                    )}
+                    onClick={() => setLocale(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+
               <form className="mt-6 space-y-4" onSubmit={onLogin}>
-                <Field label="Username">
+                <Field label={copy.username}>
                   <input
                     className={ui.input}
                     value={username}
@@ -1800,7 +1948,7 @@ export function AdminPanelClient({
                   />
                 </Field>
 
-                <Field label="Password">
+                <Field label={copy.password}>
                   <input
                     type="password"
                     className={ui.input}
@@ -1813,7 +1961,7 @@ export function AdminPanelClient({
 
                 <button type="submit" className={ui.primaryButton} disabled={busy}>
                   <Sparkle size={16} weight="bold" />
-                  {busy ? "Signing in..." : "Enter workspace"}
+                  {busy ? copy.signingIn : copy.enterWorkspace}
                 </button>
               </form>
 
@@ -1845,21 +1993,38 @@ export function AdminPanelClient({
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
                 <Database size={14} weight="bold" />
-                Professional Admin Workspace
+                {copy.professionalWorkspace}
               </div>
               <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.06em] text-zinc-950 sm:text-[2.6rem]">
-                Manage inventory and note content from one smooth React workspace.
+                {copy.heroTitle}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
-                Search records instantly, edit structured fields in place, upload imagery, run CSV
-                imports, and save everything without leaving the page.
+                {copy.heroDescription}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                {copy.localeLabel}
+              </span>
+              {(["az", "en"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={cx(
+                    "rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] transition",
+                    locale === option
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                  )}
+                  onClick={() => setLocale(option)}
+                >
+                  {option}
+                </button>
+              ))}
               <span className={cx(ui.chip, dirty ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
                 {dirty ? <WarningCircle size={14} weight="fill" /> : <CheckCircle size={14} weight="fill" />}
-                {dirty ? "Unsaved changes" : "Everything saved"}
+                {dirty ? copy.unsavedChanges : copy.everythingSaved}
               </span>
               <button
                 type="button"
@@ -1868,7 +2033,7 @@ export function AdminPanelClient({
                 disabled={isWorking}
               >
                 <ArrowsClockwise size={16} weight="bold" />
-                Refresh
+                {copy.refresh}
               </button>
               <button
                 type="button"
@@ -1877,7 +2042,7 @@ export function AdminPanelClient({
                 disabled={!dirty || isWorking}
               >
                 <ClockCounterClockwise size={16} weight="bold" />
-                Reset
+                {copy.reset}
               </button>
               <button
                 type="button"
@@ -1886,7 +2051,7 @@ export function AdminPanelClient({
                 disabled={!dirty || isWorking}
               >
                 <FloppyDisk size={16} weight="bold" />
-                {busy ? "Saving..." : "Save changes"}
+                {busy ? copy.saving : copy.saveChanges}
               </button>
               <button
                 type="button"
@@ -1895,7 +2060,7 @@ export function AdminPanelClient({
                 disabled={busy}
               >
                 <SignOut size={16} weight="bold" />
-                Log out
+                {copy.logout}
               </button>
             </div>
           </div>
@@ -1903,27 +2068,29 @@ export function AdminPanelClient({
           <div className="relative mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <WorkspaceStat
               icon={<Package size={18} weight="bold" />}
-              label="Perfumes"
+              label={copy.perfumes}
               value={String(stats.perfumes)}
-              detail={`${filteredPerfumes.length} visible in current search`}
+              detail={t("visibleInSearch", { count: filteredPerfumes.length })}
             />
             <WorkspaceStat
               icon={<NotePencil size={18} weight="bold" />}
-              label="Notes"
+              label={copy.notes}
               value={String(stats.notes)}
-              detail={`${filteredNotes.length} visible in current search`}
+              detail={t("visibleInSearch", { count: filteredNotes.length })}
             />
             <WorkspaceStat
               icon={<Tag size={18} weight="bold" />}
-              label="Linked Notes"
+              label={copy.linkedNotes}
               value={String(stats.linkedNotes)}
-              detail="Unique note slugs referenced by perfumes"
+              detail={copy.linkedNoteDetail}
             />
             <WorkspaceStat
               icon={<ImageSquare size={18} weight="bold" />}
-              label="Assets"
+              label={copy.assets}
               value={stats.assetCoverage}
-              detail="Records currently carrying an image"
+              detail={t("assetCoverageDetail", {
+                count: perfumes.filter((item) => item.image).length + notes.filter((item) => item.image).length,
+              })}
             />
           </div>
         </div>
@@ -1933,10 +2100,10 @@ export function AdminPanelClient({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
-              Data operations
+              {copy.dataOperations}
             </h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Import and export structured data without leaving the workspace.
+              {copy.dataOperationsDescription}
             </p>
           </div>
 
@@ -1948,7 +2115,7 @@ export function AdminPanelClient({
               disabled={isWorking}
             >
               <DownloadSimple size={16} weight="bold" />
-              Export perfumes CSV
+              {copy.exportPerfumesCsv}
             </button>
             <button
               className={ui.secondaryButton}
@@ -1957,7 +2124,7 @@ export function AdminPanelClient({
               disabled={isWorking}
             >
               <DownloadSimple size={16} weight="bold" />
-              Export notes CSV
+              {copy.exportNotesCsv}
             </button>
             <button
               className={ui.secondaryButton}
@@ -1966,7 +2133,7 @@ export function AdminPanelClient({
               disabled={isWorking}
             >
               <UploadSimple size={16} weight="bold" />
-              {importing === "perfumes" ? "Importing perfumes..." : "Import perfumes CSV"}
+              {importing === "perfumes" ? copy.importingPerfumes : copy.importPerfumesCsv}
             </button>
             <button
               className={ui.secondaryButton}
@@ -1975,7 +2142,7 @@ export function AdminPanelClient({
               disabled={isWorking}
             >
               <UploadSimple size={16} weight="bold" />
-              {importing === "notes" ? "Importing notes..." : "Import notes CSV"}
+              {importing === "notes" ? copy.importingNotes : copy.importNotesCsv}
             </button>
             <input
               ref={perfumeImportRef}
@@ -2020,14 +2187,15 @@ export function AdminPanelClient({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className={ui.card}>
+        <aside className={cx(ui.card, "xl:sticky xl:top-28 xl:h-[calc(100dvh-9rem)] xl:min-h-[44rem]")}>
+          <div className="flex h-full min-h-0 flex-col">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
-                Workspace records
+                {copy.workspaceRecords}
               </h2>
               <p className="mt-1 text-sm text-zinc-500">
-                Switch datasets, search quickly, and move between records without page reloads.
+                {copy.workspaceRecordsDescription}
               </p>
             </div>
           </div>
@@ -2040,7 +2208,7 @@ export function AdminPanelClient({
                 startTransition(() => setView("perfumes"));
               }}
             >
-              Perfumes
+              {copy.perfumes}
             </TabButton>
             <TabButton
               active={view === "notes"}
@@ -2049,7 +2217,7 @@ export function AdminPanelClient({
                 startTransition(() => setView("notes"));
               }}
             >
-              Notes
+              {copy.notes}
             </TabButton>
           </div>
 
@@ -2063,7 +2231,7 @@ export function AdminPanelClient({
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={view === "perfumes" ? "Search perfumes..." : "Search notes..."}
+              placeholder={view === "perfumes" ? copy.searchPerfumes : copy.searchNotes}
               className={cx(ui.input, "pl-11")}
             />
           </label>
@@ -2073,7 +2241,7 @@ export function AdminPanelClient({
               <>
                 <button type="button" className={ui.primaryButton} onClick={addPerfume}>
                   <Plus size={16} weight="bold" />
-                  Add perfume
+                  {copy.addPerfume}
                 </button>
                 <button
                   type="button"
@@ -2082,7 +2250,7 @@ export function AdminPanelClient({
                   disabled={!selectedPerfume}
                 >
                   <CopySimple size={16} weight="bold" />
-                  Duplicate
+                  {copy.duplicate}
                 </button>
                 <button
                   type="button"
@@ -2091,14 +2259,14 @@ export function AdminPanelClient({
                   disabled={!selectedPerfume}
                 >
                   <Trash size={16} weight="bold" />
-                  Delete
+                  {copy.delete}
                 </button>
               </>
             ) : (
               <>
                 <button type="button" className={ui.primaryButton} onClick={addNote}>
                   <Plus size={16} weight="bold" />
-                  Add note
+                  {copy.addNote}
                 </button>
                 <button
                   type="button"
@@ -2107,7 +2275,7 @@ export function AdminPanelClient({
                   disabled={!selectedNote}
                 >
                   <CopySimple size={16} weight="bold" />
-                  Duplicate
+                  {copy.duplicate}
                 </button>
                 <button
                   type="button"
@@ -2116,19 +2284,75 @@ export function AdminPanelClient({
                   disabled={!selectedNote}
                 >
                   <Trash size={16} weight="bold" />
-                  Delete
+                  {copy.delete}
                 </button>
               </>
             )}
           </div>
 
-          <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-2">
+          <div className="mt-4 flex flex-wrap gap-2">
+            {view === "perfumes"
+              ? ([
+                  ["all", copy.all],
+                  ["missingImage", copy.missingImage],
+                  ["missingNotes", copy.missingNotes],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={cx(
+                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                      perfumeListFilter === value
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                    )}
+                    onClick={() => setPerfumeListFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))
+              : ([
+                  ["all", copy.all],
+                  ["linked", copy.linked],
+                  ["unlinked", copy.unlinked],
+                  ["missingImage", copy.missingImage],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={cx(
+                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                      noteListFilter === value
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                    )}
+                    onClick={() => setNoteListFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+            <span>
+              {view === "perfumes" ? copy.perfumeList : copy.noteList}
+            </span>
+            <span>
+              {t("recordsShown", {
+                shown: view === "perfumes" ? filteredPerfumes.length : filteredNotes.length,
+                total: view === "perfumes" ? perfumes.length : notes.length,
+              })}
+              {isFiltering ? ` • ${copy.updating}` : ""}
+            </span>
+          </div>
+
+          <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-2">
             <div className="mb-2 flex items-center justify-between px-2 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-              <span>{view === "perfumes" ? "Perfume list" : "Note list"}</span>
+              <span>{view === "perfumes" ? copy.perfumeList : copy.noteList}</span>
               <span>{view === "perfumes" ? filteredPerfumes.length : filteredNotes.length}</span>
             </div>
 
-            <div className="space-y-2">
+            <div className="h-[min(56vh,38rem)] space-y-2 overflow-y-auto pr-1 xl:h-[calc(100dvh-25rem)]">
               {view === "perfumes" ? (
                 filteredPerfumes.length ? (
                   filteredPerfumes.map((item) => (
@@ -2136,8 +2360,8 @@ export function AdminPanelClient({
                       key={item.id}
                       active={selectedPerfume?.id === item.id}
                       title={item.name}
-                      subtitle={formatPerfumeMeta(item)}
-                      meta={formatStartingPrice(item)}
+                      subtitle={formatPerfumeMeta(item, copy)}
+                      meta={formatStartingPrice(item, copy)}
                       onClick={() => {
                         startTransition(() => {
                           setView("perfumes");
@@ -2148,12 +2372,12 @@ export function AdminPanelClient({
                   ))
                 ) : (
                   <EmptyState
-                    title="No perfumes found"
-                    detail="Adjust the search term or create a new perfume draft."
+                    title={copy.noPerfumesFound}
+                    detail={copy.noPerfumesFoundDescription}
                     action={
                       <button type="button" className={ui.secondaryButton} onClick={addPerfume}>
                         <Plus size={16} weight="bold" />
-                        Add perfume
+                        {copy.addPerfume}
                       </button>
                     }
                   />
@@ -2165,7 +2389,7 @@ export function AdminPanelClient({
                     active={selectedNote?.slug === item.slug}
                     title={item.name}
                     subtitle={item.slug}
-                    meta={`${noteUsageCounts.get(item.slug) || 0} uses`}
+                    meta={t("usedByPerfumes", { count: noteUsageCounts.get(item.slug) || 0 })}
                     onClick={() => {
                       startTransition(() => {
                         setView("notes");
@@ -2176,17 +2400,18 @@ export function AdminPanelClient({
                 ))
               ) : (
                 <EmptyState
-                  title="No notes found"
-                  detail="Try a broader search or create a new note draft."
+                  title={copy.noNotesFound}
+                  detail={copy.noNotesFoundDescription}
                   action={
                     <button type="button" className={ui.secondaryButton} onClick={addNote}>
                       <Plus size={16} weight="bold" />
-                      Add note
+                      {copy.addNote}
                     </button>
                   }
                 />
               )}
             </div>
+          </div>
           </div>
         </aside>
 
@@ -2204,12 +2429,14 @@ export function AdminPanelClient({
                       {selectedPerfume.name}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      {formatPerfumeMeta(selectedPerfume)} • {selectedPerfume.sizes.length} size
-                      {selectedPerfume.sizes.length === 1 ? "" : "s"} •{" "}
-                      {selectedPerfume.noteSlugs.top.length +
-                        selectedPerfume.noteSlugs.heart.length +
-                        selectedPerfume.noteSlugs.base.length}{" "}
-                      note links
+                      {formatPerfumeMeta(selectedPerfume, copy)} •{" "}
+                      {t("sizeCount", { count: selectedPerfume.sizes.length })} •{" "}
+                      {t("noteLinksCount", {
+                        count:
+                          selectedPerfume.noteSlugs.top.length +
+                          selectedPerfume.noteSlugs.heart.length +
+                          selectedPerfume.noteSlugs.base.length,
+                      })}
                     </p>
                   </div>
 
@@ -2217,18 +2444,18 @@ export function AdminPanelClient({
                     <button
                       type="button"
                       className={ui.secondaryButton}
-                      onClick={() => void copyToClipboard(selectedPerfume.slug, "Slug")}
+                      onClick={() => void copyToClipboard(selectedPerfume.slug, copy.slug)}
                     >
                       <CopySimple size={16} weight="bold" />
-                      Copy slug
+                      {copy.copySlug}
                     </button>
                     <button
                       type="button"
                       className={ui.secondaryButton}
-                      onClick={() => void copyToClipboard(selectedPerfume.image, "Image URL")}
+                      onClick={() => void copyToClipboard(selectedPerfume.image, copy.imageUrl)}
                     >
                       <ImageSquare size={16} weight="bold" />
-                      Copy image URL
+                      {copy.copyImageUrl}
                     </button>
                   </div>
                 </div>
@@ -2300,35 +2527,6 @@ export function AdminPanelClient({
                             onChange={(event) => setPerfumeField("gender", event.target.value)}
                             placeholder="Unisex"
                           />
-                        </Field>
-                        <Field label="Stock status">
-                          <input
-                            className={ui.input}
-                            value={selectedPerfume.stockStatus}
-                            onChange={(event) =>
-                              setPerfumeField("stockStatus", event.target.value)
-                            }
-                            placeholder="Available"
-                          />
-                        </Field>
-                        <Field label="Inventory flag">
-                          <button
-                            type="button"
-                            className={cx(
-                              "flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-medium transition duration-200",
-                              selectedPerfume.inStock
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                : "border-zinc-300 bg-[#f7f7f5] text-zinc-600",
-                            )}
-                            onClick={() => setPerfumeField("inStock", !selectedPerfume.inStock)}
-                          >
-                            <span>{selectedPerfume.inStock ? "In stock" : "Out of stock"}</span>
-                            {selectedPerfume.inStock ? (
-                              <CheckCircle size={18} weight="fill" />
-                            ) : (
-                              <WarningCircle size={18} weight="fill" />
-                            )}
-                          </button>
                         </Field>
                       </div>
 
@@ -2700,7 +2898,7 @@ export function AdminPanelClient({
                             }}
                           >
                             <p className="text-sm font-semibold text-zinc-900">{perfume.name}</p>
-                            <p className="mt-1 text-xs text-zinc-500">{formatPerfumeMeta(perfume)}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{formatPerfumeMeta(perfume, copy)}</p>
                           </button>
                         ))
                       ) : (
