@@ -42,6 +42,7 @@ export function NoteGroup({ title, notes, locale = "az" }: NoteGroupProps) {
                   alt={note.imageAlt || localizeNoteLabel(note, locale)}
                   width={62}
                   height={62}
+                  unoptimized
                   className="h-[3.9rem] w-[3.9rem] rounded-[0.9rem] bg-white object-cover"
                 />
               ) : (

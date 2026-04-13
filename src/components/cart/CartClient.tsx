@@ -422,6 +422,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
                           alt={perfume.name ?? row.perfume_slug}
                           fill
                           sizes="96px"
+                          unoptimized
                           className="object-cover"
                         />
                       ) : (

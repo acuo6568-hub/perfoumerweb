@@ -986,6 +986,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                                     alt={note.imageAlt || localizeNoteLabel(note, locale)}
                                     fill
                                     sizes="(max-width: 640px) 20vw, (max-width: 1024px) 14vw, 9vw"
+                                    unoptimized
                                     className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                                   />
                                 ) : (

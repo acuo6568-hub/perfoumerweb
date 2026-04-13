@@ -246,6 +246,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                   alt="Perfoumer"
                   width={28}
                   height={28}
+                  unoptimized
                   className="header-logo-image h-8 w-8 object-contain sm:h-10 sm:w-10"
                   priority
                 />

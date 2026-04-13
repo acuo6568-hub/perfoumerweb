@@ -421,6 +421,7 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
                   alt={note.imageAlt || label}
                   width={16}
                   height={16}
+                  unoptimized
                   className="h-4 w-4 rounded-full object-cover"
                 />
               ) : (
@@ -449,6 +450,7 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
           alt={perfume.imageAlt || perfume.name}
           width={260}
           height={340}
+          unoptimized
           className="relative h-44 w-auto max-w-full object-contain drop-shadow-[0_20px_26px_rgba(0,0,0,0.18)] transition-transform duration-500 group-hover:scale-[1.03]"
         />
       </div>
@@ -495,6 +497,7 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
                       alt={selected.imageAlt || selected.name}
                       width={36}
                       height={36}
+                      unoptimized
                       className="h-9 w-9 rounded-xl object-contain bg-zinc-50"
                     />
                   ) : (

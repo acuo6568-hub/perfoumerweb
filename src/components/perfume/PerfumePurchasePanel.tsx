@@ -375,6 +375,7 @@ export function PerfumePurchasePanel({
                         alt="Perfoumer"
                         fill
                         sizes="(max-width: 767px) 52px, 96px"
+                        unoptimized
                         className={[
                           "object-contain object-bottom drop-shadow-[0_6px_10px_rgba(19,14,10,0.18)] transition-all duration-200 md:drop-shadow-[0_10px_14px_rgba(19,14,10,0.2)]",
                           isSelected ? "scale-[1.02] opacity-100" : "opacity-90 group-hover:opacity-100",

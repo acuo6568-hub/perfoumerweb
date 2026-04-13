@@ -994,6 +994,7 @@ function DeveloperLogoLink({ className = "" }: { className?: string }) {
         width={853}
         height={76}
         sizes="120px"
+        unoptimized
         className="h-[12px] w-auto object-contain opacity-80 transition duration-300 [filter:brightness(0)_invert(1)] group-hover:opacity-100 group-hover:[filter:brightness(0)_invert(1)_drop-shadow(0_0_8px_rgba(255,255,255,0.28))] group-focus-visible:opacity-100 group-focus-visible:[filter:brightness(0)_invert(1)_drop-shadow(0_0_8px_rgba(255,255,255,0.28))]"
       />
     </a>
