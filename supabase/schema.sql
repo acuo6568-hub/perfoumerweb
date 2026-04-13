@@ -466,6 +466,27 @@ create policy "Users can update their own order notes"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+create table if not exists public.order_logs (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  actor_role text not null check (actor_role in ('admin', 'staff')),
+  actor_username text not null check (char_length(btrim(actor_username)) between 1 and 80),
+  action text not null check (action in ('status_change', 'price_change', 'address_change', 'refund', 'cancel')),
+  reason text,
+  details text,
+  old_value jsonb,
+  new_value jsonb,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists order_logs_order_id_created_at_idx
+  on public.order_logs (order_id, created_at desc);
+
+create index if not exists order_logs_created_at_idx
+  on public.order_logs (created_at desc);
+
+alter table public.order_logs enable row level security;
+
 -- Live website analytics (sessions + events)
 create table if not exists public.website_live_sessions (
   session_id text primary key,
