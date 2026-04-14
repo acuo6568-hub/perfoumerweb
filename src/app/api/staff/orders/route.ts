@@ -9,6 +9,7 @@ import {
   isAdminConfigured,
   isStaffConfigured,
 } from "@/lib/admin-auth";
+import { getSupabaseServiceConfigFromServerResult } from "@/lib/supabase/env.server";
 
 type RawOrder = {
   id: string;
@@ -16,10 +17,13 @@ type RawOrder = {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_method?: string | null;
   total_amount: number;
   currency: string;
   items_json: unknown;
   delivery_address_json: unknown;
+  tracking_number?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -58,22 +62,23 @@ export async function GET(request: Request) {
     return auth.error;
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json({ error: "Supabase credentials missing." }, { status: 500 });
+  const { config: supabaseConfig, missingKeys } = getSupabaseServiceConfigFromServerResult();
+  if (!supabaseConfig) {
+    return Response.json(
+      { error: `Supabase credentials missing: ${missingKeys.join(", ")}` },
+      { status: 500 },
+    );
   }
 
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim().toLowerCase();
   const statusFilter = (url.searchParams.get("status") || "all").trim().toLowerCase();
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const supabase = createClient(supabaseConfig.url, supabaseConfig.serviceRoleKey);
 
   let query = supabase
     .from("orders")
-    .select("id,user_id,order_number,status,payment_status,total_amount,currency,items_json,delivery_address_json,created_at,updated_at")
+    .select("id,user_id,order_number,status,payment_status,payment_method,total_amount,currency,items_json,delivery_address_json,tracking_number,notes,created_at,updated_at")
     .order("created_at", { ascending: false })
     .limit(300);
 

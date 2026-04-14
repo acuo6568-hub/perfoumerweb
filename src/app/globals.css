@@ -146,6 +146,46 @@ h6 {
   }
 }
 
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes orderArrival {
+  0% {
+    transform: translateY(6px) scale(0.985);
+    opacity: 0.85;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.18);
+  }
+  60% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.06);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
 .footer-wordmark-animated {
   background-image: linear-gradient(
     96deg,
@@ -442,18 +482,18 @@ h6 {
 @keyframes routePageIn {
   from {
     opacity: 0;
-    transform: scale(0.999);
-    filter: blur(1px);
+    transform: translateY(10px) scale(0.998);
+    filter: blur(2px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
     filter: blur(0);
   }
 }
 
 .route-page-enter {
-  animation: routePageIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: routePageIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

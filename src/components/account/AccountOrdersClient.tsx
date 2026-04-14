@@ -58,10 +58,17 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
           noTracking: "Henüz təhvil kodu yoxdur",
           stepPlaced: "Qəbul edildi",
           stepProcessing: "Hazırlanır",
-          stepShipped: "Yola çıxıb",
-          stepDelivered: "Çatdırıldı",
+          stepShipped: "Hazırdır",
+          stepDelivered: "Tamamlandı",
           cancelledHint: "Bu sifariş ləğv edilib",
           refundedHint: "Bu sifariş üçün geri ödəniş edilib",
+          statusNew: "Yeni",
+          statusConfirmed: "Təsdiqləndi",
+          statusPreparing: "Hazırlanır",
+          statusReadyForPickup: "Təhvilə hazırdır",
+          statusHandedOver: "Təhvil verildi",
+          statusReadyForDispatch: "Göndərişə hazırdır",
+          statusOutForDelivery: "Çatdırılmaya çıxıb",
           statusPending: "Gözləmədə",
           statusProcessing: "İşləyir",
           statusCompleted: "Tamamlandı",
@@ -91,10 +98,17 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             noTracking: "Номер отслеживания еще недоступен",
             stepPlaced: "Принят",
             stepProcessing: "Готовится",
-            stepShipped: "Отправлен",
-            stepDelivered: "Доставлен",
+            stepShipped: "Готов",
+            stepDelivered: "Завершен",
             cancelledHint: "Этот заказ отменен",
             refundedHint: "По этому заказу оформлен возврат",
+            statusNew: "Новый",
+            statusConfirmed: "Подтвержден",
+            statusPreparing: "Готовится",
+            statusReadyForPickup: "Готов к выдаче",
+            statusHandedOver: "Выдан",
+            statusReadyForDispatch: "Готов к отправке",
+            statusOutForDelivery: "В доставке",
             statusPending: "В ожидании",
             statusProcessing: "Обработка",
             statusCompleted: "Завершено",
@@ -122,11 +136,18 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             tracking: "Tracking",
             noTracking: "Tracking number not available yet",
             stepPlaced: "Placed",
-            stepProcessing: "Processing",
-            stepShipped: "Shipped",
-            stepDelivered: "Delivered",
+            stepProcessing: "Preparing",
+            stepShipped: "Ready",
+            stepDelivered: "Completed",
             cancelledHint: "This order was cancelled",
             refundedHint: "This order was refunded",
+            statusNew: "New",
+            statusConfirmed: "Confirmed",
+            statusPreparing: "Preparing",
+            statusReadyForPickup: "Ready for pickup",
+            statusHandedOver: "Handed over",
+            statusReadyForDispatch: "Ready for dispatch",
+            statusOutForDelivery: "Out for delivery",
             statusPending: "Pending",
             statusProcessing: "Processing",
             statusCompleted: "Completed",
@@ -199,6 +220,13 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
 
   const getStatusLabel = (status: string) => {
     const statusMap: Record<string, string> = {
+      new: copy.statusNew,
+      confirmed: copy.statusConfirmed,
+      preparing: copy.statusPreparing,
+      ready_for_pickup: copy.statusReadyForPickup,
+      handed_over: copy.statusHandedOver,
+      ready_for_dispatch: copy.statusReadyForDispatch,
+      out_for_delivery: copy.statusOutForDelivery,
       pending: copy.statusPending,
       processing: copy.statusProcessing,
       completed: copy.statusCompleted,
@@ -222,6 +250,13 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
+      new: "border-blue-200 bg-blue-50/90 text-blue-700",
+      confirmed: "border-sky-200 bg-sky-50/90 text-sky-700",
+      preparing: "border-amber-200 bg-amber-50/90 text-amber-700",
+      ready_for_pickup: "border-emerald-200 bg-emerald-50/90 text-emerald-700",
+      handed_over: "border-emerald-200 bg-emerald-50/90 text-emerald-700",
+      ready_for_dispatch: "border-emerald-200 bg-emerald-50/90 text-emerald-700",
+      out_for_delivery: "border-violet-200 bg-violet-50/90 text-violet-700",
       pending: "border-amber-200 bg-amber-50/90 text-amber-700",
       processing: "border-blue-200 bg-blue-50/90 text-blue-700",
       completed: "border-emerald-200 bg-emerald-50/90 text-emerald-700",
@@ -235,10 +270,17 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
 
   const getProgressIndex = (status: string) => {
     switch (status) {
+      case "new":
       case "pending":
         return 1;
+      case "confirmed":
+      case "preparing":
       case "processing":
         return 2;
+      case "ready_for_pickup":
+      case "ready_for_dispatch":
+      case "handed_over":
+      case "out_for_delivery":
       case "shipped":
         return 3;
       case "delivered":

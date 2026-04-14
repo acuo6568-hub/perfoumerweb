@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@lineiconshq/free-icons": "^1.0.4",
+    "@lineiconshq/react-lineicons": "^1.0.5",
     "@phosphor-icons/react": "^2.1.10",
     "@supabase/supabase-js": "^2.103.0",
     "csv-parse": "^6.2.1",

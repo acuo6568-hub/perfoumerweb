@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
+import { generateOrderNumber } from "@/lib/order-number";
+
 export type CreateOrderForCheckoutInput = {
   userId: string;
   items: Array<{
@@ -56,12 +58,7 @@ export async function createOrderForCheckout(input: CreateOrderForCheckoutInput)
       }
     }
 
-    // Generate order number
-    const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
-    const random = Math.floor(Math.random() * 1000000)
-      .toString()
-      .padStart(6, "0");
-    const orderNumber = `ORD-${date}-${random}`;
+    const orderNumber = generateOrderNumber();
 
     // Create order
     const { data: order, error: orderError } = await supabase
@@ -70,7 +67,7 @@ export async function createOrderForCheckout(input: CreateOrderForCheckoutInput)
         {
           user_id: input.userId,
           order_number: orderNumber,
-          status: "pending",
+          status: "new",
           payment_status: "pending",
           total_amount: input.total_amount,
           currency: "AZN",
@@ -118,8 +115,7 @@ export async function updateOrderPaymentStatus(
     };
 
     if (paymentStatus === "completed") {
-      updateData.status = "processing";
-      updateData.completed_at = new Date().toISOString();
+      updateData.status = "confirmed";
     }
 
     if (kapitalPaymentId) {

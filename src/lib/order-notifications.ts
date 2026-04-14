@@ -96,7 +96,11 @@ function getCopy(locale: "az" | "en" | "ru", type: OrderUpdateEmailType) {
     },
   } as const;
 
-  return map[locale][type];
+  return {
+    ...map[locale][type],
+    bodyPrefix: map[locale].bodyPrefix,
+    bodySuffix: map[locale].bodySuffix,
+  };
 }
 
 function escapeHtml(value: string) {

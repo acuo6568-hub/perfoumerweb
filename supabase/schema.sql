@@ -417,7 +417,7 @@ create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   order_number text not null unique,
-  status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'shipped', 'delivered', 'cancelled', 'refunded')),
+  status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready_for_pickup', 'handed_over', 'ready_for_dispatch', 'out_for_delivery', 'delivered', 'completed', 'cancelled', 'refunded', 'pending', 'processing', 'shipped')),
   payment_method text,
   payment_status text not null default 'pending' check (payment_status in ('pending', 'completed', 'failed', 'refunded')),
   total_amount numeric(10, 2) not null check (total_amount >= 0),
@@ -432,6 +432,16 @@ create table if not exists public.orders (
   updated_at timestamptz not null default timezone('utc', now()),
   completed_at timestamptz
 );
+
+alter table public.orders
+  alter column status set default 'new';
+
+alter table public.orders
+  drop constraint if exists orders_status_check;
+
+alter table public.orders
+  add constraint orders_status_check
+  check (status in ('new', 'confirmed', 'preparing', 'ready_for_pickup', 'handed_over', 'ready_for_dispatch', 'out_for_delivery', 'delivered', 'completed', 'cancelled', 'refunded', 'pending', 'processing', 'shipped'));
 
 create index if not exists orders_user_id_created_at_idx
   on public.orders (user_id, created_at desc);

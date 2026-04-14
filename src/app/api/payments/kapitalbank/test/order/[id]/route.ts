@@ -19,9 +19,10 @@ function normalizeBaseUrl() {
 }
 
 function normalizeCredentials() {
+  // This route is test-only; always use docs BasicAuth credentials.
   return {
-    username: (process.env.KAPITAL_BANK_USERNAME || TEST_USERNAME).trim(),
-    password: (process.env.KAPITAL_BANK_PASSWORD || TEST_PASSWORD).trim(),
+    username: TEST_USERNAME,
+    password: TEST_PASSWORD,
   };
 }
 

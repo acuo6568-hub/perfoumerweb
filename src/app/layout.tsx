@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from "next/font/google";
 
 import { AppShell } from "@/components/AppShell";
-import { AIChatButton } from "@/components/AIChat/AIChatButton";
 import { SiteTracker } from "@/components/analytics/SiteTracker";
 import { ConsoleCredit } from "@/components/ConsoleCredit";
 import { getCurrentLocale } from "@/lib/i18n.server";
@@ -143,7 +142,6 @@ export default async function RootLayout({
         <ConsoleCredit />
         <SiteTracker />
         <AppShell locale={locale}>{children}</AppShell>
-        <AIChatButton locale={locale} />
       </body>
     </html>
   );

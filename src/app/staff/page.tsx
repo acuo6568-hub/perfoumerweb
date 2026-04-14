@@ -7,6 +7,7 @@ import {
   isStaffAuthenticated,
   isStaffConfigured,
 } from "@/lib/admin-auth";
+import { getCurrentLocale } from "@/lib/i18n.server";
 
 export const metadata: Metadata = {
   title: "Staff Portal",
@@ -19,14 +20,19 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function StaffPage() {
+  const locale = await getCurrentLocale();
   const configured = isStaffConfigured() || isAdminConfigured();
   const authenticated = configured
     ? (await isStaffAuthenticated()) || (await isAdminAuthenticated())
     : false;
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1820px] px-3 pb-10 pt-24 sm:px-5 sm:pt-28 lg:px-7 xl:px-9">
-      <StaffOrdersPanelClient configured={configured} initialAuthenticated={authenticated} />
+    <main className="mx-auto min-h-dvh w-full max-w-[1820px] px-3 pb-10 pt-5 sm:px-5 sm:pt-6 lg:px-7 xl:px-9">
+      <StaffOrdersPanelClient
+        configured={configured}
+        initialAuthenticated={authenticated}
+        locale={locale}
+      />
     </main>
   );
 }

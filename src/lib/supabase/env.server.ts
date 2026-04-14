@@ -69,3 +69,40 @@ export function getSupabasePublicConfigFromServer(): SupabasePublicConfig | null
 
   return { url, anonKey };
 }
+
+export type SupabaseServiceConfig = {
+  url: string;
+  serviceRoleKey: string;
+};
+
+export type SupabaseServiceConfigResult = {
+  config: SupabaseServiceConfig | null;
+  missingKeys: string[];
+};
+
+export function getSupabaseServiceConfigFromServerResult(): SupabaseServiceConfigResult {
+  const url = getEnvValue("NEXT_PUBLIC_SUPABASE_URL");
+  const serviceRoleKey = getEnvValue("SUPABASE_SERVICE_ROLE_KEY");
+  const missingKeys: string[] = [];
+
+  if (!url) {
+    missingKeys.push("NEXT_PUBLIC_SUPABASE_URL");
+  }
+
+  if (!serviceRoleKey) {
+    missingKeys.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  if (missingKeys.length) {
+    return { config: null, missingKeys };
+  }
+
+  return {
+    config: { url, serviceRoleKey },
+    missingKeys: [],
+  };
+}
+
+export function getSupabaseServiceConfigFromServer(): SupabaseServiceConfig | null {
+  return getSupabaseServiceConfigFromServerResult().config;
+}

@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { generateOrderNumber } from "@/lib/order-number";
+
 export type OrderItemInput = {
   perfume_slug: string;
   perfume_name: string;
@@ -31,12 +33,7 @@ export async function createOrder(input: CreateOrderInput) {
 
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-  // Generate order number (e.g., ORD-20260413-001234)
-  const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
-  const random = Math.floor(Math.random() * 1000000)
-    .toString()
-    .padStart(6, "0");
-  const orderNumber = `ORD-${date}-${random}`;
+  const orderNumber = generateOrderNumber();
 
   const { data, error } = await supabase
     .from("orders")
@@ -44,7 +41,7 @@ export async function createOrder(input: CreateOrderInput) {
       {
         user_id: input.user_id,
         order_number: orderNumber,
-        status: "processing",
+        status: input.payment_status === "completed" ? "confirmed" : "new",
         payment_method: input.payment_method || "kapital_bank",
         payment_status: input.payment_status || "pending",
         total_amount: input.total_amount,
@@ -90,8 +87,7 @@ export async function updateOrderPaymentStatus(
   };
 
   if (paymentStatus === "completed") {
-    updateData.status = "completed";
-    updateData.completed_at = new Date().toISOString();
+    updateData.status = "confirmed";
   }
 
   if (kapitalPaymentId) {

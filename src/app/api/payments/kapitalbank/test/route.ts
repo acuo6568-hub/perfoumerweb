@@ -179,8 +179,9 @@ async function createPaymentOrder(
   const returnUrl = buildReturnUrl(request, body.returnPath);
 
   const baseUrl = (process.env.KAPITAL_BANK_API_BASE_URL || TEST_API_BASE_URL).trim().replace(/\/+$/, "");
-  const username = (process.env.KAPITAL_BANK_USERNAME || TEST_USERNAME).trim();
-  const password = (process.env.KAPITAL_BANK_PASSWORD || TEST_PASSWORD).trim();
+  // This route is test-only; always use docs BasicAuth credentials.
+  const username = TEST_USERNAME;
+  const password = TEST_PASSWORD;
 
   const providerRequest = {
     order: {

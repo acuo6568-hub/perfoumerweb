@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import type { Locale } from "@/lib/i18n";
+import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 import type { CartItemRow } from "@/types/cart";
@@ -313,6 +314,7 @@ const EMAIL_SENT_STORAGE_KEY = "perfoumer.checkout.email.sent-orders.v1";
 const CART_CLEARED_STORAGE_KEY = "perfoumer.checkout.cart-cleared-orders.v1";
 const ORDER_SAVED_STORAGE_KEY = "perfoumer.checkout.order-saved.v1";
 const ORDER_NUMBER_BY_PAYMENT_STORAGE_KEY = "perfoumer.checkout.order-number-by-payment.v1";
+const KAPITAL_DEBUG_FETCHED_STORAGE_KEY = "perfoumer.checkout.kapital-debug-fetched.v1";
 
 type DraftFieldErrors = {
   fullName?: string;
@@ -349,7 +351,7 @@ function validateDraftAddress(address: Address, copy: Copy): DraftFieldErrors {
     errors.line1 = copy.invalidLine1;
   }
 
-  if (!/^[\p{L}\s.'-]{2,}$/u.test(city)) {
+  if (!resolveAzerbaijanCity(city)) {
     errors.city = copy.invalidCity;
   }
 
@@ -383,13 +385,15 @@ function emptyAddress(): Address {
 }
 
 function normalizeAddressInput(address: Address): Address {
+  const normalizedCity = resolveAzerbaijanCity(address.city);
+
   return {
     ...address,
     fullName: address.fullName.trim(),
     phone: normalizePhone(address.phone.trim()),
     line1: address.line1.trim(),
     line2: address.line2.trim(),
-    city: address.city.trim(),
+    city: normalizedCity,
     postalCode: address.postalCode.trim(),
     country: address.country.trim() || "Azerbaijan",
   };
@@ -447,11 +451,24 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   }, [addresses]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const status =
       searchParams.get("STATUS") ||
       searchParams.get("status") ||
       searchParams.get("Result") ||
       searchParams.get("RESULT");
+    const orderId =
+      searchParams.get("ID") ||
+      searchParams.get("ORDERID") ||
+      searchParams.get("OrderID") ||
+      "";
+    const paymentId =
+      searchParams.get("PAYMENTID") ||
+      searchParams.get("PaymentID") ||
+      searchParams.get("PID") ||
+      searchParams.get("paymentId") ||
+      "";
 
     if (!status) {
       setPaymentResult(null);
@@ -465,6 +482,54 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     setStep(2);
 
     const nextResult = resolvePaymentResultKind(status);
+
+    console.info("[Checkout][Kapital] Callback result", {
+      status,
+      resolvedResult: nextResult,
+      orderId,
+      paymentId,
+    });
+
+    if (orderId) {
+      const debugKey = `${orderId}:${status.trim().toUpperCase()}`;
+      let shouldFetchDebug = true;
+
+      try {
+        const raw = window.sessionStorage.getItem(KAPITAL_DEBUG_FETCHED_STORAGE_KEY);
+        const fetched = raw ? (JSON.parse(raw) as string[]) : [];
+        if (fetched.includes(debugKey)) {
+          shouldFetchDebug = false;
+        } else {
+          window.sessionStorage.setItem(
+            KAPITAL_DEBUG_FETCHED_STORAGE_KEY,
+            JSON.stringify([debugKey, ...fetched].slice(0, 60)),
+          );
+        }
+      } catch {
+        // ignore session storage errors for debug dedupe
+      }
+
+      if (shouldFetchDebug) {
+        void (async () => {
+        try {
+          const response = await fetch(`/api/payments/kapitalbank/test/order/${encodeURIComponent(orderId)}`, {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          const payload = (await response.json().catch(() => null)) as unknown;
+          if (response.ok) {
+            console.info("[Checkout][Kapital] Provider order details", payload);
+          } else {
+            console.warn("[Checkout][Kapital] Provider order details error", payload);
+          }
+        } catch (error) {
+          console.warn("[Checkout][Kapital] Provider order details request failed", error);
+        }
+        })();
+      }
+    }
+
     const timer = window.setTimeout(() => {
       setPaymentResult(nextResult);
       setIsPaymentResultResolving(false);
@@ -1239,7 +1304,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                     <label className="space-y-1 text-sm text-zinc-600"><span>{copy.phone}</span><input value={draftAddress.phone} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, phone: event.target.value })); setDraftErrors((prev) => ({ ...prev, phone: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.phone ? <span className="text-xs text-red-600">{draftErrors.phone}</span> : null}</label>
                     <label className="space-y-1 text-sm text-zinc-600"><span>{copy.line1}</span><input value={draftAddress.line1} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, line1: event.target.value })); setDraftErrors((prev) => ({ ...prev, line1: undefined })); }} placeholder={copy.line1} autoComplete="street-address" className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.line1 ? <span className="text-xs text-red-600">{draftErrors.line1}</span> : null}</label>
                     <label className="space-y-1 text-sm text-zinc-600"><span>{copy.line2}</span><input value={draftAddress.line2} onChange={(event) => setDraftAddress((prev) => ({ ...prev, line2: event.target.value }))} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" /></label>
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.city}</span><input value={draftAddress.city} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, city: event.target.value })); setDraftErrors((prev) => ({ ...prev, city: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.city ? <span className="text-xs text-red-600">{draftErrors.city}</span> : null}</label>
+                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.city}</span><select value={draftAddress.city} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, city: event.target.value })); setDraftErrors((prev) => ({ ...prev, city: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"><option value="">{copy.city}</option>{AZERBAIJAN_CITIES.map((cityName) => (<option key={cityName} value={cityName}>{cityName}</option>))}</select>{draftErrors.city ? <span className="text-xs text-red-600">{draftErrors.city}</span> : null}</label>
                     <label className="space-y-1 text-sm text-zinc-600"><span>{copy.postalCode}</span><input value={draftAddress.postalCode} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, postalCode: event.target.value })); setDraftErrors((prev) => ({ ...prev, postalCode: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.postalCode ? <span className="text-xs text-red-600">{draftErrors.postalCode}</span> : null}</label>
                     <label className="space-y-1 text-sm text-zinc-600 md:col-span-2"><span>{copy.country}</span><input value={draftAddress.country} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, country: event.target.value })); setDraftErrors((prev) => ({ ...prev, country: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.country ? <span className="text-xs text-red-600">{draftErrors.country}</span> : null}</label>
 

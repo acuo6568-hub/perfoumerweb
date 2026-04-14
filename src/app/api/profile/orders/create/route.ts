@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { generateOrderNumber } from "@/lib/order-number";
+
 export const runtime = "nodejs";
 
 type CreateOrderBody = {
@@ -17,14 +19,6 @@ type CreateOrderBody = {
     total_price: number;
   }>;
 };
-
-function generateOrderNumber() {
-  const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
-  const random = Math.floor(Math.random() * 1000000)
-    .toString()
-    .padStart(6, "0");
-  return `ORD-${date}-${random}`;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -109,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentStatus = body.payment_status ?? "completed";
-    const status = paymentStatus === "completed" ? "processing" : "pending";
+    const status = paymentStatus === "completed" ? "confirmed" : "new";
 
     const { data: createdOrder, error: createError } = await writeClient
       .from("orders")

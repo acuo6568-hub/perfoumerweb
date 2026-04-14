@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from "react";
 
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
 import type { Locale } from "@/lib/i18n";
@@ -12,12 +13,11 @@ type AppShellProps = {
   locale: Locale;
 };
 
-export function AppShell({ children, locale }: AppShellProps) {
+export function AppShell({ children, locale: _locale }: AppShellProps) {
   const pathname = usePathname();
-  const isHomePage = pathname === "/";
-  const isQoxunuPage = pathname.startsWith("/qoxunu");
   const [loadedPathname, setLoadedPathname] = useState(pathname);
   const isRouteLoading = loadedPathname !== pathname;
+  const hideNavigationChrome = pathname.startsWith("/staff") || pathname.startsWith("/admin");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -59,16 +59,14 @@ export function AppShell({ children, locale }: AppShellProps) {
         <div className="route-preloader-bar" />
       </div>
       <ScrollRestoreOnNavigation />
-      <Header floating locale={locale} />
+      {hideNavigationChrome ? null : <Header floating locale={_locale} />}
       <div
         key={pathname}
-        className={[
-          "route-page-enter",
-          isHomePage || isQoxunuPage ? "" : "pt-[4.25rem] sm:pt-[6.2rem]",
-        ].join(" ")}
+        className="route-page-enter"
       >
         {children}
       </div>
+      {hideNavigationChrome ? null : <Footer locale={_locale} />}
     </>
   );
 }

@@ -1,0 +1,95 @@
+const AZERBAIJAN_CITY_VALUES = [
+  "Aghcabadi",
+  "Aghdam",
+  "Aghdash",
+  "Aghdara",
+  "Aghjabadi",
+  "Aghstafa",
+  "Agsu",
+  "Astara",
+  "Babek",
+  "Baku",
+  "Balakan",
+  "Barda",
+  "Beylagan",
+  "Bilasuvar",
+  "Dashkasan",
+  "Fuzuli",
+  "Gadabay",
+  "Gakh",
+  "Ganja",
+  "Gazakh",
+  "Gobustan",
+  "Goranboy",
+  "Goychay",
+  "Goygol",
+  "Hajigabul",
+  "Imishli",
+  "Ismayilli",
+  "Jabrayil",
+  "Jalilabad",
+  "Kalbajar",
+  "Kangarli",
+  "Khachmaz",
+  "Khankendi",
+  "Khirdalan",
+  "Khizi",
+  "Khojaly",
+  "Khojavend",
+  "Kurdamir",
+  "Lachin",
+  "Lankaran",
+  "Lerik",
+  "Masalli",
+  "Mingachevir",
+  "Naftalan",
+  "Nakhchivan",
+  "Neftchala",
+  "Oghuz",
+  "Ordubad",
+  "Qabala",
+  "Qakh",
+  "Qax",
+  "Quba",
+  "Qubadli",
+  "Qusar",
+  "Sabirabad",
+  "Sadarak",
+  "Saatli",
+  "Salyan",
+  "Samukh",
+  "Shabran",
+  "Shahbuz",
+  "Shaki",
+  "Shamakhi",
+  "Shamkir",
+  "Sharur",
+  "Shirvan",
+  "Shusha",
+  "Siyazan",
+  "Sumqayit",
+  "Tartar",
+  "Tovuz",
+  "Ujar",
+  "Yardimli",
+  "Yevlakh",
+  "Zangilan",
+  "Zaqatala",
+  "Zardab",
+] as const;
+
+function normalizeCity(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export const AZERBAIJAN_CITIES = [...AZERBAIJAN_CITY_VALUES];
+
+const cityLookup = new Map(AZERBAIJAN_CITIES.map((city) => [normalizeCity(city), city]));
+
+export function isAzerbaijanCity(value: string) {
+  return cityLookup.has(normalizeCity(value));
+}
+
+export function resolveAzerbaijanCity(value: string) {
+  return cityLookup.get(normalizeCity(value)) ?? "";
+}
