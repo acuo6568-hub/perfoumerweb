@@ -73,6 +73,36 @@ type SmartSearchIntent = {
 const PAGE_SIZE = 8;
 const isNonNull = <T,>(value: T | null): value is T => value !== null;
 
+const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
+  ı: "i",
+  İ: "i",
+  ə: "e",
+  Ə: "e",
+  æ: "ae",
+  Æ: "ae",
+  œ: "oe",
+  Œ: "oe",
+  ø: "o",
+  Ø: "o",
+  đ: "d",
+  Đ: "d",
+  ł: "l",
+  Ł: "l",
+  þ: "th",
+  Þ: "th",
+  ð: "d",
+  Ð: "d",
+  ß: "ss",
+};
+
+function foldSearchCharacters(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ıİəƏæÆœŒøØđĐłŁþÞðÐß]/g, (char) => SEARCH_CHAR_FOLD_MAP[char] ?? char)
+    .toLowerCase();
+}
+
 function getStartingPrice(perfume: Perfume) {
   return perfume.sizes[0]?.price ?? Number.POSITIVE_INFINITY;
 }
@@ -82,7 +112,7 @@ function toNoteLabel(slug: string, locale: Locale) {
 }
 
 function parseSmartSearchIntent(rawQuery: string): SmartSearchIntent {
-  const normalized = rawQuery.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ");
+  const normalized = normalizeSearchText(rawQuery);
   const tokens = normalized
     .split(/\s+/)
     .map((token) => token.trim())
@@ -148,14 +178,14 @@ function parseSmartSearchIntent(rawQuery: string): SmartSearchIntent {
 function scoreSmartMatch(perfume: Perfume, intent: SmartSearchIntent): number {
   if (!intent.tokens.length) return 0;
 
-  const name = perfume.name.toLowerCase();
-  const brand = perfume.brand.toLowerCase();
-  const gender = perfume.gender.toLowerCase();
-  const notePool = [
+  const name = normalizeSearchText(perfume.name);
+  const brand = normalizeSearchText(perfume.brand);
+  const gender = normalizeSearchText(perfume.gender);
+  const notePool = normalizeSearchText([
     ...perfume.noteSlugs.top,
     ...perfume.noteSlugs.heart,
     ...perfume.noteSlugs.base,
-  ].join(" ");
+  ].join(" "));
 
   let score = 0;
 
@@ -180,8 +210,7 @@ function scoreSmartMatch(perfume: Perfume, intent: SmartSearchIntent): number {
 }
 
 function normalizeSearchText(value: string) {
-  return value
-    .toLowerCase()
+  return foldSearchCharacters(value)
     .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -460,7 +489,7 @@ export function CatalogClient({
   }, [perfumes]);
 
   const searchSuggestions = useMemo(() => {
-    const normalizedQuery = suggestionQuery.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(suggestionQuery);
     if (!normalizedQuery || normalizedQuery.length < 2) {
       return [] as SearchSuggestion[];
     }
@@ -468,7 +497,7 @@ export function CatalogClient({
     const brandSuggestions = brands
       .filter((brand) => brand !== "all")
       .map((brand): SearchSuggestion | null => {
-        const normalizedBrand = brand.toLowerCase();
+        const normalizedBrand = normalizeSearchText(brand);
         const startsWith = normalizedBrand.startsWith(normalizedQuery);
         const includes = normalizedBrand.includes(normalizedQuery);
         if (!startsWith && !includes) {
@@ -476,7 +505,7 @@ export function CatalogClient({
         }
 
         const brandProductCount = perfumes.filter(
-          (item) => item.brand.toLowerCase() === normalizedBrand,
+          (item) => normalizeSearchText(item.brand) === normalizedBrand,
         ).length;
 
         let score = startsWith ? 160 : 110;
@@ -497,8 +526,8 @@ export function CatalogClient({
 
     const perfumeSuggestions = perfumes
       .map((perfume): SearchSuggestion | null => {
-        const normalizedName = perfume.name.toLowerCase();
-        const normalizedBrand = perfume.brand.toLowerCase();
+        const normalizedName = normalizeSearchText(perfume.name);
+        const normalizedBrand = normalizeSearchText(perfume.brand);
 
         const nameStartsWith = normalizedName.startsWith(normalizedQuery);
         const nameIncludes = normalizedName.includes(normalizedQuery);
@@ -582,10 +611,11 @@ export function CatalogClient({
 
       const matchesGender =
         selectedGender === "all" ||
-        perfume.gender.toLowerCase() === selectedGender.toLowerCase();
+        normalizeSearchText(perfume.gender) === normalizeSearchText(selectedGender);
 
       const matchesBrand =
-        selectedBrand === "all" || perfume.brand.toLowerCase() === selectedBrand.toLowerCase();
+        selectedBrand === "all" ||
+        normalizeSearchText(perfume.brand) === normalizeSearchText(selectedBrand);
 
       const matchesTopNote =
         selectedTopNote === "all" || perfume.noteSlugs.top.includes(selectedTopNote);
@@ -603,7 +633,7 @@ export function CatalogClient({
         smartSearchIntent.minPrice === null || startingPrice >= smartSearchIntent.minPrice;
       const matchesSmartMaxPrice =
         smartSearchIntent.maxPrice === null || startingPrice <= smartSearchIntent.maxPrice;
-      const perfumeGender = perfume.gender.toLowerCase();
+      const perfumeGender = normalizeSearchText(perfume.gender);
       const matchesSmartGender =
         smartSearchIntent.genderHint === "all" ||
         (smartSearchIntent.genderHint === "male" && /(men|male|kişi|man)/iu.test(perfumeGender)) ||
@@ -754,11 +784,11 @@ export function CatalogClient({
   const visiblePerfumes = filteredPerfumes.slice(0, visibleCount);
   const hasMore = visibleCount < filteredPerfumes.length;
   const hasSearchQuery = query.trim().length > 0;
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = normalizeSearchText(query);
   const isQueryMirroringBrand =
     normalizedQuery.length > 0 &&
     selectedBrand !== "all" &&
-    normalizedQuery === selectedBrand.toLowerCase();
+    normalizedQuery === normalizeSearchText(selectedBrand);
   const activeFilterCount = [
     query.trim() !== "" && !isQueryMirroringBrand,
     selectedGender !== "all",
