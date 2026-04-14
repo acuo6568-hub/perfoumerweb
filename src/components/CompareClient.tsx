@@ -154,6 +154,38 @@ const copyByLocale: Record<Locale, Copy> = {
 const SLOT_COUNT = 3;
 const ETIRSHAH_BRAND = "etirshah parfum";
 
+const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
+  ı: "i",
+  İ: "i",
+  ə: "e",
+  Ə: "e",
+  æ: "ae",
+  Æ: "ae",
+  œ: "oe",
+  Œ: "oe",
+  ø: "o",
+  Ø: "o",
+  đ: "d",
+  Đ: "d",
+  ł: "l",
+  Ł: "l",
+  þ: "th",
+  Þ: "th",
+  ð: "d",
+  Ð: "d",
+  ß: "ss",
+};
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ıİəƏæÆœŒøØđĐłŁþÞðÐß]/g, (char) => SEARCH_CHAR_FOLD_MAP[char] ?? char)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const toReadableNote = (value: string) =>
   value
     .split("-")
@@ -181,8 +213,8 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
     const byNameAndBrand = new Map<string, Perfume>();
 
     for (const perfume of perfumes) {
-      const nameKey = perfume.name.trim().toLowerCase();
-      const brandKey = (perfume.brand || "").trim().toLowerCase();
+      const nameKey = normalizeSearchText(perfume.name);
+      const brandKey = normalizeSearchText(perfume.brand || "");
       const dedupeKey = `${nameKey}::${brandKey}`;
       const previous = byNameAndBrand.get(dedupeKey);
 
@@ -202,13 +234,13 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
     const deduped = Array.from(byNameAndBrand.values());
     const namesWithNonEtirshah = new Set(
       deduped
-        .filter((item) => (item.brand || "").trim().toLowerCase() !== ETIRSHAH_BRAND)
-        .map((item) => item.name.trim().toLowerCase()),
+        .filter((item) => normalizeSearchText(item.brand || "") !== ETIRSHAH_BRAND)
+        .map((item) => normalizeSearchText(item.name)),
     );
 
     return deduped.filter((item) => {
-      const isEtirshah = (item.brand || "").trim().toLowerCase() === ETIRSHAH_BRAND;
-      const nameKey = item.name.trim().toLowerCase();
+      const isEtirshah = normalizeSearchText(item.brand || "") === ETIRSHAH_BRAND;
+      const nameKey = normalizeSearchText(item.name);
       return !isEtirshah || !namesWithNonEtirshah.has(nameKey);
     });
   }, [perfumes]);
@@ -219,7 +251,7 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
     () =>
       pickerPerfumes.map((item) => ({
         perfume: item,
-        searchText: `${item.name} ${item.brand}`.toLowerCase(),
+        searchText: normalizeSearchText(`${item.name} ${item.brand}`),
       })),
     [pickerPerfumes],
   );
@@ -236,7 +268,7 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
     () =>
       Array.from({ length: SLOT_COUNT }, (_, slotIndex) => {
         const currentSlotSlug = selectedSlugs[slotIndex] ?? "";
-        const currentQuery = slotQueries[slotIndex]?.trim().toLowerCase() ?? "";
+        const currentQuery = normalizeSearchText(slotQueries[slotIndex] ?? "");
 
         return searchablePerfumes
           .filter(({ perfume, searchText }) => {

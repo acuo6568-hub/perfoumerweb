@@ -37,10 +37,42 @@ const searchCopyByLocale: Record<
   },
 };
 
+const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
+  ı: "i",
+  İ: "i",
+  ə: "e",
+  Ə: "e",
+  æ: "ae",
+  Æ: "ae",
+  œ: "oe",
+  Œ: "oe",
+  ø: "o",
+  Ø: "o",
+  đ: "d",
+  Đ: "d",
+  ł: "l",
+  Ł: "l",
+  þ: "th",
+  Þ: "th",
+  ð: "d",
+  Ð: "d",
+  ß: "ss",
+};
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ıİəƏæÆœŒøØđĐłŁþÞðÐß]/g, (char) => SEARCH_CHAR_FOLD_MAP[char] ?? char)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function suggestionScore(product: ProductOption, query: string): number {
-  const normalizedQuery = query.toLowerCase().trim();
-  const normalizedName = product.name.toLowerCase();
-  const normalizedBrand = product.brand.toLowerCase();
+  const normalizedQuery = normalizeSearchText(query);
+  const normalizedName = normalizeSearchText(product.name);
+  const normalizedBrand = normalizeSearchText(product.brand);
   const haystack = `${normalizedName} ${normalizedBrand}`;
   const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
 
@@ -83,7 +115,7 @@ export function HomeFeaturedSearch({ locale, products }: HomeFeaturedSearchProps
   }, [query]);
 
   const suggestions = useMemo(() => {
-    const normalizedQueryValue = debouncedQuery.trim().toLowerCase();
+    const normalizedQueryValue = normalizeSearchText(debouncedQuery);
 
     if (!normalizedQueryValue || normalizedQueryValue.length < 2) {
       return [] as ProductOption[];

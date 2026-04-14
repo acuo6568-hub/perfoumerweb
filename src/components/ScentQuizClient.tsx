@@ -360,8 +360,36 @@ const INITIAL_ANSWERS: QuizAnswers = {
   longevity: "",
 };
 
+const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
+  ı: "i",
+  İ: "i",
+  ə: "e",
+  Ə: "e",
+  æ: "ae",
+  Æ: "ae",
+  œ: "oe",
+  Œ: "oe",
+  ø: "o",
+  Ø: "o",
+  đ: "d",
+  Đ: "d",
+  ł: "l",
+  Ł: "l",
+  þ: "th",
+  Þ: "th",
+  ð: "d",
+  Ð: "d",
+  ß: "ss",
+};
+
 function normalize(value: string) {
-  return value.trim().toLowerCase();
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ıİəƏæÆœŒøØđĐłŁþÞðÐß]/g, (char) => SEARCH_CHAR_FOLD_MAP[char] ?? char)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function sanitizeUserFacingText(value: string) {
