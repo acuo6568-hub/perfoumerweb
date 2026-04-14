@@ -946,6 +946,196 @@ function buildCartTotalReply(locale: string, totalAmount: number, lineCount: num
   return `Your current cart total is ${rounded} AZN.`;
 }
 
+type ParsedPriceLine = {
+  fragment: string;
+  sizeMl: number;
+  quantity: number;
+};
+
+type ResolvedPriceLine = {
+  perfume: Perfume;
+  sizeMl: number;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
+function isPriceCalculationQuestion(message: string): boolean {
+  const normalized = normalizeText(message);
+  const asksTotal =
+    /(how much|total|sum|worth|price|cost|qiymet|qiymət|cemi|cəmi|nece eder|neçə edər|сколько|итог|общ|стоим|цена)/iu.test(
+      normalized
+    );
+  const hasSizeSignal = /\b\d{2,3}\s*ml\b/iu.test(normalized);
+  const asksCart = /(cart|sebet|səbət|basket|корзин)/iu.test(normalized);
+
+  return asksTotal && hasSizeSignal && !asksCart;
+}
+
+function cleanPriceFragment(raw: string): string {
+  const cleaned = normalizeText(raw)
+    .replace(/\b(how much|total|sum|worth|price|cost|qiymet|qiymət|cemi|cəmi|nece|neçə|eder|edər|сколько|итог|общ|стоим|цена|for|of|is|will be|please|hesabla|hesab|calculate|calc)\b/giu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned;
+}
+
+function extractPriceLines(message: string): ParsedPriceLine[] {
+  const normalized = normalizeText(message)
+    .replace(/[;|]/g, ",")
+    .replace(/\s+(and|ve|və|plus|\+)\s+/giu, ", ");
+
+  const chunks = normalized
+    .split(",")
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  const lines: ParsedPriceLine[] = [];
+
+  for (const chunk of chunks) {
+    const sizeMatch = chunk.match(/\b(\d{2,3})\s*ml\b/iu);
+    if (!sizeMatch) continue;
+
+    const sizeMl = Number(sizeMatch[1]);
+    if (!Number.isFinite(sizeMl) || sizeMl <= 0) continue;
+
+    const qtyPrefix = chunk.match(/^\s*(\d{1,2})\s*(?:x|×)\s*/iu);
+    const qtyNearSize = chunk.match(/\b(\d{1,2})\s*(?:x|×)\s*\d{2,3}\s*ml\b/iu);
+    const qtySuffix = chunk.match(/\b\d{2,3}\s*ml\s*(?:x|×)\s*(\d{1,2})\b/iu);
+
+    const quantity = Math.max(
+      1,
+      Math.min(
+        20,
+        Number(qtyPrefix?.[1] ?? qtyNearSize?.[1] ?? qtySuffix?.[1] ?? 1)
+      )
+    );
+
+    const fragment = cleanPriceFragment(
+      chunk
+        .replace(/\b\d{2,3}\s*ml\b/giu, " ")
+        .replace(/^\s*\d{1,2}\s*(?:x|×)\s*/giu, " ")
+        .replace(/\s*(?:x|×)\s*\d{1,2}\s*$/giu, " ")
+    );
+
+    if (!fragment || fragment.length < 2) continue;
+
+    lines.push({ fragment, sizeMl, quantity });
+  }
+
+  return lines;
+}
+
+function resolvePriceLine(line: ParsedPriceLine, perfumes: Perfume[]): ResolvedPriceLine | null {
+  const ranked = perfumes
+    .map((perfume) => ({ perfume, score: scorePerfume(perfume, line.fragment) }))
+    .sort((left, right) => right.score - left.score);
+
+  const top = ranked[0];
+  if (!top || top.score < 180) {
+    return null;
+  }
+
+  const size = top.perfume.sizes.find((entry) => entry.ml === line.sizeMl);
+  if (!size) {
+    return {
+      perfume: top.perfume,
+      sizeMl: line.sizeMl,
+      quantity: line.quantity,
+      unitPrice: -1,
+      lineTotal: -1,
+    };
+  }
+
+  const lineTotal = Number((size.price * line.quantity).toFixed(2));
+  return {
+    perfume: top.perfume,
+    sizeMl: line.sizeMl,
+    quantity: line.quantity,
+    unitPrice: size.price,
+    lineTotal,
+  };
+}
+
+function buildPriceCalculationReply(locale: string, resolved: ResolvedPriceLine[], unresolved: ParsedPriceLine[]): string {
+  const priced = resolved.filter((item) => item.unitPrice >= 0);
+  const missingSize = resolved.filter((item) => item.unitPrice < 0);
+
+  if (!priced.length) {
+    if (locale === "az") {
+      return "Məbləği hesablamaq üçün məhsul adını və ölçünü belə yazın: `2x Dior Sauvage 100ml, 1x Lattafa Khamrah 100ml`.";
+    }
+    if (locale === "ru") {
+      return "Чтобы посчитать сумму, напишите позиции в формате: `2x Dior Sauvage 100ml, 1x Lattafa Khamrah 100ml`.";
+    }
+    return "To calculate total, send items like: `2x Dior Sauvage 100ml, 1x Lattafa Khamrah 100ml`.";
+  }
+
+  const total = Number(priced.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(2));
+
+  const lines = priced.map((item, index) => {
+    const perfumeLabel = `${item.perfume.brand} ${item.perfume.name}`;
+    return `${index + 1}. **${perfumeLabel}** ${item.sizeMl}ml x${item.quantity} = ${item.lineTotal} AZN (${item.unitPrice} AZN each)`;
+  });
+
+  const warnings: string[] = [];
+  if (missingSize.length > 0) {
+    for (const item of missingSize.slice(0, 3)) {
+      const available = item.perfume.sizes.map((size) => `${size.ml}ml`).join(", ");
+      const label = `${item.perfume.brand} ${item.perfume.name}`;
+      if (locale === "az") {
+        warnings.push(`- **${label}** üçün ${item.sizeMl}ml yoxdur. Mövcud ölçülər: ${available}`);
+      } else if (locale === "ru") {
+        warnings.push(`- Для **${label}** нет ${item.sizeMl}ml. Доступные объёмы: ${available}`);
+      } else {
+        warnings.push(`- **${label}** does not have ${item.sizeMl}ml. Available sizes: ${available}`);
+      }
+    }
+  }
+
+  if (unresolved.length > 0) {
+    const unresolvedList = unresolved.slice(0, 3).map((item) => `${item.fragment} ${item.sizeMl}ml`).join("; ");
+    if (locale === "az") {
+      warnings.push(`- Bəzi sətirləri tanımadım: ${unresolvedList}`);
+    } else if (locale === "ru") {
+      warnings.push(`- Некоторые позиции не распознаны: ${unresolvedList}`);
+    } else {
+      warnings.push(`- Some lines could not be recognized: ${unresolvedList}`);
+    }
+  }
+
+  if (locale === "az") {
+    return [`Hesabladım:`, ...lines, ``, `**Ümumi: ${total} AZN**`, warnings.length ? "" : "", ...warnings].join("\n");
+  }
+  if (locale === "ru") {
+    return [`Посчитал:`, ...lines, ``, `**Итого: ${total} AZN**`, warnings.length ? "" : "", ...warnings].join("\n");
+  }
+
+  return [`Calculated total:`, ...lines, ``, `**Total: ${total} AZN**`, warnings.length ? "" : "", ...warnings].join("\n");
+}
+
+function tryBuildPriceCalculationReply(locale: string, message: string, perfumes: Perfume[]): string | null {
+  if (!isPriceCalculationQuestion(message)) return null;
+
+  const parsedLines = extractPriceLines(message);
+  if (!parsedLines.length) return null;
+
+  const resolved: ResolvedPriceLine[] = [];
+  const unresolved: ParsedPriceLine[] = [];
+
+  for (const line of parsedLines) {
+    const resolvedLine = resolvePriceLine(line, perfumes);
+    if (!resolvedLine) {
+      unresolved.push(line);
+      continue;
+    }
+    resolved.push(resolvedLine);
+  }
+
+  return buildPriceCalculationReply(locale, resolved, unresolved);
+}
+
 const FACET_KEYWORDS: Record<string, string[]> = {
   unisex: ["unisex", "uniseks", "унисекс"],
   women: ["women", "woman", "female", "qadin", "qadın", "жен", "женский"],
@@ -2130,6 +2320,10 @@ export async function POST(request: Request) {
 
     // Load catalog for context
     const perfumes = await loadPerfumes();
+    const deterministicPriceReply = tryBuildPriceCalculationReply(locale, message, perfumes);
+    if (deterministicPriceReply) {
+      return NextResponse.json({ response: deterministicPriceReply, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
     const brands = [...new Set(perfumes.map((p) => p.brand))].slice(0, 25);
     const relevantCatalogContext = buildCatalogContext(message, perfumes);
 

@@ -217,6 +217,59 @@ before update on public.abandoned_cart_recovery
 for each row
 execute function public.set_updated_at();
 
+create or replace function public.get_shared_wishlist(p_token text)
+returns table (
+  user_id uuid,
+  allow_additions boolean,
+  perfume_slug text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    share.user_id,
+    share.allow_additions,
+    item.perfume_slug
+  from public.wishlist_shares as share
+  left join public.wishlists as item
+    on item.user_id = share.user_id
+  where share.token = p_token;
+$$;
+
+grant execute on function public.get_shared_wishlist(text) to anon, authenticated;
+
+create or replace function public.add_to_shared_wishlist(p_token text, p_perfume_slug text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  share_owner uuid;
+  additions_allowed boolean;
+begin
+  select share.user_id, share.allow_additions
+  into share_owner, additions_allowed
+  from public.wishlist_shares as share
+  where share.token = p_token;
+
+  if share_owner is null then
+    raise exception 'share_not_found';
+  end if;
+
+  if not additions_allowed then
+    raise exception 'additions_not_allowed';
+  end if;
+
+  insert into public.wishlists (user_id, perfume_slug)
+  values (share_owner, lower(trim(p_perfume_slug)))
+  on conflict (user_id, perfume_slug) do nothing;
+end;
+$$;
+
+grant execute on function public.add_to_shared_wishlist(text, text) to anon, authenticated;
+
 alter table public.comments enable row level security;
 alter table public.wishlists enable row level security;
 alter table public.wishlist_shares enable row level security;
