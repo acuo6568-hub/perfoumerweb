@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import { getPerfumes } from "@/lib/catalog";
-import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 
 type Params = {
   params: Promise<{ token: string }>;
@@ -10,10 +10,10 @@ type Params = {
 
 export async function POST(request: NextRequest, { params }: Params) {
   const { token } = await params;
-  const config = getSupabasePublicConfigFromServer();
+  const config = getSupabaseServiceConfigFromServer();
 
   if (!config) {
-    return NextResponse.json({ error: "public_config_missing" }, { status: 500 });
+    return NextResponse.json({ error: "service_config_missing" }, { status: 500 });
   }
 
   let payload: unknown;
@@ -38,22 +38,33 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "invalid_perfume_slug" }, { status: 400 });
   }
 
-  const supabase = createClient(config.url, config.anonKey);
+  const supabase = createClient(config.url, config.serviceRoleKey);
 
-  const { error: insertError } = await supabase.rpc("add_to_shared_wishlist", {
-    p_token: token,
-    p_perfume_slug: perfumeSlug,
-  });
+  const { data: shareRow, error: shareError } = await supabase
+    .from("wishlist_shares")
+    .select("user_id,allow_additions")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (shareError || !shareRow?.user_id) {
+    return NextResponse.json({ error: "share_not_found" }, { status: 404 });
+  }
+
+  if (!shareRow.allow_additions) {
+    return NextResponse.json({ error: "additions_not_allowed" }, { status: 403 });
+  }
+
+  const { error: insertError } = await supabase
+    .from("wishlists")
+    .upsert(
+      {
+        user_id: shareRow.user_id,
+        perfume_slug: perfumeSlug,
+      },
+      { onConflict: "user_id,perfume_slug", ignoreDuplicates: true },
+    );
 
   if (insertError) {
-    if (insertError.message.includes("share_not_found")) {
-      return NextResponse.json({ error: "share_not_found" }, { status: 404 });
-    }
-
-    if (insertError.message.includes("additions_not_allowed")) {
-      return NextResponse.json({ error: "additions_not_allowed" }, { status: 403 });
-    }
-
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
 

@@ -6,7 +6,7 @@ import { SharedWishlistViewClient } from "@/components/community/SharedWishlistV
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import type { Locale } from "@/lib/i18n";
-import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 
 export const metadata: Metadata = {
   title: "Shared Wishlist",
@@ -79,7 +79,7 @@ export default async function SharedWishlistPage({ params }: PageProps) {
   const copy = pageCopy[locale];
 
   const perfumes = await getPerfumes();
-  const config = getSupabasePublicConfigFromServer();
+  const config = getSupabaseServiceConfigFromServer();
 
   if (!config) {
     return (
@@ -97,12 +97,15 @@ export default async function SharedWishlistPage({ params }: PageProps) {
     );
   }
 
-  const supabase = createClient(config.url, config.anonKey);
-  const { data: sharedRows, error: sharedRowsError } = await supabase
-    .rpc("get_shared_wishlist", { p_token: token })
-    .returns<Array<{ user_id: string; allow_additions: boolean; perfume_slug: string | null }>>();
+  const supabase = createClient(config.url, config.serviceRoleKey);
 
-  if (sharedRowsError || !sharedRows?.length || !sharedRows[0]?.user_id) {
+  const { data: shareRow, error: shareError } = await supabase
+    .from("wishlist_shares")
+    .select("user_id,allow_additions")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (shareError || !shareRow?.user_id) {
     return (
       <div className="bg-[#f3f3f2]">
         <div className="mx-auto max-w-[1540px] px-6 pb-14 md:px-10">
@@ -117,10 +120,15 @@ export default async function SharedWishlistPage({ params }: PageProps) {
       </div>
     );
   }
-  const allowAdditions = Boolean(sharedRows[0].allow_additions);
+
+  const allowAdditions = Boolean(shareRow.allow_additions);
 
   const slugs = new Set(
-    sharedRows
+    ((await supabase
+      .from("wishlists")
+      .select("perfume_slug")
+      .eq("user_id", shareRow.user_id)
+      .order("created_at", { ascending: false })).data as Array<{ perfume_slug?: string }> | null ?? [])
       .map((row) => row.perfume_slug)
       .filter((slug): slug is string => typeof slug === "string" && slug.length > 0),
   );
