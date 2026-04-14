@@ -23,11 +23,6 @@ export function Hero({ locale }: HeroProps) {
       <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[30%] bg-gradient-to-l from-[#c5d0eb]/18 via-[#c5d0eb]/8 to-transparent xl:block" />
       <div className="hero-grain pointer-events-none absolute inset-0 opacity-[0.16]" />
 
-      <div className="hero-aura-float pointer-events-none absolute -left-16 bottom-[-16%] h-[64%] w-[42%] rounded-full bg-[#f7d2af]/48 blur-3xl" />
-      <div className="hero-aura-float-delayed pointer-events-none absolute left-[42%] top-[4%] hidden h-36 w-36 rounded-full bg-[#fff3e4]/42 blur-3xl xl:block" />
-      <div className="hero-aura-float pointer-events-none absolute -right-16 top-[10%] hidden h-44 w-44 rounded-full bg-[#d3def3]/30 blur-3xl xl:block" />
-      <div className="hero-aura-float-delayed pointer-events-none absolute right-[14%] bottom-[8%] hidden h-48 w-48 rounded-full bg-[#f2cab2]/24 blur-3xl xl:block" />
-
       <div className="relative z-[3] mx-auto flex h-full max-w-[1540px] items-start px-6 py-16 text-white md:px-10 md:py-20 xl:py-24">
         <div className="max-w-[46rem] pt-28 md:pt-32 xl:max-w-[50rem] xl:pt-36">
           <p className="hero-fade-up hero-delay-1 mb-3 text-sm tracking-[0.2em] text-white/80 uppercase">

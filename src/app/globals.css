@@ -22,9 +22,229 @@ html {
 }
 
 body {
+  position: relative;
+  overflow-x: clip;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
+}
+
+.site-side-ornaments {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: clip;
+}
+
+.site-sketch-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: clip;
+}
+
+.site-sketch-wash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 54%;
+  bottom: 0;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(ellipse at 12% 68%, rgba(115, 115, 124, 0.09) 0%, rgba(115, 115, 124, 0) 38%),
+    radial-gradient(ellipse at 82% 74%, rgba(115, 115, 124, 0.09) 0%, rgba(115, 115, 124, 0) 34%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23858690' stroke-opacity='0.18' stroke-width='0.9' stroke-linecap='round'%3E%3Cpath d='M18 62c28-20 56-30 90-28 26 2 47 12 66 30'/%3E%3Cpath d='M196 36c28 14 44 36 52 66'/%3E%3Cpath d='M88 186c24-8 42-4 58 10'/%3E%3Cpath d='M52 250c26-22 58-30 98-26'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%, 100% 100%, 320px 320px;
+  background-repeat: no-repeat, no-repeat, repeat;
+  mix-blend-mode: multiply;
+}
+
+.site-side-ornament {
+  position: absolute;
+  width: clamp(176px, 14vw, 238px);
+  height: clamp(250px, 21vw, 340px);
+  opacity: 0.78;
+}
+
+.site-side-ornament-left {
+  left: clamp(-72px, -5.2vw, -20px);
+}
+
+.site-side-ornament-right {
+  right: clamp(-72px, -5.2vw, -20px);
+}
+
+.site-side-ornament-bloom {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.94;
+}
+
+.site-side-ornament-right .site-side-ornament-bloom {
+  transform-origin: center;
+}
+
+.site-side-ornament-variant-a {
+  width: clamp(182px, 14.2vw, 244px);
+  height: clamp(264px, 22.2vw, 356px);
+}
+
+.site-side-ornament-left.site-side-ornament-variant-a {
+  top: 59%;
+}
+
+.site-side-ornament-right.site-side-ornament-variant-a {
+  top: 63%;
+}
+
+.site-side-ornament-variant-b {
+  width: clamp(164px, 12.8vw, 210px);
+  height: clamp(236px, 18.8vw, 296px);
+  opacity: 0.62;
+}
+
+.site-side-ornament-variant-c {
+  width: clamp(134px, 10.4vw, 176px);
+  height: clamp(188px, 14.4vw, 236px);
+  opacity: 0.56;
+}
+
+.site-side-ornament-variant-d {
+  width: clamp(142px, 11.2vw, 188px);
+  height: clamp(204px, 16vw, 262px);
+  opacity: 0.52;
+}
+
+.site-side-ornament-variant-e {
+  width: clamp(120px, 9.6vw, 162px);
+  height: clamp(176px, 13.8vw, 224px);
+  opacity: 0.5;
+}
+
+.site-side-ornament-left.site-side-ornament-variant-b {
+  top: 78%;
+}
+
+.site-side-ornament-right.site-side-ornament-variant-b {
+  top: 85%;
+}
+
+.site-side-ornament-left.site-side-ornament-variant-c {
+  top: 97%;
+}
+
+.site-side-ornament-right.site-side-ornament-variant-c {
+  top: 107%;
+}
+
+.site-side-ornament-left.site-side-ornament-variant-d {
+  top: 116%;
+}
+
+.site-side-ornament-right.site-side-ornament-variant-d {
+  top: 124%;
+}
+
+.site-side-ornament-left.site-side-ornament-variant-e {
+  top: 133%;
+}
+
+.site-side-ornament-right.site-side-ornament-variant-e {
+  top: 141%;
+}
+
+.site-side-ornament-variant-a .site-side-ornament-bloom {
+  background-image: url("/ornaments/botanical-branch-a.svg");
+}
+
+.site-side-ornament-variant-b .site-side-ornament-bloom {
+  background-image: url("/ornaments/botanical-branch-b.svg");
+}
+
+.site-side-ornament-variant-c .site-side-ornament-bloom {
+  background-image: url("/ornaments/botanical-branch-c.svg");
+}
+
+.site-side-ornament-variant-d .site-side-ornament-bloom {
+  background-image: url("/ornaments/perfume-bottle-line.svg");
+}
+
+.site-side-ornament-variant-e .site-side-ornament-bloom {
+  background-image: url("/ornaments/perfume-atomizer.svg");
+}
+
+.site-side-ornament-left.site-side-ornament-variant-a .site-side-ornament-bloom {
+  transform: rotate(-14deg);
+}
+
+.site-side-ornament-right.site-side-ornament-variant-a .site-side-ornament-bloom {
+  transform: scaleX(-1) rotate(4deg);
+}
+
+.site-side-ornament-left.site-side-ornament-variant-b .site-side-ornament-bloom {
+  transform: rotate(10deg);
+}
+
+.site-side-ornament-right.site-side-ornament-variant-b .site-side-ornament-bloom {
+  transform: scaleX(-1) rotate(18deg);
+}
+
+.site-side-ornament-left.site-side-ornament-variant-c .site-side-ornament-bloom {
+  transform: rotate(-22deg);
+}
+
+.site-side-ornament-right.site-side-ornament-variant-c .site-side-ornament-bloom {
+  transform: scaleX(-1) rotate(14deg);
+}
+
+.site-side-ornament-left.site-side-ornament-variant-d .site-side-ornament-bloom {
+  background-image: url("/ornaments/botanical-flower-d.svg");
+  transform: rotate(-6deg);
+}
+
+.site-side-ornament-right.site-side-ornament-variant-d .site-side-ornament-bloom {
+  transform: rotate(9deg);
+}
+
+.site-side-ornament-left.site-side-ornament-variant-e .site-side-ornament-bloom {
+  background-image: url("/ornaments/botanical-twig-e.svg");
+  transform: rotate(8deg);
+}
+
+.site-side-ornament-right.site-side-ornament-variant-e .site-side-ornament-bloom {
+  transform: scaleX(-1) rotate(-8deg);
+}
+
+@media (max-width: 1023px) {
+  .site-side-ornaments,
+  .site-sketch-layer {
+    display: none;
+  }
+}
+
+@media (max-width: 1680px) {
+  .site-side-ornament {
+    opacity: 0.58;
+  }
+}
+
+@media (max-width: 1400px) {
+  .site-side-ornament-left {
+    left: -102px;
+  }
+
+  .site-side-ornament-right {
+    right: -102px;
+  }
+
+  .site-side-ornament {
+    opacity: 0.5;
+  }
 }
 
 input:not([type="checkbox"]):not([type="radio"]),
@@ -237,35 +457,35 @@ h6 {
 }
 
 .hero-shell {
-  height: 680px;
-  min-height: 680px;
+  height: min(680px, calc(100svh - 88px));
+  min-height: 560px;
 }
 
 @media (min-width: 640px) {
   .hero-shell {
-    height: 720px;
-    min-height: 720px;
+    height: min(720px, calc(100svh - 96px));
+    min-height: 600px;
   }
 }
 
 @media (min-width: 768px) {
   .hero-shell {
-    height: 760px;
-    min-height: 760px;
+    height: min(760px, calc(100svh - 106px));
+    min-height: 620px;
   }
 }
 
 @media (min-width: 1280px) {
   .hero-shell {
-    height: 820px;
-    min-height: 820px;
+    height: min(820px, calc(100svh - 118px));
+    min-height: 660px;
   }
 }
 
 @media (min-width: 1536px) {
   .hero-shell {
-    height: 860px;
-    min-height: 860px;
+    height: min(860px, calc(100svh - 132px));
+    min-height: 700px;
   }
 }
 
@@ -449,19 +669,118 @@ h6 {
 
 .header-shell-glow::before {
   inset: 1px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  opacity: 0.85;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  opacity: 0.72;
 }
 
 .header-shell-glow::after {
   background: linear-gradient(
     115deg,
-    rgba(255, 255, 255, 0.24) 0%,
-    rgba(255, 255, 255, 0.04) 36%,
-    rgba(255, 255, 255, 0.16) 100%
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.03) 38%,
+    rgba(255, 255, 255, 0.1) 100%
   );
   mix-blend-mode: screen;
-  opacity: 0.6;
+  opacity: 0.42;
+}
+
+@keyframes brandLogoDrift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.brand-marquee-mask {
+  position: relative;
+  overflow: hidden;
+  padding-block: 0.2rem;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 1) 10%, rgba(0, 0, 0, 1) 90%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 1) 10%, rgba(0, 0, 0, 1) 90%, transparent 100%);
+}
+
+.brand-marquee-mask::before,
+.brand-marquee-mask::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  width: clamp(44px, 7vw, 110px);
+  pointer-events: none;
+  filter: none;
+}
+
+.brand-marquee-mask::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(243, 243, 242, 0.96) 0%, rgba(243, 243, 242, 0.58) 46%, rgba(243, 243, 242, 0) 100%);
+}
+
+.brand-marquee-mask::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(243, 243, 242, 0.96) 0%, rgba(243, 243, 242, 0.58) 46%, rgba(243, 243, 242, 0) 100%);
+}
+
+.brand-marquee-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 1.6rem;
+  animation: brandLogoDrift 160s linear infinite;
+  will-change: transform;
+}
+
+.brand-logo-chip {
+  display: inline-flex;
+  min-width: 94px;
+  height: 34px;
+  padding-inline: 0.35rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brand-logo-chip-link {
+  opacity: 0.72;
+  color: inherit;
+  transition:
+    opacity 240ms ease,
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.brand-logo-chip-link:hover {
+  opacity: 1;
+  transform: translateY(-0.5px);
+}
+
+.brand-logo-chip-link:focus-visible {
+  outline: 1px solid rgba(82, 82, 91, 0.46);
+  outline-offset: 2px;
+}
+
+.brand-logo-image {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  filter: grayscale(1) contrast(0.92) brightness(0.7);
+  opacity: 0.76;
+}
+
+.brand-logo-wordmark {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(63, 63, 70, 0.75);
 }
 
 @keyframes detailPageIn {
@@ -498,6 +817,10 @@ h6 {
 
 @media (prefers-reduced-motion: reduce) {
   .route-page-enter {
+    animation: none;
+  }
+
+  .brand-marquee-track {
     animation: none;
   }
 
@@ -1003,6 +1326,27 @@ h6 {
 .hero-aura-float-delayed {
   animation: heroAuraFloat 8.4s ease-in-out infinite;
   animation-delay: 900ms;
+}
+
+.hero-aura-orb {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.hero-aura-orb-warm {
+  background-image: radial-gradient(circle at 48% 50%, rgba(247, 210, 175, 0.34) 0%, rgba(247, 210, 175, 0.18) 42%, rgba(247, 210, 175, 0) 74%);
+}
+
+.hero-aura-orb-soft {
+  background-image: radial-gradient(circle at 50% 50%, rgba(255, 243, 228, 0.26) 0%, rgba(255, 243, 228, 0.13) 46%, rgba(255, 243, 228, 0) 74%);
+}
+
+.hero-aura-orb-cool {
+  background-image: radial-gradient(circle at 50% 50%, rgba(211, 222, 243, 0.22) 0%, rgba(211, 222, 243, 0.11) 44%, rgba(211, 222, 243, 0) 74%);
+}
+
+.hero-aura-orb-rose {
+  background-image: radial-gradient(circle at 50% 50%, rgba(242, 202, 178, 0.2) 0%, rgba(242, 202, 178, 0.1) 44%, rgba(242, 202, 178, 0) 74%);
 }
 
 @keyframes headerLogoLoop {

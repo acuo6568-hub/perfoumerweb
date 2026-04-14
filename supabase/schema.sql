@@ -43,8 +43,22 @@ create table if not exists public.wishlists (
   primary key (user_id, perfume_slug)
 );
 
+create table if not exists public.wishlist_shares (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  token text not null unique check (char_length(token) between 24 and 128),
+  allow_additions boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.wishlist_shares
+  add column if not exists allow_additions boolean not null default false;
+
 create index if not exists wishlists_user_created_at_idx
   on public.wishlists (user_id, created_at desc);
+
+create index if not exists wishlist_shares_token_idx
+  on public.wishlist_shares (token);
 
 create table if not exists public.cart_items (
   id uuid primary key default gen_random_uuid(),
@@ -185,6 +199,12 @@ before update on public.checkout_addresses
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists set_wishlist_shares_updated_at on public.wishlist_shares;
+create trigger set_wishlist_shares_updated_at
+before update on public.wishlist_shares
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists set_ai_chat_sessions_updated_at on public.ai_chat_sessions;
 create trigger set_ai_chat_sessions_updated_at
 before update on public.ai_chat_sessions
@@ -199,6 +219,7 @@ execute function public.set_updated_at();
 
 alter table public.comments enable row level security;
 alter table public.wishlists enable row level security;
+alter table public.wishlist_shares enable row level security;
 alter table public.cart_items enable row level security;
 alter table public.checkout_addresses enable row level security;
 alter table public.ai_chat_sessions enable row level security;
@@ -255,6 +276,35 @@ create policy "Users can insert own wishlists"
 drop policy if exists "Users can delete own wishlists" on public.wishlists;
 create policy "Users can delete own wishlists"
   on public.wishlists
+  for delete
+  to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "Users can read own wishlist shares" on public.wishlist_shares;
+create policy "Users can read own wishlist shares"
+  on public.wishlist_shares
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "Users can insert own wishlist shares" on public.wishlist_shares;
+create policy "Users can insert own wishlist shares"
+  on public.wishlist_shares
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can update own wishlist shares" on public.wishlist_shares;
+create policy "Users can update own wishlist shares"
+  on public.wishlist_shares
+  for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can delete own wishlist shares" on public.wishlist_shares;
+create policy "Users can delete own wishlist shares"
+  on public.wishlist_shares
   for delete
   to authenticated
   using (user_id = auth.uid());

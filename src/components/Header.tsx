@@ -222,15 +222,15 @@ export function Header({ floating = false, locale }: HeaderProps) {
       >
         <div className="mx-auto max-w-[1540px] px-3 pt-3 sm:px-6 sm:pt-5 md:px-10">
           <div
-            className="header-load-in header-shell-glow relative isolate flex items-center gap-3 overflow-hidden rounded-[1.7rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.88)_0%,rgba(247,246,243,0.95)_52%,rgba(240,239,236,0.92)_100%)] px-3 py-3 text-zinc-900 shadow-[0_20px_48px_rgba(17,17,19,0.1)] ring-1 ring-black/[0.04] backdrop-blur-xl transition-[background-color,border-color,box-shadow,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-3.5 lg:gap-4 lg:px-5"
+            className="header-load-in header-shell-glow relative isolate flex items-center gap-3 overflow-hidden rounded-[1.2rem] border border-zinc-300/45 bg-[linear-gradient(145deg,rgba(255,255,255,0.92)_0%,rgba(249,249,248,0.96)_100%)] px-3 py-2.5 text-zinc-900 shadow-[0_8px_20px_rgba(17,17,19,0.06)] ring-1 ring-white/55 backdrop-blur-[6px] transition-[background-color,border-color,box-shadow,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-3 lg:gap-4 lg:px-5"
           >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0)_44%),linear-gradient(120deg,rgba(255,255,255,0.62)_0%,rgba(255,255,255,0.12)_48%,rgba(231,229,225,0.36)_100%)] opacity-100 transition-opacity duration-500"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0)_40%),linear-gradient(120deg,rgba(255,255,255,0.5)_0%,rgba(255,255,255,0.08)_48%,rgba(231,229,225,0.18)_100%)] opacity-100 transition-opacity duration-500"
             />
             <div
               aria-hidden="true"
-              className="hero-grain pointer-events-none absolute inset-0 opacity-[0.07] transition-opacity duration-500"
+              className="hero-grain pointer-events-none absolute inset-0 opacity-[0.04] transition-opacity duration-500"
             />
 
             <Link
@@ -239,7 +239,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
               onClick={() => setIsMenuOpen(false)}
             >
               <span
-                className="header-logo-orb grid h-10 w-10 place-items-center overflow-hidden rounded-[1rem] border border-white/80 bg-[radial-gradient(circle_at_30%_28%,#ffffff_0%,#f3f2ef_72%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(15,15,18,0.08)] transition-[background-color,border-color,box-shadow] duration-500 sm:h-12 sm:w-12"
+                className="header-logo-orb grid h-10 w-10 place-items-center overflow-hidden rounded-[0.8rem] border border-zinc-300/45 bg-[linear-gradient(165deg,#ffffff_0%,#f4f4f2_100%)] shadow-none transition-[background-color,border-color,box-shadow] duration-500 sm:h-12 sm:w-12"
               >
                 <Image
                   src="/perfoumer_black.png"
@@ -251,7 +251,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                   priority
                 />
               </span>
-              <span className="brand-wordmark text-[1.44rem] tracking-[-0.04em] text-zinc-900 sm:text-[1.78rem]">
+              <span className="brand-wordmark text-[1.42rem] tracking-[-0.055em] text-zinc-900 sm:text-[1.72rem]">
                 Perfoumer
               </span>
             </Link>
@@ -265,19 +265,11 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     key={item.href}
                     href={item.href}
                     className={[
-                      "group relative rounded-full px-4 py-2 text-[0.7rem] font-medium tracking-[0.2em] uppercase transition-colors duration-300 xl:px-5",
-                      isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-900",
+                      "group relative rounded-full px-4 py-2 text-[0.66rem] font-medium tracking-[0.28em] uppercase transition-colors duration-300 xl:px-5",
+                      isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
                     ].join(" ")}
                   >
                     <span>{item.label}</span>
-                    <span
-                      aria-hidden="true"
-                      className={[
-                        "absolute inset-x-4 bottom-[7px] h-px origin-center transition-transform duration-300 xl:inset-x-5",
-                        "bg-zinc-800/55",
-                        isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
-                      ].join(" ")}
-                    />
                   </Link>
                 );
               })}
@@ -285,7 +277,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3">
               <div
-                className="hidden items-center rounded-full border border-white/75 bg-white/72 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] lg:flex"
+                className="hidden items-center rounded-full border border-zinc-300/45 bg-white/72 p-1 lg:flex"
               >
                 {locales.map((item) => (
                   <button
@@ -294,10 +286,10 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     onClick={() => updateLocale(item)}
                     disabled={isLocalePending}
                     className={[
-                      "rounded-full px-2.5 py-1 text-[0.68rem] font-medium tracking-[0.18em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70",
+                        "rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70",
                       (pendingLocale ?? locale) === item
-                        ? "bg-zinc-900 text-white"
-                        : "text-zinc-500 hover:text-zinc-800",
+                          ? "bg-zinc-900 text-white"
+                          : "text-zinc-500 hover:text-zinc-700",
                     ].join(" ")}
                   >
                     {t.languages[item]}
@@ -308,7 +300,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
               <Link
                 href="/cart"
                 aria-label={t.header.cart}
-                className="group relative grid h-10 w-10 place-items-center rounded-full border border-white/80 bg-[linear-gradient(155deg,#ffffff_0%,#f4f4f2_100%)] text-zinc-700 shadow-[0_10px_20px_rgba(24,24,24,0.12)] transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-[0_16px_28px_rgba(24,24,24,0.17)] active:translate-y-0 sm:h-11 sm:w-11"
+                  className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/45 bg-[linear-gradient(155deg,#ffffff_0%,#f8f8f6_100%)] text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
               >
                 <span
                   aria-hidden="true"
@@ -335,7 +327,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
                 aria-expanded={isMenuOpen}
                 onClick={() => setIsMenuOpen((prev) => !prev)}
-                className="group relative grid h-10 w-10 place-items-center rounded-full border border-white/80 bg-white/90 text-zinc-700 shadow-sm transition-[background-color,box-shadow,border-color,color] duration-300 hover:-translate-y-px hover:bg-white hover:shadow-md sm:h-11 sm:w-11"
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/45 bg-white/82 text-zinc-700 shadow-none transition-[background-color,box-shadow,border-color,color] duration-300 hover:-translate-y-px hover:bg-white sm:h-11 sm:w-11"
               >
                 <span
                   className={[

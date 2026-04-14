@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
+import { BrandLogoMarquee } from "@/components/home/BrandLogoMarquee";
 import { HomeFeaturedSearch } from "@/components/home/HomeFeaturedSearch";
 import { PersonalizedFeaturedGrid } from "@/components/home/PersonalizedFeaturedGrid";
 import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
@@ -369,6 +370,7 @@ export default async function Home() {
     name: perfume.name,
     brand: perfume.brand,
   }));
+  const homepageBrands = homepagePerfumes.map((perfume) => perfume.brand);
   const stats = [
     { value: "98%", ...t.home.stats[0] },
     { value: "900+", ...t.home.stats[1] },
@@ -382,6 +384,8 @@ export default async function Home() {
       <div className="mx-auto max-w-[1540px] px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-5 md:px-10 md:pt-4 md:pb-6 xl:max-w-none xl:px-6 xl:pt-4 xl:pb-6">
         <Hero locale={locale} />
       </div>
+
+      <BrandLogoMarquee brands={homepageBrands} />
 
       <main id="products" className="mx-auto mt-10 max-w-[1540px] px-6 md:px-10">
         <section className="text-center">

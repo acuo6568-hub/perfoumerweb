@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
 			},
 			{
 				protocol: "https",
+				hostname: "logo.clearbit.com",
+				pathname: "/**",
+			},
+			{
+				protocol: "https",
+				hostname: "t2.gstatic.com",
+				pathname: "/faviconV2",
+			},
+			{
+				protocol: "https",
 				hostname: "framerusercontent.com",
 				pathname: "/images/**",
 			},

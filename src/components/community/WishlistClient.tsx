@@ -7,6 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 
 import { ProductCard } from "@/components/ProductCard";
 import type { Locale } from "@/lib/i18n";
+import { SITE_URL } from "@/lib/seo";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 import type { Perfume } from "@/types/catalog";
@@ -34,6 +35,15 @@ type Copy = {
   confirm: string;
   removing: string;
   signedInAs: string;
+  shareTitle: string;
+  shareDescription: string;
+  shareCreate: string;
+  shareRegenerate: string;
+  shareCopy: string;
+  shareCopied: string;
+  shareCreating: string;
+  shareError: string;
+  shareAllowAdditions: string;
 };
 
 const copyByLocale: Record<Locale, Copy> = {
@@ -54,6 +64,15 @@ const copyByLocale: Record<Locale, Copy> = {
     confirm: "Bəli, sil",
     removing: "Silinir...",
     signedInAs: "Hesab",
+    shareTitle: "Wishlist paylaş",
+    shareDescription: "Paylaşdığın linklə başqaları siyahını yalnız oxuya bilər, dəyişə bilməz.",
+    shareCreate: "Paylaşım linki yarat",
+    shareRegenerate: "Yeni link yarat",
+    shareCopy: "Linki kopyala",
+    shareCopied: "Kopyalandı",
+    shareCreating: "Yaradılır...",
+    shareError: "Paylaşım linki yaradılmadı.",
+    shareAllowAdditions: "Linki olanlar bu siyahıya ətir əlavə edə bilsin",
   },
   en: {
     title: "My Wishlist",
@@ -72,6 +91,15 @@ const copyByLocale: Record<Locale, Copy> = {
     confirm: "Yes, remove",
     removing: "Removing...",
     signedInAs: "Account",
+    shareTitle: "Share wishlist",
+    shareDescription: "People with this link can only view your list. They cannot edit it.",
+    shareCreate: "Create share link",
+    shareRegenerate: "Regenerate link",
+    shareCopy: "Copy link",
+    shareCopied: "Copied",
+    shareCreating: "Creating...",
+    shareError: "Could not create share link.",
+    shareAllowAdditions: "Allow people with the link to add perfumes to this list",
   },
   ru: {
     title: "Мой Wishlist",
@@ -90,8 +118,28 @@ const copyByLocale: Record<Locale, Copy> = {
     confirm: "Да, удалить",
     removing: "Удаление...",
     signedInAs: "Аккаунт",
+    shareTitle: "Поделиться wishlist",
+    shareDescription: "По ссылке список можно только просматривать. Редактирование недоступно.",
+    shareCreate: "Создать ссылку",
+    shareRegenerate: "Создать новую ссылку",
+    shareCopy: "Копировать ссылку",
+    shareCopied: "Скопировано",
+    shareCreating: "Создание...",
+    shareError: "Не удалось создать ссылку.",
+    shareAllowAdditions: "Разрешить добавлять ароматы в этот список по ссылке",
   },
 };
+
+type WishlistShareRow = {
+  token: string;
+  allow_additions: boolean;
+};
+
+function createShareToken() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: WishlistClientProps) {
   const copy = copyByLocale[locale];
@@ -104,6 +152,11 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
   const [wishlists, setWishlists] = useState<WishlistRow[]>([]);
   const [pendingDelete, setPendingDelete] = useState<Perfume | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [isShareLoading, setIsShareLoading] = useState(false);
+  const [isShareCopying, setIsShareCopying] = useState(false);
+  const [isShareCopied, setIsShareCopied] = useState(false);
+  const [allowAdditions, setAllowAdditions] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -180,6 +233,45 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
   }, [supabase, session?.user]);
 
   useEffect(() => {
+    if (!supabase || !session?.user?.id) {
+      setShareToken(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadShareToken = async () => {
+      setIsShareLoading(true);
+      const { data, error } = await supabase
+        .from("wishlist_shares")
+        .select("token,allow_additions")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        setMessage(error.message);
+        setShareToken(null);
+      } else {
+        const row = data as WishlistShareRow | null;
+        setShareToken(row?.token ?? null);
+        setAllowAdditions(Boolean(row?.allow_additions));
+      }
+
+      setIsShareLoading(false);
+    };
+
+    void loadShareToken();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase, session?.user?.id]);
+
+  useEffect(() => {
     if (!supabase || !session?.user?.id || typeof window === "undefined") {
       return;
     }
@@ -230,6 +322,14 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
     [wishlists, perfumesBySlug],
   );
 
+  const shareUrl = useMemo(() => {
+    if (!shareToken || typeof window === "undefined") {
+      return "";
+    }
+
+    return `${SITE_URL}/wishlist/shared/${shareToken}`;
+  }, [shareToken]);
+
   const removeFromWishlist = async (perfumeSlug: string) => {
     if (!supabase || !session?.user) {
       return;
@@ -258,6 +358,55 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
     await removeFromWishlist(pendingDelete.slug);
     setIsRemoving(false);
     setPendingDelete(null);
+  };
+
+  const createOrRefreshShareLink = async () => {
+    if (!supabase || !session?.user?.id) {
+      return;
+    }
+
+    setIsShareLoading(true);
+    setIsShareCopied(false);
+    const token = createShareToken();
+
+    const { error } = await supabase
+      .from("wishlist_shares")
+      .upsert(
+        {
+          user_id: session.user.id,
+          token,
+          allow_additions: allowAdditions,
+        },
+        { onConflict: "user_id" },
+      );
+
+    if (error) {
+      setMessage(copy.shareError);
+      setIsShareLoading(false);
+      return;
+    }
+
+    setShareToken(token);
+    setIsShareLoading(false);
+  };
+
+  const copyShareLink = async () => {
+    if (!shareUrl || isShareCopying) {
+      return;
+    }
+
+    try {
+      setIsShareCopying(true);
+      await navigator.clipboard.writeText(shareUrl);
+      setIsShareCopied(true);
+      window.setTimeout(() => {
+        setIsShareCopied(false);
+      }, 1800);
+    } catch {
+      setMessage(copy.shareError);
+    } finally {
+      setIsShareCopying(false);
+    }
   };
 
   if (!isSupabaseConfigured(supabaseConfig ?? undefined)) {
@@ -289,6 +438,49 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         <p className="text-sm text-zinc-600">
           {copy.signedInAs}: <span className="font-medium text-zinc-900">{session.user.email}</span>
         </p>
+      </div>
+
+      <div className="rounded-[1.4rem] border border-zinc-200 bg-white px-4 py-4">
+        <p className="text-sm font-medium text-zinc-900">{copy.shareTitle}</p>
+        <p className="mt-1 text-sm text-zinc-600">{copy.shareDescription}</p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="mr-3 inline-flex items-center gap-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              checked={allowAdditions}
+              onChange={(event) => setAllowAdditions(event.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
+            />
+            <span>{copy.shareAllowAdditions}</span>
+          </label>
+
+          <button
+            type="button"
+            onClick={createOrRefreshShareLink}
+            disabled={isShareLoading}
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60"
+          >
+            {isShareLoading ? copy.shareCreating : shareToken ? copy.shareRegenerate : copy.shareCreate}
+          </button>
+
+          {shareToken ? (
+            <button
+              type="button"
+              onClick={copyShareLink}
+              disabled={isShareCopying}
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
+            >
+              {isShareCopied ? copy.shareCopied : copy.shareCopy}
+            </button>
+          ) : null}
+        </div>
+
+        {shareUrl ? (
+          <p className="mt-3 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+            {shareUrl}
+          </p>
+        ) : null}
       </div>
 
       {isListLoading ? <p className="text-sm text-zinc-500">{copy.loading}</p> : null}

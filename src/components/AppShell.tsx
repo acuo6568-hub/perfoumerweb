@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from "react";
 
-import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
 import type { Locale } from "@/lib/i18n";
@@ -18,6 +17,7 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
   const [loadedPathname, setLoadedPathname] = useState(pathname);
   const isRouteLoading = loadedPathname !== pathname;
   const hideNavigationChrome = pathname.startsWith("/staff") || pathname.startsWith("/admin");
+  const shouldOffsetForHeader = !hideNavigationChrome && pathname !== "/";
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -62,11 +62,13 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
       {hideNavigationChrome ? null : <Header floating locale={_locale} />}
       <div
         key={pathname}
-        className="route-page-enter"
+        className={[
+          "route-page-enter",
+          shouldOffsetForHeader ? "pt-22 sm:pt-24" : "",
+        ].join(" ")}
       >
         {children}
       </div>
-      {hideNavigationChrome ? null : <Footer locale={_locale} />}
     </>
   );
 }

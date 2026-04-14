@@ -131,6 +131,42 @@ export default async function RootLayout({
       className={`${poppins.variable} ${playfair.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <div className="site-sketch-layer" aria-hidden>
+          <span className="site-sketch-wash" />
+        </div>
+        <div className="site-side-ornaments" aria-hidden>
+          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-a">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-b">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-c">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-d">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-e">
+            <span className="site-side-ornament-bloom" />
+          </div>
+
+          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-a">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-b">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-c">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-d">
+            <span className="site-side-ornament-bloom" />
+          </div>
+          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-e">
+            <span className="site-side-ornament-bloom" />
+          </div>
+        </div>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgStructuredData) }}
@@ -141,7 +177,9 @@ export default async function RootLayout({
         />
         <ConsoleCredit />
         <SiteTracker />
-        <AppShell locale={locale}>{children}</AppShell>
+        <div className="relative z-[1]">
+          <AppShell locale={locale}>{children}</AppShell>
+        </div>
       </body>
     </html>
   );
