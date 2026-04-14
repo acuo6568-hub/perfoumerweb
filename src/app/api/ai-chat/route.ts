@@ -168,6 +168,7 @@ async function loadPerfumes(): Promise<Perfume[]> {
 
 function normalizeText(value: string): string {
   return value
+    .replace(/\bo(?=\d)/gi, "0")
     .replace(/[ıİ]/g, "i")
     .replace(/[əƏ]/g, "e")
     .replace(/[ğĞ]/g, "g")
@@ -189,6 +190,32 @@ function hashString(value: string): number {
     hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
   }
   return hash;
+}
+
+function levenshteinDistance(left: string, right: string): number {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+
+  const rows = left.length + 1;
+  const cols = right.length + 1;
+  const matrix: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
+
+  for (let row = 0; row < rows; row += 1) matrix[row][0] = row;
+  for (let col = 0; col < cols; col += 1) matrix[0][col] = col;
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let col = 1; col < cols; col += 1) {
+      const substitutionCost = left[row - 1] === right[col - 1] ? 0 : 1;
+      matrix[row][col] = Math.min(
+        matrix[row - 1][col] + 1,
+        matrix[row][col - 1] + 1,
+        matrix[row - 1][col - 1] + substitutionCost
+      );
+    }
+  }
+
+  return matrix[rows - 1]?.[cols - 1] ?? Math.max(left.length, right.length);
 }
 
 function rotateBySeed<T>(items: T[], seed: string): T[] {
@@ -946,6 +973,90 @@ function buildCartTotalReply(locale: string, totalAmount: number, lineCount: num
   return `Your current cart total is ${rounded} AZN.`;
 }
 
+function isAffirmativeReply(text: string): boolean {
+  const normalized = normalizeText(text);
+  return /^(yes|yep|yeah|ok|okay|beli|bəli|he|hə|да|ага|конечно|думаю да)\b/iu.test(normalized);
+}
+
+function extractSuggestedPerfumeFromOptions(options: string[]): string {
+  for (const option of options) {
+    const match = option.match(/^(?:yes|beli|bəli|да)\s*[,\-:]\s*(.+)$/iu);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+  return "";
+}
+
+function resolveConfirmedTypoMessage(body: ChatRequest): string {
+  const fallback = typeof body.message === "string" ? body.message : "";
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  const latestUser = messages[messages.length - 1];
+
+  if (!latestUser || latestUser.role !== "user" || !isAffirmativeReply(latestUser.text)) {
+    return fallback;
+  }
+
+  let assistantIndex = -1;
+  for (let index = messages.length - 2; index >= 0; index -= 1) {
+    if (messages[index]?.role === "assistant") {
+      assistantIndex = index;
+      break;
+    }
+  }
+
+  if (assistantIndex < 0) {
+    return fallback;
+  }
+
+  const assistantFollowUp = messages[assistantIndex]?.followUp;
+  const question = assistantFollowUp?.question || "";
+  if (!/did you mean|bunu nezerde tuturdunuz|bunu nəzərdə tuturdunuz|вы имели в виду/iu.test(question)) {
+    return fallback;
+  }
+
+  const suggestedPerfume = extractSuggestedPerfumeFromOptions(assistantFollowUp?.options || []);
+  if (!suggestedPerfume) {
+    return fallback;
+  }
+
+  for (let index = assistantIndex - 1; index >= 0; index -= 1) {
+    const candidate = messages[index];
+    if (candidate?.role === "user" && candidate.text?.trim()) {
+      return `${candidate.text.trim()} ${suggestedPerfume}`.trim();
+    }
+  }
+
+  return `${fallback} ${suggestedPerfume}`.trim();
+}
+
+function buildTypoClarificationFollowUp(locale: string, suggestion: string): StructuredFollowUp {
+  if (locale === "az") {
+    return {
+      question: `Bunu nəzərdə tuturdunuz: **${suggestion}**?`,
+      options: [`Bəli, ${suggestion}`, "Xeyr, başqa məhsuldur"],
+      allowFreeText: true,
+      inputPlaceholder: "Bəli desəniz davam edəcəm",
+    };
+  }
+
+  if (locale === "ru") {
+    return {
+      question: `Вы имели в виду **${suggestion}**?`,
+      options: [`Да, ${suggestion}`, "Нет, другой аромат"],
+      allowFreeText: true,
+      inputPlaceholder: "Скажите «да», и я продолжу",
+    };
+  }
+
+  return {
+    question: `Did you mean **${suggestion}**?`,
+    options: [`Yes, ${suggestion}`, "No, different perfume"],
+    allowFreeText: true,
+    inputPlaceholder: "Say yes and I will continue",
+  };
+}
+
 type ParsedPriceLine = {
   fragment: string;
   sizeMl: number;
@@ -983,41 +1094,60 @@ function cleanPriceFragment(raw: string): string {
 
 function extractPriceLines(message: string): ParsedPriceLine[] {
   const normalized = normalizeText(message)
-    .replace(/[;|]/g, ",")
-    .replace(/\s+(and|ve|və|plus|\+)\s+/giu, ", ");
+    .replace(/[;|]/g, " ")
+    .replace(/\s+(and|ve|və|plus|\+)\s+/giu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const chunks = normalized
-    .split(",")
-    .map((chunk) => chunk.trim())
-    .filter(Boolean);
+  const sizeMatches = Array.from(normalized.matchAll(/\b(\d{2,3})\s*ml\b/giu));
+  if (!sizeMatches.length) return [];
 
   const lines: ParsedPriceLine[] = [];
 
-  for (const chunk of chunks) {
-    const sizeMatch = chunk.match(/\b(\d{2,3})\s*ml\b/iu);
-    if (!sizeMatch) continue;
+  for (let index = 0; index < sizeMatches.length; index += 1) {
+    const current = sizeMatches[index];
+    const currentIndex = current.index ?? -1;
+    if (currentIndex < 0) continue;
 
-    const sizeMl = Number(sizeMatch[1]);
+    const sizeMl = Number(current[1]);
     if (!Number.isFinite(sizeMl) || sizeMl <= 0) continue;
 
-    const qtyPrefix = chunk.match(/^\s*(\d{1,2})\s*(?:x|×)\s*/iu);
-    const qtyNearSize = chunk.match(/\b(\d{1,2})\s*(?:x|×)\s*\d{2,3}\s*ml\b/iu);
-    const qtySuffix = chunk.match(/\b\d{2,3}\s*ml\s*(?:x|×)\s*(\d{1,2})\b/iu);
+    const currentSizeText = current[0] || "";
+    const currentEnd = currentIndex + currentSizeText.length;
+    const previous = index > 0 ? sizeMatches[index - 1] : null;
+    const previousEnd = previous ? (previous.index ?? 0) + (previous[0]?.length ?? 0) : 0;
+    const next = index < sizeMatches.length - 1 ? sizeMatches[index + 1] : null;
+    const nextStart = next?.index ?? normalized.length;
+
+    const leftContext = normalized.slice(previousEnd, currentIndex).trim();
+    const rightContext = normalized.slice(currentEnd, nextStart).trim();
+
+    const qtyFromXBefore = leftContext.match(/(\d{1,2})\s*(?:x|×)\s*$/iu);
+    const qtyFromWordBefore = leftContext.match(/(\d{1,2})\s*(?:eded|ədəd|adet|pcs|шт)\s*$/iu);
+    const qtyFromXAfter = rightContext.match(/^\s*(?:x|×)\s*(\d{1,2})\b/iu);
+    const qtyFromWordAfter = rightContext.match(/^(\d{1,2})\s*(?:eded|ədəd|adet|pcs|шт)\b/iu);
 
     const quantity = Math.max(
       1,
       Math.min(
         20,
-        Number(qtyPrefix?.[1] ?? qtyNearSize?.[1] ?? qtySuffix?.[1] ?? 1)
+        Number(qtyFromXBefore?.[1] ?? qtyFromWordBefore?.[1] ?? qtyFromXAfter?.[1] ?? qtyFromWordAfter?.[1] ?? 1)
       )
     );
 
-    const fragment = cleanPriceFragment(
-      chunk
-        .replace(/\b\d{2,3}\s*ml\b/giu, " ")
-        .replace(/^\s*\d{1,2}\s*(?:x|×)\s*/giu, " ")
-        .replace(/\s*(?:x|×)\s*\d{1,2}\s*$/giu, " ")
+    let fragment = cleanPriceFragment(
+      leftContext
+        .replace(/\b\d{1,2}\s*(?:x|×)\s*$/giu, " ")
+        .replace(/\b\d{1,2}\s*(?:eded|ədəd|adet|pcs|шт)\s*$/giu, " ")
     );
+
+    if (!fragment) {
+      fragment = cleanPriceFragment(
+        rightContext
+          .replace(/^\s*(?:x|×)\s*\d{1,2}\b/giu, " ")
+          .replace(/^\s*\d{1,2}\s*(?:eded|ədəd|adet|pcs|шт)\b/giu, " ")
+      );
+    }
 
     if (!fragment || fragment.length < 2) continue;
 
@@ -1136,6 +1266,39 @@ function tryBuildPriceCalculationReply(locale: string, message: string, perfumes
   return buildPriceCalculationReply(locale, resolved, unresolved);
 }
 
+function buildPriceTypoClarification(message: string, locale: string, perfumes: Perfume[]): StructuredFollowUp | null {
+  const parsedLines = extractPriceLines(message);
+  if (!parsedLines.length) return null;
+
+  for (const line of parsedLines) {
+    const normalizedFragment = normalizeText(line.fragment);
+    if (!normalizedFragment) continue;
+
+    const exactMatchExists = perfumes.some((perfume) => {
+      const full = normalizeText(`${perfume.brand} ${perfume.name}`);
+      const short = normalizeText(perfume.name);
+      return full.includes(normalizedFragment) || normalizedFragment.includes(short);
+    });
+
+    if (exactMatchExists) continue;
+
+    const ranked = perfumes
+      .map((perfume) => ({ perfume, score: scorePerfume(perfume, line.fragment) }))
+      .sort((left, right) => right.score - left.score);
+
+    const top = ranked[0];
+    const second = ranked[1];
+    if (!top) continue;
+
+    const scoreGap = (top.score ?? 0) - (second?.score ?? 0);
+    if (top.score >= 130 && top.score < 260 && scoreGap >= 25) {
+      return buildTypoClarificationFollowUp(locale, `${top.perfume.brand} ${top.perfume.name}`);
+    }
+  }
+
+  return null;
+}
+
 const FACET_KEYWORDS: Record<string, string[]> = {
   unisex: ["unisex", "uniseks", "унисекс"],
   women: ["women", "woman", "female", "qadin", "qadın", "жен", "женский"],
@@ -1184,6 +1347,7 @@ function scorePerfume(perfume: Perfume, message: string): number {
   const byName = normalizeText(perfume.name);
   const byBrand = normalizeText(perfume.brand);
   const byBrandName = normalizeText(`${perfume.brand} ${perfume.name}`);
+  const perfumeTokens = byBrandName.split(" ").filter((token) => token.length >= 3);
   const byNotes = normalizeText(perfumeNoteText(perfume));
   const byGender = normalizeText(perfume.gender);
   const facets = perfumeFacets(perfume);
@@ -1217,6 +1381,22 @@ function scorePerfume(perfume: Perfume, message: string): number {
     }
     if (byGender.includes(word)) {
       score += 75;
+      continue;
+    }
+
+    let bestTokenDistance = Number.POSITIVE_INFINITY;
+    for (const token of perfumeTokens) {
+      const distance = levenshteinDistance(word, token);
+      if (distance < bestTokenDistance) {
+        bestTokenDistance = distance;
+      }
+      if (bestTokenDistance === 0) break;
+    }
+
+    if (bestTokenDistance === 1) {
+      score += 80;
+    } else if (bestTokenDistance === 2 && word.length >= 4) {
+      score += 38;
     }
   }
 
@@ -2258,8 +2438,9 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as ChatRequest;
     const { message, locale = "en" } = body;
+    const effectiveMessage = resolveConfirmedTypoMessage(body) || message;
 
-    if (!message || typeof message !== "string") {
+    if (!effectiveMessage || typeof effectiveMessage !== "string") {
       return NextResponse.json(
         { error: "Message is required" },
         { status: 400 }
@@ -2276,34 +2457,34 @@ export async function POST(request: Request) {
       );
     }
 
-    if (isDeveloperContactQuestion(message)) {
+    if (isDeveloperContactQuestion(effectiveMessage)) {
       return NextResponse.json({ response: developerContactReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
-    if (isDeveloperQuestion(message)) {
+    if (isDeveloperQuestion(effectiveMessage)) {
       return NextResponse.json({ response: developerReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
-    if (isSensitiveDataExfiltrationQuery(message)) {
+    if (isSensitiveDataExfiltrationQuery(effectiveMessage)) {
       return NextResponse.json({ response: sensitiveDataRefusal(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
-    if (isBulkActionRequest(message)) {
+    if (isBulkActionRequest(effectiveMessage)) {
       return NextResponse.json({ response: bulkActionBlockedReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
-    if (isTotalStockCountQuestion(message)) {
+    if (isTotalStockCountQuestion(effectiveMessage)) {
       return NextResponse.json({ response: totalStockBlockedReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     const giftFlowFromHistory = hasActiveGiftFlow(body);
-    const giftFlowActive = isGiftIntentMessage(message) || giftFlowFromHistory;
+    const giftFlowActive = isGiftIntentMessage(effectiveMessage) || giftFlowFromHistory;
     if (giftFlowActive) {
       const giftContextText = buildGiftContextText(body);
       const giftSignals = detectGiftDiscoverySignals(giftContextText);
       const askedQuestion = getLastAssistantGiftFollowUpQuestion(body);
       const askedStep = inferGiftStepFromQuestion(askedQuestion);
-      const effectiveGiftSignals = applyGiftStepAnswerHeuristic(giftSignals, askedStep, message);
+      const effectiveGiftSignals = applyGiftStepAnswerHeuristic(giftSignals, askedStep, effectiveMessage);
       const nextStep = nextGiftDiscoveryStep(effectiveGiftSignals);
 
       if (nextStep) {
@@ -2320,12 +2501,23 @@ export async function POST(request: Request) {
 
     // Load catalog for context
     const perfumes = await loadPerfumes();
-    const deterministicPriceReply = tryBuildPriceCalculationReply(locale, message, perfumes);
+    const priceTypoFollowUp = buildPriceTypoClarification(effectiveMessage, locale, perfumes);
+    if (priceTypoFollowUp && !isAffirmativeReply(message)) {
+      const typoPrompt =
+        locale === "az"
+          ? "Yazdığınız adı dəqiqləşdirim, sonra hesablamanı davam etdirim."
+          : locale === "ru"
+            ? "Уточню название и сразу продолжу расчёт."
+            : "Let me confirm the perfume name, then I will continue your request.";
+      return NextResponse.json({ response: typoPrompt, followUp: priceTypoFollowUp, actionSuggestions: [] }, { status: 200 });
+    }
+
+    const deterministicPriceReply = tryBuildPriceCalculationReply(locale, effectiveMessage, perfumes);
     if (deterministicPriceReply) {
       return NextResponse.json({ response: deterministicPriceReply, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
     const brands = [...new Set(perfumes.map((p) => p.brand))].slice(0, 25);
-    const relevantCatalogContext = buildCatalogContext(message, perfumes);
+    const relevantCatalogContext = buildCatalogContext(effectiveMessage, perfumes);
 
     const systemPrompt = systemPromptByLocale[locale] || systemPromptByLocale.en;
     const conversationMessages = buildConversationMessages(body);
@@ -2355,13 +2547,13 @@ Keep answers natural, intelligent, and specific.`;
     const pageContext = sanitizePageContext(body.pageContext);
     const personalizationContext = buildPersonalizationContext(userContext, perfumes);
 
-    if (userContext?.signedIn && isCartCountQuestion(message)) {
+    if (userContext?.signedIn && isCartCountQuestion(effectiveMessage)) {
       const lineCount = userContext.cartItems.length;
       const totalQuantity = userContext.cartItems.reduce((sum, item) => sum + item.quantity, 0);
       return NextResponse.json({ response: buildCartCountReply(locale, totalQuantity, lineCount), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
-    if (userContext?.signedIn && isCartTotalQuestion(message)) {
+    if (userContext?.signedIn && isCartTotalQuestion(effectiveMessage)) {
       const lineCount = userContext.cartItems.length;
       const totalAmount = userContext.cartItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       return NextResponse.json({ response: buildCartTotalReply(locale, totalAmount, lineCount), followUp: null, actionSuggestions: [] }, { status: 200 });
@@ -2447,7 +2639,7 @@ Rules for personalization and privacy:
     if (!response.ok) {
       const error = await response.text();
       console.error("OpenAI API error:", error);
-      const fallbackIntent = detectFollowUpIntent(message);
+      const fallbackIntent = detectFollowUpIntent(effectiveMessage);
       const fallbackResponse =
         locale === "az"
           ? "Hazırda AI xidməti qısa müddətlik yüklənib. Yenə də sizə kömək edə bilərəm: istəsəniz məhsulu kataloqdan birlikdə seçək və ya hesab/sifariş sualınızı addım-addım həll edək."
@@ -2455,7 +2647,7 @@ Rules for personalization and privacy:
             ? "Сейчас AI-сервис временно перегружен. Я все равно помогу: можем сразу подобрать товар в каталоге или пошагово решить вопрос по аккаунту/заказу."
             : "The AI service is temporarily busy, but I can still help right away: we can pick items from the catalog or solve your account/order question step by step.";
 
-      const fallbackActions = buildActionSuggestions(message, locale, userContext, perfumes, pageContext);
+      const fallbackActions = buildActionSuggestions(effectiveMessage, locale, userContext, perfumes, pageContext);
       return NextResponse.json(
         {
           response: fallbackResponse,
@@ -2471,21 +2663,21 @@ Rules for personalization and privacy:
     };
     const parsed = normalizeStructuredResponse(data.choices?.[0]?.message?.content);
     let aiResponse = sanitizeAssistantAnswer(parsed.answer || "Sorry, I couldn't process your request.");
-    const actionSuggestions = buildActionSuggestions(message, locale, userContext, perfumes, pageContext);
+    const actionSuggestions = buildActionSuggestions(effectiveMessage, locale, userContext, perfumes, pageContext);
     if (actionSuggestions.length > 0) {
       aiResponse = buildDirectActionReply(locale, actionSuggestions[0]!);
     }
-    const intent = detectFollowUpIntent(message);
-    const requestedNoteSlug = resolveRequestedNoteSlug(message, perfumes);
-    if (requestedNoteSlug && intent === "recommendation" && hasExplicitNoteIntent(message)) {
+    const intent = detectFollowUpIntent(effectiveMessage);
+    const requestedNoteSlug = resolveRequestedNoteSlug(effectiveMessage, perfumes);
+    if (requestedNoteSlug && intent === "recommendation" && hasExplicitNoteIntent(effectiveMessage)) {
       aiResponse = appendNoteCatalogLink(aiResponse, locale, requestedNoteSlug);
     }
     if (intent === "recommendation") {
-      aiResponse = appendFallbackRecommendationLinks(aiResponse, locale, message, perfumes);
+      aiResponse = appendFallbackRecommendationLinks(aiResponse, locale, effectiveMessage, perfumes);
     }
     const followUp = parsed.followUp.question ? parsed.followUp : null;
 
-    if (!userContext?.signedIn && shouldNudgeGuestSignUp(message)) {
+    if (!userContext?.signedIn && shouldNudgeGuestSignUp(effectiveMessage)) {
       aiResponse = `${aiResponse}\n\n${guestSignUpNudge(locale)}`;
     }
 
