@@ -44,6 +44,14 @@ type Copy = {
   shareCreating: string;
   shareError: string;
   shareAllowAdditions: string;
+  shareInactive: string;
+  shareActiveReadOnly: string;
+  shareActiveEditable: string;
+  shareLinkLabel: string;
+  shareLinkPlaceholder: string;
+  shareUpdate: string;
+  shareNoLinkTitle: string;
+  shareNoLinkBody: string;
 };
 
 const copyByLocale: Record<Locale, Copy> = {
@@ -73,6 +81,14 @@ const copyByLocale: Record<Locale, Copy> = {
     shareCreating: "Yaradılır...",
     shareError: "Paylaşım linki yaradılmadı.",
     shareAllowAdditions: "Linki olanlar bu siyahıya ətir əlavə edə bilsin",
+    shareInactive: "Link passiv",
+    shareActiveReadOnly: "Aktiv, yalnız oxu",
+    shareActiveEditable: "Aktiv, əlavə etmə açıq",
+    shareLinkLabel: "Paylaşım linki",
+    shareLinkPlaceholder: "Hələ aktiv link yoxdur",
+    shareUpdate: "Dəyişiklikləri yenilə",
+    shareNoLinkTitle: "Hələ paylaşım linki yoxdur",
+    shareNoLinkBody: "Təmiz və oxunaqlı bir link yaradın. İstəsəniz sonradan əlavə etməni də aça bilərsiniz.",
   },
   en: {
     title: "My Wishlist",
@@ -100,6 +116,14 @@ const copyByLocale: Record<Locale, Copy> = {
     shareCreating: "Creating...",
     shareError: "Could not create share link.",
     shareAllowAdditions: "Allow people with the link to add perfumes to this list",
+    shareInactive: "Link inactive",
+    shareActiveReadOnly: "Active, view only",
+    shareActiveEditable: "Active, additions enabled",
+    shareLinkLabel: "Share link",
+    shareLinkPlaceholder: "No active link yet",
+    shareUpdate: "Refresh settings",
+    shareNoLinkTitle: "No share link yet",
+    shareNoLinkBody: "Create a clean, private share link. You can enable additions later.",
   },
   ru: {
     title: "Мой Wishlist",
@@ -127,6 +151,14 @@ const copyByLocale: Record<Locale, Copy> = {
     shareCreating: "Создание...",
     shareError: "Не удалось создать ссылку.",
     shareAllowAdditions: "Разрешить добавлять ароматы в этот список по ссылке",
+    shareInactive: "Ссылка неактивна",
+    shareActiveReadOnly: "Активна, только просмотр",
+    shareActiveEditable: "Активна, добавление включено",
+    shareLinkLabel: "Ссылка для доступа",
+    shareLinkPlaceholder: "Активной ссылки пока нет",
+    shareUpdate: "Обновить настройки",
+    shareNoLinkTitle: "Ссылка ещё не создана",
+    shareNoLinkBody: "Создайте чистую приватную ссылку. Добавление можно включить позже.",
   },
 };
 
@@ -330,6 +362,9 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
     return `${SITE_URL}/wishlist/shared/${shareToken}`;
   }, [shareToken]);
 
+  const shareStatus = shareToken ? (allowAdditions ? copy.shareActiveEditable : copy.shareActiveReadOnly) : copy.shareInactive;
+  const shareStatusTone = shareToken ? (allowAdditions ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-700") : "bg-zinc-100 text-zinc-500";
+
   const removeFromWishlist = async (perfumeSlug: string) => {
     if (!supabase || !session?.user) {
       return;
@@ -440,12 +475,20 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         </p>
       </div>
 
-      <div className="rounded-[1.4rem] border border-zinc-200 bg-white px-4 py-4">
-        <p className="text-sm font-medium text-zinc-900">{copy.shareTitle}</p>
-        <p className="mt-1 text-sm text-zinc-600">{copy.shareDescription}</p>
+      <div className="rounded-[1.6rem] border border-zinc-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8f8f6_100%)] px-4 py-4 shadow-[0_10px_28px_rgba(24,24,24,0.04)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[0.72rem] font-medium tracking-[0.22em] text-zinc-400 uppercase">{copy.shareTitle}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">{copy.shareDescription}</p>
+          </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <label className="mr-3 inline-flex items-center gap-2 text-sm text-zinc-700">
+          <span className={`inline-flex min-h-8 items-center rounded-full px-3 text-[0.72rem] font-medium tracking-[0.12em] uppercase ${shareStatusTone}`}>
+            {shareStatus}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2.5">
+          <label className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-[0_8px_18px_rgba(24,24,24,0.04)]">
             <input
               type="checkbox"
               checked={allowAdditions}
@@ -459,9 +502,9 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
             type="button"
             onClick={createOrRefreshShareLink}
             disabled={isShareLoading}
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
           >
-            {isShareLoading ? copy.shareCreating : shareToken ? copy.shareRegenerate : copy.shareCreate}
+            {isShareLoading ? copy.shareCreating : shareToken ? copy.shareUpdate : copy.shareCreate}
           </button>
 
           {shareToken ? (
@@ -469,17 +512,22 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
               type="button"
               onClick={copyShareLink}
               disabled={isShareCopying}
-              className="inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-60"
             >
               {isShareCopied ? copy.shareCopied : copy.shareCopy}
             </button>
           ) : null}
         </div>
 
-        {shareUrl ? (
-          <p className="mt-3 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-            {shareUrl}
+        <div className="mt-4 rounded-[1.25rem] border border-dashed border-zinc-200 bg-white px-4 py-3">
+          <p className="text-[0.72rem] font-medium tracking-[0.22em] text-zinc-400 uppercase">{copy.shareLinkLabel}</p>
+          <p className={`mt-2 text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
+            {shareUrl || copy.shareLinkPlaceholder}
           </p>
+        </div>
+
+        {!shareToken ? (
+          <p className="mt-3 text-xs leading-5 text-zinc-500">{copy.shareNoLinkBody}</p>
         ) : null}
       </div>
 
