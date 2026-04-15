@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
+
 import { Footer } from "@/components/Footer";
 import { WishlistClient } from "@/components/community/WishlistClient";
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import type { Locale } from "@/lib/i18n";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
+
+export const metadata: Metadata = {
+  title: "İstək siyahısı",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 const pageCopy: Record<Locale, { title: string; subtitle: string }> = {
   az: {

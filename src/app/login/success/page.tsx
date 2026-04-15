@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
+
 import { Footer } from "@/components/Footer";
 import { LoginSuccessClient } from "@/components/login/LoginSuccessClient";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
+
+export const metadata: Metadata = {
+  title: "Giriş uğurlu",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 type LoginSuccessPageProps = {
   searchParams: Promise<{ next?: string; email?: string; pending?: string; flow?: "signup" | "email_change" }>;

@@ -8,7 +8,7 @@ import { PersonalizedFeaturedGrid } from "@/components/home/PersonalizedFeatured
 import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary, type Locale } from "@/lib/i18n";
-import { buildAzeriPageKeywords } from "@/lib/seo";
+import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
@@ -378,9 +378,44 @@ export default async function Home() {
     { value: "4.9/5", ...t.home.stats[3] },
   ];
   const about = ABOUT_COPY[locale];
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: locale,
+    mainEntity: about.faqItems.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+
+  const featuredListStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${SITE_NAME} featured perfumes`,
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+    numberOfItems: Math.min(featured.length, 8),
+    itemListElement: featured.slice(0, 8).map((perfume, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: absoluteUrl(`/perfumes/${perfume.slug}`),
+      name: `${perfume.brand} ${perfume.name}`,
+    })),
+  };
 
   return (
     <div className="bg-[#f3f3f2]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(featuredListStructuredData) }}
+      />
       <div className="mx-auto max-w-[1540px] px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-5 md:px-10 md:pt-4 md:pb-6 xl:max-w-none xl:px-6 xl:pt-4 xl:pb-6">
         <Hero locale={locale} />
       </div>

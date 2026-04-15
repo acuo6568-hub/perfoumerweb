@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Auth Success",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 type AuthSuccessPageProps = {
   searchParams: Promise<{ next?: string; email?: string; pending?: string }>;

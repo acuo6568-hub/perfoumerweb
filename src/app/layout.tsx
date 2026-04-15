@@ -8,7 +8,9 @@ import { ConsoleCredit } from "@/components/ConsoleCredit";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import {
   DEFAULT_OG_IMAGE,
+  SEO_CONTACT,
   SEO_KEYWORDS,
+  SEO_LOCAL_BUSINESS,
   SITE_NAME,
   SITE_URL,
   absoluteUrl,
@@ -79,6 +81,7 @@ export const metadata: Metadata = {
     url: absoluteUrl("/"),
     siteName: SITE_NAME,
     locale: "az_AZ",
+    alternateLocale: ["en_US", "ru_RU"],
     type: "website",
     images: [
       {
@@ -95,6 +98,7 @@ export const metadata: Metadata = {
     description:
       "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
     images: [DEFAULT_OG_IMAGE],
+    site: "@perfoumer",
   },
   other: {
     thumbnail: absoluteUrl(DEFAULT_OG_IMAGE),
@@ -114,8 +118,9 @@ export default async function RootLayout({
     name: SITE_NAME,
     url: SITE_URL,
     logo: absoluteUrl("/icon.png"),
-    email: "info@perfoumer.az",
-    sameAs: ["https://wa.me/994507078070"],
+    email: SEO_CONTACT.email,
+    telephone: SEO_CONTACT.phone,
+    sameAs: [SEO_CONTACT.whatsappUrl],
   };
 
   const siteStructuredData = {
@@ -124,6 +129,31 @@ export default async function RootLayout({
     name: SITE_NAME,
     url: SITE_URL,
     inLanguage: ["az", "en", "ru"],
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${SITE_URL}/catalog?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  const localBusinessStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    "@id": `${SITE_URL}/#store`,
+    name: SITE_NAME,
+    image: absoluteUrl(DEFAULT_OG_IMAGE),
+    url: SITE_URL,
+    telephone: SEO_CONTACT.phone,
+    email: SEO_CONTACT.email,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: SEO_LOCAL_BUSINESS.city,
+      addressCountry: SEO_LOCAL_BUSINESS.country,
+    },
+    areaServed: SEO_LOCAL_BUSINESS.areaServed,
+    availableLanguage: ["az", "en", "ru"],
+    currenciesAccepted: SEO_LOCAL_BUSINESS.currenciesAccepted,
+    paymentAccepted: SEO_LOCAL_BUSINESS.paymentAccepted,
   };
 
   return (
@@ -175,6 +205,10 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessStructuredData) }}
         />
         <ConsoleCredit />
         <SiteTracker />

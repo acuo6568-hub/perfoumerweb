@@ -11,41 +11,24 @@ export const SITE_URL = normalizeSiteUrl(
 export const SITE_NAME = "Perfoumer";
 export const DEFAULT_OG_IMAGE = "/perfoumerlogo.png";
 
-const AZ_INTENTS = [
-  "al",
-  "onlayn al",
-  "sifariş et",
-  "kəşf et",
-  "qiymət",
-  "endirim",
-  "ən yaxşı",
-  "orijinal",
-  "premium",
-  "lüks",
-  "niş",
-  "uzunömürlü",
-  "bakı",
-  "azərbaycan",
-];
+export const SEO_CONTACT = {
+  email: "info@perfoumer.az",
+  phone: "+994507078070",
+  whatsappUrl: "https://wa.me/994507078070",
+} as const;
 
-const AZ_CONTEXT = [
-  "mağazası",
-  "kataloqu",
-  "qiyməti",
-  "seçimi",
-  "tövsiyə",
-  "çatdırılma",
-  "sifarişi",
-  "hədiyyə",
-  "top notlar",
-  "ürək notlar",
-  "baza notlar",
-  "qalıcılığı",
-  "gündəlik istifadə",
-  "axşam qoxusu",
-  "yay qoxusu",
-  "qış qoxusu",
-];
+export const SEO_LOCAL_BUSINESS = {
+  city: "Baku",
+  country: "AZ",
+  countryName: "Azerbaijan",
+  areaServed: ["Azerbaijan", "Baku"],
+  currenciesAccepted: "AZN",
+  paymentAccepted: ["Cash", "Card"],
+} as const;
+
+const AZ_INTENTS = ["al", "onlayn al", "sifariş et", "qiymət", "orijinal", "premium"];
+
+const AZ_CONTEXT = ["mağazası", "kataloqu", "qiyməti", "seçimi", "çatdırılma", "bakı", "azərbaycan"];
 
 const DEFAULT_AZ_TERMS = [
   "ətir",
@@ -67,7 +50,7 @@ const DEFAULT_AZ_TERMS = [
 
 export const buildAzeriPageKeywords = (
   pageTerms: string[],
-  minCount = 220,
+  maxCount = 28,
 ): string[] => {
   const seedTerms = Array.from(
     new Set([...DEFAULT_AZ_TERMS, ...pageTerms.map((item) => item.trim()).filter(Boolean)]),
@@ -83,19 +66,17 @@ export const buildAzeriPageKeywords = (
   for (const term of seedTerms) {
     for (const intent of AZ_INTENTS) {
       keywords.add(`${intent} ${term}`);
-      keywords.add(`${term} ${intent}`);
     }
 
     for (const context of AZ_CONTEXT) {
       keywords.add(`${term} ${context}`);
-      keywords.add(`${context} ${term}`);
     }
   }
 
-  return Array.from(keywords).slice(0, Math.max(minCount, 240));
+  return Array.from(keywords).slice(0, Math.max(8, maxCount));
 };
 
-export const SEO_KEYWORDS = buildAzeriPageKeywords([], 220);
+export const SEO_KEYWORDS = buildAzeriPageKeywords([]);
 
 export const absoluteUrl = (path = "/") => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

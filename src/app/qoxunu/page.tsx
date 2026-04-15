@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ScentQuizClient } from "@/components/ScentQuizClient";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
-import { buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Qoxunu Testi",
@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   ]),
   alternates: {
     canonical: "/qoxunu",
+  },
+  openGraph: {
+    title: "Qoxunu Testi",
+    description: "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
+    url: absoluteUrl("/qoxunu"),
+    type: "website",
   },
 };
 

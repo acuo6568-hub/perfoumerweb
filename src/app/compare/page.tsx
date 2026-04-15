@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import type { Locale } from "@/lib/i18n";
+import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
 
 const copyByLocale: Record<Locale, { title: string; description: string }> = {
   az: {
@@ -24,8 +25,20 @@ const copyByLocale: Record<Locale, { title: string; description: string }> = {
 export const metadata: Metadata = {
   title: "Ətir Müqayisə",
   description: "Perfoumer-də ətirləri yan-yana müqayisə edin.",
+  keywords: buildAzeriPageKeywords([
+    "ətir müqayisəsi",
+    "ətir qarşılaşdırma",
+    "hansı ətir daha yaxşıdır",
+    "qoxu müqayisəsi",
+  ]),
   alternates: {
     canonical: "/compare",
+  },
+  openGraph: {
+    title: "Ətir Müqayisə",
+    description: "Perfoumer-də ətirləri yan-yana müqayisə edin.",
+    url: absoluteUrl("/compare"),
+    type: "website",
   },
 };
 

@@ -29,6 +29,10 @@ const pageCopyByLocale: Record<Locale, PageCopy> = {
 
 export const metadata: Metadata = {
   title: "Səbət",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default async function CartPage() {

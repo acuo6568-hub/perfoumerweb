@@ -3,6 +3,12 @@ import type { MetadataRoute } from "next";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { SITE_URL, absoluteUrl } from "@/lib/seo";
 
+function toAbsoluteUrl(input: string) {
+  if (!input) return "";
+  if (/^https?:\/\//i.test(input)) return input;
+  return absoluteUrl(input.startsWith("/") ? input : `/${input}`);
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [perfumes, notes] = await Promise.all([getPerfumes(), getNotes()]);
   const now = new Date();
@@ -23,14 +29,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: absoluteUrl("/brands"),
       lastModified: now,
-      changeFrequency: "weekly",
+      changeFrequency: "daily",
       priority: 0.7,
     },
     {
       url: absoluteUrl("/qoxunu"),
       lastModified: now,
       changeFrequency: "weekly",
-      priority: 0.7,
+      priority: 0.78,
     },
     {
       url: absoluteUrl("/compare"),
@@ -58,12 +64,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const perfumeRoutes: MetadataRoute.Sitemap = perfumes.map((perfume) => ({
-    url: absoluteUrl(`/perfumes/${perfume.slug}`),
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.9,
-  }));
+  const perfumeRoutes: MetadataRoute.Sitemap = perfumes.map((perfume) => {
+    const imageUrl = toAbsoluteUrl(perfume.image);
+    return {
+      url: absoluteUrl(`/perfumes/${perfume.slug}`),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+      images: imageUrl ? [imageUrl] : undefined,
+    };
+  });
 
   const noteRoutes: MetadataRoute.Sitemap = notes.map((note) => ({
     url: absoluteUrl(`/notes/${note.slug}`),

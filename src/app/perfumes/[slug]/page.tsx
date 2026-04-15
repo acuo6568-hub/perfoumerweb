@@ -30,6 +30,12 @@ type PerfumeDetailPageProps = {
 const getVariantId = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
+function toAbsoluteImageUrl(input: string) {
+  if (!input) return absoluteUrl("/perfoumerlogo.png");
+  if (/^https?:\/\//i.test(input)) return input;
+  return absoluteUrl(input.startsWith("/") ? input : `/${input}`);
+}
+
 export async function generateStaticParams() {
   const perfumes = await getPerfumes();
   return Array.from(new Set(perfumes.map((perfume) => perfume.slug))).map((slug) => ({ slug }));
@@ -110,6 +116,66 @@ export default async function PerfumeDetailPage({
   if (!perfume) notFound();
 
   const shareUrl = absoluteUrl(`/perfumes/${perfume.slug}${variantId ? `?v=${encodeURIComponent(variantId)}` : ""}`);
+  const canonicalUrl = absoluteUrl(`/perfumes/${perfume.slug}`);
+  const lowestPrice = perfume.sizes.length ? Math.min(...perfume.sizes.map((size) => size.price)) : undefined;
+  const highestPrice = perfume.sizes.length ? Math.max(...perfume.sizes.map((size) => size.price)) : undefined;
+  const primaryImage = toAbsoluteImageUrl(perfume.image);
+  const noteSummary = [
+    perfume.notes.top.map((note) => note.name).join(", "),
+    perfume.notes.heart.map((note) => note.name).join(", "),
+    perfume.notes.base.map((note) => note.name).join(", "),
+  ]
+    .filter(Boolean)
+    .join(". ");
+
+  const productStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${perfume.brand} ${perfume.name}`,
+    image: [primaryImage],
+    description: noteSummary || `${perfume.brand} ${perfume.name} perfume details and available sizes.`,
+    brand: {
+      "@type": "Brand",
+      name: perfume.brand,
+    },
+    sku: perfume.id,
+    category: "Perfume",
+    url: canonicalUrl,
+    offers: {
+      "@type": "AggregateOffer",
+      url: canonicalUrl,
+      priceCurrency: "AZN",
+      lowPrice: lowestPrice,
+      highPrice: highestPrice,
+      offerCount: perfume.sizes.length,
+      availability: perfume.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    },
+  };
+
+  const breadcrumbStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Ana səhifə",
+        item: absoluteUrl("/"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Kataloq",
+        item: absoluteUrl("/catalog"),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `${perfume.brand} ${perfume.name}`,
+        item: canonicalUrl,
+      },
+    ],
+  };
 
   const detailSections = [
     {
@@ -128,6 +194,14 @@ export default async function PerfumeDetailPage({
 
   return (
     <div className="detail-page-enter bg-[#f3f3f2]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productStructuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
+      />
       <ScrollToTopOnMount />
       <div className="mx-auto max-w-[1540px] px-6 pt-2 sm:pt-4 md:px-10">
         <div className="hidden xl:flex xl:pb-5">
