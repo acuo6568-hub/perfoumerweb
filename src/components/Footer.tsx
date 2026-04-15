@@ -125,16 +125,16 @@ export function Footer({ locale }: FooterProps) {
               </div>
 
               <div className="text-center md:text-right">
-                <p className="text-[0.88rem] font-medium tracking-[0.06em] text-zinc-500 uppercase">{t.footer.social}</p>
+                <p className="text-[0.88rem] font-medium tracking-[0.06em] text-zinc-500 uppercase">Əlaqə kanalları</p>
                 <div className="mt-5 flex flex-col items-center gap-2.5 text-base leading-[1.3] text-zinc-600 md:items-end">
-                  <a href="#" className="transition-colors hover:text-zinc-900">
-                    Instagram
+                  <a href="mailto:info@perfoumer.az" className="transition-colors hover:text-zinc-900">
+                    E-poçt
                   </a>
-                  <a href="#" className="transition-colors hover:text-zinc-900">
-                    X Network
+                  <a href="tel:+994507078070" className="transition-colors hover:text-zinc-900">
+                    Telefon
                   </a>
-                  <a href="#" className="transition-colors hover:text-zinc-900">
-                    Facebook
+                  <a href="https://wa.me/994507078070" target="_blank" rel="noreferrer" className="transition-colors hover:text-zinc-900">
+                    WhatsApp
                   </a>
                 </div>
               </div>

@@ -193,6 +193,19 @@ export default async function RootLayout({
     paymentAccepted: SEO_LOCAL_BUSINESS.paymentAccepted,
   };
 
+  const navigationStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "SiteNavigationElement",
+    name: ["Məhsullar", "Brendlər", "Haqqımızda", "Əlaqə və ünvan", "Blog"],
+    url: [
+      absoluteUrl("/catalog"),
+      absoluteUrl("/brands"),
+      absoluteUrl("/haqqimizda"),
+      absoluteUrl("/elaqe"),
+      absoluteUrl("/blog"),
+    ],
+  };
+
   return (
     <html
       lang={locale}
@@ -246,6 +259,10 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessStructuredData) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(navigationStructuredData) }}
         />
         <ConsoleCredit />
         <SiteTracker />
