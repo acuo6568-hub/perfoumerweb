@@ -151,3 +151,4 @@ and enables row-level security policies so each user can only manage their own w
 ## SEO Planning
 
 - Azerbaijani SEO cluster plan, title map, internal links, and submission checklist: [docs/seo/azerbaijani-seo-cluster-plan.md](docs/seo/azerbaijani-seo-cluster-plan.md)
+- Azerbaijan link acquisition playbook (directories, media, influencers, collaborations): [docs/seo/link-acquisition-azerbaijan.md](docs/seo/link-acquisition-azerbaijan.md)

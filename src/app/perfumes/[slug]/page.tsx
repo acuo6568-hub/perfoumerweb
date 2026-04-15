@@ -19,6 +19,7 @@ import { PerfumeShareButton } from "@/components/perfume/PerfumeShareButton";
 import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
+import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
 import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
 import { slugifyPathSegment } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
@@ -35,6 +36,41 @@ function toAbsoluteImageUrl(input: string) {
   if (!input) return absoluteUrl("/perfoumerlogo.png");
   if (/^https?:\/\//i.test(input)) return input;
   return absoluteUrl(input.startsWith("/") ? input : `/${input}`);
+}
+
+function pickProductClusterLinks(gender: string, notePool: string) {
+  const normalizedGender = gender.toLowerCase();
+  const normalizedNotes = notePool.toLowerCase();
+  const candidates = new Set<string>();
+
+  if (/men|male|kis|kişi|man|муж/u.test(normalizedGender)) {
+    candidates.add("/kisi-etirleri");
+  }
+
+  if (/women|female|qad|жен|lady/u.test(normalizedGender)) {
+    candidates.add("/qadin-etirleri");
+  }
+
+  if (/unisex|uni/u.test(normalizedGender)) {
+    candidates.add("/uniseks-etirler");
+  }
+
+  if (["oud", "agar", "ud"].some((token) => normalizedNotes.includes(token))) {
+    candidates.add("/oud-etirler");
+    candidates.add("/qis-etirleri");
+  }
+
+  if (["citrus", "bergamot", "lemon", "marine", "aquatic"].some((token) => normalizedNotes.includes(token))) {
+    candidates.add("/yay-etirleri");
+  }
+
+  if (["vanilla", "amber", "musk", "patchouli", "tonka", "leather"].some((token) => normalizedNotes.includes(token))) {
+    candidates.add("/uzunomurlu-etirler");
+  }
+
+  candidates.add("/hediyye-etirler");
+
+  return Array.from(candidates).slice(0, 4);
 }
 
 export async function generateStaticParams() {
@@ -128,6 +164,14 @@ export default async function PerfumeDetailPage({
   ]
     .filter(Boolean)
     .join(". ");
+  const productClusterLinks = pickProductClusterLinks(
+    perfume.gender,
+    [...perfume.noteSlugs.top, ...perfume.noteSlugs.heart, ...perfume.noteSlugs.base].join(" "),
+  );
+  const relatedClusters = CORE_CLUSTER_PAGES.filter((item) => productClusterLinks.includes(item.href));
+  const relatedArticles = BLOG_ARTICLES.filter((item) =>
+    item.relatedClusterHrefs.some((href) => productClusterLinks.includes(href)),
+  ).slice(0, 6);
 
   const productStructuredData = {
     "@context": "https://schema.org",
@@ -315,6 +359,46 @@ export default async function PerfumeDetailPage({
             >
               {t.detail.otherProducts}
             </Link>
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-[2rem] border border-zinc-200/80 bg-white/88 p-6 shadow-[0_14px_34px_rgba(22,22,24,0.05)] md:p-8">
+          <h2 className="text-3xl leading-tight text-zinc-900 md:text-4xl">Bu məhsulla bağlı keçidlər</h2>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {relatedClusters.map((cluster) => (
+              <Link
+                key={cluster.href}
+                href={cluster.href}
+                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+              >
+                {cluster.title}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-2 md:grid-cols-2">
+            {relatedArticles.map((article) => (
+              <Link
+                key={article.slug}
+                href={`/blog/${article.slug}`}
+                className="rounded-xl border border-zinc-200/80 bg-white px-3 py-3 text-sm text-zinc-700 transition hover:border-zinc-300"
+              >
+                {article.title}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {TRUST_PAGES.slice(0, 4).map((page) => (
+              <Link
+                key={page.href}
+                href={page.href}
+                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+              >
+                {page.label}
+              </Link>
+            ))}
           </div>
         </section>
       </div>

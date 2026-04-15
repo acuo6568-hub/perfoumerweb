@@ -30,16 +30,22 @@ export function Header({ floating = false, locale }: HeaderProps) {
       login: "Giriş",
       account: "Hesabım",
       wishlist: "İstək siyahısı",
+      blog: "Blog",
+      aboutPage: "Haqqımızda",
     },
     en: {
       login: "Login",
       account: "My Account",
       wishlist: "Wishlist",
+      blog: "Blog",
+      aboutPage: "About",
     },
     ru: {
       login: "Вход",
       account: "Мой аккаунт",
       wishlist: "Wishlist",
+      blog: "Блог",
+      aboutPage: "О нас",
     },
   } as const;
   const primaryMenuItems = [
@@ -52,7 +58,8 @@ export function Header({ floating = false, locale }: HeaderProps) {
     { href: "/cart", label: t.header.cart },
     ...(session ? [{ href: "/wishlist", label: copy[locale].wishlist }] : []),
     { href: "/brands", label: t.header.brands },
-    { href: "/#about", label: t.header.about },
+    { href: "/blog", label: copy[locale].blog },
+    { href: "/haqqimizda", label: copy[locale].aboutPage },
     { href: "/#contact", label: t.header.contact },
   ];
   const desktopMenuItems = [
@@ -60,6 +67,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
     { href: "/compare", label: t.header.compare },
     { href: "/qoxunu", label: t.header.scentQuiz },
     { href: "/brands", label: t.header.brands },
+    { href: "/blog", label: copy[locale].blog },
   ];
   const mobileDrawerMenuItems = [...primaryMenuItems, ...secondaryMenuItems];
   const desktopDrawerMenuItems = [

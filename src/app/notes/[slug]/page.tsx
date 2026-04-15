@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
 import { NoteTypeCatalogSection } from "@/components/NoteTypeCatalogSection";
@@ -6,6 +7,7 @@ import { getNotes, getPerfumes } from "@/lib/catalog";
 import { formatMessage, getDictionary } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { localizeNoteLabel } from "@/lib/note-label";
+import { BLOG_ARTICLES, CORE_CLUSTER_PAGES } from "@/lib/seo-growth";
 import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
 
 type NoteFilterType = "top" | "heart" | "base";
@@ -86,6 +88,26 @@ function fallbackNoteName(slug: string) {
     .join(" ");
 }
 
+function pickRelatedClusterHrefs(noteSlug: string) {
+  if (["oud", "agar", "ud"].some((token) => noteSlug.includes(token))) {
+    return ["/oud-etirler", "/qis-etirleri", "/uzunomurlu-etirler"];
+  }
+
+  if (["citrus", "bergamot", "lemon", "grapefruit", "marine", "aquatic"].some((token) => noteSlug.includes(token))) {
+    return ["/yay-etirleri", "/uniseks-etirler", "/kisi-etirleri"];
+  }
+
+  if (["rose", "jasmine", "floral", "peony", "lily"].some((token) => noteSlug.includes(token))) {
+    return ["/qadin-etirleri", "/hediyye-etirler", "/yay-etirleri"];
+  }
+
+  if (["vanilla", "amber", "musk", "patchouli", "tobacco", "leather"].some((token) => noteSlug.includes(token))) {
+    return ["/uzunomurlu-etirler", "/qis-etirleri", "/hediyye-etirler"];
+  }
+
+  return ["/uniseks-etirler", "/kisi-etirleri", "/qadin-etirleri"];
+}
+
 export default async function NotePage({
   params,
   searchParams,
@@ -106,6 +128,11 @@ export default async function NotePage({
       content: "",
     };
   const localizedNoteName = localizeNoteLabel(note, locale);
+  const relatedClusterHrefs = pickRelatedClusterHrefs(note.slug);
+  const relatedClusters = CORE_CLUSTER_PAGES.filter((item) => relatedClusterHrefs.includes(item.href));
+  const relatedArticles = BLOG_ARTICLES.filter((item) =>
+    item.relatedClusterHrefs.some((href) => relatedClusterHrefs.includes(href)),
+  ).slice(0, 6);
 
   return (
     <div className="bg-[#f3f3f2]">
@@ -139,6 +166,34 @@ export default async function NotePage({
             base: t.notePage.base,
           }}
         />
+
+        <section className="mt-8 rounded-[1.8rem] border border-zinc-200/80 bg-white/84 p-5 shadow-[0_12px_30px_rgba(22,22,24,0.05)] sm:p-6">
+          <h2 className="text-2xl text-zinc-900 md:text-3xl">{localizedNoteName} notu üçün əlavə keçidlər</h2>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {relatedClusters.map((cluster) => (
+              <Link
+                key={cluster.href}
+                href={cluster.href}
+                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+              >
+                {cluster.title}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-2 md:grid-cols-2">
+            {relatedArticles.map((article) => (
+              <Link
+                key={article.slug}
+                href={`/blog/${article.slug}`}
+                className="rounded-xl border border-zinc-200/80 bg-white px-3 py-3 text-sm text-zinc-700 transition hover:border-zinc-300"
+              >
+                {article.title}
+              </Link>
+            ))}
+          </div>
+        </section>
       </main>
 
       <Footer locale={locale} />

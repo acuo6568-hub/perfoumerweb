@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 
 import { getNotes, getPerfumes } from "@/lib/catalog";
-import { SITE_URL, absoluteUrl } from "@/lib/seo";
+import { BLOG_ARTICLES, CORE_CLUSTER_PATHS, TRUST_PAGES } from "@/lib/seo-growth";
+import { SITE_URL, absoluteUrl, slugifyPathSegment } from "@/lib/seo";
 
 function toAbsoluteUrl(input: string) {
   if (!input) return "";
@@ -27,10 +28,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.95,
     },
     {
+      url: absoluteUrl("/blog"),
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.82,
+    },
+    {
       url: absoluteUrl("/brands"),
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.7,
+    },
+    {
+      url: absoluteUrl("/haqqimizda"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: absoluteUrl("/elaqe"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.62,
     },
     {
       url: absoluteUrl("/qoxunu"),
@@ -62,7 +81,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.48,
     },
+    ...CORE_CLUSTER_PATHS.map((path) => ({
+      url: absoluteUrl(path),
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.86,
+    })),
+    ...TRUST_PAGES.filter((page) => page.href !== "/privacy-policy" && page.href !== "/refund-policy" && page.href !== "/terms-and-conditions").map((page) => ({
+      url: absoluteUrl(page.href),
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: page.href === "/elaqe" ? 0.62 : 0.56,
+    })),
+    ...BLOG_ARTICLES.map((article) => ({
+      url: absoluteUrl(`/blog/${article.slug}`),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: article.category === "campaign" ? 0.72 : 0.78,
+    })),
   ];
+
+  const brandRoutes: MetadataRoute.Sitemap = Array.from(
+    new Set(perfumes.map((perfume) => slugifyPathSegment(perfume.brand)).filter(Boolean)),
+  ).map((slug) => ({
+    url: absoluteUrl(`/brands/${slug}`),
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.74,
+  }));
 
   const perfumeRoutes: MetadataRoute.Sitemap = perfumes.map((perfume) => {
     const imageUrl = toAbsoluteUrl(perfume.image);
@@ -82,5 +128,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }));
 
-  return [...staticRoutes, ...perfumeRoutes, ...noteRoutes];
+  return [...staticRoutes, ...brandRoutes, ...perfumeRoutes, ...noteRoutes];
 }

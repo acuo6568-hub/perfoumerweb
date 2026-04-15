@@ -8,6 +8,7 @@ import { PersonalizedFeaturedGrid } from "@/components/home/PersonalizedFeatured
 import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary, type Locale } from "@/lib/i18n";
+import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
 import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
@@ -378,6 +379,7 @@ export default async function Home() {
     { value: "4.9/5", ...t.home.stats[3] },
   ];
   const about = ABOUT_COPY[locale];
+  const homepageArticles = BLOG_ARTICLES.slice(0, 8);
   const faqStructuredData = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -449,6 +451,60 @@ export default async function Home() {
             {t.home.showMore}
           </Link>
         </div>
+
+        <section className="mt-10 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+          <article className="rounded-[2rem] border border-zinc-200/80 bg-white/82 p-6 shadow-[0_14px_32px_rgba(22,22,24,0.05)] md:p-8">
+            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Core Landing Cluster</p>
+            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Axtarış niyyətinə görə kolleksiyalar</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
+              Kişi, qadın, uniseks, oud, hədiyyə, uzunömürlü, yay və qış üçün ayrıca SEO səhifələrinə keçərək daha sürətli seçim edin.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {CORE_CLUSTER_PAGES.map((cluster) => (
+                <Link
+                  key={cluster.href}
+                  href={cluster.href}
+                  className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+                >
+                  {cluster.title}
+                </Link>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[2rem] border border-zinc-200/80 bg-white/82 p-6 shadow-[0_14px_32px_rgba(22,22,24,0.05)] md:p-8">
+            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Blog & Campaign Hub</p>
+            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Azerbaycanca faydalı məqalələr</h2>
+            <div className="mt-4 space-y-2">
+              {homepageArticles.map((article) => (
+                <Link key={article.slug} href={`/blog/${article.slug}`} className="block rounded-xl border border-zinc-200/80 bg-white px-4 py-3 transition hover:border-zinc-300">
+                  <p className="text-sm font-medium text-zinc-900">{article.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">{article.description}</p>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-4">
+              <Link href="/blog" className="text-sm font-medium text-zinc-600 transition hover:text-zinc-900">
+                Bütün məqalələrə keç
+              </Link>
+            </div>
+          </article>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-zinc-200/80 bg-white/85 p-6 shadow-[0_14px_30px_rgba(20,20,22,0.05)] md:p-8">
+          <h2 className="text-2xl text-zinc-900 md:text-3xl">Etibar və lokal məlumatlar</h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {TRUST_PAGES.map((page) => (
+              <Link
+                key={page.href}
+                href={page.href}
+                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+              >
+                {page.label}
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <section id="about" className="mt-20 pb-8 md:mt-24">
           <div className="mx-auto max-w-3xl text-center">
