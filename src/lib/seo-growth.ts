@@ -33,6 +33,16 @@ export type ArticleEntry = {
   faq: ClusterFaq[];
 };
 
+export type WeeklyGscCalendarEntry = {
+  week: string;
+  articleSlug: string;
+  articleTitle: string;
+  gscQueryCluster: string;
+  primaryKeyword: string;
+  targetHrefs: string[];
+  status: "planned" | "published";
+};
+
 const CLUSTER_CATALOG: ClusterDefinition[] = [
   {
     key: "men",
@@ -739,6 +749,72 @@ export const BLOG_ARTICLES = ARTICLES;
 export function getBlogArticleBySlug(slug: string) {
   return BLOG_ARTICLES.find((item) => item.slug === slug);
 }
+
+function inferGscQueryCluster(article: ArticleEntry) {
+  const text = `${article.intent} ${article.title}`.toLowerCase();
+
+  if (/kişi|male|men|ofis|groom/i.test(text)) {
+    return "men-commercial";
+  }
+
+  if (/qadın|female|women|floral|gourmand|rose|yasəmən|vanil/i.test(text)) {
+    return "women-commercial";
+  }
+
+  if (/uniseks|unisex|minimalist/i.test(text)) {
+    return "unisex-discovery";
+  }
+
+  if (/oud|ərəb|agar/i.test(text)) {
+    return "oud-high-intent";
+  }
+
+  if (/yay|qış|payız|yaz|mövsüm|season/i.test(text)) {
+    return "seasonal-intent";
+  }
+
+  if (/hədiyyə|sevgili|toy|nişan|kampaniya|bayram/i.test(text)) {
+    return "gift-campaign-intent";
+  }
+
+  if (/uzunömür|qalıcı|performans/i.test(text)) {
+    return "performance-intent";
+  }
+
+  if (/note|not|yasəmən|rose|vanil|oxumaq/i.test(text)) {
+    return "note-education";
+  }
+
+  return "general-buying-guide";
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function formatWeekLabel(date: Date) {
+  const yyyy = date.getFullYear();
+  const mm = `${date.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${date.getDate()}`.padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+const CALENDAR_START = new Date("2026-04-20T12:00:00+04:00");
+
+export const WEEKLY_GSC_CALENDAR: WeeklyGscCalendarEntry[] = BLOG_ARTICLES.map((article, index) => {
+  const weekDate = addDays(CALENDAR_START, index * 7);
+  return {
+    week: formatWeekLabel(weekDate),
+    articleSlug: article.slug,
+    articleTitle: article.title,
+    gscQueryCluster: inferGscQueryCluster(article),
+    primaryKeyword: article.intent,
+    targetHrefs: article.relatedClusterHrefs,
+    status: article.publishedAt <= "2026-04-15" ? "published" : "planned",
+  };
+});
 
 export const TRUST_PAGES = [
   { href: "/haqqimizda", label: "Haqqımızda" },

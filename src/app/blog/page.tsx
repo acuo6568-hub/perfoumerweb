@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
-import { BLOG_ARTICLES, CORE_CLUSTER_PAGES } from "@/lib/seo-growth";
+import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, WEEKLY_GSC_CALENDAR } from "@/lib/seo-growth";
 import { buildAzeriPageKeywords } from "@/lib/seo";
 import { getCurrentLocale } from "@/lib/i18n.server";
 
@@ -32,6 +32,7 @@ export default async function BlogHubPage() {
   const featured = BLOG_ARTICLES.slice(0, 8);
   const campaigns = BLOG_ARTICLES.filter((item) => item.category === "campaign").slice(0, 8);
   const guides = BLOG_ARTICLES.filter((item) => item.category !== "campaign").slice(0, 18);
+  const calendarPreview = WEEKLY_GSC_CALENDAR.slice(0, 12);
 
   return (
     <div className="bg-[#f3f3f2]">
@@ -106,6 +107,32 @@ export default async function BlogHubPage() {
               </Link>
             ))}
           </div>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-zinc-200/80 bg-white/90 p-6 md:p-8">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-zinc-200/80 pb-4">
+            <div>
+              <h2 className="text-2xl text-zinc-900 md:text-3xl">Həftəlik GSC query-cluster publishing planı</h2>
+              <p className="mt-2 text-sm text-zinc-500">Məqalələr həftə-həftə axtarış niyyəti klasterlərinə uyğun sıraya salınıb.</p>
+            </div>
+            <span className="text-xs tracking-[0.14em] text-zinc-400 uppercase">{WEEKLY_GSC_CALENDAR.length} həftə</span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {calendarPreview.map((slot) => (
+              <article key={`${slot.week}-${slot.articleSlug}`} className="rounded-xl border border-zinc-200/80 bg-white px-4 py-3">
+                <p className="text-xs tracking-[0.12em] text-zinc-400 uppercase">{slot.week} • {slot.gscQueryCluster}</p>
+                <Link href={`/blog/${slot.articleSlug}`} className="mt-1 block text-sm font-medium text-zinc-900 transition hover:text-zinc-700">
+                  {slot.articleTitle}
+                </Link>
+                <p className="mt-1 text-xs text-zinc-500">Keyword: {slot.primaryKeyword}</p>
+              </article>
+            ))}
+          </div>
+
+          <p className="mt-4 text-xs text-zinc-500">
+            Tam operational plan repoda saxlanır: docs/seo/editorial-calendar-gsc-clusters.md
+          </p>
         </section>
       </main>
 
