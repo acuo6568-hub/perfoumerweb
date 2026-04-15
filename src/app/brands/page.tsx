@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
-import { buildAzeriPageKeywords } from "@/lib/seo";
+import { buildAzeriPageKeywords, slugifyPathSegment } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Ətir Brendləri",
@@ -82,7 +82,7 @@ export default async function BrandsPage() {
                   {items.map((brand) => (
                     <Link
                       key={brand}
-                      href={`/catalog?brand=${encodeURIComponent(brand)}`}
+                      href={`/brands/${slugifyPathSegment(brand)}`}
                       className="group rounded-[1.35rem] border border-zinc-200/80 bg-white/92 px-4 py-4 text-zinc-700 shadow-[0_10px_24px_rgba(24,24,24,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_30px_rgba(24,24,24,0.08)]"
                     >
                       <span className="block text-lg font-medium text-zinc-900 transition-colors duration-300 group-hover:text-zinc-800">

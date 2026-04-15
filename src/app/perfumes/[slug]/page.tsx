@@ -20,6 +20,7 @@ import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes } from "@/lib/catalog
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
 import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { slugifyPathSegment } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 
 type PerfumeDetailPageProps = {
@@ -225,7 +226,7 @@ export default async function PerfumeDetailPage({
               </span>
               <span>|</span>
               <Link
-                href={`/catalog?brand=${encodeURIComponent(perfume.brand)}`}
+                href={`/brands/${slugifyPathSegment(perfume.brand)}`}
                 className="transition-colors duration-300 md:hover:text-zinc-800"
               >
                 {perfume.brand}

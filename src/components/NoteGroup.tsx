@@ -15,12 +15,6 @@ export function NoteGroup({ title, notes, locale = "az" }: NoteGroupProps) {
   if (!notes.length) return null;
 
   const [emphasis, trailing] = title.split(" ", 2);
-  const typeMap = {
-    "Üst notları": "top",
-    "Ürək notları": "heart",
-    "Baza notları": "base",
-  } as const;
-  const noteType = typeMap[title as keyof typeof typeMap] ?? "top";
 
   return (
     <section className="space-y-3">
@@ -32,7 +26,7 @@ export function NoteGroup({ title, notes, locale = "az" }: NoteGroupProps) {
         {notes.map((note) => (
           <Link
             key={note.slug}
-            href={`/notes/${note.slug}?type=${noteType}`}
+            href={`/notes/${note.slug}`}
             className="group flex w-fit flex-col items-start"
           >
             <div className="rounded-[1.05rem] bg-white p-0.5 shadow-[0_8px_18px_rgba(15,23,42,0.06)] ring-1 ring-zinc-200/80 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_24px_rgba(15,23,42,0.1)]">

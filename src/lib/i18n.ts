@@ -41,7 +41,7 @@ export const translations = {
     },
     hero: {
       eyebrow: "Perfoumer",
-      title: "Orijinal və premium ətirləri sizin üçün seçirik.",
+      title: "Orijinal və Premium Ətirlər Onlayn.",
       description: "Ruhunuzu oyandıran incə və unudulmaz qoxularla tanış olun.",
       discover: "Yeni Ətirləri Kəşf Et",
       viewAll: "Bütün Məhsulları Gör",

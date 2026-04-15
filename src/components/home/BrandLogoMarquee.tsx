@@ -1,8 +1,7 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+
+import { slugifyPathSegment } from "@/lib/seo";
 
 const BRAND_DOMAIN_OVERRIDES: Record<string, string> = {
   "abdul samad al qurashi": "abdulsamadalqurashi.com",
@@ -80,8 +79,7 @@ function buildDomainFromBrand(brand: string) {
     return "";
   }
 
-  const override = BRAND_DOMAIN_OVERRIDES[normalized];
-  return override ?? "";
+  return BRAND_DOMAIN_OVERRIDES[normalized] ?? "";
 }
 
 function buildLogoUrl(brand: string) {
@@ -98,8 +96,6 @@ type BrandLogoMarqueeProps = {
 };
 
 export function BrandLogoMarquee({ brands }: BrandLogoMarqueeProps) {
-  const [failedBrands, setFailedBrands] = useState<Set<string>>(new Set());
-
   const uniqueBrands = Array.from(new Set(brands.map((item) => item.trim()).filter(Boolean))).sort((a, b) =>
     a.localeCompare(b),
   );
@@ -115,18 +111,6 @@ export function BrandLogoMarquee({ brands }: BrandLogoMarqueeProps) {
 
   const repeated = [...logoItems, ...logoItems];
 
-  const markBrandLogoAsFailed = (brand: string) => {
-    setFailedBrands((current) => {
-      if (current.has(brand)) {
-        return current;
-      }
-
-      const next = new Set(current);
-      next.add(brand);
-      return next;
-    });
-  };
-
   return (
     <section className="mx-auto mt-2 mb-8 max-w-[1540px] px-6 md:px-10">
       <div className="border-y border-zinc-300/55 bg-transparent py-5 md:py-6">
@@ -139,37 +123,37 @@ export function BrandLogoMarquee({ brands }: BrandLogoMarqueeProps) {
               index < logoItems.length ? (
                 <Link
                   key={`${item.brand}-${index}`}
-                  href={`/catalog?brand=${encodeURIComponent(item.brand)}`}
+                  href={`/brands/${slugifyPathSegment(item.brand)}`}
                   className="brand-logo-chip brand-logo-chip-link"
                   aria-label={`${item.brand} products`}
                 >
-                  {item.src && !failedBrands.has(item.brand) ? (
-                    <Image
-                      src={item.src}
-                      alt={item.brand}
-                      width={42}
-                      height={42}
-                      className="brand-logo-image"
-                      onError={() => markBrandLogoAsFailed(item.brand)}
-                    />
-                  ) : (
+                  <span className="flex items-center gap-2">
+                    {item.src ? (
+                      <Image
+                        src={item.src}
+                        alt={item.brand}
+                        width={42}
+                        height={42}
+                        className="brand-logo-image"
+                      />
+                    ) : null}
                     <span className="brand-logo-wordmark">{item.brand}</span>
-                  )}
+                  </span>
                 </Link>
               ) : (
                 <div key={`${item.brand}-${index}`} className="brand-logo-chip" aria-hidden>
-                  {item.src && !failedBrands.has(item.brand) ? (
-                    <Image
-                      src={item.src}
-                      alt=""
-                      width={42}
-                      height={42}
-                      className="brand-logo-image"
-                      onError={() => markBrandLogoAsFailed(item.brand)}
-                    />
-                  ) : (
+                  <span className="flex items-center gap-2">
+                    {item.src ? (
+                      <Image
+                        src={item.src}
+                        alt={item.brand}
+                        width={42}
+                        height={42}
+                        className="brand-logo-image"
+                      />
+                    ) : null}
                     <span className="brand-logo-wordmark">{item.brand}</span>
-                  )}
+                  </span>
                 </div>
               )
             ))}

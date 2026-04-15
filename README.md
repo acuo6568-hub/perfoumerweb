@@ -147,3 +147,7 @@ and enables row-level security policies so each user can only manage their own w
   - add/remove current perfume from wishlist
 - Wishlist page (`/wishlist`):
   - view and remove saved perfumes
+
+## SEO Planning
+
+- Azerbaijani SEO cluster plan, title map, internal links, and submission checklist: [docs/seo/azerbaijani-seo-cluster-plan.md](docs/seo/azerbaijani-seo-cluster-plan.md)
