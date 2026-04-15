@@ -993,7 +993,7 @@ function resolveConfirmedTypoMessage(body: ChatRequest): string {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const latestUser = messages[messages.length - 1];
 
-  if (!latestUser || latestUser.role !== "user" || !isAffirmativeReply(latestUser.text)) {
+  if (!latestUser || latestUser.role !== "user") {
     return fallback;
   }
 
@@ -1011,11 +1011,26 @@ function resolveConfirmedTypoMessage(body: ChatRequest): string {
 
   const assistantFollowUp = messages[assistantIndex]?.followUp;
   const question = assistantFollowUp?.question || "";
-  if (!/did you mean|bunu nezerde tuturdunuz|bunu nəzərdə tuturdunuz|вы имели в виду/iu.test(question)) {
+  if (!/did you mean|which exact variant|bunu nezerde tuturdunuz|bunu nəzərdə tuturdunuz|hansi varianti|hansı variantı|вы имели в виду|какой именно вариант/iu.test(question)) {
     return fallback;
   }
 
-  const suggestedPerfume = extractSuggestedPerfumeFromOptions(assistantFollowUp?.options || []);
+  const options = assistantFollowUp?.options || [];
+  if (!options.length) {
+    return fallback;
+  }
+
+  const normalizedLatest = normalizeText(latestUser.text);
+  const selectedOptionFromReply = options.find((option) => {
+    const normalizedOption = normalizeText(option.replace(/^(yes|beli|bəli|да)\s*[,\-:]\s*/iu, ""));
+    if (!normalizedOption) return false;
+    return normalizedLatest.includes(normalizedOption) || normalizedOption.includes(normalizedLatest);
+  });
+
+  const suggestedPerfume = isAffirmativeReply(latestUser.text)
+    ? extractSuggestedPerfumeFromOptions(options) || options[0] || ""
+    : selectedOptionFromReply || "";
+
   if (!suggestedPerfume) {
     return fallback;
   }
@@ -1023,11 +1038,11 @@ function resolveConfirmedTypoMessage(body: ChatRequest): string {
   for (let index = assistantIndex - 1; index >= 0; index -= 1) {
     const candidate = messages[index];
     if (candidate?.role === "user" && candidate.text?.trim()) {
-      return `${candidate.text.trim()} ${suggestedPerfume}`.trim();
+      return `${candidate.text.trim()} ${suggestedPerfume.replace(/^(yes|beli|bəli|да)\s*[,\-:]\s*/iu, "")}`.trim();
     }
   }
 
-  return `${fallback} ${suggestedPerfume}`.trim();
+  return `${fallback} ${suggestedPerfume.replace(/^(yes|beli|bəli|да)\s*[,\-:]\s*/iu, "")}`.trim();
 }
 
 function buildTypoClarificationFollowUp(locale: string, suggestion: string): StructuredFollowUp {
@@ -1054,6 +1069,33 @@ function buildTypoClarificationFollowUp(locale: string, suggestion: string): Str
     options: [`Yes, ${suggestion}`, "No, different perfume"],
     allowFreeText: true,
     inputPlaceholder: "Say yes and I will continue",
+  };
+}
+
+function buildVariantClarificationFollowUp(locale: string, options: string[]): StructuredFollowUp {
+  if (locale === "az") {
+    return {
+      question: "Dəqiq hansı variantı nəzərdə tutursunuz?",
+      options: options.slice(0, 4),
+      allowFreeText: true,
+      inputPlaceholder: "Variant adını seçin və ya yazın",
+    };
+  }
+
+  if (locale === "ru") {
+    return {
+      question: "Какой именно вариант вы имеете в виду?",
+      options: options.slice(0, 4),
+      allowFreeText: true,
+      inputPlaceholder: "Выберите вариант или напишите его",
+    };
+  }
+
+  return {
+    question: "Which exact variant do you mean?",
+    options: options.slice(0, 4),
+    allowFreeText: true,
+    inputPlaceholder: "Pick a variant or type it",
   };
 }
 
@@ -1245,6 +1287,46 @@ function buildPriceCalculationReply(locale: string, resolved: ResolvedPriceLine[
   return [`Calculated total:`, ...lines, ``, `**Total: ${total} AZN**`, warnings.length ? "" : "", ...warnings].join("\n");
 }
 
+function buildPriceClarificationReply(
+  locale: string,
+  line: ParsedPriceLine,
+  perfumes: Perfume[],
+  candidates: Perfume[]
+): StructuredFollowUp {
+  const candidateOptions = candidates.slice(0, 4).map((perfume) => `${perfume.brand} ${perfume.name}`);
+
+  if (locale === "az") {
+    return {
+      question: `Bu hissə üçün dəqiq variantı seçin: **${line.fragment} ${line.sizeMl}ml**`,
+      options: candidateOptions.length ? candidateOptions : [],
+      allowFreeText: true,
+      inputPlaceholder: candidateOptions.length
+        ? "Variantı seçin və ya tam adı yazın"
+        : "Dəqiq adı yazın",
+    };
+  }
+
+  if (locale === "ru") {
+    return {
+      question: `Уточните точный вариант для: **${line.fragment} ${line.sizeMl}ml**`,
+      options: candidateOptions.length ? candidateOptions : [],
+      allowFreeText: true,
+      inputPlaceholder: candidateOptions.length
+        ? "Выберите вариант или напишите точное название"
+        : "Напишите точное название",
+    };
+  }
+
+  return {
+    question: `Which exact variant do you mean for **${line.fragment} ${line.sizeMl}ml**?`,
+    options: candidateOptions.length ? candidateOptions : [],
+    allowFreeText: true,
+    inputPlaceholder: candidateOptions.length
+      ? "Pick a variant or type the exact name"
+      : "Type the exact name",
+  };
+}
+
 function tryBuildPriceCalculationReply(locale: string, message: string, perfumes: Perfume[]): string | null {
   if (!isPriceCalculationQuestion(message)) return null;
 
@@ -1263,6 +1345,10 @@ function tryBuildPriceCalculationReply(locale: string, message: string, perfumes
     resolved.push(resolvedLine);
   }
 
+  if (unresolved.length > 0 || resolved.some((item) => item.unitPrice < 0)) {
+    return null;
+  }
+
   return buildPriceCalculationReply(locale, resolved, unresolved);
 }
 
@@ -1274,25 +1360,44 @@ function buildPriceTypoClarification(message: string, locale: string, perfumes: 
     const normalizedFragment = normalizeText(line.fragment);
     if (!normalizedFragment) continue;
 
-    const exactMatchExists = perfumes.some((perfume) => {
-      const full = normalizeText(`${perfume.brand} ${perfume.name}`);
-      const short = normalizeText(perfume.name);
-      return full.includes(normalizedFragment) || normalizedFragment.includes(short);
-    });
-
-    if (exactMatchExists) continue;
-
     const ranked = perfumes
       .map((perfume) => ({ perfume, score: scorePerfume(perfume, line.fragment) }))
       .sort((left, right) => right.score - left.score);
 
     const top = ranked[0];
     const second = ranked[1];
-    if (!top) continue;
+    if (!top) {
+      return buildPriceClarificationReply(locale, line, perfumes, []);
+    }
+
+    const queryWords = extractSearchWords(normalizedFragment);
+    const topCandidates = ranked
+      .filter((entry) => entry.score >= Math.max(120, (top.score ?? 0) - 70))
+      .slice(0, 4);
+
+    const strictCandidates = topCandidates.filter((entry) => {
+      const full = normalizeText(`${entry.perfume.brand} ${entry.perfume.name}`);
+      if (!queryWords.length) return false;
+      return queryWords.every((word) => full.includes(word));
+    });
+
+    if (strictCandidates.length >= 2) {
+      const options = strictCandidates.map((entry) => `${entry.perfume.brand} ${entry.perfume.name}`);
+      return buildVariantClarificationFollowUp(locale, options);
+    }
 
     const scoreGap = (top.score ?? 0) - (second?.score ?? 0);
-    if (top.score >= 130 && top.score < 260 && scoreGap >= 25) {
+    if (top.score >= 55 && top.score < 290 && scoreGap >= 12) {
       return buildTypoClarificationFollowUp(locale, `${top.perfume.brand} ${top.perfume.name}`);
+    }
+
+    if (top.score > 0 && top.score < 120) {
+      return buildPriceClarificationReply(locale, line, perfumes, topCandidates.map((entry) => entry.perfume));
+    }
+
+    if (top.score >= 120 && topCandidates.length) {
+      const options = topCandidates.map((entry) => `${entry.perfume.brand} ${entry.perfume.name}`);
+      return buildVariantClarificationFollowUp(locale, options);
     }
   }
 
@@ -2450,13 +2555,6 @@ export async function POST(request: Request) {
     const apiKey = process.env.QOXUNU_OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key is not configured" },
-        { status: 500 }
-      );
-    }
-
     if (isDeveloperContactQuestion(effectiveMessage)) {
       return NextResponse.json({ response: developerContactReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
@@ -2581,6 +2679,16 @@ Rules for personalization and privacy:
       : "";
 
     const enhancedSystemPromptFinal = `${enhancedSystemPromptWithUser}${giftGuidance}`;
+
+    if (!apiKey) {
+      const missingKeyReply =
+        locale === "az"
+          ? "AI köməkçisi hazırda texniki səbəbə görə cavab verə bilmir. Qısa müddət sonra yenidən cəhd edin və ya dəstəyə yazın: support@perfoumer.az"
+          : locale === "ru"
+            ? "AI-ассистент временно недоступен по технической причине. Попробуйте чуть позже или напишите в поддержку: support@perfoumer.az"
+            : "The AI assistant is temporarily unavailable due to a technical issue. Please try again shortly or contact support: support@perfoumer.az";
+      return NextResponse.json({ response: missingKeyReply, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
