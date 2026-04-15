@@ -47,6 +47,7 @@ function getShadowProfile(slug: string): ShadowProfile {
 export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: ProductCardProps) {
   const startingPrice = perfume.sizes[0]?.price;
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [imageSrc, setImageSrc] = useState(perfume.image || "/perfoumerlogo.png");
   const t = getDictionary(locale);
   const shadowProfile = getShadowProfile(perfume.slug);
 
@@ -97,7 +98,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
             style={shadowStyle}
           />
           <Image
-            src={perfume.image}
+            src={imageSrc}
             alt={perfume.imageAlt || `${perfume.brand} ${perfume.name} ətiri`}
             fill
             sizes="(max-width: 639px) 44vw, (max-width: 1023px) 42vw, (max-width: 1279px) 28vw, 22vw"
@@ -106,6 +107,12 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
               isImageLoaded ? "opacity-100" : "opacity-0",
             ].join(" ")}
             onLoad={() => setIsImageLoaded(true)}
+            onError={() => {
+              if (imageSrc !== "/perfoumerlogo.png") {
+                setImageSrc("/perfoumerlogo.png");
+                setIsImageLoaded(true);
+              }
+            }}
           />
         </div>
       </div>

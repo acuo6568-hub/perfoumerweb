@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { AppShell } from "@/components/AppShell";
 import { AIChatButton } from "@/components/AIChat/AIChatButton";
@@ -266,6 +267,7 @@ export default async function RootLayout({
         />
         <ConsoleCredit />
         <SiteTracker />
+        <Analytics />
         <div className="relative z-[1]">
           <AppShell locale={locale}>{children}</AppShell>
         </div>
