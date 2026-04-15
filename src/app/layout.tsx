@@ -120,6 +120,16 @@ export default async function RootLayout({
     logo: absoluteUrl("/icon.png"),
     email: SEO_CONTACT.email,
     telephone: SEO_CONTACT.phone,
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        telephone: SEO_CONTACT.phone,
+        email: SEO_CONTACT.email,
+        areaServed: "AZ",
+        availableLanguage: ["az", "en", "ru"],
+      },
+    ],
     sameAs: [SEO_CONTACT.whatsappUrl],
   };
 
@@ -129,6 +139,33 @@ export default async function RootLayout({
     name: SITE_NAME,
     url: SITE_URL,
     inLanguage: ["az", "en", "ru"],
+    hasPart: [
+      {
+        "@type": "WebPage",
+        name: "Kataloq",
+        url: absoluteUrl("/catalog"),
+      },
+      {
+        "@type": "WebPage",
+        name: "Brendlər",
+        url: absoluteUrl("/brands"),
+      },
+      {
+        "@type": "WebPage",
+        name: "Haqqımızda",
+        url: absoluteUrl("/haqqimizda"),
+      },
+      {
+        "@type": "WebPage",
+        name: "Əlaqə və ünvan",
+        url: absoluteUrl("/elaqe"),
+      },
+      {
+        "@type": "WebPage",
+        name: "Blog",
+        url: absoluteUrl("/blog"),
+      },
+    ],
     potentialAction: {
       "@type": "SearchAction",
       target: `${SITE_URL}/catalog?q={search_term_string}`,

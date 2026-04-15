@@ -454,10 +454,10 @@ export default async function Home() {
 
         <section className="mt-10 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
           <article className="rounded-[2rem] border border-zinc-200/80 bg-white/82 p-6 shadow-[0_14px_32px_rgba(22,22,24,0.05)] md:p-8">
-            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Core Landing Cluster</p>
-            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Axtarış niyyətinə görə kolleksiyalar</h2>
+            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Seçilmiş kolleksiyalar</p>
+            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Zövqünüzə görə kolleksiyalar</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
-              Kişi, qadın, uniseks, oud, hədiyyə, uzunömürlü, yay və qış üçün ayrıca SEO səhifələrinə keçərək daha sürətli seçim edin.
+              Kişi, qadın, uniseks, oud, hədiyyə, uzunömürlü, yay və qış kolleksiyalarına keçərək sizə uyğun qoxunu daha rahat seçin.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {CORE_CLUSTER_PAGES.map((cluster) => (
@@ -473,8 +473,8 @@ export default async function Home() {
           </article>
 
           <article className="rounded-[2rem] border border-zinc-200/80 bg-white/82 p-6 shadow-[0_14px_32px_rgba(22,22,24,0.05)] md:p-8">
-            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Blog & Campaign Hub</p>
-            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Azerbaycanca faydalı məqalələr</h2>
+            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Məqalələr və kampaniyalar</p>
+            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Azərbaycan dilində faydalı məqalələr</h2>
             <div className="mt-4 space-y-2">
               {homepageArticles.map((article) => (
                 <Link key={article.slug} href={`/blog/${article.slug}`} className="block rounded-xl border border-zinc-200/80 bg-white px-4 py-3 transition hover:border-zinc-300">

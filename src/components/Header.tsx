@@ -60,7 +60,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
     { href: "/brands", label: t.header.brands },
     { href: "/blog", label: copy[locale].blog },
     { href: "/haqqimizda", label: copy[locale].aboutPage },
-    { href: "/#contact", label: t.header.contact },
+    { href: "/elaqe", label: t.header.contact },
   ];
   const desktopMenuItems = [
     { href: "/catalog", label: t.header.products },

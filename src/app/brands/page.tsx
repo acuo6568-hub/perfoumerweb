@@ -5,7 +5,6 @@ import { Footer } from "@/components/Footer";
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
-import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
 import { buildAzeriPageKeywords, slugifyPathSegment } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -65,45 +64,6 @@ export default async function BrandsPage() {
             <p className="max-w-sm text-sm leading-6 text-zinc-500 sm:text-base md:text-lg">
               {t.brandsPage.description}
             </p>
-          </div>
-        </section>
-
-        <section className="mt-7 rounded-[1.8rem] border border-zinc-200/80 bg-white/84 p-5 shadow-[0_12px_30px_rgba(22,22,24,0.05)] sm:p-6">
-          <h2 className="text-2xl leading-tight text-zinc-900 md:text-3xl">Brenddən niyyət səhifələrinə sürətli keçid</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {CORE_CLUSTER_PAGES.map((cluster) => (
-              <Link
-                key={cluster.href}
-                href={cluster.href}
-                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
-              >
-                {cluster.title}
-              </Link>
-            ))}
-          </div>
-
-          <div className="mt-5 grid gap-2 md:grid-cols-2">
-            {BLOG_ARTICLES.slice(0, 6).map((article) => (
-              <Link
-                key={article.slug}
-                href={`/blog/${article.slug}`}
-                className="rounded-xl border border-zinc-200/80 bg-white px-3 py-3 text-sm text-zinc-700 transition hover:border-zinc-300"
-              >
-                {article.title}
-              </Link>
-            ))}
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {TRUST_PAGES.slice(0, 2).map((page) => (
-              <Link
-                key={page.href}
-                href={page.href}
-                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
-              >
-                {page.label}
-              </Link>
-            ))}
           </div>
         </section>
 

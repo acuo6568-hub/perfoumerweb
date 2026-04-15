@@ -18,7 +18,7 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
     <div className="bg-[#f3f3f2]">
       <main className="mx-auto max-w-[1540px] px-4 pt-6 sm:px-6 md:px-10 md:pt-10">
         <section className="rounded-[2rem] border border-zinc-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.95)_0%,rgba(247,247,244,0.92)_100%)] p-6 shadow-[0_18px_46px_rgba(22,22,24,0.06)] md:p-10">
-          <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{cluster.eyebrow}</p>
+          <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Seçilmiş kolleksiya</p>
           <h1 className="mt-3 max-w-[16ch] text-[2.5rem] leading-[0.95] tracking-[-0.02em] text-zinc-900 sm:text-5xl md:text-7xl">
             {cluster.title}
           </h1>
@@ -71,7 +71,7 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
         <section className="mt-10 rounded-[2rem] border border-zinc-200/75 bg-white/85 p-6 shadow-[0_14px_36px_rgba(22,22,24,0.05)] md:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-200/70 pb-5">
             <div>
-              <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Search Intent Hub</p>
+              <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Faydalı məqalələr</p>
               <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">{cluster.title} üçün bələdçi məqalələr</h2>
             </div>
             <Link href="/blog" className="text-sm font-medium text-zinc-600 transition hover:text-zinc-900">

@@ -65,26 +65,28 @@ export function Footer({ locale }: FooterProps) {
           <div className="grid gap-10 px-6 pt-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-10 md:px-10 md:pt-12 xl:px-12">
             <div className="text-center md:text-left">
               <p className="text-[0.88rem] font-medium tracking-[0.06em] text-zinc-500 uppercase">{t.footer.contact}</p>
-              <div className="mt-5 flex flex-col items-center gap-2.5 md:items-start">
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-1.5 md:justify-start">
                 <a
                   href="mailto:info@perfoumer.az"
-                  className="text-[1.45rem] font-medium leading-[1.2] text-zinc-500 transition-colors hover:text-zinc-700"
+                  className="text-[1.1rem] font-medium leading-[1.25] text-zinc-500 transition-colors hover:text-zinc-700"
                 >
                   info@perfoumer.az
                 </a>
+                <span aria-hidden="true" className="text-zinc-400">·</span>
                 <a
                   href="tel:+994507078070"
-                  className="text-[1.15rem] font-medium leading-[1.2] text-zinc-500 transition-colors hover:text-zinc-700"
+                  className="text-[1.1rem] font-medium leading-[1.25] text-zinc-500 transition-colors hover:text-zinc-700"
                 >
                   +994 50 707 80 70
                 </a>
+                <span aria-hidden="true" className="text-zinc-400">·</span>
                 <a
                   href="https://wa.me/994507078070"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[1.45rem] font-medium leading-[1.2] text-zinc-500 transition-colors hover:text-zinc-700"
+                  className="text-[1.1rem] font-medium leading-[1.25] text-zinc-500 transition-colors hover:text-zinc-700"
                 >
-                  Whatsapp
+                  WhatsApp
                 </a>
               </div>
             </div>
@@ -119,9 +121,6 @@ export function Footer({ locale }: FooterProps) {
                   <Link href="/elaqe" className="transition-colors hover:text-zinc-900">
                     Əlaqə və ünvan
                   </Link>
-                  <a href="#contact" className="transition-colors hover:text-zinc-900">
-                    {t.footer.contactLink}
-                  </a>
                 </nav>
               </div>
 
