@@ -4,6 +4,36 @@ export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = "az";
 
+export function isLocale(value?: string | null): value is Locale {
+  return value === "az" || value === "en" || value === "ru";
+}
+
+export function stripLocalePrefix(pathname: string): { locale?: Locale; pathname: string } {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const [_, maybeLocale, ...rest] = normalized.split("/");
+
+  if (isLocale(maybeLocale)) {
+    const stripped = `/${rest.join("/")}`.replace(/\/$/, "");
+    return {
+      locale: maybeLocale,
+      pathname: stripped === "" ? "/" : stripped,
+    };
+  }
+
+  return { pathname: normalized };
+}
+
+export function toLocalePath(pathname: string, locale: Locale): string {
+  const { pathname: stripped } = stripLocalePrefix(pathname || "/");
+  if (locale === defaultLocale) {
+    return stripped || "/";
+  }
+  if (stripped === "/") {
+    return `/${locale}`;
+  }
+  return `/${locale}${stripped}`;
+}
+
 export function normalizeLocale(value?: string | null): Locale {
   if (value === "en" || value === "ru") {
     return value;

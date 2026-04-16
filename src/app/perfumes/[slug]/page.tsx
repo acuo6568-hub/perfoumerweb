@@ -20,7 +20,7 @@ import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes } from "@/lib/catalog
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
-import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrl, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 import { slugifyPathSegment } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 
@@ -83,6 +83,7 @@ export async function generateMetadata({
   searchParams,
 }: PerfumeDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getCurrentLocale();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const perfume = await getPerfumeBySlug(slug, getVariantId(resolvedSearchParams?.v));
 
@@ -111,13 +112,11 @@ export async function generateMetadata({
       "ətir ölçüləri",
       "ətir sifarişi",
     ]),
-    alternates: {
-      canonical: canonicalPath,
-    },
+    alternates: buildLocaleAlternates(canonicalPath, locale),
     openGraph: {
       title: `${perfume.name} - ${perfume.brand}`,
       description: `${perfume.brand} ${perfume.name} ətiri üçün notlar, ölçülər və qiymətlər.`,
-      url: absoluteUrl(canonicalPath),
+      url: absoluteUrlForLocale(canonicalPath, locale),
       images: [
         {
           url: perfumePreviewImage,
@@ -152,8 +151,11 @@ export default async function PerfumeDetailPage({
 
   if (!perfume) notFound();
 
-  const shareUrl = absoluteUrl(`/perfumes/${perfume.slug}${variantId ? `?v=${encodeURIComponent(variantId)}` : ""}`);
-  const canonicalUrl = absoluteUrl(`/perfumes/${perfume.slug}`);
+  const shareUrl = absoluteUrlForLocale(
+    `/perfumes/${perfume.slug}${variantId ? `?v=${encodeURIComponent(variantId)}` : ""}`,
+    locale,
+  );
+  const canonicalUrl = absoluteUrlForLocale(`/perfumes/${perfume.slug}`, locale);
   const lowestPrice = perfume.sizes.length ? Math.min(...perfume.sizes.map((size) => size.price)) : undefined;
   const highestPrice = perfume.sizes.length ? Math.max(...perfume.sizes.map((size) => size.price)) : undefined;
   const primaryImage = toAbsoluteImageUrl(perfume.image);
@@ -205,13 +207,13 @@ export default async function PerfumeDetailPage({
         "@type": "ListItem",
         position: 1,
         name: "Ana səhifə",
-        item: absoluteUrl("/"),
+        item: absoluteUrlForLocale("/", locale),
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Kataloq",
-        item: absoluteUrl("/catalog"),
+        item: absoluteUrlForLocale("/catalog", locale),
       },
       {
         "@type": "ListItem",

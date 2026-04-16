@@ -1,3 +1,5 @@
+import { defaultLocale, locales, type Locale } from "@/lib/i18n";
+
 const DEFAULT_SITE_URL = "https://perfoumer.az";
 
 const normalizeSiteUrl = (value: string) => value.trim().replace(/\/$/, "");
@@ -81,6 +83,34 @@ export const SEO_KEYWORDS = buildAzeriPageKeywords([]);
 export const absoluteUrl = (path = "/") => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${SITE_URL}${normalizedPath}`;
+};
+
+export const withLocalePath = (path: string, locale: Locale) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const prefix = locale === defaultLocale ? "" : `/${locale}`;
+
+  if (normalizedPath === "/") {
+    return prefix || "/";
+  }
+
+  return `${prefix}${normalizedPath}`;
+};
+
+export const absoluteUrlForLocale = (path: string, locale: Locale) =>
+  `${SITE_URL}${withLocalePath(path, locale)}`;
+
+export const buildLocaleAlternates = (path: string, locale: Locale) => {
+  const languages = Object.fromEntries(
+    locales.map((item) => [item, withLocalePath(path, item)]),
+  ) as Record<string, string>;
+
+  return {
+    canonical: withLocalePath(path, locale),
+    languages: {
+      ...languages,
+      "x-default": withLocalePath(path, defaultLocale),
+    },
+  };
 };
 
 export const slugifyPathSegment = (value: string) =>

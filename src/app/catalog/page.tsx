@@ -5,9 +5,9 @@ import { Footer } from "@/components/Footer";
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
-import { buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const catalogMetadata = {
   title: "Ətir Kataloqu",
   description:
     "Perfoumer kataloqunda premium, niş və dizayner ətirlərini brendə, nota və üsluba görə filtr edin və sizin üçün uyğun qoxunu seçin.",
@@ -19,14 +19,31 @@ export const metadata: Metadata = {
     "ətir qiymətləri",
     "ətir seçimi",
   ]),
-  alternates: {
-    canonical: "/catalog",
-  },
-};
+} as const;
 
 type CatalogPageProps = {
   searchParams: Promise<{ brand?: string; q?: string; note?: string; min?: string; max?: string }>;
 };
+
+export async function generateMetadata({ searchParams }: CatalogPageProps): Promise<Metadata> {
+  const { brand, q, note, min, max } = await searchParams;
+  const hasFilters = Boolean(brand || q || note || min || max);
+  const locale = await getCurrentLocale();
+
+  return {
+    title: catalogMetadata.title,
+    description: catalogMetadata.description,
+    keywords: catalogMetadata.keywords,
+    alternates: buildLocaleAlternates("/catalog", locale),
+    robots: hasFilters ? { index: false, follow: true } : undefined,
+    openGraph: {
+      title: catalogMetadata.title,
+      description: catalogMetadata.description,
+      url: absoluteUrlForLocale("/catalog", locale),
+      type: "website",
+    },
+  };
+}
 
 function parsePriceParam(value: string | undefined): number | undefined {
   if (typeof value !== "string") return undefined;

@@ -8,7 +8,7 @@ import { formatMessage, getDictionary } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { localizeNoteLabel } from "@/lib/note-label";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES } from "@/lib/seo-growth";
-import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 type NoteFilterType = "top" | "heart" | "base";
 
@@ -46,6 +46,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: NotePageProps): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getCurrentLocale();
   const normalizedSlug = decodeSlug(slug).toLowerCase();
   const notes = await getNotes();
   const noteRaw =
@@ -53,7 +54,7 @@ export async function generateMetadata({ params }: NotePageProps): Promise<Metad
       slug: normalizedSlug,
       name: fallbackNoteName(normalizedSlug),
     };
-  const noteName = localizeNoteLabel(noteRaw, "az");
+  const noteName = localizeNoteLabel(noteRaw, locale);
   const canonicalPath = `/notes/${normalizedSlug}`;
 
   return {
@@ -69,13 +70,11 @@ export async function generateMetadata({ params }: NotePageProps): Promise<Metad
       "baza not ətirlər",
       "nota görə ətir seçimi",
     ]),
-    alternates: {
-      canonical: canonicalPath,
-    },
+    alternates: buildLocaleAlternates(canonicalPath, locale),
     openGraph: {
       title: `${noteName} notu olan ətirlər`,
       description: `${noteName} notuna uyğun ətir seçimi və not tipinə görə çeşidlənmiş məhsullar.`,
-      url: absoluteUrl(canonicalPath),
+      url: absoluteUrlForLocale(canonicalPath, locale),
       type: "website",
     },
   };

@@ -10,7 +10,7 @@ import {
   getClusterByPath,
   pickClusterPerfumes,
 } from "@/lib/seo-growth";
-import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 type ClusterRouteProps = {
   params: Promise<{ cluster: string }>;
@@ -26,6 +26,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: ClusterRouteProps): Promise<Metadata> {
   const { cluster } = await params;
+  const locale = await getCurrentLocale();
   const page = getClusterByPath(`/${cluster}`);
 
   if (!page) {
@@ -42,14 +43,12 @@ export async function generateMetadata({ params }: ClusterRouteProps): Promise<M
     title: page.metaTitle,
     description: page.description,
     keywords: buildAzeriPageKeywords(page.keywords),
-    alternates: {
-      canonical: page.href,
-    },
+    alternates: buildLocaleAlternates(page.href, locale),
     openGraph: {
       title: page.metaTitle,
       description: page.description,
       type: "website",
-      url: absoluteUrl(page.href),
+      url: absoluteUrlForLocale(page.href, locale),
     },
   };
 }
@@ -89,13 +88,13 @@ export default async function ClusterRoutePage({ params }: ClusterRouteProps) {
         "@type": "ListItem",
         position: 1,
         name: "Ana səhifə",
-        item: absoluteUrl("/"),
+        item: absoluteUrlForLocale("/", locale),
       },
       {
         "@type": "ListItem",
         position: 2,
         name: page.title,
-        item: absoluteUrl(page.href),
+        item: absoluteUrlForLocale(page.href, locale),
       },
     ],
   };

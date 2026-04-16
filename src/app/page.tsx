@@ -9,11 +9,11 @@ import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
-import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
-export const metadata: Metadata = {
+const homeMetadata: Metadata = {
   title: "Orijinal və Premium Ətirlər Onlayn",
   description:
     "Orijinal və premium ətirləri onlayn kəşf edin. Kişi, qadın və uniseks ətirlər, niş və dizayner kolleksiyalar, sürətli sifariş və çatdırılma.",
@@ -24,10 +24,16 @@ export const metadata: Metadata = {
     "premium parfum",
     "niş ətir azərbaycan",
   ]),
-  alternates: {
-    canonical: "/",
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+
+  return {
+    ...homeMetadata,
+    alternates: buildLocaleAlternates("/", locale),
+  };
+}
 
 type AboutCopy = {
   eyebrow: string;

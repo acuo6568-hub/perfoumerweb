@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
-import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const contactMetadata: Metadata = {
   title: "Əlaqə və Ünvan - Perfoumer",
   description:
     "Perfoumer əlaqə səhifəsi: Bakı üzrə xidmət zonası, e-poçt, telefon, WhatsApp və iş saatları.",
@@ -15,10 +15,16 @@ export const metadata: Metadata = {
     "whatsapp ətir sifarişi",
     "bakı ətir çatdırılma",
   ]),
-  alternates: {
-    canonical: "/elaqe",
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+
+  return {
+    ...contactMetadata,
+    alternates: buildLocaleAlternates("/elaqe", locale),
+  };
+}
 
 export default async function ContactPage() {
   const locale = await getCurrentLocale();
@@ -27,8 +33,8 @@ export default async function ContactPage() {
     "@context": "https://schema.org",
     "@type": "Store",
     name: "Perfoumer",
-    image: absoluteUrl("/perfoumerlogo.png"),
-    url: absoluteUrl("/"),
+    image: absoluteUrlForLocale("/perfoumerlogo.png", locale),
+    url: absoluteUrlForLocale("/", locale),
     telephone: SEO_CONTACT.phone,
     email: SEO_CONTACT.email,
     address: {

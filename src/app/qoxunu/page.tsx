@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { ScentQuizClient } from "@/components/ScentQuizClient";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
-import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const qoxunuMetadata: Metadata = {
   title: "Qoxunu Testi",
   description:
     "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
@@ -17,16 +17,22 @@ export const metadata: Metadata = {
     "notlara görə ətir tap",
     "parfum test",
   ]),
-  alternates: {
-    canonical: "/qoxunu",
-  },
-  openGraph: {
-    title: "Qoxunu Testi",
-    description: "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
-    url: absoluteUrl("/qoxunu"),
-    type: "website",
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+
+  return {
+    ...qoxunuMetadata,
+    alternates: buildLocaleAlternates("/qoxunu", locale),
+    openGraph: {
+      title: qoxunuMetadata.title ?? "Qoxunu Testi",
+      description: qoxunuMetadata.description ?? "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
+      url: absoluteUrlForLocale("/qoxunu", locale),
+      type: "website",
+    },
+  };
+}
 
 export default async function QoxunuPage() {
   const locale = await getCurrentLocale();

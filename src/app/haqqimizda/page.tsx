@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
-import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const aboutMetadata: Metadata = {
   title: "Haqqımızda - Perfoumer",
   description:
     "Perfoumer komandasının fəaliyyət prinsipi, sifariş keyfiyyət standartları, dəstək siyasəti və etibar yanaşması.",
@@ -15,10 +15,16 @@ export const metadata: Metadata = {
     "orijinal ətir etibar",
     "sifariş və çatdırılma prosesi",
   ]),
-  alternates: {
-    canonical: "/haqqimizda",
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+
+  return {
+    ...aboutMetadata,
+    alternates: buildLocaleAlternates("/haqqimizda", locale),
+  };
+}
 
 export default async function AboutPage() {
   const locale = await getCurrentLocale();
@@ -27,7 +33,7 @@ export default async function AboutPage() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Perfoumer",
-    url: absoluteUrl("/"),
+    url: absoluteUrlForLocale("/", locale),
     email: SEO_CONTACT.email,
     telephone: SEO_CONTACT.phone,
     areaServed: SEO_LOCAL_BUSINESS.areaServed,

@@ -5,9 +5,9 @@ import { Footer } from "@/components/Footer";
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
-import { buildAzeriPageKeywords, slugifyPathSegment } from "@/lib/seo";
+import { buildAzeriPageKeywords, buildLocaleAlternates, slugifyPathSegment } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const brandsMetadata: Metadata = {
   title: "Ətir Brendləri",
   description:
     "Perfoumer-də təqdim olunan ətir brendlərini əlifba sırası ilə kəşf edin və seçdiyiniz brend üzrə bütün məhsullara keçid edin.",
@@ -18,10 +18,16 @@ export const metadata: Metadata = {
     "niş ətir brendləri",
     "brendə görə ətir seç",
   ]),
-  alternates: {
-    canonical: "/brands",
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+
+  return {
+    ...brandsMetadata,
+    alternates: buildLocaleAlternates("/brands", locale),
+  };
+}
 
 function groupBrands(brands: string[]) {
   const grouped = new Map<string, string[]>();

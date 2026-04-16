@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 
 import { Header } from "@/components/Header";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
-import type { Locale } from "@/lib/i18n";
+import { stripLocalePrefix, type Locale } from "@/lib/i18n";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -13,11 +13,12 @@ type AppShellProps = {
 };
 
 export function AppShell({ children, locale: _locale }: AppShellProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
+  const { pathname: basePathname } = stripLocalePrefix(pathname);
   const [loadedPathname, setLoadedPathname] = useState(pathname);
   const isRouteLoading = loadedPathname !== pathname;
-  const hideNavigationChrome = pathname.startsWith("/staff") || pathname.startsWith("/admin");
-  const shouldOffsetForHeader = !hideNavigationChrome && pathname !== "/";
+  const hideNavigationChrome = basePathname.startsWith("/staff") || basePathname.startsWith("/admin");
+  const shouldOffsetForHeader = !hideNavigationChrome && basePathname !== "/";
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

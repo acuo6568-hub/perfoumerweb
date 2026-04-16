@@ -8,7 +8,7 @@ import {
   CORE_CLUSTER_PAGES,
   getBlogArticleBySlug,
 } from "@/lib/seo-growth";
-import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 import { getCurrentLocale } from "@/lib/i18n.server";
 
 type BlogArticlePageProps = {
@@ -21,6 +21,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: BlogArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getCurrentLocale();
   const article = getBlogArticleBySlug(slug);
 
   if (!article) {
@@ -37,14 +38,12 @@ export async function generateMetadata({ params }: BlogArticlePageProps): Promis
     title: article.title,
     description: article.description,
     keywords: buildAzeriPageKeywords([article.intent, article.title]),
-    alternates: {
-      canonical: `/blog/${article.slug}`,
-    },
+    alternates: buildLocaleAlternates(`/blog/${article.slug}`, locale),
     openGraph: {
       title: article.title,
       description: article.description,
       type: "article",
-      url: absoluteUrl(`/blog/${article.slug}`),
+      url: absoluteUrlForLocale(`/blog/${article.slug}`, locale),
     },
   };
 }
@@ -140,8 +139,8 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
     description: article.description,
     datePublished: `${article.publishedAt}T09:00:00+04:00`,
     dateModified: `${article.publishedAt}T09:00:00+04:00`,
-    inLanguage: "az",
-    mainEntityOfPage: absoluteUrl(`/blog/${article.slug}`),
+    inLanguage: locale,
+    mainEntityOfPage: absoluteUrlForLocale(`/blog/${article.slug}`, locale),
     author: {
       "@type": "Organization",
       name: "Perfoumer",
@@ -152,10 +151,35 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
     },
   };
 
+  const breadcrumbStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Ana səhifə",
+        item: absoluteUrlForLocale("/", locale),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: absoluteUrlForLocale("/blog", locale),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: article.title,
+        item: absoluteUrlForLocale(`/blog/${article.slug}`, locale),
+      },
+    ],
+  };
+
   const faqStructuredData = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    inLanguage: "az",
+    inLanguage: locale,
     mainEntity: enhancedFaq.map((item) => ({
       "@type": "Question",
       name: item.question,
@@ -170,6 +194,7 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
     <div className="bg-[#f3f3f2]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleStructuredData) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }} />
 
       <main className="mx-auto max-w-[1200px] px-4 pt-8 sm:px-6 md:px-8 md:pt-10">
         <article className="rounded-[2rem] border border-zinc-200/80 bg-white/90 p-6 shadow-[0_16px_36px_rgba(22,22,24,0.06)] md:p-10">

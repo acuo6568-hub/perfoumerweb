@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import type { Locale } from "@/lib/i18n";
-import { absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 const copyByLocale: Record<Locale, { title: string; description: string }> = {
   az: {
@@ -22,25 +22,30 @@ const copyByLocale: Record<Locale, { title: string; description: string }> = {
   },
 };
 
-export const metadata: Metadata = {
-  title: "Ətir Müqayisə",
-  description: "Perfoumer-də ətirləri yan-yana müqayisə edin.",
-  keywords: buildAzeriPageKeywords([
-    "ətir müqayisəsi",
-    "ətir qarşılaşdırma",
-    "hansı ətir daha yaxşıdır",
-    "qoxu müqayisəsi",
-  ]),
-  alternates: {
-    canonical: "/compare",
-  },
-  openGraph: {
-    title: "Ətir Müqayisə",
-    description: "Perfoumer-də ətirləri yan-yana müqayisə edin.",
-    url: absoluteUrl("/compare"),
-    type: "website",
-  },
-};
+const compareKeywords = buildAzeriPageKeywords([
+  "ətir müqayisəsi",
+  "ətir qarşılaşdırma",
+  "hansı ətir daha yaxşıdır",
+  "qoxu müqayisəsi",
+]);
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+  const copy = copyByLocale[locale];
+
+  return {
+    title: copy.title,
+    description: copy.description,
+    keywords: compareKeywords,
+    alternates: buildLocaleAlternates("/compare", locale),
+    openGraph: {
+      title: copy.title,
+      description: copy.description,
+      url: absoluteUrlForLocale("/compare", locale),
+      type: "website",
+    },
+  };
+}
 
 export default async function ComparePage() {
   const locale = await getCurrentLocale();

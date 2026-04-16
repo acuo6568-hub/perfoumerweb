@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import type { Locale } from "@/lib/i18n";
-import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords } from "@/lib/seo";
+import { SITE_NAME, absoluteUrl, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 export const LEGAL_CONTACT_EMAIL = "info@perfoumer.az";
 
@@ -957,18 +957,17 @@ export function getLegalPageLinks(locale: Locale) {
 
 export function getLegalMetadata(locale: Locale, slug: LegalPageSlug): Metadata {
   const page = getLegalPage(locale, slug);
+  const path = `/${slug}`;
 
   return {
     title: page.metadataTitle,
     description: page.metadataDescription,
     keywords: page.metadataKeywords,
-    alternates: {
-      canonical: `/${slug}`,
-    },
+    alternates: buildLocaleAlternates(path, locale),
     openGraph: {
       title: `${page.metadataTitle} | ${SITE_NAME}`,
       description: page.metadataDescription,
-      url: absoluteUrl(`/${slug}`),
+      url: absoluteUrlForLocale(path, locale),
       siteName: SITE_NAME,
       type: "website",
     },

@@ -16,6 +16,7 @@ import {
   SITE_NAME,
   SITE_URL,
   absoluteUrl,
+  absoluteUrlForLocale,
   buildAzeriPageKeywords,
 } from "@/lib/seo";
 
@@ -69,11 +70,11 @@ export const metadata: Metadata = {
   publisher: SITE_NAME,
   icons: {
     icon: [
-      { url: "/icon.png?v=2", type: "image/png", sizes: "512x512" },
+      { url: "/perfmlogo.png", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: "/icon.png?v=2",
+    shortcut: "/perfmlogo.png",
     apple: [
-      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+      { url: "/perfmlogo.png", type: "image/png", sizes: "180x180" },
     ],
   },
   openGraph: {
@@ -118,8 +119,8 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
-    url: SITE_URL,
-    logo: absoluteUrl("/icon.png"),
+    url: absoluteUrlForLocale("/", locale),
+    logo: absoluteUrlForLocale("/perfmlogo.png", locale),
     email: SEO_CONTACT.email,
     telephone: SEO_CONTACT.phone,
     contactPoint: [
@@ -139,38 +140,38 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
-    url: SITE_URL,
+    url: absoluteUrlForLocale("/", locale),
     inLanguage: ["az", "en", "ru"],
     hasPart: [
       {
         "@type": "WebPage",
         name: "Kataloq",
-        url: absoluteUrl("/catalog"),
+        url: absoluteUrlForLocale("/catalog", locale),
       },
       {
         "@type": "WebPage",
         name: "Brendlər",
-        url: absoluteUrl("/brands"),
+        url: absoluteUrlForLocale("/brands", locale),
       },
       {
         "@type": "WebPage",
         name: "Haqqımızda",
-        url: absoluteUrl("/haqqimizda"),
+        url: absoluteUrlForLocale("/haqqimizda", locale),
       },
       {
         "@type": "WebPage",
         name: "Əlaqə və ünvan",
-        url: absoluteUrl("/elaqe"),
+        url: absoluteUrlForLocale("/elaqe", locale),
       },
       {
         "@type": "WebPage",
         name: "Blog",
-        url: absoluteUrl("/blog"),
+        url: absoluteUrlForLocale("/blog", locale),
       },
     ],
     potentialAction: {
       "@type": "SearchAction",
-      target: `${SITE_URL}/catalog?q={search_term_string}`,
+      target: `${absoluteUrlForLocale("/catalog", locale)}?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };
@@ -180,8 +181,8 @@ export default async function RootLayout({
     "@type": "Store",
     "@id": `${SITE_URL}/#store`,
     name: SITE_NAME,
-    image: absoluteUrl(DEFAULT_OG_IMAGE),
-    url: SITE_URL,
+    image: absoluteUrlForLocale(DEFAULT_OG_IMAGE, locale),
+    url: absoluteUrlForLocale("/", locale),
     telephone: SEO_CONTACT.phone,
     email: SEO_CONTACT.email,
     address: {
@@ -200,11 +201,11 @@ export default async function RootLayout({
     "@type": "SiteNavigationElement",
     name: ["Məhsullar", "Brendlər", "Haqqımızda", "Əlaqə və ünvan", "Blog"],
     url: [
-      absoluteUrl("/catalog"),
-      absoluteUrl("/brands"),
-      absoluteUrl("/haqqimizda"),
-      absoluteUrl("/elaqe"),
-      absoluteUrl("/blog"),
+      absoluteUrlForLocale("/catalog", locale),
+      absoluteUrlForLocale("/brands", locale),
+      absoluteUrlForLocale("/haqqimizda", locale),
+      absoluteUrlForLocale("/elaqe", locale),
+      absoluteUrlForLocale("/blog", locale),
     ],
   };
 

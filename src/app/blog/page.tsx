@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES } from "@/lib/seo-growth";
-import { buildAzeriPageKeywords } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 import { getCurrentLocale } from "@/lib/i18n.server";
 
-export const metadata: Metadata = {
+const blogMetadata: Metadata = {
   title: "Blog və Kampaniyalar",
   description:
     "Ətir seçimi, not analizi, mövsümi kampaniyalar və alış bələdçiləri üzrə Azərbaycan dilində faydalı məqalələr.",
@@ -17,10 +17,16 @@ export const metadata: Metadata = {
     "ətir məqalələri azərbaycan",
     "ətir müqayisəsi",
   ]),
-  alternates: {
-    canonical: "/blog",
-  },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+
+  return {
+    ...blogMetadata,
+    alternates: buildLocaleAlternates("/blog", locale),
+  };
+}
 
 function formatDate(value: string) {
   const date = new Date(`${value}T12:00:00Z`);
@@ -32,9 +38,28 @@ export default async function BlogHubPage() {
   const featured = BLOG_ARTICLES.slice(0, 8);
   const campaigns = BLOG_ARTICLES.filter((item) => item.category === "campaign").slice(0, 8);
   const guides = BLOG_ARTICLES.filter((item) => item.category !== "campaign").slice(0, 18);
+  const breadcrumbStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Ana səhifə",
+        item: absoluteUrlForLocale("/", locale),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: absoluteUrlForLocale("/blog", locale),
+      },
+    ],
+  };
 
   return (
     <div className="bg-[#f3f3f2]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }} />
       <main className="mx-auto max-w-[1540px] px-4 pt-6 sm:px-6 md:px-10 md:pt-10">
         <section className="border-b border-zinc-200/85 pb-8">
           <p className="text-sm text-zinc-500">Məqalələr</p>

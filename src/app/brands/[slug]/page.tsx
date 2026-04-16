@@ -8,7 +8,7 @@ import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
-import { absoluteUrl, buildAzeriPageKeywords, slugifyPathSegment } from "@/lib/seo";
+import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates, slugifyPathSegment } from "@/lib/seo";
 
 type BrandPageProps = {
   params: Promise<{ slug: string }>;
@@ -99,6 +99,7 @@ export async function generateMetadata({ params }: BrandPageProps): Promise<Meta
   }
 
   const brandLabel = getBrandLabel(perfumes, slug);
+  const canonicalPath = `/brands/${slug}`;
   const titleByLocale = {
     az: `${brandLabel} ətirləri`,
     en: `${brandLabel} perfumes`,
@@ -120,13 +121,11 @@ export async function generateMetadata({ params }: BrandPageProps): Promise<Meta
       `brend ${brandLabel}`,
       `${brandLabel} qiymətləri`,
     ]),
-    alternates: {
-      canonical: `/brands/${slug}`,
-    },
+    alternates: buildLocaleAlternates(canonicalPath, locale),
     openGraph: {
       title: titleByLocale[locale],
       description: descriptionByLocale[locale],
-      url: absoluteUrl(`/brands/${slug}`),
+      url: absoluteUrlForLocale(canonicalPath, locale),
       type: "website",
     },
   };
@@ -186,7 +185,7 @@ export default async function BrandPage({ params }: BrandPageProps) {
     itemListElement: curated.signature.map((perfume, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: absoluteUrl(`/perfumes/${perfume.slug}`),
+      url: absoluteUrlForLocale(`/perfumes/${perfume.slug}`, locale),
       name: `${perfume.brand} ${perfume.name}`,
     })),
   };
