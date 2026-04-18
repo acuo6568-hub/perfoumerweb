@@ -674,7 +674,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
         ].join(" ")}
       >
         <div className="border-b border-zinc-300 bg-[#f4f4f4] px-3 py-3 lg:hidden">
-          <div className="relative mx-auto flex h-11 max-w-[1540px] items-center justify-between">
+          <div className="relative mx-auto flex h-12 max-w-[1540px] items-center justify-between">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -707,7 +707,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
             <Link
               href={toLocalePath("/", locale)}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              className="absolute left-1/2 top-1/2 flex w-full max-w-[calc(100%-10.5rem)] -translate-x-1/2 -translate-y-1/2 justify-center px-1"
               onClick={() => setIsMenuOpen(false)}
             >
               <Image
@@ -716,7 +716,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 width={174}
                 height={35}
                 priority
-                className="h-[28px] w-auto object-contain"
+                className="h-[28px] w-[min(46vw,174px)] object-contain"
               />
             </Link>
 
