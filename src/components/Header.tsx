@@ -155,6 +155,11 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, [pathname]);
 
   useEffect(() => {
+    // Clear transient locale highlight once route/locale settles.
+    setPendingLocale(null);
+  }, [locale, pathname]);
+
+  useEffect(() => {
     if (!supabase || !isSupabaseConfigured()) {
       return;
     }
@@ -253,7 +258,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, []);
 
   const updateLocale = async (nextLocale: Locale) => {
-    if (nextLocale === locale || isLocalePending) {
+    if (nextLocale === (pendingLocale ?? locale) || isLocalePending) {
       return;
     }
 
@@ -264,11 +269,15 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
     startLocaleTransition(async () => {
       try {
+        // Update the cookie on the client immediately to avoid stale-locale race conditions.
+        document.cookie = `perfoumer-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+
         await fetch("/api/locale", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ locale: nextLocale }),
           keepalive: true,
+          cache: "no-store",
         });
       } finally {
         router.push(nextPath);
