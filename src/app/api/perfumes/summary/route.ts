@@ -3,8 +3,10 @@ import { readFileSync } from "node:fs";
 import { unstable_cache } from "next/cache";
 
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 import { getPerfumeBySlug } from "@/lib/catalog";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 
 type SummaryRequest = {
   slug?: string;
@@ -89,6 +91,80 @@ type CachedSummaryResult = {
   highlights: string[];
 };
 
+const SUMMARY_CACHE_TABLE = "perfume_summary_cache";
+
+function normalizeLocale(input: unknown): NonNullable<SummaryRequest["locale"]> {
+  return input === "en" || input === "ru" ? input : "az";
+}
+
+function normalizeSlug(input: unknown) {
+  if (typeof input !== "string") {
+    return "";
+  }
+
+  return input.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+}
+
+function getSupabaseAdminClient() {
+  const config = getSupabaseServiceConfigFromServer();
+  if (!config) {
+    return null;
+  }
+
+  return createClient(config.url, config.serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function readSummaryFromDatabase(cacheKey: string): Promise<CachedSummaryResult | null> {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from(SUMMARY_CACHE_TABLE)
+    .select("summary, highlights")
+    .eq("cache_key", cacheKey)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    summary: typeof data.summary === "string" ? data.summary : "",
+    highlights: Array.isArray(data.highlights)
+      ? data.highlights.filter((item): item is string => typeof item === "string")
+      : [],
+  };
+}
+
+async function writeSummaryToDatabase(options: {
+  cacheKey: string;
+  slug: string;
+  locale: NonNullable<SummaryRequest["locale"]>;
+  fingerprint: string;
+  result: CachedSummaryResult;
+}) {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) {
+    return;
+  }
+
+  await supabase.from(SUMMARY_CACHE_TABLE).upsert(
+    {
+      cache_key: options.cacheKey,
+      slug: options.slug,
+      locale: options.locale,
+      fingerprint: options.fingerprint,
+      summary: options.result.summary,
+      highlights: options.result.highlights,
+    },
+    { onConflict: "cache_key" },
+  );
+}
+
 const getCachedPerfumeSummary = unstable_cache(
   async (
     cacheKey: string,
@@ -154,9 +230,8 @@ const getCachedPerfumeSummary = unstable_cache(
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as SummaryRequest;
-  const slug = body.slug?.trim().toLowerCase();
-  const locale: NonNullable<SummaryRequest["locale"]> =
-    body.locale === "en" || body.locale === "ru" ? body.locale : "az";
+  const slug = normalizeSlug(body.slug);
+  const locale = normalizeLocale(body.locale);
 
   if (!slug) {
     return NextResponse.json({ error: "slug is required" }, { status: 400 });
@@ -190,6 +265,15 @@ export async function POST(request: Request) {
     perfumeInput.sizes.map((size) => `${size.ml}-${size.price}`).join("|"),
   ].join("::");
 
+  const existing = await readSummaryFromDatabase(cacheKey);
+  if (existing) {
+    return NextResponse.json({
+      summary: existing.summary,
+      highlights: existing.highlights,
+      cached: true,
+    });
+  }
+
   let cachedResult: CachedSummaryResult;
   try {
     cachedResult = await getCachedPerfumeSummary(cacheKey, locale, perfumeInput);
@@ -204,9 +288,66 @@ export async function POST(request: Request) {
     );
   }
 
+  await writeSummaryToDatabase({
+    cacheKey,
+    slug,
+    locale,
+    fingerprint: cacheKey,
+    result: cachedResult,
+  });
+
   return NextResponse.json({
     summary: cachedResult.summary,
     highlights: cachedResult.highlights,
+    cached: true,
+  });
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const slug = normalizeSlug(url.searchParams.get("slug"));
+  const locale = normalizeLocale(url.searchParams.get("locale"));
+
+  if (!slug) {
+    return NextResponse.json({ error: "slug is required" }, { status: 400 });
+  }
+
+  const perfume = await getPerfumeBySlug(slug);
+  if (!perfume) {
+    return NextResponse.json({ error: "perfume not found" }, { status: 404 });
+  }
+
+  const perfumeInput: PerfumeSummaryInput = {
+    name: perfume.name,
+    brand: perfume.brand,
+    gender: perfume.gender,
+    stockStatus: perfume.stockStatus,
+    topNotes: perfume.notes.top.map((item) => item.name),
+    heartNotes: perfume.notes.heart.map((item) => item.name),
+    baseNotes: perfume.notes.base.map((item) => item.name),
+    sizes: perfume.sizes,
+  };
+
+  const cacheKey = [
+    slug,
+    locale,
+    perfumeInput.name,
+    perfumeInput.brand,
+    perfumeInput.gender,
+    perfumeInput.topNotes.join(","),
+    perfumeInput.heartNotes.join(","),
+    perfumeInput.baseNotes.join(","),
+    perfumeInput.sizes.map((size) => `${size.ml}-${size.price}`).join("|"),
+  ].join("::");
+
+  const existing = await readSummaryFromDatabase(cacheKey);
+  if (!existing) {
+    return NextResponse.json({ error: "cache_miss" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    summary: existing.summary,
+    highlights: existing.highlights,
     cached: true,
   });
 }

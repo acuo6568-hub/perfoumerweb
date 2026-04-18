@@ -12,6 +12,7 @@ import { ProductInfoModalButton } from "@/components/ProductInfoModalButton";
 import { ProductCard } from "@/components/ProductCard";
 import { ScrollToTopOnMount } from "@/components/ScrollToTopOnMount";
 import { PerfumeCommentsSection } from "@/components/community/PerfumeCommentsSection";
+import { PerfumeImpressionPanel } from "@/components/community/PerfumeImpressionPanel";
 import { PerfumeScentSummaryPanel } from "@/components/community/PerfumeScentSummaryPanel";
 import { PerfumeWishlistButton } from "@/components/community/PerfumeWishlistButton";
 import { PerfumeHeroCover } from "@/components/perfume/PerfumeHeroCover";
@@ -349,6 +350,12 @@ export default async function PerfumeDetailPage({
         </div>
 
         <PerfumeScentSummaryPanel
+          perfumeSlug={perfume.slug}
+          locale={locale}
+          supabase={supabaseConfig}
+        />
+
+        <PerfumeImpressionPanel
           perfumeSlug={perfume.slug}
           locale={locale}
           supabase={supabaseConfig}

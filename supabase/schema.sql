@@ -117,6 +117,33 @@ create table if not exists public.abandoned_cart_recovery (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.perfume_impression_cache (
+  cache_key text primary key,
+  slug text not null,
+  locale text not null check (locale in ('az', 'en', 'ru')),
+  fingerprint text not null,
+  data jsonb not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists perfume_impression_cache_slug_locale_idx
+  on public.perfume_impression_cache (slug, locale);
+
+create table if not exists public.perfume_summary_cache (
+  cache_key text primary key,
+  slug text not null,
+  locale text not null check (locale in ('az', 'en', 'ru')),
+  fingerprint text not null,
+  summary text not null default '',
+  highlights jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists perfume_summary_cache_slug_locale_idx
+  on public.perfume_summary_cache (slug, locale);
+
 alter table public.cart_items
   add column if not exists perfume_slug text;
 
@@ -217,6 +244,18 @@ before update on public.abandoned_cart_recovery
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists set_perfume_impression_cache_updated_at on public.perfume_impression_cache;
+create trigger set_perfume_impression_cache_updated_at
+before update on public.perfume_impression_cache
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_perfume_summary_cache_updated_at on public.perfume_summary_cache;
+create trigger set_perfume_summary_cache_updated_at
+before update on public.perfume_summary_cache
+for each row
+execute function public.set_updated_at();
+
 create or replace function public.get_shared_wishlist(p_token text)
 returns table (
   user_id uuid,
@@ -277,6 +316,20 @@ alter table public.cart_items enable row level security;
 alter table public.checkout_addresses enable row level security;
 alter table public.ai_chat_sessions enable row level security;
 alter table public.abandoned_cart_recovery enable row level security;
+alter table public.perfume_impression_cache enable row level security;
+alter table public.perfume_summary_cache enable row level security;
+
+drop policy if exists "Impression cache is visible to everyone" on public.perfume_impression_cache;
+create policy "Impression cache is visible to everyone"
+  on public.perfume_impression_cache
+  for select
+  using (true);
+
+drop policy if exists "Summary cache is visible to everyone" on public.perfume_summary_cache;
+create policy "Summary cache is visible to everyone"
+  on public.perfume_summary_cache
+  for select
+  using (true);
 
 drop policy if exists "Comments are visible to everyone" on public.comments;
 create policy "Comments are visible to everyone"

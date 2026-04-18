@@ -475,20 +475,20 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         </p>
       </div>
 
-      <div className="rounded-[1.6rem] border border-zinc-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8f8f6_100%)] px-4 py-4 shadow-[0_10px_28px_rgba(24,24,24,0.04)]">
+      <div className="border-y border-zinc-200/80 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[0.72rem] font-medium tracking-[0.22em] text-zinc-400 uppercase">{copy.shareTitle}</p>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">{copy.shareDescription}</p>
+            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareTitle}</p>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600">{copy.shareDescription}</p>
           </div>
 
-          <span className={`inline-flex min-h-8 items-center rounded-full px-3 text-[0.72rem] font-medium tracking-[0.12em] uppercase ${shareStatusTone}`}>
+          <span className={`inline-flex min-h-8 items-center rounded-full px-3 text-[0.68rem] font-medium tracking-[0.14em] uppercase ${shareStatusTone}`}>
             {shareStatus}
           </span>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2.5">
-          <label className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-[0_8px_18px_rgba(24,24,24,0.04)]">
+        <div className="mt-3 flex flex-wrap items-center gap-2.5">
+          <label className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700">
             <input
               type="checkbox"
               checked={allowAdditions}
@@ -497,12 +497,14 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
             />
             <span>{copy.shareAllowAdditions}</span>
           </label>
+        </div>
 
+        <div className="mt-3 flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={createOrRefreshShareLink}
             disabled={isShareLoading}
-            className="inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
           >
             {isShareLoading ? copy.shareCreating : shareToken ? copy.shareUpdate : copy.shareCreate}
           </button>
@@ -512,22 +514,24 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
               type="button"
               onClick={copyShareLink}
               disabled={isShareCopying}
-              className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-60"
+              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-60"
             >
               {isShareCopied ? copy.shareCopied : copy.shareCopy}
             </button>
           ) : null}
         </div>
 
-        <div className="mt-4 rounded-[1.25rem] border border-dashed border-zinc-200 bg-white px-4 py-3">
-          <p className="text-[0.72rem] font-medium tracking-[0.22em] text-zinc-400 uppercase">{copy.shareLinkLabel}</p>
-          <p className={`mt-2 text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
-            {shareUrl || copy.shareLinkPlaceholder}
-          </p>
+        <div className="mt-3">
+          <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareLinkLabel}</p>
+          <div className="mt-1.5 border-b border-dashed border-zinc-300 pb-2.5">
+            <p className={`text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
+              {shareUrl || copy.shareLinkPlaceholder}
+            </p>
+          </div>
         </div>
 
         {!shareToken ? (
-          <p className="mt-3 text-xs leading-5 text-zinc-500">{copy.shareNoLinkBody}</p>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">{copy.shareNoLinkBody}</p>
         ) : null}
       </div>
 

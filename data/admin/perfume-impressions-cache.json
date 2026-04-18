@@ -1,0 +1,207 @@
+{
+  "v1::ambre-tigr::az::Ambre Tigré::Givenchy::Unisex::Stokda Var::vanil::labdanum::ənbər::15-25|30-45|50-70": {
+    "slug": "ambre-tigr",
+    "locale": "az",
+    "updatedAt": "2026-04-18T22:46:50.021Z",
+    "data": {
+      "summary": "Ambre Tigré uniseks ətirdir, vanil, labdanum və ənbər notları ilə zəngindir. Bu ətir payız və qış mövsümlərində, həm səhər, həm də axşam istifadə üçün uyğundur.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 1,
+          "moderate": 3,
+          "long": 4,
+          "very_long": 2
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 3,
+          "high": 4,
+          "very_high": 2
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 4,
+          "spring": 2,
+          "summer": 1
+        },
+        "timeOfDay": {
+          "morning": 3,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 1,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
+  },
+  "v1::vanille-antique::az::Vanille Antique::Byredo::Unisex::Stokda Var::müşk,gavalı::ağac-notları,labdanum::vanil,ənbər::15-25|30-45|50-70": {
+    "slug": "vanille-antique",
+    "locale": "az",
+    "updatedAt": "2026-04-18T22:49:20.427Z",
+    "data": {
+      "summary": "Vanille Antique uniseks ətirdir, vanil və ənbər notları ilə isti və zəngin ətir təcrübəsi təqdim edir. Bu ətir payız və qış mövsümlərində, həm səhər, həm də axşam istifadə üçün uyğundur.",
+      "matrix": {
+        "longevity": {
+          "weak": 1,
+          "unstable": 1,
+          "moderate": 2,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 3,
+          "high": 4,
+          "very_high": 2
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 4,
+          "spring": 2,
+          "summer": 1
+        },
+        "timeOfDay": {
+          "morning": 3,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 1,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
+  },
+  "v1::ilham::az::Ilham::SoOud::Unisex::Stokda Var::dəri,karamel,qırmızı-giləmeyvələr,şaftalı,zəfəran::ağac-notları,çəhrayı-istiot,labdanum,zəncəfil,naqarmota-girdə-topalaq::benzoin,müşk,paçuli,vanil,aqar-ağacı-ud,peru-balzamı::15-25|30-45|50-70": {
+    "slug": "ilham",
+    "locale": "az",
+    "updatedAt": "2026-04-18T22:53:30.543Z",
+    "data": {
+      "summary": "Ilham ətiri uniseksdir, zəngin dərili, karamel və giləmeyvə notları ilə isti və mürəkkəb qoxu təqdim edir. Uzunömürlü və yüksək iz buraxan bu ətir payız və qış mövsümləri üçün uyğundur.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 0,
+          "moderate": 1,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 0,
+          "moderate": 2,
+          "high": 4,
+          "very_high": 3
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 4,
+          "spring": 1,
+          "summer": 0
+        },
+        "timeOfDay": {
+          "morning": 1,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
+  },
+  "v1::labdanum-dusk::az::Labdanum Dusk::Molton Brown::Unisex::Stokda Var::zəfəran,sidr-yarpaqları::dəri,sidr,naqarmota-girdə-topalaq::labdanum,paçuli,tonka-lobyası,vanil,aqar-ağacı-ud::15-25|30-45|50-70": {
+    "slug": "labdanum-dusk",
+    "locale": "az",
+    "updatedAt": "2026-04-18T22:53:45.962Z",
+    "data": {
+      "summary": "Labdanum Dusk Molton Brown tərəfindən hazırlanmış uniseks ətirdir, zəfəran və dərinin zəngin notları ilə diqqət çəkir. Bu ətir payız və qış mövsümləri üçün uyğundur və axşam saatlarında istifadə üçün idealdır.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 1,
+          "moderate": 2,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 3,
+          "high": 4,
+          "very_high": 2
+        },
+        "season": {
+          "autumn": 5,
+          "winter": 4,
+          "spring": 1,
+          "summer": 0
+        },
+        "timeOfDay": {
+          "morning": 1,
+          "evening": 5
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
+  },
+  "v1::bentley-intense::az::Bentley Intense::Bentley::Kişi::Stokda Var::berqamot,qara-istiot,dəfnə-yarpağı::ağac-notları,darçın,müşk-sürvəsi-adaçayı,rom,ətirşah::benzoin,dəri,paçuli,sidr,büxur-ladan::15-25|30-45|50-70": {
+    "slug": "bentley-intense",
+    "locale": "az",
+    "updatedAt": "2026-04-18T23:01:45.053Z",
+    "data": {
+      "summary": "Bentley Intense kişilər üçün güclü və uzunömürlü ətirdir, payız və qış mövsümlərinə uyğundur. Əsasən axşam istifadə üçün nəzərdə tutulub və 26-45 yaş arası kişilərə tövsiyə olunur.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 1,
+          "moderate": 2,
+          "long": 4,
+          "very_long": 5
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 2,
+          "high": 4,
+          "very_high": 3
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 5,
+          "spring": 1,
+          "summer": 0
+        },
+        "timeOfDay": {
+          "morning": 1,
+          "evening": 5
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 3,
+          "age_26_35": 5,
+          "age_35_45": 4,
+          "age_45_plus": 2
+        }
+      }
+    }
+  }
+}
