@@ -7,16 +7,20 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import {
   ArrowRight,
   Buildings,
+  CaretDown,
   GridFour,
   HeartStraight,
   House,
   Info,
+  InstagramLogo,
+  MapPin,
   NewspaperClipping,
   Phone,
   Scales,
   ShoppingBag,
   Sparkle,
   UserCircle,
+  X,
 } from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
 import { getDictionary, locales, stripLocalePrefix, toLocalePath, type Locale } from "@/lib/i18n";
@@ -29,6 +33,8 @@ type HeaderProps = {
 
 export function Header({ floating = false, locale }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
+  const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +55,18 @@ export function Header({ floating = false, locale }: HeaderProps) {
       menuTag: "Menyu",
       accountTag: "Hesab",
       languageTag: "Dil",
+      trendingTag: "Trenddə",
+      instagramTag: "Instagram",
+      tiktokTag: "Unvan",
+      shopCategory: "Alış-veriş",
+      discoverCategory: "Kəşf et",
+      infoCategory: "Məlumat",
+      allProducts: "Bütün məhsullar",
+      menCategory: "Kişi ətirləri",
+      womenCategory: "Qadın ətirləri",
+      unisexCategory: "Uniseks ətirlər",
+      categoryOpen: "Kateqoriyanı aç",
+      categoryClose: "Kateqoriyanı bağla",
     },
     en: {
       login: "Login",
@@ -60,6 +78,18 @@ export function Header({ floating = false, locale }: HeaderProps) {
       menuTag: "Menu",
       accountTag: "Account",
       languageTag: "Language",
+      trendingTag: "Trending",
+      instagramTag: "Instagram",
+      tiktokTag: "Address",
+      shopCategory: "Shop",
+      discoverCategory: "Discover",
+      infoCategory: "Info",
+      allProducts: "All products",
+      menCategory: "Men",
+      womenCategory: "Women",
+      unisexCategory: "Unisex",
+      categoryOpen: "Open category",
+      categoryClose: "Close category",
     },
     ru: {
       login: "Вход",
@@ -71,6 +101,18 @@ export function Header({ floating = false, locale }: HeaderProps) {
       menuTag: "Меню",
       accountTag: "Аккаунт",
       languageTag: "Язык",
+      trendingTag: "Тренды",
+      instagramTag: "Instagram",
+      tiktokTag: "Адрес",
+      shopCategory: "Покупки",
+      discoverCategory: "Открыть",
+      infoCategory: "Инфо",
+      allProducts: "Все товары",
+      menCategory: "Мужские",
+      womenCategory: "Женские",
+      unisexCategory: "Унисекс",
+      categoryOpen: "Открыть категорию",
+      categoryClose: "Закрыть категорию",
     },
   } as const;
   const primaryMenuItems = [
@@ -154,6 +196,13 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, [pathname]);
 
   useEffect(() => {
+    if (!isMenuOpen) {
+      setOpenMobileCategory(null);
+      setIsMobileLocaleMenuOpen(false);
+    }
+  }, [isMenuOpen]);
+
+  useEffect(() => {
     // Clear transient locale highlight once route/locale settles.
     setPendingLocale(null);
   }, [locale, pathname]);
@@ -211,7 +260,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, [session?.user?.id, loadCartItemCount]);
 
   const menuTransition =
-    "transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]";
+    "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]";
   const stickTransition =
     "absolute left-1/2 top-1/2 block h-0.5 w-4 -translate-x-1/2 rounded-full bg-current opacity-100 transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]";
 
@@ -427,91 +476,181 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
       <div
         className={[
-          "fixed inset-0 z-40 origin-top transform-gpu overflow-hidden bg-zinc-950/18 backdrop-blur-sm lg:hidden",
+          "fixed inset-0 z-40 origin-left transform-gpu overflow-hidden bg-[linear-gradient(160deg,rgba(40,28,68,0.48)_0%,rgba(20,18,32,0.42)_100%)] backdrop-blur-[3px] lg:hidden",
           menuTransition,
           isMenuOpen
-            ? "pointer-events-auto translate-y-0"
-            : "pointer-events-none -translate-y-[104%]",
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0",
         ].join(" ")}
         aria-hidden={!isMenuOpen}
       >
         <div
           className={[
-            "mx-auto flex h-full max-w-[1540px] flex-col px-3 pt-20 pb-6",
+            "mx-auto flex h-full max-w-[1540px] flex-col px-2 py-2 sm:px-3 sm:py-3",
             menuTransition,
-            isMenuOpen ? "translate-y-0" : "-translate-y-2",
+            isMenuOpen ? "translate-x-0" : "-translate-x-6",
           ].join(" ")}
         >
-          <div className="relative flex flex-1 overflow-hidden rounded-[1.55rem] border border-zinc-300/60 bg-[linear-gradient(165deg,rgba(255,255,255,0.98)_0%,rgba(244,243,240,0.96)_100%)] p-4 shadow-[0_24px_52px_rgba(25,25,30,0.14)]">
+          <div
+            className={[
+              "relative flex h-full min-h-0 w-[min(85vw,20rem)] max-w-[20rem] flex-1 overflow-hidden rounded-[0.35rem] border border-zinc-300/70 bg-[linear-gradient(180deg,#f6f6f7_0%,#f3f3f4_100%)] p-3 shadow-[0_26px_48px_rgba(15,15,20,0.28)]",
+              menuTransition,
+              isMenuOpen ? "scale-100 opacity-100" : "scale-[0.985] opacity-0",
+            ].join(" ")}
+          >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.88)_0%,rgba(255,255,255,0)_45%),radial-gradient(circle_at_88%_82%,rgba(210,197,174,0.2)_0%,rgba(210,197,174,0)_48%)]"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_12%,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0)_42%),linear-gradient(180deg,rgba(255,255,255,0.26)_0%,rgba(255,255,255,0)_32%)]"
             />
-            <div aria-hidden="true" className="hero-grain pointer-events-none absolute inset-0 opacity-[0.04]" />
+            <div aria-hidden="true" className="hero-grain pointer-events-none absolute inset-0 opacity-[0.035]" />
 
-            <nav className="relative z-10 flex w-full flex-col gap-4 overflow-y-auto pr-1">
-              <div className="flex items-center justify-between border-b border-zinc-200/80 pb-3">
-                <span className="font-[family-name:var(--font-playfair)] text-lg tracking-[-0.02em] text-zinc-900">
-                  {copy[locale].navTitle}
-                </span>
-                <span className="text-[0.58rem] font-medium tracking-[0.26em] uppercase text-zinc-500">
-                  Perfoumer
-                </span>
+            <nav className="relative z-10 flex min-h-0 w-full flex-col overflow-y-auto overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+2.75rem)]">
+              <div className="mb-2 flex items-start justify-between">
+                <div>
+                  <span className="brand-wordmark block text-[1.95rem] leading-none tracking-[-0.045em] text-zinc-900">
+                    Perfoumer
+                  </span>
+                  <span className="mt-1 block text-[0.5rem] font-medium tracking-[0.34em] uppercase text-zinc-500">
+                    {copy[locale].navTitle}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(false)}
+                  aria-label={t.header.closeMenu}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-700 transition-colors hover:bg-white/70"
+                >
+                  <X size={14} weight="regular" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                {primaryMenuItems.map((item, index) => (
-                  <Link
-                    key={item.href}
-                    href={toLocalePath(item.href, locale)}
-                    onClick={() => setIsMenuOpen(false)}
-                    style={{ transitionDelay: isMenuOpen ? `${70 + index * 40}ms` : "0ms" }}
-                    className={[
-                      "group relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white/80 px-3.5 py-3.5 text-left transition-[transform,box-shadow,border-color,background-color] duration-300 hover:-translate-y-px hover:border-zinc-300 hover:bg-white",
-                      menuTransition,
-                      isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
-                    ].join(" ")}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className="block text-[0.52rem] font-medium tracking-[0.26em] uppercase text-zinc-500">
-                          {copy[locale].menuTag}
-                        </span>
-                        <span className="mt-1 block font-[family-name:var(--font-playfair)] text-[1.04rem] leading-tight tracking-[-0.02em] text-zinc-900">
-                          {item.label}
-                        </span>
-                      </div>
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-zinc-200 bg-white/80">
-                        {getMobileItemIcon(item.href)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              <div className="space-y-1">
-                {secondaryMenuItems.map((item, index) => (
-                  <Link
-                    key={item.href}
-                    href={toLocalePath(item.href, locale)}
-                    onClick={() => setIsMenuOpen(false)}
-                    style={{ transitionDelay: isMenuOpen ? `${180 + index * 35}ms` : "0ms" }}
-                    className={[
-                      "flex items-center justify-between rounded-xl border border-transparent px-2 py-2.5 text-sm text-zinc-700 transition-colors duration-200 hover:border-zinc-200 hover:bg-white/70 hover:text-zinc-950",
-                      isItemActive(item.href) ? "border-zinc-200 bg-white/88 text-zinc-900" : "",
-                      menuTransition,
-                      isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
-                    ].join(" ")}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-zinc-200 bg-white/70">
-                        {getMobileItemIcon(item.href)}
-                      </span>
-                      <span>{item.label}</span>
+              <div className="divide-y divide-zinc-300/75 border-y border-zinc-300/75">
+                <Link
+                  href={toLocalePath("/", locale)}
+                  onClick={() => setIsMenuOpen(false)}
+                  style={{ transitionDelay: isMenuOpen ? "65ms" : "0ms" }}
+                  className={[
+                    "group flex min-h-10 items-center justify-between px-0.5 py-2.5 text-[0.9rem] font-medium text-zinc-900 transition-colors duration-200 hover:text-zinc-700",
+                    menuTransition,
+                    isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                  ].join(" ")}
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center text-zinc-600">
+                      {getMobileItemIcon("/")}
                     </span>
-                    <ArrowRight size={14} weight="regular" className="text-zinc-400" />
-                  </Link>
-                ))}
+                    <span className="truncate">{t.header.home}</span>
+                  </span>
+                  <ArrowRight size={12} weight="regular" className="shrink-0 text-zinc-500" />
+                </Link>
+
+                {[
+                  {
+                    id: "shop",
+                    label: copy[locale].shopCategory,
+                    iconHref: "/catalog",
+                    items: [
+                      { href: toLocalePath("/catalog", locale), label: copy[locale].allProducts },
+                      {
+                        href: `${toLocalePath("/catalog", locale)}?q=${encodeURIComponent(locale === "az" ? "kişi" : locale === "ru" ? "муж" : "men")}`,
+                        label: copy[locale].menCategory,
+                      },
+                      {
+                        href: `${toLocalePath("/catalog", locale)}?q=${encodeURIComponent(locale === "az" ? "qadın" : locale === "ru" ? "жен" : "women")}`,
+                        label: copy[locale].womenCategory,
+                      },
+                      {
+                        href: `${toLocalePath("/catalog", locale)}?q=${encodeURIComponent(locale === "ru" ? "унисекс" : "unisex")}`,
+                        label: copy[locale].unisexCategory,
+                      },
+                      { href: toLocalePath("/brands", locale), label: t.header.brands },
+                      { href: toLocalePath("/cart", locale), label: t.header.cart },
+                      ...(session ? [{ href: toLocalePath("/wishlist", locale), label: copy[locale].wishlist }] : []),
+                    ],
+                  },
+                  {
+                    id: "discover",
+                    label: copy[locale].discoverCategory,
+                    iconHref: "/qoxunu",
+                    items: [
+                      { href: toLocalePath("/qoxunu", locale), label: t.header.scentQuiz },
+                      { href: toLocalePath("/compare", locale), label: t.header.compare },
+                      { href: toLocalePath("/blog", locale), label: copy[locale].blog },
+                    ],
+                  },
+                  {
+                    id: "info",
+                    label: copy[locale].infoCategory,
+                    iconHref: "/haqqimizda",
+                    items: [
+                      { href: toLocalePath("/haqqimizda", locale), label: copy[locale].aboutPage },
+                      { href: toLocalePath("/elaqe", locale), label: t.header.contact },
+                    ],
+                  },
+                ].map((category, index) => {
+                  const isOpen = openMobileCategory === category.id;
+
+                  return (
+                    <div
+                      key={category.id}
+                      style={{ transitionDelay: isMenuOpen ? `${96 + index * 35}ms` : "0ms" }}
+                      className={[
+                        menuTransition,
+                        isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                      ].join(" ")}
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenMobileCategory((current) =>
+                            current === category.id ? null : category.id,
+                          )
+                        }
+                        aria-expanded={isOpen}
+                        aria-label={isOpen ? copy[locale].categoryClose : copy[locale].categoryOpen}
+                        className="group flex w-full min-h-10 items-center justify-between px-0.5 py-2.5 text-[0.9rem] font-medium text-zinc-900 transition-colors duration-200 hover:text-zinc-700"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span className="grid h-6 w-6 shrink-0 place-items-center text-zinc-600">
+                            {getMobileItemIcon(category.iconHref)}
+                          </span>
+                          <span className="truncate">{category.label}</span>
+                        </span>
+                        <CaretDown
+                          size={11}
+                          weight="bold"
+                          className={[
+                            "shrink-0 text-zinc-500 transition-transform duration-300",
+                            isOpen ? "rotate-180" : "rotate-0",
+                          ].join(" ")}
+                        />
+                      </button>
+
+                      <div
+                        className={[
+                          "grid overflow-hidden transition-all duration-350 ease-out",
+                          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                        ].join(" ")}
+                      >
+                        <div className="min-h-0">
+                          <div className="mb-2 ml-8 flex flex-col gap-1 rounded-xl border border-zinc-200/70 bg-white/65 p-2.5">
+                            {category.items.map((childItem) => (
+                              <Link
+                                key={childItem.href}
+                                href={childItem.href}
+                                onClick={() => setIsMenuOpen(false)}
+                                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[0.76rem] font-medium text-zinc-700 transition-colors hover:bg-white hover:text-zinc-900"
+                              >
+                                <span className="truncate">{childItem.label}</span>
+                                <ArrowRight size={11} weight="regular" className="text-zinc-400" />
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               <Link
@@ -519,58 +658,160 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 onClick={() => setIsMenuOpen(false)}
                 style={{
                   transitionDelay: isMenuOpen
-                    ? `${210 + secondaryMenuItems.length * 35}ms`
+                    ? `${130 + (primaryMenuItems.length + secondaryMenuItems.length) * 34}ms`
                     : "0ms",
                 }}
                 className={[
-                  "flex items-center justify-between rounded-2xl border border-zinc-900/90 bg-zinc-900 px-4 py-3 text-white shadow-[0_16px_30px_rgba(20,20,24,0.2)] transition-transform duration-300 hover:-translate-y-px",
+                  "mt-3 flex items-center justify-between rounded-[0.7rem] bg-zinc-900 px-3 py-2.5 text-white",
                   menuTransition,
                   isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
                 ].join(" ")}
               >
                 <span className="flex items-center gap-2.5">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10">
-                    <UserCircle size={16} weight="regular" className="text-white/90" aria-hidden="true" />
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10">
+                    <UserCircle size={14} weight="regular" className="text-white/90" aria-hidden="true" />
                   </span>
-                  <span className="text-[0.58rem] font-medium tracking-[0.24em] uppercase text-white/62">
+                  <span className="text-[0.54rem] font-medium tracking-[0.26em] uppercase text-white/72">
                     {copy[locale].accountTag}
                   </span>
                 </span>
-                <span className="font-[family-name:var(--font-playfair)] text-lg tracking-[-0.02em]">{accountLabel}</span>
+                <span className="font-[family-name:var(--font-playfair)] text-[1.45rem] tracking-[-0.02em]">{accountLabel}</span>
               </Link>
 
               <div
                 className={[
-                  "flex items-center justify-between rounded-2xl border border-zinc-200 bg-white/70 p-1.5",
+                  "mt-3 border-t border-zinc-300/75 pt-3",
                   menuTransition,
                   isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
                 ].join(" ")}
                 style={{
                   transitionDelay: isMenuOpen
-                    ? `${250 + secondaryMenuItems.length * 35}ms`
+                    ? `${170 + (primaryMenuItems.length + secondaryMenuItems.length) * 34}ms`
                     : "0ms",
                 }}
               >
-                <span className="pl-2 text-[0.52rem] font-medium tracking-[0.24em] uppercase text-zinc-500">
-                  {copy[locale].languageTag}
-                </span>
-                <div className="flex items-center gap-1">
-                  {locales.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => updateLocale(item)}
-                      disabled={isLocalePending}
-                      className={[
-                        "rounded-full px-2.5 py-1 text-[0.62rem] font-medium tracking-[0.2em] uppercase transition-all duration-200 disabled:cursor-wait disabled:opacity-70",
-                        (pendingLocale ?? locale) === item
-                          ? "bg-zinc-900 text-white"
-                          : "text-zinc-500 hover:text-zinc-700",
-                      ].join(" ")}
+                <p className="mb-2 font-[family-name:var(--font-playfair)] text-[1.95rem] leading-none tracking-[-0.035em] text-zinc-900">
+                  {copy[locale].trendingTag}
+                </p>
+                <div className="grid grid-cols-2 gap-2 pb-1">
+                  {[
+                    { href: toLocalePath("/catalog", locale), title: t.header.products, image: "/perfoumerjar.png" },
+                    { href: toLocalePath("/qoxunu", locale), title: t.header.scentQuiz, image: "/logo.webp" },
+                  ].map((card) => (
+                    <Link
+                      key={`trend-${card.href}`}
+                      href={card.href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="group relative block h-28 overflow-hidden rounded-[0.15rem] bg-zinc-300"
                     >
-                      {t.languages[item]}
-                    </button>
+                      <Image
+                        src={card.image}
+                        alt={card.title}
+                        fill
+                        sizes="120px"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                      />
+                      <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,12,0.02)_0%,rgba(10,10,12,0.62)_100%)]" />
+                      <span className="absolute inset-x-2 bottom-1.5 truncate text-[0.62rem] font-medium text-white">
+                        {card.title}
+                      </span>
+                    </Link>
                   ))}
+                </div>
+              </div>
+
+              <div
+                className={[
+                  "mt-auto border-t border-zinc-300/75 pt-2",
+                  menuTransition,
+                  isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                ].join(" ")}
+                style={{
+                  transitionDelay: isMenuOpen
+                    ? `${200 + (primaryMenuItems.length + secondaryMenuItems.length) * 34}ms`
+                    : "0ms",
+                }}
+              >
+                <div className="mb-2 flex flex-col gap-1.5">
+                  <Link
+                    href="https://www.instagram.com/perfoumer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="inline-flex min-h-10 items-center gap-2.5 rounded-lg px-2 text-[0.82rem] font-medium text-zinc-700 transition-colors hover:bg-white/60 hover:text-zinc-900"
+                  >
+                    <InstagramLogo size={15} weight="regular" className="text-zinc-600" aria-hidden="true" />
+                    <span>{copy[locale].instagramTag}</span>
+                  </Link>
+                  <Link
+                    href="https://share.google/ZMRu8MvbSGL6FjuKy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="inline-flex min-h-10 items-center gap-2.5 rounded-lg px-2 text-[0.82rem] font-medium text-zinc-700 transition-colors hover:bg-white/60 hover:text-zinc-900"
+                  >
+                    <MapPin size={15} weight="regular" className="text-zinc-600" aria-hidden="true" />
+                    <span>{copy[locale].tiktokTag}</span>
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5 min-[350px]:grid-cols-[auto_1fr] min-[350px]:items-center">
+                  <span className="pl-0.5 text-[0.54rem] font-medium tracking-[0.24em] uppercase text-zinc-500">
+                    {copy[locale].languageTag}
+                  </span>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileLocaleMenuOpen((current) => !current)}
+                      aria-haspopup="listbox"
+                      aria-expanded={isMobileLocaleMenuOpen}
+                      disabled={isLocalePending}
+                      className="inline-flex min-h-11 w-full items-center justify-between rounded-2xl border border-zinc-300 bg-white/80 px-3.5 py-2 text-[0.7rem] font-semibold tracking-[0.2em] uppercase text-zinc-800 transition-colors duration-200 hover:border-zinc-400 disabled:cursor-wait disabled:opacity-70"
+                    >
+                      <span>{t.languages[pendingLocale ?? locale]}</span>
+                      <CaretDown
+                        size={14}
+                        weight="bold"
+                        className={[
+                          "text-zinc-500 transition-transform duration-250",
+                          isMobileLocaleMenuOpen ? "rotate-180" : "rotate-0",
+                        ].join(" ")}
+                      />
+                    </button>
+
+                    <div
+                      className={[
+                        "absolute inset-x-0 bottom-[calc(100%+0.45rem)] z-20 origin-bottom overflow-hidden rounded-2xl border border-zinc-300 bg-white/95 shadow-[0_18px_30px_rgba(20,20,24,0.14)] transition-all duration-250",
+                        isMobileLocaleMenuOpen
+                          ? "pointer-events-auto translate-y-0 opacity-100"
+                          : "pointer-events-none translate-y-1 opacity-0",
+                      ].join(" ")}
+                      role="listbox"
+                    >
+                      {locales.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            setIsMobileLocaleMenuOpen(false);
+                            void updateLocale(item);
+                          }}
+                          disabled={isLocalePending}
+                          className={[
+                            "flex min-h-11 w-full items-center justify-between border-b border-zinc-200 px-3.5 text-left text-[0.7rem] font-semibold tracking-[0.2em] uppercase transition-colors duration-200 last:border-b-0 disabled:cursor-wait disabled:opacity-70",
+                            (pendingLocale ?? locale) === item
+                              ? "bg-zinc-900 text-white"
+                              : "text-zinc-700 hover:bg-zinc-100",
+                          ].join(" ")}
+                        >
+                          <span>{t.languages[item]}</span>
+                          {(pendingLocale ?? locale) === item ? (
+                            <span className="text-[0.58rem] tracking-[0.14em] text-white/80">OK</span>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </nav>

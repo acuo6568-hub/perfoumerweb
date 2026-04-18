@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Storefront, User } from "@phosphor-icons/react/dist/ssr";
 
@@ -16,7 +17,7 @@ import { PerfumeWishlistButton } from "@/components/community/PerfumeWishlistBut
 import { PerfumeHeroCover } from "@/components/perfume/PerfumeHeroCover";
 import { PerfumePurchasePanel } from "@/components/perfume/PerfumePurchasePanel";
 import { PerfumeShareButton } from "@/components/perfume/PerfumeShareButton";
-import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes } from "@/lib/catalog";
+import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes, getSimilarPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
@@ -141,15 +142,30 @@ export default async function PerfumeDetailPage({
   const supabaseConfig = getSupabasePublicConfigFromServer();
   const locale = await getCurrentLocale();
   const t = getDictionary(locale);
+  const requestHeaders = await headers();
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const variantId = getVariantId(resolvedSearchParams?.v);
-  const [perfume, relatedPerfumes] = await Promise.all([
+  const [perfume, similarPerfumes] = await Promise.all([
     getPerfumeBySlug(slug, variantId),
-    getRelatedPerfumes(slug),
+    getSimilarPerfumes(slug, variantId, 3),
   ]);
 
   if (!perfume) notFound();
+
+  const userSeed = [
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "",
+    requestHeaders.get("user-agent") ?? "",
+    requestHeaders.get("accept-language") ?? "",
+    locale,
+    slug,
+  ].join("|");
+
+  const relatedPerfumes = await getRelatedPerfumes(slug, 3, {
+    excludeSlugs: similarPerfumes.map((item) => item.slug),
+    seed: userSeed,
+    diversify: true,
+  });
 
   const shareUrl = absoluteUrlForLocale(
     `/perfumes/${perfume.slug}${variantId ? `?v=${encodeURIComponent(variantId)}` : ""}`,
@@ -339,6 +355,23 @@ export default async function PerfumeDetailPage({
         />
 
         <PerfumeCommentsSection perfumeSlug={perfume.slug} locale={locale} supabase={supabaseConfig} />
+
+        {similarPerfumes.length > 0 ? (
+          <section className="mt-24">
+            <h2 className="text-5xl leading-[0.98] text-zinc-800 md:text-6xl">
+              {t.detail.similarProducts}
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-500 md:text-base">
+              {t.detail.similarProductsHint}
+            </p>
+
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+              {similarPerfumes.map((item) => (
+                <ProductCard key={item.id} perfume={item} locale={locale} />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-24">
           <h2 className="text-5xl leading-[0.98] text-zinc-800 md:text-6xl">
