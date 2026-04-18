@@ -12,6 +12,8 @@ type AppShellProps = {
   locale: Locale;
 };
 
+const MAX_SCROLL_RESTORE_AGE_MS = 30_000;
+
 export function AppShell({ children, locale: _locale }: AppShellProps) {
   const pathname = usePathname() || "/";
   const { pathname: basePathname } = stripLocalePrefix(pathname);
@@ -38,8 +40,17 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
     const pendingRestore = sessionStorage.getItem("perfoumer:restore-scroll");
     if (pendingRestore) {
       try {
-        const parsed = JSON.parse(pendingRestore) as { targetUrl?: string };
-        if (parsed?.targetUrl?.startsWith(pathname)) {
+        const parsed = JSON.parse(pendingRestore) as {
+          source?: string;
+          targetUrl?: string;
+          timestamp?: number;
+        };
+
+        const isValidSource = parsed?.source === "detail-back";
+        const isFresh = typeof parsed?.timestamp === "number" && Date.now() - parsed.timestamp <= MAX_SCROLL_RESTORE_AGE_MS;
+        if (!isValidSource || !isFresh) {
+          sessionStorage.removeItem("perfoumer:restore-scroll");
+        } else if (parsed?.targetUrl?.startsWith(pathname)) {
           return;
         }
       } catch {

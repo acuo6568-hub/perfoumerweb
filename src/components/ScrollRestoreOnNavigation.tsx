@@ -4,10 +4,13 @@ import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 type RestorePayload = {
+  source?: string;
   targetUrl: string;
   scrollY: number;
   timestamp: number;
 };
+
+const MAX_SCROLL_RESTORE_AGE_MS = 30_000;
 
 function normalizeUrl(url: string) {
   try {
@@ -45,10 +48,20 @@ export function ScrollRestoreOnNavigation() {
       return;
     }
 
+    const isValidSource = payload.source === "detail-back";
+    const isFresh = typeof payload.timestamp === "number" && Date.now() - payload.timestamp <= MAX_SCROLL_RESTORE_AGE_MS;
+    if (!isValidSource || !isFresh) {
+      sessionStorage.removeItem("perfoumer:restore-scroll");
+      return;
+    }
+
     const currentUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
     const normalizedTarget = normalizeUrl(payload.targetUrl).split("#")[0];
 
     if (normalizedTarget !== currentUrl) {
+      if (Date.now() - payload.timestamp > MAX_SCROLL_RESTORE_AGE_MS / 2) {
+        sessionStorage.removeItem("perfoumer:restore-scroll");
+      }
       return;
     }
 

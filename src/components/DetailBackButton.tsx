@@ -56,6 +56,7 @@ export function DetailBackButton({ locale }: DetailBackButtonProps) {
       sessionStorage.setItem(
         "perfoumer:restore-scroll",
         JSON.stringify({
+          source: "detail-back",
           targetUrl: context.sourceUrl,
           scrollY: context.scrollY,
           timestamp: Date.now(),

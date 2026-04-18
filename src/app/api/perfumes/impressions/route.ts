@@ -106,9 +106,15 @@ async function readCache(): Promise<ImpressionCacheStore> {
   }
 }
 
-async function writeCache(store: ImpressionCacheStore) {
-  await mkdir(path.dirname(CACHE_FILE_PATH), { recursive: true });
-  await writeFile(CACHE_FILE_PATH, JSON.stringify(store, null, 2), "utf-8");
+async function writeCache(store: ImpressionCacheStore): Promise<boolean> {
+  try {
+    await mkdir(path.dirname(CACHE_FILE_PATH), { recursive: true });
+    await writeFile(CACHE_FILE_PATH, JSON.stringify(store, null, 2), "utf-8");
+    return true;
+  } catch {
+    // In serverless environments (e.g. production deploy), local FS may be read-only.
+    return false;
+  }
 }
 
 function getSupabaseAdminClient() {
