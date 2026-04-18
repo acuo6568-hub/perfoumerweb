@@ -41,16 +41,19 @@ export function SharedWishlistViewClient({
       placeholder: "Ətir axtar və seç",
       noResults: "Uyğun ətir tapılmadı",
       selected: "Seçildi",
+      results: "nəticə",
     },
     en: {
       placeholder: "Search and select perfume",
       noResults: "No matching perfumes",
       selected: "Selected",
+      results: "results",
     },
     ru: {
       placeholder: "Найдите и выберите аромат",
       noResults: "Совпадений не найдено",
       selected: "Выбрано",
+      results: "результатов",
     },
   }[locale];
 
@@ -58,6 +61,7 @@ export function SharedWishlistViewClient({
   const [selectedSlug, setSelectedSlug] = useState<string>("");
   const [query, setQuery] = useState("");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [message, setMessage] = useState("");
   const pickerRef = useRef<HTMLDivElement | null>(null);
@@ -80,13 +84,32 @@ export function SharedWishlistViewClient({
       return selectablePerfumes.slice(0, 10);
     }
 
-    return selectablePerfumes
-      .filter((item) => {
-        const haystack = `${item.name} ${item.brand}`.toLowerCase();
-        return haystack.includes(normalizedQuery);
+    const scored = selectablePerfumes
+      .map((item) => {
+        const name = item.name.toLowerCase();
+        const brand = item.brand.toLowerCase();
+        const joined = `${name} ${brand}`;
+
+        let score = 0;
+        if (name.startsWith(normalizedQuery)) score += 5;
+        if (brand.startsWith(normalizedQuery)) score += 4;
+        if (name.includes(normalizedQuery)) score += 3;
+        if (brand.includes(normalizedQuery)) score += 2;
+        if (joined.includes(normalizedQuery)) score += 1;
+
+        return { item, score };
       })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));
+
+    return scored
+      .map((entry) => entry.item)
       .slice(0, 10);
   }, [query, selectablePerfumes]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query, filteredPerfumes.length, isPickerOpen]);
 
   useEffect(() => {
     const closeOnOutsideClick = (event: MouseEvent) => {
@@ -106,6 +129,51 @@ export function SharedWishlistViewClient({
   }, []);
 
   const getOptionLabel = (item: Perfume) => `${item.name} - ${item.brand}`;
+
+  const selectPerfume = (item: Perfume) => {
+    setSelectedSlug(item.slug);
+    setQuery(getOptionLabel(item));
+    setIsPickerOpen(false);
+  };
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isPickerOpen) {
+      if (event.key === "ArrowDown" && filteredPerfumes.length > 0) {
+        setIsPickerOpen(true);
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % Math.max(filteredPerfumes.length, 1));
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + Math.max(filteredPerfumes.length, 1)) % Math.max(filteredPerfumes.length, 1));
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (!filteredPerfumes.length) {
+        return;
+      }
+
+      event.preventDefault();
+      const option = filteredPerfumes[Math.min(activeIndex, filteredPerfumes.length - 1)];
+      if (option) {
+        selectPerfume(option);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setIsPickerOpen(false);
+    }
+  };
 
   const addPerfume = async () => {
     if (!selectedSlug || isAdding) {
@@ -161,6 +229,7 @@ export function SharedWishlistViewClient({
                 <input
                   value={query}
                   onFocus={() => setIsPickerOpen(true)}
+                  onKeyDown={handleInputKeyDown}
                   onChange={(event) => {
                     setQuery(event.target.value);
                     setSelectedSlug("");
@@ -179,27 +248,38 @@ export function SharedWishlistViewClient({
               </div>
 
               {isPickerOpen ? (
-                <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-[0_18px_34px_rgba(20,20,20,0.12)]">
+                <div className="absolute z-20 mt-2 max-h-80 w-full overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-[0_18px_34px_rgba(20,20,20,0.12)]">
+                  <p className="px-3 py-1 text-[0.64rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+                    {filteredPerfumes.length} {pickerCopy.results}
+                  </p>
                   {filteredPerfumes.length ? (
-                    filteredPerfumes.map((item) => {
+                    filteredPerfumes.map((item, index) => {
                       const isSelected = selectedSlug === item.slug;
+                      const isActive = index === activeIndex;
                       return (
                         <button
                           key={item.slug}
                           type="button"
-                          onClick={() => {
-                            setSelectedSlug(item.slug);
-                            setQuery(getOptionLabel(item));
-                            setIsPickerOpen(false);
-                          }}
+                          onMouseEnter={() => setActiveIndex(index)}
+                          onClick={() => selectPerfume(item)}
                           className={[
-                            "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition",
-                            isSelected ? "bg-zinc-100" : "hover:bg-zinc-50",
+                            "flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left transition",
+                            isActive || isSelected ? "bg-zinc-100" : "hover:bg-zinc-50",
                           ].join(" ")}
                         >
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium text-zinc-800">{item.name}</span>
-                            <span className="block truncate text-xs text-zinc-500">{item.brand}</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                              <img
+                                src={item.image || "/perfoumerlogo.png"}
+                                alt={item.imageAlt || `${item.name} ${item.brand}`}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-medium text-zinc-800">{item.name}</span>
+                              <span className="block truncate text-xs text-zinc-500">{item.brand}</span>
+                            </span>
                           </span>
                           {isSelected ? (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-700">
