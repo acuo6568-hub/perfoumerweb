@@ -55,6 +55,15 @@ function normalizeSize(value: unknown): PerfumeSize | null {
   };
 }
 
+function perfumeIdentityKey(perfume: Perfume) {
+  const sizeKey = perfume.sizes
+    .map((size) => `${size.ml}:${size.price}`)
+    .sort((left, right) => left.localeCompare(right))
+    .join("|");
+
+  return [perfume.slug, sizeKey, perfume.externalLink].join("::");
+}
+
 function normalizePerfume(value: unknown): Perfume | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -158,10 +167,32 @@ export async function readAdminNotes() {
 }
 
 export async function getAdminData() {
-  const [perfumes, notes] = await Promise.all([readAdminPerfumes(), readAdminNotes()]);
+  const [adminPerfumes, notes, catalogPerfumes] = await Promise.all([
+    readAdminPerfumes(),
+    readAdminNotes(),
+    getPerfumes(),
+  ]);
+
+  const mergedPerfumes = (() => {
+    if (!adminPerfumes?.length) {
+      return catalogPerfumes;
+    }
+
+    const byKey = new Map<string, Perfume>();
+
+    for (const perfume of catalogPerfumes) {
+      byKey.set(perfumeIdentityKey(perfume), perfume);
+    }
+
+    for (const perfume of adminPerfumes) {
+      byKey.set(perfumeIdentityKey(perfume), perfume);
+    }
+
+    return Array.from(byKey.values());
+  })();
 
   return {
-    perfumes: perfumes ?? (await getPerfumes()),
+    perfumes: mergedPerfumes,
     notes: notes ?? (await getNotes()),
   };
 }
