@@ -2,6 +2,7 @@ import { parseCsv } from "@/lib/csv";
 import type { Note, Perfume } from "@/types/catalog";
 
 type PerfumeCsvRow = {
+  id?: string;
   slug?: string;
   title?: string;
   name?: string;
@@ -49,6 +50,7 @@ function toNumber(value: string | undefined) {
 
 export function perfumesToCsv(perfumes: Perfume[]) {
   const header = [
+    "id",
     "slug",
     "title",
     "image",
@@ -71,6 +73,7 @@ export function perfumesToCsv(perfumes: Perfume[]) {
     const p50 = perfume.sizes.find((item) => item.ml === 50)?.price;
 
     const values = [
+      perfume.id,
       perfume.slug,
       perfume.name,
       perfume.image,
@@ -115,6 +118,10 @@ export function parsePerfumesCsv(input: string): Perfume[] {
         return null;
       }
 
+      const externalLink = (row.link || "").trim();
+      const externalId = externalLink.match(/\/(\d+)(?:\D*)$/)?.[1] ?? "";
+      const id = (row.id || "").trim() || externalId || slug;
+
       const sizeCandidates = [
         { ml: 15, price: toNumber(row.price_15ml) },
         { ml: 30, price: toNumber(row.price_30ml) },
@@ -125,7 +132,7 @@ export function parsePerfumesCsv(input: string): Perfume[] {
       const inStock = stockStatus.toLowerCase().includes("var");
 
       return {
-        id: slug,
+        id,
         slug,
         name: (row.title || row.name || "").trim(),
         brand: (row.brand || "").trim(),
@@ -134,7 +141,7 @@ export function parsePerfumesCsv(input: string): Perfume[] {
         imageAlt: (row.image_alt || "").trim(),
         stockStatus,
         inStock,
-        externalLink: (row.link || "").trim(),
+        externalLink,
         sizes: sizeCandidates.map((size) => ({
           ml: size.ml,
           price: size.price,

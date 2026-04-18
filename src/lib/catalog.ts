@@ -14,6 +14,7 @@ type NoteCsvRow = {
 };
 
 type PerfumeCsvRow = {
+  id?: string;
   slug: string;
   title: string;
   image: string;
@@ -329,7 +330,7 @@ async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<
 
     const externalLink = row.link.trim();
     const externalId = externalLink.match(/\/(\d+)(?:\D*)$/)?.[1] ?? "";
-    const id = externalId || `${slug}__variant_${nextVariantIndex}`;
+    const id = row.id?.trim() || externalId || `${slug}__variant_${nextVariantIndex}`;
 
     const sizes = [
       { ml: 15, price: parsePrice(row.price_15ml) },
