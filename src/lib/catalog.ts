@@ -77,7 +77,7 @@ const fallbackNote = (slug: string): Note => ({
 
 const NOTES_CSV_PATH = path.join(process.cwd(), "data", "Notes.csv");
 const NOTES_CSV_FALLBACK_PATH = path.join(process.cwd(), "data", "notes.csv");
-const PERFUMES_CSV_PATH = path.join(process.cwd(), "data", "perfumes.csv");
+const PERFUMES_CSV_PATH = path.join(process.cwd(), "data", "perfm77.csv");
 const ADMIN_NOTES_JSON_PATH = path.join(process.cwd(), "data", "admin", "notes.json");
 const ADMIN_PERFUMES_JSON_PATH = path.join(process.cwd(), "data", "admin", "perfumes.json");
 
