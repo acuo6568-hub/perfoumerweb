@@ -22,12 +22,12 @@ const catalogMetadata = {
 } as const;
 
 type CatalogPageProps = {
-  searchParams: Promise<{ brand?: string; q?: string; note?: string; min?: string; max?: string }>;
+  searchParams: Promise<{ brand?: string; gender?: string; q?: string; note?: string; min?: string; max?: string }>;
 };
 
 export async function generateMetadata({ searchParams }: CatalogPageProps): Promise<Metadata> {
-  const { brand, q, note, min, max } = await searchParams;
-  const hasFilters = Boolean(brand || q || note || min || max);
+  const { brand, gender, q, note, min, max } = await searchParams;
+  const hasFilters = Boolean(brand || gender || q || note || min || max);
   const locale = await getCurrentLocale();
 
   return {
@@ -63,8 +63,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const locale = await getCurrentLocale();
   const t = getDictionary(locale);
   const perfumes = await getPerfumes();
-  const { brand, q, note, min, max } = await searchParams;
+  const { brand, gender, q, note, min, max } = await searchParams;
   const normalizedBrand = brand?.trim().toLowerCase();
+  const initialGender = typeof gender === "string" ? gender.trim() : "";
   const initialQuery = typeof q === "string" ? q.trim() : "";
   const normalizedNote = typeof note === "string" ? note.trim().toLowerCase() : "";
   const initialMinPrice = parsePriceParam(min);
@@ -112,6 +113,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
           perfumes={perfumes}
           lockedNoteFilter={lockedNoteFilter}
           initialBrand={initialBrand}
+          initialGender={initialGender}
           initialQuery={initialQuery}
           initialMinPrice={initialMinPrice}
           initialMaxPrice={initialMaxPrice}

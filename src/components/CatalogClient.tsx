@@ -35,6 +35,7 @@ type CatalogClientProps = {
   perfumes: Perfume[];
   lockedNoteFilter?: LockedNoteFilter;
   initialBrand?: string;
+  initialGender?: string;
   initialQuery?: string;
   initialMinPrice?: number;
   initialMaxPrice?: number;
@@ -216,6 +217,49 @@ function normalizeSearchText(value: string) {
     .trim();
 }
 
+function resolveInitialGenderValue(initialGender: string | undefined, perfumes: Perfume[]) {
+  const normalizedInitialGender = normalizeSearchText(initialGender ?? "");
+  if (!normalizedInitialGender || normalizedInitialGender === "all") {
+    return "all";
+  }
+
+  const directMatch = perfumes.find(
+    (perfume) => normalizeSearchText(perfume.gender) === normalizedInitialGender,
+  );
+  if (directMatch) {
+    return directMatch.gender;
+  }
+
+  if (/(male|men|man|kisi|kişi|muzh|муж)/iu.test(normalizedInitialGender)) {
+    const maleMatch = perfumes.find((perfume) =>
+      /(male|men|man|kisi|kişi|muzh|муж)/iu.test(normalizeSearchText(perfume.gender)),
+    );
+    if (maleMatch) {
+      return maleMatch.gender;
+    }
+  }
+
+  if (/(female|women|woman|qadin|qadın|жен|lady)/iu.test(normalizedInitialGender)) {
+    const femaleMatch = perfumes.find((perfume) =>
+      /(female|women|woman|qadin|qadın|жен|lady)/iu.test(normalizeSearchText(perfume.gender)),
+    );
+    if (femaleMatch) {
+      return femaleMatch.gender;
+    }
+  }
+
+  if (/(unisex|uniseks|унисекс)/iu.test(normalizedInitialGender)) {
+    const unisexMatch = perfumes.find((perfume) =>
+      /(unisex|uniseks|унисекс)/iu.test(normalizeSearchText(perfume.gender)),
+    );
+    if (unisexMatch) {
+      return unisexMatch.gender;
+    }
+  }
+
+  return "all";
+}
+
 function toSearchPool(perfume: Perfume) {
   return normalizeSearchText(
     [
@@ -343,6 +387,7 @@ export function CatalogClient({
   perfumes,
   lockedNoteFilter,
   initialBrand = "all",
+  initialGender,
   initialQuery = "",
   initialMinPrice,
   initialMaxPrice,
@@ -350,10 +395,14 @@ export function CatalogClient({
 }: CatalogClientProps) {
   const t = getDictionary(locale);
   const normalizedInitialQuery = initialQuery.trim();
+  const resolvedInitialGender = useMemo(
+    () => resolveInitialGenderValue(initialGender, perfumes),
+    [initialGender, perfumes],
+  );
   const [query, setQuery] = useState(normalizedInitialQuery);
   const [draftQuery, setDraftQuery] = useState(normalizedInitialQuery);
   const [suggestionQuery, setSuggestionQuery] = useState(normalizedInitialQuery);
-  const [selectedGender, setSelectedGender] = useState("all");
+  const [selectedGender, setSelectedGender] = useState(resolvedInitialGender);
   const [selectedBrand, setSelectedBrand] = useState(initialBrand);
   const [selectedTopNote, setSelectedTopNote] = useState(
     lockedNoteFilter?.type === "top" ? lockedNoteFilter.slug : "all",
@@ -400,6 +449,10 @@ export function CatalogClient({
     setSuggestionQuery(nextQuery);
     setVisibleCount(PAGE_SIZE);
   }, [initialQuery]);
+
+  useEffect(() => {
+    setSelectedGender(resolvedInitialGender);
+  }, [resolvedInitialGender]);
 
   useEffect(() => {
     setSelectedMinPrice(Number.isFinite(initialMinPrice) ? Math.max(0, Number(initialMinPrice)) : null);
@@ -468,7 +521,7 @@ export function CatalogClient({
     setSelectedMinPrice(null);
     setSelectedMaxPrice(null);
     startTransition(() => {
-      setSelectedGender("all");
+      setSelectedGender(resolvedInitialGender);
       setSelectedBrand(initialBrand);
       setSelectedTopNote(lockedTopNote);
       setSelectedHeartNote(lockedHeartNote);
@@ -791,7 +844,7 @@ export function CatalogClient({
     normalizedQuery === normalizeSearchText(selectedBrand);
   const activeFilterCount = [
     query.trim() !== "" && !isQueryMirroringBrand,
-    selectedGender !== "all",
+    selectedGender !== resolvedInitialGender,
     selectedBrand !== initialBrand,
     selectedTopNote !== lockedTopNote,
     selectedHeartNote !== lockedHeartNote,
@@ -814,7 +867,7 @@ export function CatalogClient({
       ? {
           key: "gender",
           label: selectedGender,
-          onClear: () => updateGender("all"),
+          onClear: () => updateGender(resolvedInitialGender),
         }
       : null,
     selectedBrand !== initialBrand
@@ -889,6 +942,10 @@ export function CatalogClient({
       params.set("brand", selectedBrand);
     }
 
+    if (selectedGender !== "all") {
+      params.set("gender", selectedGender);
+    }
+
     const selectedNote =
       selectedTopNote !== lockedTopNote
         ? selectedTopNote
@@ -920,6 +977,7 @@ export function CatalogClient({
     query,
     selectedBaseNote,
     selectedBrand,
+    selectedGender,
     selectedHeartNote,
     selectedMaxPrice,
     selectedMinPrice,

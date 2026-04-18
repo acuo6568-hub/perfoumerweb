@@ -552,15 +552,15 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     items: [
                       { href: toLocalePath("/catalog", locale), label: copy[locale].allProducts },
                       {
-                        href: `${toLocalePath("/catalog", locale)}?q=${encodeURIComponent(locale === "az" ? "kişi" : locale === "ru" ? "муж" : "men")}`,
+                        href: `${toLocalePath("/catalog", locale)}?gender=male`,
                         label: copy[locale].menCategory,
                       },
                       {
-                        href: `${toLocalePath("/catalog", locale)}?q=${encodeURIComponent(locale === "az" ? "qadın" : locale === "ru" ? "жен" : "women")}`,
+                        href: `${toLocalePath("/catalog", locale)}?gender=female`,
                         label: copy[locale].womenCategory,
                       },
                       {
-                        href: `${toLocalePath("/catalog", locale)}?q=${encodeURIComponent(locale === "ru" ? "унисекс" : "unisex")}`,
+                        href: `${toLocalePath("/catalog", locale)}?gender=unisex`,
                         label: copy[locale].unisexCategory,
                       },
                       { href: toLocalePath("/brands", locale), label: t.header.brands },
