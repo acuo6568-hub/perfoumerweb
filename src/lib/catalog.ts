@@ -350,7 +350,8 @@ async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<
     const matchedImage =
       (normalizedName ? referenceImageByName.get(normalizedName) : undefined) ||
       referenceImageBySlug.get(slug);
-    const image = matchedImage || csvImage || getPerfumeImageUrl(slug);
+    // Prefer canonical CDN image paths for consistent product visuals across the app.
+    const image = matchedImage || getPerfumeImageUrl(slug) || csvImage;
 
     const parsed: Perfume = {
       id,
