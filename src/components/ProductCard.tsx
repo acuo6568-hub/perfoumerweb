@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
 import { getDictionary, type Locale } from "@/lib/i18n";
@@ -47,9 +47,27 @@ function getShadowProfile(slug: string): ShadowProfile {
 export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: ProductCardProps) {
   const startingPrice = perfume.sizes[0]?.price;
   const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [imageSrc, setImageSrc] = useState(perfume.image || "/perfoumerlogo.png");
+  const imageCandidates = useMemo(() => {
+    const encoded = encodeURIComponent(perfume.slug);
+    const candidates = [
+      `https://perfoumer-cdn.vercel.app/perfumes/${encoded}.png`,
+      `https://perfoumer-cdn.vercel.app/perfumes/${encoded}.jpg`,
+      `https://perfoumer-cdn.vercel.app/perfumes/${encoded}.webp`,
+      perfume.image,
+      "/perfoumerlogo.png",
+    ];
+
+    return Array.from(new Set(candidates.map((item) => item?.trim()).filter(Boolean)));
+  }, [perfume.slug, perfume.image]);
+  const [imageCandidateIndex, setImageCandidateIndex] = useState(0);
   const t = getDictionary(locale);
   const shadowProfile = getShadowProfile(perfume.slug);
+  const imageSrc = imageCandidates[imageCandidateIndex] || "/perfoumerlogo.png";
+
+  useEffect(() => {
+    setImageCandidateIndex(0);
+    setIsImageLoaded(false);
+  }, [imageCandidates]);
 
   const shadowStyle = {
     "--shadow-width": `${shadowProfile.width}%`,
@@ -109,8 +127,10 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
             ].join(" ")}
             onLoad={() => setIsImageLoaded(true)}
             onError={() => {
-              if (imageSrc !== "/perfoumerlogo.png") {
-                setImageSrc("/perfoumerlogo.png");
+              if (imageCandidateIndex < imageCandidates.length - 1) {
+                setImageCandidateIndex((prev) => prev + 1);
+                setIsImageLoaded(false);
+              } else {
                 setIsImageLoaded(true);
               }
             }}

@@ -383,7 +383,7 @@ async function getPerfumesSource(): Promise<Perfume[]> {
   return ensureUniquePerfumeIds(csvPerfumes);
 }
 
-const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v3"], {
+const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v4"], {
   revalidate: 300,
   tags: ["catalog", "perfumes"],
 });
