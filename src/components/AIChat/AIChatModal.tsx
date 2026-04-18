@@ -55,6 +55,7 @@ type AIChatModalProps = {
   onOpen?: () => void;
   onClose: () => void;
   onAfterClose?: () => void;
+  isTriggerHidden?: boolean;
   locale: Locale;
   womanVideoUrl?: string;
   contactVideoUrl?: string;
@@ -1549,6 +1550,7 @@ export function AIChatModal({
   onOpen,
   onClose,
   onAfterClose,
+  isTriggerHidden = false,
   locale,
   womanVideoUrl,
   contactVideoUrl,
@@ -2279,6 +2281,7 @@ export function AIChatModal({
   const showContactView = isHeroMode && activeTab === "contact";
   const showComposer = activeTab === "chat";
   const shouldUseFocusedModal = isCompactViewport;
+  const shouldHideTrigger = !isExpanded && isTriggerHidden;
 
   return (
     <>
@@ -2296,7 +2299,13 @@ export function AIChatModal({
         className={`fixed z-50 overflow-hidden bg-gradient-to-b from-zinc-950 via-black to-zinc-950 transform-gpu will-change-transform [transition:transform_640ms_cubic-bezier(0.16,1,0.3,1)] ${
           isExpanded ? "scale-100" : isCompactViewport ? "scale-100" : "hover:scale-[1.03]"
         }`}
-        style={panelStyle}
+        style={{
+          ...panelStyle,
+          opacity: shouldHideTrigger ? 0 : 1,
+          transform: shouldHideTrigger ? "translate3d(0, 14px, 0) scale(0.92)" : "translate3d(0, 0, 0) scale(1)",
+          transition: `${panelStyle.transition}, opacity 220ms ease, transform 320ms cubic-bezier(0.22,1,0.36,1)`,
+          pointerEvents: shouldHideTrigger ? "none" : "auto",
+        }}
       >
         <button
           onClick={onOpen}

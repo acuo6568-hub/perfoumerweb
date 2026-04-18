@@ -17,6 +17,7 @@ const copyByLocale: Record<Locale, string> = {
 export function AIChatButton({ locale }: AIChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isUiOverlayOpen, setIsUiOverlayOpen] = useState(false);
   const copy = copyByLocale[locale];
 
   const handleOpen = useCallback(() => {
@@ -35,6 +36,19 @@ export function AIChatButton({ locale }: AIChatButtonProps) {
     return () => window.cancelAnimationFrame(frameId);
   }, []);
 
+  useEffect(() => {
+    const handleOverlayState = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isOpen?: boolean }>;
+      setIsUiOverlayOpen(Boolean(customEvent.detail?.isOpen));
+    };
+
+    window.addEventListener("perfoumer:ui-overlay", handleOverlayState as EventListener);
+
+    return () => {
+      window.removeEventListener("perfoumer:ui-overlay", handleOverlayState as EventListener);
+    };
+  }, []);
+
   if (!mounted) return null;
 
   return (
@@ -42,6 +56,7 @@ export function AIChatButton({ locale }: AIChatButtonProps) {
       isOpen={isOpen}
       onOpen={handleOpen}
       onClose={handleClose}
+      isTriggerHidden={isUiOverlayOpen}
       locale={locale}
       womanVideoUrl="/womanvideo.mp4"
       contactVideoUrl="/contactvideo.mp4"
