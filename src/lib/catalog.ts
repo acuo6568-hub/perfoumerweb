@@ -378,33 +378,8 @@ async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<
 }
 
 async function getPerfumesSource(): Promise<Perfume[]> {
-  const adminPerfumes = await readJsonSafely<unknown[]>(ADMIN_PERFUMES_JSON_PATH);
-  let parsedAdminPerfumes: Perfume[] = [];
-
-  if (Array.isArray(adminPerfumes)) {
-    parsedAdminPerfumes = adminPerfumes
-      .map(normalizePerfume)
-      .filter((item): item is Perfume => item !== null);
-  }
-
-  const csvPerfumes = await getCsvPerfumesSource(parsedAdminPerfumes);
-
-  if (!parsedAdminPerfumes.length) {
-    return ensureUniquePerfumeIds(csvPerfumes);
-  }
-
-  const mergedPerfumes = [...parsedAdminPerfumes];
-  const existingVariantKeys = new Set(parsedAdminPerfumes.map(variantIdentityKey));
-
-  for (const perfume of csvPerfumes) {
-    const key = variantIdentityKey(perfume);
-    if (!existingVariantKeys.has(key)) {
-      mergedPerfumes.push(perfume);
-      existingVariantKeys.add(key);
-    }
-  }
-
-  return ensureUniquePerfumeIds(mergedPerfumes);
+  const csvPerfumes = await getCsvPerfumesSource();
+  return ensureUniquePerfumeIds(csvPerfumes);
 }
 
 const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v3"], {

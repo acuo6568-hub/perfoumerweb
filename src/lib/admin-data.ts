@@ -1,12 +1,14 @@
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
+import { perfumesToCsv } from "@/lib/admin-csv";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
 
 const ADMIN_DATA_DIR = path.join(process.cwd(), "data", "admin");
 const ADMIN_NOTES_PATH = path.join(ADMIN_DATA_DIR, "notes.json");
 const ADMIN_PERFUMES_PATH = path.join(ADMIN_DATA_DIR, "perfumes.json");
+const PERFUMES_CSV_PATH = path.join(process.cwd(), "data", "perfm77.csv");
 
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
   try {
@@ -53,15 +55,6 @@ function normalizeSize(value: unknown): PerfumeSize | null {
     price,
     label: normalizeString(size.label) || `${ml}ML`,
   };
-}
-
-function perfumeIdentityKey(perfume: Perfume) {
-  const sizeKey = perfume.sizes
-    .map((size) => `${size.ml}:${size.price}`)
-    .sort((left, right) => left.localeCompare(right))
-    .join("|");
-
-  return [perfume.slug, sizeKey, perfume.externalLink].join("::");
 }
 
 function normalizePerfume(value: unknown): Perfume | null {
@@ -144,17 +137,6 @@ function normalizeNote(value: unknown): Note | null {
   };
 }
 
-export async function readAdminPerfumes() {
-  const parsed = await readJsonFile<unknown[]>(ADMIN_PERFUMES_PATH);
-  if (!Array.isArray(parsed)) {
-    return null;
-  }
-
-  return parsed
-    .map(normalizePerfume)
-    .filter((item): item is Perfume => item !== null);
-}
-
 export async function readAdminNotes() {
   const parsed = await readJsonFile<unknown[]>(ADMIN_NOTES_PATH);
   if (!Array.isArray(parsed)) {
@@ -167,32 +149,10 @@ export async function readAdminNotes() {
 }
 
 export async function getAdminData() {
-  const [adminPerfumes, notes, catalogPerfumes] = await Promise.all([
-    readAdminPerfumes(),
-    readAdminNotes(),
-    getPerfumes(),
-  ]);
-
-  const mergedPerfumes = (() => {
-    if (!adminPerfumes?.length) {
-      return catalogPerfumes;
-    }
-
-    const byKey = new Map<string, Perfume>();
-
-    for (const perfume of catalogPerfumes) {
-      byKey.set(perfumeIdentityKey(perfume), perfume);
-    }
-
-    for (const perfume of adminPerfumes) {
-      byKey.set(perfumeIdentityKey(perfume), perfume);
-    }
-
-    return Array.from(byKey.values());
-  })();
+  const [notes, catalogPerfumes] = await Promise.all([readAdminNotes(), getPerfumes()]);
 
   return {
-    perfumes: mergedPerfumes,
+    perfumes: catalogPerfumes,
     notes: notes ?? (await getNotes()),
   };
 }
@@ -209,8 +169,11 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown }
 
   await mkdir(ADMIN_DATA_DIR, { recursive: true });
 
+  const perfumesCsv = perfumesToCsv(perfumes);
+
   await Promise.all([
-    writeFile(ADMIN_PERFUMES_PATH, `${JSON.stringify(perfumes, null, 2)}\n`, "utf-8"),
+    writeFile(PERFUMES_CSV_PATH, `${perfumesCsv}\n`, "utf-8"),
+    writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8"),
     writeFile(ADMIN_NOTES_PATH, `${JSON.stringify(notes, null, 2)}\n`, "utf-8"),
   ]);
 
