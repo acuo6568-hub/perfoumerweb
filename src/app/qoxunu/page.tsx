@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ScentQuizClient } from "@/components/ScentQuizClient";
+import { ScentLabClient } from "@/components/ScentLabClient";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
@@ -43,6 +44,7 @@ export default async function QoxunuPage() {
       <div aria-hidden="true" className="qoxunu-gold-aura" />
       <main className="qoxunu-page-enter relative z-[1] mx-auto min-h-dvh max-w-[1540px] px-4 pt-[4.3rem] pb-0.5 sm:px-6 sm:pt-[5.85rem] sm:pb-1.5 md:px-10 md:pt-[6.1rem] md:pb-2.5">
         <ScentQuizClient perfumes={perfumes} notes={notes} locale={locale} />
+        <ScentLabClient perfumes={perfumes} locale={locale} />
       </main>
     </div>
   );
