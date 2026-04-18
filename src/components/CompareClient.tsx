@@ -500,7 +500,10 @@ export function CompareClient({ perfumes, notes, locale }: CompareClientProps) {
         </span>
       </div>
       <Link
-        href={`/perfumes/${perfume.slug}`}
+        href={{
+          pathname: `/perfumes/${perfume.slug}`,
+          query: { v: perfume.id },
+        }}
         className="mt-3 inline-flex items-center gap-2 rounded-full border border-zinc-300/90 bg-white/90 px-3.5 py-1.5 text-xs font-semibold tracking-[0.1em] text-zinc-700 uppercase transition-all duration-300 hover:border-zinc-400 hover:bg-white hover:text-zinc-900"
       >
         {copy.openProduct}

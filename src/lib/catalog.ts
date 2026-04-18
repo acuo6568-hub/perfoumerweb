@@ -114,7 +114,30 @@ const variantIdentityKey = (perfume: Perfume) => {
     .sort((left, right) => left.localeCompare(right))
     .join("|");
 
-  return [perfume.slug, sizeKey, perfume.externalLink, perfume.stockStatus.toLowerCase()].join("::");
+  return [perfume.slug, sizeKey, perfume.externalLink].join("::");
+};
+
+const ensureUniquePerfumeIds = (perfumes: Perfume[]) => {
+  const seen = new Map<string, number>();
+
+  return perfumes.map((perfume, index) => {
+    const fallbackId = `${perfume.slug}__variant_${index + 1}`;
+    const baseId = (perfume.id || fallbackId).trim() || fallbackId;
+    const nextCount = (seen.get(baseId) ?? 0) + 1;
+    seen.set(baseId, nextCount);
+
+    if (nextCount === 1) {
+      return {
+        ...perfume,
+        id: baseId,
+      };
+    }
+
+    return {
+      ...perfume,
+      id: `${baseId}__${nextCount}`,
+    };
+  });
 };
 
 async function readJsonSafely<T>(filePath: string): Promise<T | null> {
@@ -350,7 +373,7 @@ async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<
     perfumes.push(parsed);
   }
 
-  return perfumes;
+  return ensureUniquePerfumeIds(perfumes);
 }
 
 async function getPerfumesSource(): Promise<Perfume[]> {
@@ -366,7 +389,7 @@ async function getPerfumesSource(): Promise<Perfume[]> {
   const csvPerfumes = await getCsvPerfumesSource(parsedAdminPerfumes);
 
   if (!parsedAdminPerfumes.length) {
-    return csvPerfumes;
+    return ensureUniquePerfumeIds(csvPerfumes);
   }
 
   const mergedPerfumes = [...parsedAdminPerfumes];
@@ -380,7 +403,7 @@ async function getPerfumesSource(): Promise<Perfume[]> {
     }
   }
 
-  return mergedPerfumes;
+  return ensureUniquePerfumeIds(mergedPerfumes);
 }
 
 const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v3"], {

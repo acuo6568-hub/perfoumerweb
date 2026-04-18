@@ -80,6 +80,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
     <Link
       href={{
         pathname: `/perfumes/${perfume.slug}`,
+        query: { v: perfume.id },
       }}
       onClick={handleCardClick}
       className="product-card group relative block rounded-[1.65rem] bg-white p-2.5 shadow-sm ring-1 ring-zinc-200 sm:rounded-3xl sm:p-4"
