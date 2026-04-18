@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import type { Locale } from "@/lib/i18n";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
 type PerfumeImpressionPanelProps = {
@@ -319,10 +319,6 @@ export function PerfumeImpressionPanel({ perfumeSlug, locale, supabase: supabase
       setGenerating(false);
     }
   };
-
-  if (!isSupabaseConfigured(supabaseConfig ?? undefined)) {
-    return null;
-  }
 
   return (
     <section className="mt-4 py-1.5 md:py-2">

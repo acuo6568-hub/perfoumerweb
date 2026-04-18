@@ -6,7 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
 
 import type { Locale } from "@/lib/i18n";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
 type PerfumeScentSummaryPanelProps = {
@@ -237,11 +237,17 @@ export function PerfumeScentSummaryPanel({ perfumeSlug, locale, supabase: supaba
     setSummaryHighlights([]);
 
     try {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+
+      if (session?.access_token) {
+        headers.authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch("/api/perfumes/summary", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           slug: perfumeSlug,
           locale,
@@ -269,10 +275,6 @@ export function PerfumeScentSummaryPanel({ perfumeSlug, locale, supabase: supaba
       setIsSummaryLoading(false);
     }
   };
-
-  if (!isSupabaseConfigured(supabaseConfig ?? undefined) || !session?.user) {
-    return null;
-  }
 
   return (
     <section className="scent-summary-panel mt-7 py-1.5 md:py-2">
@@ -302,7 +304,7 @@ export function PerfumeScentSummaryPanel({ perfumeSlug, locale, supabase: supaba
               />
             </button>
           ) : null}
-          {!aiSummary && isInitialLoadDone ? (
+          {!aiSummary && isInitialLoadDone && Boolean(session?.user) ? (
             <button
               type="button"
               onClick={summarizeScent}

@@ -165,6 +165,30 @@ async function writeSummaryToDatabase(options: {
   );
 }
 
+async function validateUserFromBearerToken(request: Request) {
+  const authHeader = request.headers.get("authorization") ?? "";
+  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  const accessToken = tokenMatch?.[1]?.trim();
+  if (!accessToken) return false;
+
+  const supabaseUrl = getEnvValue("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseAnonKey = getEnvValue("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) return false;
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  });
+
+  const { data, error } = await supabase.auth.getUser(accessToken);
+  if (error || !data.user) return false;
+  return true;
+}
+
 const getCachedPerfumeSummary = unstable_cache(
   async (
     cacheKey: string,
@@ -272,6 +296,16 @@ export async function POST(request: Request) {
       highlights: existing.highlights,
       cached: true,
     });
+  }
+
+  const isAuthenticated = await validateUserFromBearerToken(request);
+  if (!isAuthenticated) {
+    return NextResponse.json(
+      {
+        error: "login_required_for_generation",
+      },
+      { status: 401 },
+    );
   }
 
   let cachedResult: CachedSummaryResult;
