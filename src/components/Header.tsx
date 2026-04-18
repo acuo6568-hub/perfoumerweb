@@ -711,7 +711,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
               onClick={() => setIsMenuOpen(false)}
             >
               <Image
-                src="/perfoumerlogo.png"
+                src="/perfmmob.png"
                 alt="Perfoumer"
                 width={174}
                 height={35}
