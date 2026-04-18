@@ -42,7 +42,7 @@ function normalizeLocale(input: unknown): SupportedLocale {
 
 function normalizeSlug(input: unknown): string {
   if (typeof input !== "string") return "";
-  return input.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+  return input.trim().toLowerCase();
 }
 
 function parseEnvFile(raw: string) {

@@ -203,5 +203,46 @@
         }
       }
     }
+  },
+  "v1::pure-xs::az::Pure XS::Paco Rabanne::Kişi::Stokda Var::berqamot,kəklikotu,qreyfrut,yaşıl-notlar,zəncəfil::alma,darçın,dəri,vanil,burbon-viski::ağac-notları,paçuli,sidr,şəkər,mirra,kaşmeran::15-20|30-35|50-55": {
+    "slug": "pure-xs",
+    "locale": "az",
+    "updatedAt": "2026-04-18T23:08:43.674Z",
+    "data": {
+      "summary": "Pure XS kişi üçün nəzərdə tutulmuş, ətirli və şirin notlarla zəngin, xüsusilə payız və qış mövsümlərində istifadə üçün uyğundur.",
+      "matrix": {
+        "longevity": {
+          "weak": 1,
+          "unstable": 0,
+          "moderate": 2,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 2,
+          "high": 4,
+          "very_high": 3
+        },
+        "season": {
+          "autumn": 5,
+          "winter": 4,
+          "spring": 2,
+          "summer": 1
+        },
+        "timeOfDay": {
+          "morning": 2,
+          "evening": 5
+        },
+        "age": {
+          "under_18": 1,
+          "age_18_25": 4,
+          "age_26_35": 5,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
   }
 }

@@ -44,7 +44,7 @@ const copyByLocale: Record<Locale, Copy> = {
     minimize: "Yığ",
     expand: "Aç",
     loading: "Təəssüratlar yüklənir...",
-    loadError: "Bu məhsul üçün AI təəssüratı hazır olmadı.",
+    loadError: "Bu məhsul üçün təəssürat hazır olmadı.",
     loginToGenerate: "Yeni təhlil yaratmaq üçün giriş lazımdır.",
     generate: "Təhlil et",
     generating: "Hazırlanır...",
@@ -86,7 +86,7 @@ const copyByLocale: Record<Locale, Copy> = {
     minimize: "Minimize",
     expand: "Expand",
     loading: "Loading impressions...",
-    loadError: "Could not load AI impressions for this perfume.",
+    loadError: "Could not load impressions for this perfume.",
     loginToGenerate: "Sign in to generate a new analysis.",
     generate: "Generate analysis",
     generating: "Generating...",
@@ -128,7 +128,7 @@ const copyByLocale: Record<Locale, Copy> = {
     minimize: "Свернуть",
     expand: "Развернуть",
     loading: "Загрузка матрицы...",
-    loadError: "Не удалось загрузить AI-оценку для этого аромата.",
+    loadError: "Не удалось загрузить оценку для этого аромата.",
     loginToGenerate: "Войдите, чтобы сгенерировать новую оценку.",
     generate: "Сгенерировать",
     generating: "Генерируем...",
@@ -187,6 +187,12 @@ export function PerfumeImpressionPanel({ perfumeSlug, locale, supabase: supabase
   const [animateFill, setAnimateFill] = useState(false);
   const hasCollapsibleContent = loading || generating || Boolean(data) || Boolean(error);
 
+  const isSilentLoadError = (status: number, code: string) => {
+    // These states are expected and should not show a hard error line.
+    if (status === 404) return true;
+    return code === "cache_miss" || code === "perfume not found" || code === "slug is required";
+  };
+
   useEffect(() => {
     if (!supabase) return;
 
@@ -220,7 +226,10 @@ export function PerfumeImpressionPanel({ perfumeSlug, locale, supabase: supabase
       try {
         const response = await fetch(`/api/perfumes/impressions?slug=${encodeURIComponent(perfumeSlug)}&locale=${locale}`);
         if (!response.ok) {
-          if (response.status !== 404 && isMounted) {
+          const json = (await response.json().catch(() => ({}))) as { error?: string };
+          const code = typeof json.error === "string" ? json.error : "";
+
+          if (!isSilentLoadError(response.status, code) && isMounted) {
             setError(copy.loadError);
           }
           return;
@@ -294,6 +303,8 @@ export function PerfumeImpressionPanel({ perfumeSlug, locale, supabase: supabase
         const json = (await response.json().catch(() => ({}))) as { error?: string };
         if (json.error === "login_required_for_generation") {
           setError(copy.loginToGenerate);
+        } else if (isSilentLoadError(response.status, json.error ?? "")) {
+          setError("");
         } else {
           setError(copy.loadError);
         }
