@@ -3,6 +3,7 @@ export const locales = ["az", "en", "ru"] as const;
 export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = "az";
+export const localeRequestHeader = "x-perfoumer-locale";
 
 export function isLocale(value?: string | null): value is Locale {
   return value === "az" || value === "en" || value === "ru";

@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { defaultLocale, normalizeLocale, stripLocalePrefix } from "@/lib/i18n";
+import {
+  defaultLocale,
+  localeRequestHeader,
+  normalizeLocale,
+  stripLocalePrefix,
+} from "@/lib/i18n";
 
 const PUBLIC_FILE = /\.[^/]+$/;
 
@@ -19,8 +24,16 @@ export function middleware(request: NextRequest) {
   const { locale, pathname: strippedPath } = stripLocalePrefix(pathname);
 
   if (locale) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(localeRequestHeader, locale);
+
     const response = NextResponse.rewrite(
       new URL(`${strippedPath}${search}`, request.url),
+      {
+        request: {
+          headers: requestHeaders,
+        },
+      },
     );
     response.cookies.set("perfoumer-locale", locale, {
       path: "/",
@@ -32,6 +45,8 @@ export function middleware(request: NextRequest) {
 
   const cookieLocale = request.cookies.get("perfoumer-locale")?.value;
   const normalizedLocale = normalizeLocale(cookieLocale);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(localeRequestHeader, normalizedLocale);
 
   if (cookieLocale && normalizedLocale !== defaultLocale) {
     const redirectUrl = request.nextUrl.clone();
@@ -39,7 +54,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
