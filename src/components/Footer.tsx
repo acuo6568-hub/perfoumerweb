@@ -137,12 +137,35 @@ export function Footer({ locale }: FooterProps) {
                     WhatsApp
                   </a>
                 </div>
+
               </div>
             </div>
           </div>
 
           <div className="mt-5 overflow-hidden border-t border-zinc-200/65 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(248,248,246,0.72)_100%)] px-6 pt-2 pb-2 md:mt-6 md:px-10 md:pb-3 xl:px-12">
             <div className="flex flex-col items-start gap-1 text-left">
+              <div className="mb-1 flex items-center gap-4">
+                <span className="inline-flex items-center gap-1.5 transition-transform duration-300 hover:-translate-y-0.5">
+                  <span className="relative h-4.5 w-7">
+                    <span className="absolute left-0 top-0 h-4.5 w-4.5 rounded-full bg-[#eb001b]" />
+                    <span className="absolute left-2.5 top-0 h-4.5 w-4.5 rounded-full bg-[#00a1df] opacity-90" />
+                  </span>
+                  <span className="text-[0.58rem] font-semibold tracking-[0.08em] text-zinc-500 uppercase">Maestro</span>
+                </span>
+
+                <span className="inline-flex items-center gap-1.5 transition-transform duration-300 hover:-translate-y-0.5">
+                  <span className="relative h-4.5 w-7">
+                    <span className="absolute left-0 top-0 h-4.5 w-4.5 rounded-full bg-[#eb001b]" />
+                    <span className="absolute left-2.5 top-0 h-4.5 w-4.5 rounded-full bg-[#f9a01b] opacity-90" />
+                  </span>
+                  <span className="text-[0.58rem] font-semibold tracking-[0.08em] text-zinc-500 uppercase">Mastercard</span>
+                </span>
+
+                <span className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1a41b6] transition-transform duration-300 hover:-translate-y-0.5">
+                  VISA
+                </span>
+              </div>
+
               <a
                 href="https://wa.me/bakhishov"
                 target="_blank"

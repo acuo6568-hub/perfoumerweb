@@ -1066,16 +1066,20 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 <Link
                   href={toLocalePath("/cart", locale)}
                   onClick={() => setIsCartDrawerOpen(false)}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white"
+                  className="group relative flex min-h-11 w-full items-center justify-center overflow-hidden rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(16,16,20,0.22)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-[0_16px_30px_rgba(16,16,20,0.3)] active:translate-y-0 active:scale-[0.995]"
                 >
-                  {copy[locale].checkout}
+                  <span aria-hidden="true" className="pointer-events-none absolute -left-1/4 top-0 h-full w-1/2 -skew-x-12 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.34)_50%,rgba(255,255,255,0)_100%)] opacity-0 transition-[transform,opacity] duration-700 group-hover:translate-x-[250%] group-hover:opacity-100" />
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_140%,rgba(115,138,255,0.28)_0%,rgba(115,138,255,0)_55%)] opacity-0 transition-opacity duration-400 group-hover:opacity-100" />
+                  <span className="relative z-[1] transition-transform duration-300 group-hover:tracking-[0.012em]">{copy[locale].checkout}</span>
                 </Link>
                 <Link
                   href={toLocalePath("/catalog", locale)}
                   onClick={() => setIsCartDrawerOpen(false)}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-900"
+                  className="group relative flex min-h-11 w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-900 shadow-[0_8px_18px_rgba(16,16,20,0.06)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-50 hover:shadow-[0_14px_24px_rgba(16,16,20,0.14)] active:translate-y-0 active:scale-[0.995]"
                 >
-                  {copy[locale].continueShopping}
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.98)_0%,rgba(243,246,255,0.95)_45%,rgba(236,240,250,0.96)_100%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <span aria-hidden="true" className="pointer-events-none absolute -left-1/4 top-0 h-full w-1/2 -skew-x-12 bg-[linear-gradient(90deg,rgba(126,143,255,0)_0%,rgba(126,143,255,0.3)_50%,rgba(126,143,255,0)_100%)] opacity-0 transition-[transform,opacity] duration-700 group-hover:translate-x-[250%] group-hover:opacity-100" />
+                  <span className="relative z-[1] transition-transform duration-300 group-hover:tracking-[0.012em]">{copy[locale].continueShopping}</span>
                 </Link>
               </div>
             </div>
