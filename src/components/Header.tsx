@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
@@ -34,7 +34,6 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
   const cartCountRequestRef = useRef(0);
-  const router = useRouter();
   const pathname = usePathname() || "/";
   const { pathname: basePathname } = stripLocalePrefix(pathname);
   const t = getDictionary(locale);
@@ -280,8 +279,8 @@ export function Header({ floating = false, locale }: HeaderProps) {
           cache: "no-store",
         });
       } finally {
-        router.push(nextPath);
-        router.refresh();
+        // Use a full navigation so all server-rendered segments resolve with the same locale.
+        window.location.assign(nextPath);
       }
     });
   };
