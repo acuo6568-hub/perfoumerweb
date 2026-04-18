@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { Check, CopySimple, ShareNetwork } from "@phosphor-icons/react";
 
 import { ProductCard } from "@/components/ProductCard";
 import type { Locale } from "@/lib/i18n";
@@ -37,20 +38,17 @@ type Copy = {
   signedInAs: string;
   shareTitle: string;
   shareDescription: string;
-  shareCreate: string;
-  shareRegenerate: string;
-  shareCopy: string;
+  sharePrimary: string;
+  shareCopyAria: string;
   shareCopied: string;
   shareCreating: string;
+  shareSaving: string;
   shareError: string;
   shareAllowAdditions: string;
-  shareInactive: string;
-  shareActiveReadOnly: string;
-  shareActiveEditable: string;
+  shareShared: string;
+  shareAutoSaved: string;
   shareLinkLabel: string;
   shareLinkPlaceholder: string;
-  shareUpdate: string;
-  shareNoLinkTitle: string;
   shareNoLinkBody: string;
 };
 
@@ -73,22 +71,19 @@ const copyByLocale: Record<Locale, Copy> = {
     removing: "Silinir...",
     signedInAs: "Hesab",
     shareTitle: "Wishlist paylaş",
-    shareDescription: "Paylaşdığın linklə başqaları siyahını yalnız oxuya bilər, dəyişə bilməz.",
-    shareCreate: "Paylaşım linki yarat",
-    shareRegenerate: "Yeni link yarat",
-    shareCopy: "Linki kopyala",
+    shareDescription: "Link vasitəsilə istəklərinizi paylaşın.",
+    sharePrimary: "Paylaş",
+    shareCopyAria: "Linki kopyala",
     shareCopied: "Kopyalandı",
     shareCreating: "Yaradılır...",
+    shareSaving: "Yadda saxlanılır...",
     shareError: "Paylaşım linki yaradılmadı.",
-    shareAllowAdditions: "Linki olanlar bu siyahıya ətir əlavə edə bilsin",
-    shareInactive: "Link passiv",
-    shareActiveReadOnly: "Aktiv, yalnız oxu",
-    shareActiveEditable: "Aktiv, əlavə etmə açıq",
+    shareAllowAdditions: "Digərləri əlavə edə bilsin",
+    shareShared: "Paylaşıldı",
+    shareAutoSaved: "Dəyişikliklər avtomatik yadda saxlandı",
     shareLinkLabel: "Paylaşım linki",
     shareLinkPlaceholder: "Hələ aktiv link yoxdur",
-    shareUpdate: "Dəyişiklikləri yenilə",
-    shareNoLinkTitle: "Hələ paylaşım linki yoxdur",
-    shareNoLinkBody: "Təmiz və oxunaqlı bir link yaradın. İstəsəniz sonradan əlavə etməni də aça bilərsiniz.",
+    shareNoLinkBody: "Paylaş düyməsinə klikləyin və şəxsi link yaradın.",
   },
   en: {
     title: "My Wishlist",
@@ -108,22 +103,19 @@ const copyByLocale: Record<Locale, Copy> = {
     removing: "Removing...",
     signedInAs: "Account",
     shareTitle: "Share wishlist",
-    shareDescription: "People with this link can only view your list. They cannot edit it.",
-    shareCreate: "Create share link",
-    shareRegenerate: "Regenerate link",
-    shareCopy: "Copy link",
+    shareDescription: "Share your wishlist with one private link.",
+    sharePrimary: "Share",
+    shareCopyAria: "Copy link",
     shareCopied: "Copied",
     shareCreating: "Creating...",
+    shareSaving: "Saving...",
     shareError: "Could not create share link.",
-    shareAllowAdditions: "Allow people with the link to add perfumes to this list",
-    shareInactive: "Link inactive",
-    shareActiveReadOnly: "Active, view only",
-    shareActiveEditable: "Active, additions enabled",
+    shareAllowAdditions: "Allow additions from shared link",
+    shareShared: "Shared",
+    shareAutoSaved: "Changes are saved automatically",
     shareLinkLabel: "Share link",
     shareLinkPlaceholder: "No active link yet",
-    shareUpdate: "Refresh settings",
-    shareNoLinkTitle: "No share link yet",
-    shareNoLinkBody: "Create a clean, private share link. You can enable additions later.",
+    shareNoLinkBody: "Press Share to generate your private link.",
   },
   ru: {
     title: "Мой Wishlist",
@@ -143,22 +135,19 @@ const copyByLocale: Record<Locale, Copy> = {
     removing: "Удаление...",
     signedInAs: "Аккаунт",
     shareTitle: "Поделиться wishlist",
-    shareDescription: "По ссылке список можно только просматривать. Редактирование недоступно.",
-    shareCreate: "Создать ссылку",
-    shareRegenerate: "Создать новую ссылку",
-    shareCopy: "Копировать ссылку",
+    shareDescription: "Поделитесь списком по одной приватной ссылке.",
+    sharePrimary: "Поделиться",
+    shareCopyAria: "Скопировать ссылку",
     shareCopied: "Скопировано",
     shareCreating: "Создание...",
+    shareSaving: "Сохранение...",
     shareError: "Не удалось создать ссылку.",
-    shareAllowAdditions: "Разрешить добавлять ароматы в этот список по ссылке",
-    shareInactive: "Ссылка неактивна",
-    shareActiveReadOnly: "Активна, только просмотр",
-    shareActiveEditable: "Активна, добавление включено",
+    shareAllowAdditions: "Разрешить добавление по ссылке",
+    shareShared: "Поделились",
+    shareAutoSaved: "Изменения сохраняются автоматически",
     shareLinkLabel: "Ссылка для доступа",
     shareLinkPlaceholder: "Активной ссылки пока нет",
-    shareUpdate: "Обновить настройки",
-    shareNoLinkTitle: "Ссылка ещё не создана",
-    shareNoLinkBody: "Создайте чистую приватную ссылку. Добавление можно включить позже.",
+    shareNoLinkBody: "Нажмите Поделиться, чтобы создать приватную ссылку.",
   },
 };
 
@@ -186,9 +175,13 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
   const [isRemoving, setIsRemoving] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [isShareLoading, setIsShareLoading] = useState(false);
+  const [isShareSaving, setIsShareSaving] = useState(false);
   const [isShareCopying, setIsShareCopying] = useState(false);
   const [isShareCopied, setIsShareCopied] = useState(false);
+  const [isShareShared, setIsShareShared] = useState(false);
+  const [shareNote, setShareNote] = useState("");
   const [allowAdditions, setAllowAdditions] = useState(false);
+  const [isShareHydrated, setIsShareHydrated] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -293,6 +286,7 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         setAllowAdditions(Boolean(row?.allow_additions));
       }
 
+      setIsShareHydrated(true);
       setIsShareLoading(false);
     };
 
@@ -355,15 +349,55 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
   );
 
   const shareUrl = useMemo(() => {
-    if (!shareToken || typeof window === "undefined") {
+    if (!shareToken) {
       return "";
     }
 
     return `${SITE_URL}/wishlist/shared/${shareToken}`;
   }, [shareToken]);
 
-  const shareStatus = shareToken ? (allowAdditions ? copy.shareActiveEditable : copy.shareActiveReadOnly) : copy.shareInactive;
-  const shareStatusTone = shareToken ? (allowAdditions ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-700") : "bg-zinc-100 text-zinc-500";
+  useEffect(() => {
+    if (!supabase || !session?.user?.id || !shareToken || !isShareHydrated) {
+      return;
+    }
+
+    let isActive = true;
+    setIsShareSaving(true);
+
+    const persistAdditions = async () => {
+      const { error } = await supabase
+        .from("wishlist_shares")
+        .upsert(
+          {
+            user_id: session.user.id,
+            token: shareToken,
+            allow_additions: allowAdditions,
+          },
+          { onConflict: "user_id" },
+        );
+
+      if (!isActive) {
+        return;
+      }
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        setShareNote(copy.shareAutoSaved);
+        window.setTimeout(() => {
+          setShareNote((prev) => (prev === copy.shareAutoSaved ? "" : prev));
+        }, 1500);
+      }
+
+      setIsShareSaving(false);
+    };
+
+    void persistAdditions();
+
+    return () => {
+      isActive = false;
+    };
+  }, [allowAdditions, copy.shareAutoSaved, isShareHydrated, session?.user?.id, shareToken, supabase]);
 
   const removeFromWishlist = async (perfumeSlug: string) => {
     if (!supabase || !session?.user) {
@@ -395,9 +429,9 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
     setPendingDelete(null);
   };
 
-  const createOrRefreshShareLink = async () => {
+  const createOrRefreshShareLink = async (): Promise<string | null> => {
     if (!supabase || !session?.user?.id) {
-      return;
+      return null;
     }
 
     setIsShareLoading(true);
@@ -418,11 +452,12 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
     if (error) {
       setMessage(copy.shareError);
       setIsShareLoading(false);
-      return;
+      return null;
     }
 
     setShareToken(token);
     setIsShareLoading(false);
+    return token;
   };
 
   const copyShareLink = async () => {
@@ -434,13 +469,57 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
       setIsShareCopying(true);
       await navigator.clipboard.writeText(shareUrl);
       setIsShareCopied(true);
+      setShareNote(copy.shareCopied);
       window.setTimeout(() => {
         setIsShareCopied(false);
+        setShareNote((prev) => (prev === copy.shareCopied ? "" : prev));
       }, 1800);
     } catch {
       setMessage(copy.shareError);
     } finally {
       setIsShareCopying(false);
+    }
+  };
+
+  const onPrimaryShare = async () => {
+    if (!supabase || !session?.user?.id) {
+      return;
+    }
+
+    let url = shareUrl;
+    if (!url) {
+      const createdToken = await createOrRefreshShareLink();
+      if (!createdToken) {
+        return;
+      }
+      url = `${SITE_URL}/wishlist/shared/${createdToken}`;
+    }
+
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await navigator.share({ title: copy.shareTitle, text: copy.shareDescription, url });
+        setIsShareShared(true);
+        setShareNote(copy.shareShared);
+        window.setTimeout(() => {
+          setIsShareShared(false);
+          setShareNote((prev) => (prev === copy.shareShared ? "" : prev));
+        }, 1400);
+        return;
+      } catch {
+        // Fallback to clipboard if user cancels or share is unavailable.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setIsShareCopied(true);
+      setShareNote(copy.shareCopied);
+      window.setTimeout(() => {
+        setIsShareCopied(false);
+        setShareNote((prev) => (prev === copy.shareCopied ? "" : prev));
+      }, 1600);
+    } catch {
+      setMessage(copy.shareError);
     }
   };
 
@@ -475,64 +554,65 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         </p>
       </div>
 
-      <div className="border-y border-zinc-200/80 py-4">
+      <div className="rounded-[1.15rem] border border-zinc-200/80 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareTitle}</p>
             <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600">{copy.shareDescription}</p>
           </div>
-
-          <span className={`inline-flex min-h-8 items-center rounded-full px-3 text-[0.68rem] font-medium tracking-[0.14em] uppercase ${shareStatusTone}`}>
-            {shareStatus}
-          </span>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2.5">
-          <label className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700">
-            <input
-              type="checkbox"
-              checked={allowAdditions}
-              onChange={(event) => setAllowAdditions(event.target.checked)}
-              className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
-            />
-            <span>{copy.shareAllowAdditions}</span>
-          </label>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-zinc-50/65 px-3 py-2.5">
+          <span className="text-sm font-medium text-zinc-700">{copy.shareAllowAdditions}</span>
           <button
             type="button"
-            onClick={createOrRefreshShareLink}
-            disabled={isShareLoading}
-            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
+            role="switch"
+            aria-checked={allowAdditions}
+            onClick={() => setAllowAdditions((prev) => !prev)}
+            className={[
+              "relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors duration-300",
+              allowAdditions ? "bg-zinc-900" : "bg-zinc-300",
+            ].join(" ")}
           >
-            {isShareLoading ? copy.shareCreating : shareToken ? copy.shareUpdate : copy.shareCreate}
+            <span
+              className={[
+                "h-5 w-5 rounded-full bg-white shadow transition-transform duration-300",
+                allowAdditions ? "translate-x-5" : "translate-x-0",
+              ].join(" ")}
+            />
           </button>
+        </div>
 
-          {shareToken ? (
+        <div className="mt-4">
+          <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareLinkLabel}</p>
+          <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 px-3 py-2.5">
+            <p className={`flex-1 text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
+              {shareUrl || copy.shareLinkPlaceholder}
+            </p>
             <button
               type="button"
               onClick={copyShareLink}
-              disabled={isShareCopying}
-              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-60"
+              disabled={!shareUrl || isShareCopying}
+              aria-label={copy.shareCopyAria}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isShareCopied ? copy.shareCopied : copy.shareCopy}
+              {isShareCopied ? <Check size={16} weight="bold" /> : <CopySimple size={16} weight="bold" />}
             </button>
-          ) : null}
-        </div>
-
-        <div className="mt-3">
-          <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareLinkLabel}</p>
-          <div className="mt-1.5 border-b border-dashed border-zinc-300 pb-2.5">
-            <p className={`text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
-              {shareUrl || copy.shareLinkPlaceholder}
-            </p>
           </div>
         </div>
 
-        {!shareToken ? (
-          <p className="mt-2 text-xs leading-5 text-zinc-500">{copy.shareNoLinkBody}</p>
-        ) : null}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-zinc-500">{shareToken ? (isShareSaving ? copy.shareSaving : shareNote) : copy.shareNoLinkBody}</p>
+          <button
+            type="button"
+            onClick={onPrimaryShare}
+            disabled={isShareLoading || isShareSaving}
+            className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(20,20,20,0.15)] transition-all duration-300 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
+          >
+            {isShareShared ? <Check size={15} weight="bold" /> : <ShareNetwork size={15} weight="bold" className="transition-transform duration-300 group-hover:rotate-12" />}
+            {isShareLoading ? copy.shareCreating : copy.sharePrimary}
+          </button>
+        </div>
       </div>
 
       {isListLoading ? <p className="text-sm text-zinc-500">{copy.loading}</p> : null}
