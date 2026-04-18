@@ -925,8 +925,10 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
         <aside
           className={[
-            "absolute right-0 top-0 h-full w-[min(91vw,23.5rem)] rounded-l-[1.8rem] border-l border-zinc-300 bg-[#f6f6f5] shadow-[-24px_0_48px_rgba(12,12,14,0.22)] transition-transform duration-450 ease-[cubic-bezier(0.22,1,0.36,1)]",
-            isCartDrawerOpen ? "translate-x-0" : "translate-x-full",
+            "absolute right-0 top-0 h-full w-[min(91vw,23.5rem)] rounded-l-[1.8rem] bg-[#f6f6f5] transition-transform duration-450 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            isCartDrawerOpen
+              ? "translate-x-0 border-l border-zinc-300 shadow-[-24px_0_48px_rgba(12,12,14,0.22)]"
+              : "translate-x-full border-l border-transparent shadow-none",
           ].join(" ")}
         >
           <div className="flex h-full flex-col">
