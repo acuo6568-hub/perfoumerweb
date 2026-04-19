@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Session } from "@supabase/supabase-js";
 import { Check, CopySimple, ShareNetwork } from "@phosphor-icons/react";
 
@@ -182,6 +183,11 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
   const [shareNote, setShareNote] = useState("");
   const [allowAdditions, setAllowAdditions] = useState(false);
   const [isShareHydrated, setIsShareHydrated] = useState(false);
+  const [isDomReady, setIsDomReady] = useState(false);
+
+  useEffect(() => {
+    setIsDomReady(true);
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -638,45 +644,48 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         </div>
       ) : null}
 
-      {pendingDelete ? (
-        <div
-          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/35 p-3 backdrop-blur-[2px] sm:items-center sm:p-4"
-          onClick={() => {
-            if (!isRemoving) {
-              setPendingDelete(null);
-            }
-          }}
-        >
+      {isDomReady && pendingDelete
+        ? createPortal(
           <div
-            className="w-full max-w-md rounded-[1.4rem] bg-white p-5 shadow-[0_24px_60px_rgba(15,15,15,0.24)] ring-1 ring-zinc-200 sm:p-6"
-            onClick={(event) => event.stopPropagation()}
+            className="fixed inset-0 z-[130] flex items-end justify-center bg-zinc-900/35 px-0 backdrop-blur-[2px] sm:items-center sm:px-4"
+            onClick={() => {
+              if (!isRemoving) {
+                setPendingDelete(null);
+              }
+            }}
           >
-            <h3 className="text-2xl tracking-[-0.02em] text-zinc-900">{copy.confirmRemoveTitle}</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              {copy.confirmRemoveBody.replace("{name}", pendingDelete.name)}
-            </p>
+            <div
+              className="w-full rounded-t-3xl border border-zinc-200 bg-white p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_28px_64px_rgba(18,18,18,0.24)] animate-[accountPopIn_320ms_cubic-bezier(0.22,1,0.36,1)] sm:max-w-md sm:rounded-3xl sm:pb-6"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h3 className="text-2xl tracking-[-0.02em] text-zinc-900">{copy.confirmRemoveTitle}</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                {copy.confirmRemoveBody.replace("{name}", pendingDelete.name)}
+              </p>
 
-            <div className="mt-5 grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                disabled={isRemoving}
-                onClick={() => setPendingDelete(null)}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60"
-              >
-                {copy.cancel}
-              </button>
-              <button
-                type="button"
-                disabled={isRemoving}
-                onClick={confirmRemove}
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white shadow-[0_10px_20px_rgba(20,20,20,0.24)] transition hover:bg-zinc-800 disabled:opacity-60"
-              >
-                {isRemoving ? copy.removing : copy.confirm}
-              </button>
+              <div className="mt-5 grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  disabled={isRemoving}
+                  onClick={() => setPendingDelete(null)}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60"
+                >
+                  {copy.cancel}
+                </button>
+                <button
+                  type="button"
+                  disabled={isRemoving}
+                  onClick={confirmRemove}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white shadow-[0_10px_20px_rgba(20,20,20,0.24)] transition hover:bg-zinc-800 disabled:opacity-60"
+                >
+                  {isRemoving ? copy.removing : copy.confirm}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body,
+        )
+        : null}
 
       {message ? <p className="text-sm text-zinc-600">{message}</p> : null}
     </div>
