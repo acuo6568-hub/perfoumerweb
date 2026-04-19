@@ -1344,7 +1344,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
       <div
         className={[
-          "fixed inset-x-0 bottom-0 top-[4.5rem] z-[45] overflow-hidden lg:top-[6rem] lg:bottom-auto lg:h-[52vh]",
+          "fixed inset-x-0 bottom-0 top-[4.5rem] z-[45] overflow-hidden lg:top-[4.5rem] lg:bottom-auto lg:h-[52vh]",
           isSearchDrawerOpen ? "pointer-events-auto" : "pointer-events-none",
         ].join(" ")}
         aria-hidden={!isSearchDrawerOpen}
