@@ -25,7 +25,7 @@ function renderHtml(options: {
     ? `
         <div class="divider"></div>
         <h2>Nələri qaçıra bilərsiniz</h2>
-        <ul>
+        <ul class="opportunities">
           <li>Yalnız abunəçilərə açıq erkən endirim kampaniyaları</li>
           <li>Yeni gələn premium ətirlər haqqında ilk bildirişlər</li>
           <li>Mövsümə uyğun seçilmiş qoxu təklifləri və şəxsi seçimlər</li>
@@ -44,21 +44,160 @@ function renderHtml(options: {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(options.title)}</title>
     <style>
-      body { margin: 0; font-family: Arial, sans-serif; background: #f3f3f2; color: #1f2937; }
-      .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-      .card { width: 100%; max-width: 680px; background: #fff; border: 1px solid #e7e5e0; border-radius: 16px; padding: 30px; box-shadow: 0 12px 26px rgba(17, 24, 39, 0.06); }
-      .badge { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 6px 12px; border: 1px solid #d6d3ce; border-radius: 999px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #374151; }
-      h1 { margin: 0 0 10px; font-size: 31px; line-height: 1.08; color: #111827; }
-      p { margin: 0; font-size: 17px; line-height: 1.72; color: #4b5563; }
-      .meta { margin-top: 10px; font-size: 14px; color: #6b7280; }
-      .divider { height: 1px; background: #ece9e4; margin: 20px 0 16px; }
-      h2 { margin: 0 0 10px; font-size: 18px; line-height: 1.3; color: #111827; }
-      ul { margin: 0; padding-left: 20px; color: #4b5563; }
-      li { margin: 0 0 9px; line-height: 1.6; }
-      .actions { margin-top: 22px; display: flex; gap: 14px; flex-wrap: wrap; }
-      .btn { display: inline-block; border-radius: 999px; padding: 10px 16px; text-decoration: none; font-size: 14px; }
-      .btn-primary { background: #111827; color: #fff; }
-      .btn-secondary { border: 1px solid #d1d5db; color: #111827; }
+      :root {
+        --bg: #f2f2f0;
+        --card: #fbfbfa;
+        --line: #dfddd8;
+        --line-soft: #e9e7e2;
+        --text: #171717;
+        --muted: #555a63;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "Neue Haas Grotesk Text", "Helvetica Neue", Arial, sans-serif;
+        background:
+          radial-gradient(circle at 14% 10%, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0) 42%),
+          radial-gradient(circle at 87% 3%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 38%),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .wrap {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: clamp(18px, 4vw, 34px);
+      }
+
+      .card {
+        width: 100%;
+        max-width: 700px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.84) 0%, var(--card) 100%);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: clamp(20px, 4vw, 34px);
+        box-shadow: 0 10px 24px rgba(20, 20, 20, 0.06);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        padding: 6px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: #464b54;
+        background: rgba(255,255,255,0.6);
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-family: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
+        font-size: clamp(30px, 5.8vw, 44px);
+        line-height: 1.04;
+        letter-spacing: -0.02em;
+        color: #101213;
+      }
+
+      p {
+        margin: 0;
+        font-size: clamp(15px, 2.5vw, 18px);
+        line-height: 1.72;
+        color: var(--muted);
+      }
+
+      .meta {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #6b7280;
+        word-break: break-word;
+      }
+
+      .divider {
+        height: 1px;
+        background: var(--line-soft);
+        margin: 22px 0 16px;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: clamp(17px, 3vw, 20px);
+        line-height: 1.3;
+        color: #161a1d;
+      }
+
+      .opportunities {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: #535963;
+      }
+
+      .opportunities li {
+        position: relative;
+        margin: 0 0 10px;
+        padding-left: 18px;
+        line-height: 1.62;
+      }
+
+      .opportunities li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.72em;
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #8b919d;
+      }
+
+      .actions {
+        margin-top: 22px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 44px;
+        border-radius: 999px;
+        padding: 10px 17px;
+        text-decoration: none;
+        font-size: 14px;
+        letter-spacing: 0.01em;
+        transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+      }
+
+      .btn-primary {
+        background: #15181d;
+        color: #ffffff;
+      }
+
+      .btn-secondary {
+        border: 1px solid #ced3dc;
+        color: #171a1f;
+        background: rgba(255,255,255,0.68);
+      }
+
+      @media (max-width: 640px) {
+        .actions {
+          flex-direction: column;
+        }
+
+        .btn {
+          width: 100%;
+        }
+      }
     </style>
   </head>
   <body>
