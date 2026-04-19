@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Session } from "@supabase/supabase-js";
-import { Check, CopySimple, ShareNetwork } from "@phosphor-icons/react";
+import { CaretDown, Check, CopySimple, ShareNetwork } from "@phosphor-icons/react";
 
 import { ProductCard } from "@/components/ProductCard";
 import type { Locale } from "@/lib/i18n";
@@ -51,6 +51,8 @@ type Copy = {
   shareLinkLabel: string;
   shareLinkPlaceholder: string;
   shareNoLinkBody: string;
+  shareExpand: string;
+  shareCollapse: string;
 };
 
 const copyByLocale: Record<Locale, Copy> = {
@@ -85,6 +87,8 @@ const copyByLocale: Record<Locale, Copy> = {
     shareLinkLabel: "Paylaşım linki",
     shareLinkPlaceholder: "Hələ aktiv link yoxdur",
     shareNoLinkBody: "Paylaş düyməsinə klikləyin və şəxsi link yaradın.",
+    shareExpand: "Paylaşım panelini aç",
+    shareCollapse: "Paylaşım panelini gizlət",
   },
   en: {
     title: "My Wishlist",
@@ -117,6 +121,8 @@ const copyByLocale: Record<Locale, Copy> = {
     shareLinkLabel: "Share link",
     shareLinkPlaceholder: "No active link yet",
     shareNoLinkBody: "Press Share to generate your private link.",
+    shareExpand: "Open sharing panel",
+    shareCollapse: "Minimize sharing panel",
   },
   ru: {
     title: "Мой Wishlist",
@@ -149,6 +155,8 @@ const copyByLocale: Record<Locale, Copy> = {
     shareLinkLabel: "Ссылка для доступа",
     shareLinkPlaceholder: "Активной ссылки пока нет",
     shareNoLinkBody: "Нажмите Поделиться, чтобы создать приватную ссылку.",
+    shareExpand: "Открыть панель шаринга",
+    shareCollapse: "Свернуть панель шаринга",
   },
 };
 
@@ -183,6 +191,7 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
   const [shareNote, setShareNote] = useState("");
   const [allowAdditions, setAllowAdditions] = useState(false);
   const [isShareHydrated, setIsShareHydrated] = useState(false);
+  const [isSharePanelOpen, setIsSharePanelOpen] = useState(false);
   const [isDomReady, setIsDomReady] = useState(false);
 
   useEffect(() => {
@@ -554,71 +563,84 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[1.4rem] border border-zinc-200 bg-white px-4 py-3">
-        <p className="text-sm text-zinc-600">
-          {copy.signedInAs}: <span className="font-medium text-zinc-900">{session.user.email}</span>
-        </p>
-      </div>
-
       <div className="rounded-[1.15rem] border border-zinc-200/80 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareTitle}</p>
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600">{copy.shareDescription}</p>
+            {isSharePanelOpen ? <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600">{copy.shareDescription}</p> : null}
           </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-zinc-50/65 px-3 py-2.5">
-          <span className="text-sm font-medium text-zinc-700">{copy.shareAllowAdditions}</span>
           <button
             type="button"
-            role="switch"
-            aria-checked={allowAdditions}
-            onClick={() => setAllowAdditions((prev) => !prev)}
-            className={[
-              "relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors duration-300",
-              allowAdditions ? "bg-zinc-900" : "bg-zinc-300",
-            ].join(" ")}
+            onClick={() => setIsSharePanelOpen((prev) => !prev)}
+            aria-label={isSharePanelOpen ? copy.shareCollapse : copy.shareExpand}
+            title={isSharePanelOpen ? copy.shareCollapse : copy.shareExpand}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-50"
           >
-            <span
-              className={[
-                "h-5 w-5 rounded-full bg-white shadow transition-transform duration-300",
-                allowAdditions ? "translate-x-5" : "translate-x-0",
-              ].join(" ")}
+            <CaretDown
+              size={18}
+              weight="bold"
+              className={`transition-transform duration-200 ${isSharePanelOpen ? "rotate-180" : "rotate-0"}`}
             />
           </button>
         </div>
 
-        <div className="mt-4">
-          <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareLinkLabel}</p>
-          <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 px-3 py-2.5">
-            <p className={`flex-1 text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
-              {shareUrl || copy.shareLinkPlaceholder}
-            </p>
+        {isSharePanelOpen ? (
+          <>
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-zinc-50/65 px-3 py-2.5">
+              <span className="text-sm font-medium text-zinc-700">{copy.shareAllowAdditions}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={allowAdditions}
+                onClick={() => setAllowAdditions((prev) => !prev)}
+                className={[
+                  "relative inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors duration-300",
+                  allowAdditions ? "bg-zinc-900" : "bg-zinc-300",
+                ].join(" ")}
+              >
+                <span
+                  className={[
+                    "h-5 w-5 rounded-full bg-white shadow transition-transform duration-300",
+                    allowAdditions ? "translate-x-5" : "translate-x-0",
+                  ].join(" ")}
+                />
+              </button>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.shareLinkLabel}</p>
+              <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 px-3 py-2.5">
+                <p className={`flex-1 text-sm ${shareUrl ? "break-all text-zinc-700" : "text-zinc-400"}`}>
+                  {shareUrl || copy.shareLinkPlaceholder}
+                </p>
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  disabled={!shareUrl || isShareCopying}
+                  aria-label={copy.shareCopyAria}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isShareCopied ? <Check size={16} weight="bold" /> : <CopySimple size={16} weight="bold" />}
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {isSharePanelOpen ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-zinc-500">{shareToken ? (isShareSaving ? copy.shareSaving : shareNote) : copy.shareNoLinkBody}</p>
             <button
               type="button"
-              onClick={copyShareLink}
-              disabled={!shareUrl || isShareCopying}
-              aria-label={copy.shareCopyAria}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={onPrimaryShare}
+              disabled={isShareLoading || isShareSaving}
+              className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(20,20,20,0.15)] transition-all duration-300 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
             >
-              {isShareCopied ? <Check size={16} weight="bold" /> : <CopySimple size={16} weight="bold" />}
+              {isShareShared ? <Check size={15} weight="bold" /> : <ShareNetwork size={15} weight="bold" className="transition-transform duration-300 group-hover:rotate-12" />}
+              {isShareLoading ? copy.shareCreating : copy.sharePrimary}
             </button>
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-zinc-500">{shareToken ? (isShareSaving ? copy.shareSaving : shareNote) : copy.shareNoLinkBody}</p>
-          <button
-            type="button"
-            onClick={onPrimaryShare}
-            disabled={isShareLoading || isShareSaving}
-            className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(20,20,20,0.15)] transition-all duration-300 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:opacity-60"
-          >
-            {isShareShared ? <Check size={15} weight="bold" /> : <ShareNetwork size={15} weight="bold" className="transition-transform duration-300 group-hover:rotate-12" />}
-            {isShareLoading ? copy.shareCreating : copy.sharePrimary}
-          </button>
-        </div>
+        ) : null}
       </div>
 
       {isListLoading ? <p className="text-sm text-zinc-500">{copy.loading}</p> : null}
