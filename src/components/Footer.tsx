@@ -206,13 +206,13 @@ export function Footer({ locale }: FooterProps) {
                   if (styleSuccess) setStyleSuccess("");
                 }}
                 placeholder={t.footer.styleEmailPlaceholder}
-                className="h-14 w-full flex-1 rounded-[0.78rem] border border-zinc-300 bg-white px-5 text-[1.03rem] font-normal text-zinc-900 placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_6px_12px_rgba(18,18,18,0.05)] focus:border-zinc-700 focus:outline-none sm:rounded-[0.45rem] sm:px-5 sm:text-[1.04rem] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                className="h-16 w-full flex-1 rounded-[0.78rem] border border-zinc-300 bg-white px-5 text-[1.06rem] font-normal text-zinc-900 placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_6px_12px_rgba(18,18,18,0.05)] focus:border-zinc-700 focus:outline-none md:h-12 md:rounded-[0.45rem] md:px-5 md:text-[1.04rem] md:shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
                 disabled={isSubmittingStyle}
               />
               <button
                 type="submit"
                 disabled={isSubmittingStyle}
-                className="h-14 w-full min-w-[180px] rounded-[0.78rem] bg-black px-8 text-[0.98rem] font-semibold tracking-[0.08em] text-white uppercase shadow-[0_8px_18px_rgba(12,12,12,0.22)] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:rounded-[0.45rem] sm:text-[1.02rem]"
+                className="h-16 w-full min-w-[180px] rounded-[0.78rem] bg-black px-8 text-[1rem] font-semibold tracking-[0.08em] text-white uppercase shadow-[0_8px_18px_rgba(12,12,12,0.22)] disabled:cursor-not-allowed disabled:opacity-70 md:h-12 md:w-auto md:rounded-[0.45rem] md:text-[1.02rem]"
               >
                 {isSubmittingStyle ? t.footer.styleSubmitting : t.footer.styleSubscribe}
               </button>
@@ -220,26 +220,20 @@ export function Footer({ locale }: FooterProps) {
 
             {styleError ? <p className="mt-2 text-sm text-red-700">{styleError}</p> : null}
 
-            <div
-              className={[
-                "mx-auto mt-3 w-full max-w-[760px] overflow-hidden rounded-xl border transition-all duration-500",
-                styleSuccess
-                  ? "max-h-44 translate-y-0 border-zinc-300 bg-white/90 px-3 py-3 opacity-100 shadow-[0_10px_24px_rgba(24,24,24,0.08)] sm:max-h-24 sm:px-4"
-                  : "pointer-events-none max-h-0 -translate-y-1 border-transparent px-0 py-0 opacity-0",
-              ].join(" ")}
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <div className="flex items-start gap-3 text-left">
-                <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-zinc-700 ring-1 ring-zinc-200">
-                  <CheckCircle size={16} weight="regular" />
+            {styleSuccess ? (
+              <div
+                className="mx-auto mt-4 flex w-full max-w-[760px] items-center justify-center gap-3 text-center text-zinc-900"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-zinc-900">
+                  <CheckCircle size={20} weight="bold" />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold tracking-[0.02em] text-zinc-900">{t.footer.styleSuccessTitle}</p>
-                  <p className="mt-1 text-sm leading-5 text-zinc-700 sm:leading-6">{styleSuccess}</p>
-                </div>
+                <p className="text-[1rem] font-medium leading-6 text-zinc-900 sm:text-[1.06rem]">
+                  {styleSuccess}
+                </p>
               </div>
-            </div>
+            ) : null}
           </div>
         </section>
 
