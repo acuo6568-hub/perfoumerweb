@@ -121,8 +121,8 @@ export default async function ContactPage() {
             </div>
           </div>
 
-          <section className="relative mt-8 overflow-hidden rounded-[1.2rem] border border-zinc-300/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.92)_0%,rgba(246,246,245,0.9)_55%,rgba(238,238,236,0.92)_100%)] p-2.5 shadow-[0_18px_48px_rgba(20,20,20,0.08)] md:mt-10 md:p-3">
-            <div className="relative h-[520px] overflow-hidden rounded-[0.95rem] border border-zinc-300/75 bg-white md:h-[620px]">
+          <section className="relative mt-8 md:mt-10">
+            <div className="relative h-[520px] overflow-hidden rounded-[1.05rem] border border-zinc-300/80 bg-white shadow-[0_12px_34px_rgba(20,20,20,0.08)] md:h-[620px]">
               <iframe
                 title="Perfoumer location map"
                 src="https://www.google.com/maps?q=40.375092,49.833675&z=16&output=embed"
@@ -132,7 +132,7 @@ export default async function ContactPage() {
                 allowFullScreen
               />
 
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.2)_100%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.72)_24%,rgba(255,255,255,0)_50%),radial-gradient(circle_at_100%_0%,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.65)_22%,rgba(255,255,255,0)_48%),radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.93)_0%,rgba(255,255,255,0.58)_24%,rgba(255,255,255,0)_50%),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.9)_0%,rgba(255,255,255,0.52)_22%,rgba(255,255,255,0)_48%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0)_0%,rgba(255,255,255,0)_42%,rgba(255,255,255,0.12)_100%)]" />
 
               <div className="absolute inset-x-3 bottom-3 z-20 rounded-[1rem] border border-zinc-200/85 bg-[linear-gradient(155deg,rgba(255,255,255,0.97)_0%,rgba(246,246,245,0.94)_100%)] p-4 shadow-[0_18px_34px_rgba(18,18,18,0.18)] backdrop-blur-sm sm:inset-x-auto sm:left-5 sm:top-5 sm:bottom-auto sm:w-[360px] sm:rounded-[1.15rem] sm:p-5">
                 <p className="text-[0.68rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">Məkan</p>
