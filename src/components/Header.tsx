@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowLeft,
@@ -35,6 +35,23 @@ type HeaderProps = {
   locale: Locale;
 };
 
+type HeaderSearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
+
+type HeaderSearchResult = {
+  slug: string;
+  name: string;
+  brand: string;
+  image: string;
+  price: number | null;
+  gender: string;
+  inStock: boolean;
+};
+
+type HeaderSearchBrandResult = {
+  brand: string;
+  count: number;
+};
+
 function parsePrice(value: number | string): number {
   const parsed = typeof value === "number" ? value : parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -49,11 +66,18 @@ function slugToName(slug: string): string {
 }
 
 export function Header({ floating = false, locale }: HeaderProps) {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTab, setSearchTab] = useState<HeaderSearchTab>("all");
+  const [searchResults, setSearchResults] = useState<HeaderSearchResult[]>([]);
+  const [searchBrandResults, setSearchBrandResults] = useState<HeaderSearchBrandResult[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [brokenSearchImages, setBrokenSearchImages] = useState<Record<string, true>>({});
   const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
   const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
-  const [isMobileUtilityExpanded, setIsMobileUtilityExpanded] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
@@ -66,6 +90,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const [cartMetaBySlug, setCartMetaBySlug] = useState<Record<string, { name: string; brand: string; image: string }>>({});
   const cartCountRequestRef = useRef(0);
   const wishlistCountRequestRef = useRef(0);
+  const searchRequestRef = useRef(0);
   const pathname = usePathname() || "/";
   const { pathname: basePathname } = stripLocalePrefix(pathname);
   const t = getDictionary(locale);
@@ -102,6 +127,20 @@ export function Header({ floating = false, locale }: HeaderProps) {
       compareTab: "Müqayisə",
       homeTab: "Ana səhifə",
       quickActions: "Sürətli keçidlər",
+      searchPlaceholder: "Ətir, brend və ya not axtar...",
+      searchProductsTitle: "Məhsullar",
+      searchBrandsTitle: "Brendlər",
+      searchCategoriesTitle: "Kateqoriyalar",
+      searchEmpty: "Axtarışa uyğun nəticə tapılmadı.",
+      searchStartHint: "Ətir və ya kateqoriya tapmaq üçün axtarışa yazın.",
+      searchTabs: {
+        all: "Hamısı",
+        women: "Qadın",
+        men: "Kişi",
+        unisex: "Uniseks",
+        brands: "Brendlər",
+        home: "Ana səhifə",
+      },
       cartTitle: "Səbət",
       subtotal: "Cəmi",
       shipping: "Çatdırılma",
@@ -146,6 +185,20 @@ export function Header({ floating = false, locale }: HeaderProps) {
       compareTab: "Compare",
       homeTab: "Home",
       quickActions: "Quick actions",
+      searchPlaceholder: "Search perfume, brand, or notes...",
+      searchProductsTitle: "Products",
+      searchBrandsTitle: "Brands",
+      searchCategoriesTitle: "Categories",
+      searchEmpty: "No matching results found.",
+      searchStartHint: "Type to find perfumes or categories.",
+      searchTabs: {
+        all: "All",
+        women: "Women",
+        men: "Men",
+        unisex: "Unisex",
+        brands: "Brands",
+        home: "Home",
+      },
       cartTitle: "Cart",
       subtotal: "Subtotal",
       shipping: "Shipping",
@@ -190,6 +243,20 @@ export function Header({ floating = false, locale }: HeaderProps) {
       compareTab: "Сравнение",
       homeTab: "Главная",
       quickActions: "Быстрые действия",
+      searchPlaceholder: "Поиск по аромату, бренду или нотам...",
+      searchProductsTitle: "Товары",
+      searchBrandsTitle: "Бренды",
+      searchCategoriesTitle: "Категории",
+      searchEmpty: "Ничего не найдено по вашему запросу.",
+      searchStartHint: "Введите запрос, чтобы найти ароматы или категории.",
+      searchTabs: {
+        all: "Все",
+        women: "Женские",
+        men: "Мужские",
+        unisex: "Унисекс",
+        brands: "Бренды",
+        home: "Главная",
+      },
       cartTitle: "Корзина",
       subtotal: "Сумма",
       shipping: "Доставка",
@@ -204,6 +271,11 @@ export function Header({ floating = false, locale }: HeaderProps) {
       qty: "Кол-во",
     },
   } as const;
+  const localeFlagSrc: Record<Locale, string> = {
+    az: "/flags/az.svg",
+    en: "/flags/en.svg",
+    ru: "/flags/ru.svg",
+  };
   const primaryMenuItems = [
     { href: "/", label: t.header.home },
     { href: "/catalog", label: t.header.products },
@@ -429,7 +501,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   );
 
   useEffect(() => {
-    if (isMenuOpen || isCartDrawerOpen) {
+    if (isMenuOpen || isCartDrawerOpen || isSearchDrawerOpen) {
       document.body.style.overflow = "hidden";
       return;
     }
@@ -439,10 +511,10 @@ export function Header({ floating = false, locale }: HeaderProps) {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isCartDrawerOpen, isMenuOpen]);
+  }, [isCartDrawerOpen, isMenuOpen, isSearchDrawerOpen]);
 
   useEffect(() => {
-    const isOverlayOpen = isMenuOpen || isCartDrawerOpen;
+    const isOverlayOpen = isMenuOpen || isCartDrawerOpen || isSearchDrawerOpen;
     window.dispatchEvent(
       new CustomEvent("perfoumer:ui-overlay", {
         detail: { isOpen: isOverlayOpen },
@@ -456,18 +528,18 @@ export function Header({ floating = false, locale }: HeaderProps) {
         }),
       );
     };
-  }, [isCartDrawerOpen, isMenuOpen]);
+  }, [isCartDrawerOpen, isMenuOpen, isSearchDrawerOpen]);
 
   useEffect(() => {
     setIsMenuOpen(false);
     setIsCartDrawerOpen(false);
+    setIsSearchDrawerOpen(false);
   }, [pathname]);
 
   useEffect(() => {
     if (!isMenuOpen) {
       setOpenMobileCategory(null);
       setIsMobileLocaleMenuOpen(false);
-      setIsMobileUtilityExpanded(false);
     }
   }, [isMenuOpen]);
 
@@ -476,6 +548,84 @@ export function Header({ floating = false, locale }: HeaderProps) {
     if (!session?.user?.id) return;
     void loadCartRows();
   }, [isCartDrawerOpen, loadCartRows, session?.user?.id]);
+
+  useEffect(() => {
+    if (!isSearchDrawerOpen) {
+      return;
+    }
+
+    const query = searchQuery.trim();
+
+    if (!query) {
+      setIsSearchLoading(false);
+      setSearchResults([]);
+      setSearchBrandResults([]);
+      return;
+    }
+
+    const requestId = ++searchRequestRef.current;
+    const controller = new AbortController();
+    setIsSearchLoading(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/perfumes/search?q=${encodeURIComponent(query)}&tab=${searchTab}&limit=16`,
+          { signal: controller.signal, cache: "no-store" },
+        );
+
+        if (!response.ok) {
+          if (requestId === searchRequestRef.current) {
+            setSearchResults([]);
+            setSearchBrandResults([]);
+          }
+          return;
+        }
+
+        const data = (await response.json()) as {
+          items?: HeaderSearchResult[];
+          brands?: HeaderSearchBrandResult[];
+        };
+
+        if (requestId !== searchRequestRef.current) {
+          return;
+        }
+
+        setSearchResults(Array.isArray(data.items) ? data.items : []);
+        setSearchBrandResults(Array.isArray(data.brands) ? data.brands : []);
+      } catch {
+        if (requestId === searchRequestRef.current) {
+          setSearchResults([]);
+          setSearchBrandResults([]);
+        }
+      } finally {
+        if (requestId === searchRequestRef.current) {
+          setIsSearchLoading(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [isSearchDrawerOpen, searchQuery, searchTab]);
+
+  useEffect(() => {
+    if (!Object.keys(brokenSearchImages).length) {
+      return;
+    }
+
+    const visibleSlugs = new Set(searchResults.map((item) => item.slug));
+    setBrokenSearchImages((prev) => {
+      const nextEntries = Object.entries(prev).filter(([slug]) => visibleSlugs.has(slug));
+      if (nextEntries.length === Object.keys(prev).length) {
+        return prev;
+      }
+
+      return Object.fromEntries(nextEntries) as Record<string, true>;
+    });
+  }, [brokenSearchImages, searchResults]);
 
   useEffect(() => {
     // Clear transient locale highlight once route/locale settles.
@@ -608,8 +758,71 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
   const openCartDrawer = useCallback(() => {
     setIsMenuOpen(false);
+    setIsSearchDrawerOpen(false);
     setIsCartDrawerOpen(true);
   }, []);
+
+  const toggleMenuDrawer = useCallback(() => {
+    setIsSearchDrawerOpen(false);
+    setIsCartDrawerOpen(false);
+    setIsMenuOpen((prev) => !prev);
+  }, []);
+
+  const searchTabs = useMemo(
+    () => ["all", "women", "men", "unisex", "brands", "home"] as HeaderSearchTab[],
+    [],
+  );
+
+  const closeSearchDrawer = useCallback(() => {
+    setIsSearchDrawerOpen(false);
+  }, []);
+
+  const openSearchDrawer = useCallback(() => {
+    setIsMenuOpen(false);
+    setIsCartDrawerOpen(false);
+    setIsSearchDrawerOpen(true);
+  }, []);
+
+  const openSearchProduct = useCallback(
+    (slug: string) => {
+      router.push(toLocalePath(`/perfumes/${slug}`, locale));
+      closeSearchDrawer();
+    },
+    [closeSearchDrawer, locale, router],
+  );
+
+  const searchCategoryItems = useMemo(
+    () => [
+      { key: "catalog-all", label: copy[locale].searchTabs.all, href: toLocalePath("/catalog", locale), tab: "all" as const },
+      { key: "catalog-women", label: copy[locale].searchTabs.women, href: `${toLocalePath("/catalog", locale)}?gender=female`, tab: "women" as const },
+      { key: "catalog-men", label: copy[locale].searchTabs.men, href: `${toLocalePath("/catalog", locale)}?gender=male`, tab: "men" as const },
+      { key: "catalog-unisex", label: copy[locale].searchTabs.unisex, href: `${toLocalePath("/catalog", locale)}?gender=unisex`, tab: "unisex" as const },
+      { key: "brands", label: copy[locale].searchTabs.brands, href: toLocalePath("/brands", locale), tab: "brands" as const },
+      { key: "home", label: copy[locale].searchTabs.home, href: toLocalePath("/", locale), tab: "home" as const },
+      { key: "gift-ideas", label: copy[locale].giftIdeas, href: `${toLocalePath("/catalog", locale)}?special=gift-ideas`, tab: "all" as const },
+      { key: "compare", label: copy[locale].compareTab, href: toLocalePath("/compare", locale), tab: "all" as const },
+      { key: "quiz", label: t.header.scentQuiz, href: toLocalePath("/qoxunu", locale), tab: "all" as const },
+    ],
+    [copy, locale, t.header.scentQuiz],
+  );
+
+  const filteredSearchCategories = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return searchCategoryItems.filter((item) => {
+      if (searchTab !== "all" && item.tab !== searchTab && item.tab !== "all") {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return item.label.toLowerCase().includes(normalizedQuery);
+    });
+  }, [searchCategoryItems, searchQuery, searchTab]);
+
+  const hasActiveSearchQuery = searchQuery.trim().length > 0;
 
   const cartItems = useMemo(
     () =>
@@ -673,14 +886,14 @@ export function Header({ floating = false, locale }: HeaderProps) {
           floating ? "fixed inset-x-0 top-0" : "relative",
         ].join(" ")}
       >
-        <div className="border-b border-zinc-300 bg-[#f4f4f4] px-3 py-3 lg:hidden">
+        <div className="bg-[#f4f4f4] px-3 py-3 lg:hidden">
           <div className="relative mx-auto flex h-12 max-w-[1540px] items-center justify-between">
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
                 aria-expanded={isMenuOpen}
-                onClick={() => setIsMenuOpen((prev) => !prev)}
+                onClick={toggleMenuDrawer}
                 className="group relative grid h-10 w-10 place-items-center text-zinc-900"
               >
                 <span
@@ -696,13 +909,14 @@ export function Header({ floating = false, locale }: HeaderProps) {
                   ].join(" ")}
                 />
               </button>
-              <Link
-                href={toLocalePath("/catalog", locale)}
+              <button
+                type="button"
+                onClick={openSearchDrawer}
                 aria-label={t.header.products}
                 className="grid h-10 w-10 place-items-center text-zinc-900"
               >
                 <MagnifyingGlass size={23} weight="regular" />
-              </Link>
+              </button>
             </div>
 
             <Link
@@ -817,16 +1031,40 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     onClick={() => updateLocale(item)}
                     disabled={isLocalePending}
                     className={[
-                        "rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70",
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70",
                       (pendingLocale ?? locale) === item
                           ? "bg-zinc-900 text-white"
                           : "text-zinc-500 hover:text-zinc-700",
                     ].join(" ")}
                   >
-                    {t.languages[item]}
+                    <Image
+                      src={localeFlagSrc[item]}
+                      alt={t.languages[item]}
+                      width={16}
+                      height={16}
+                      className="h-4 w-4 rounded-full object-cover"
+                    />
+                    <span>{t.languages[item]}</span>
                   </button>
                 ))}
               </div>
+
+              <button
+                type="button"
+                onClick={openSearchDrawer}
+                aria-label={t.header.products}
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/45 bg-[linear-gradient(155deg,#ffffff_0%,#f8f8f6_100%)] text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
+              >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_28%_20%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0)_58%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                />
+                <MagnifyingGlass
+                  size={18}
+                  weight="regular"
+                  className="relative z-[1] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-active:translate-y-0 group-active:scale-95 sm:size-[19px]"
+                />
+              </button>
 
               <Link
                 href={toLocalePath("/wishlist", locale)}
@@ -883,7 +1121,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 type="button"
                 aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
                 aria-expanded={isMenuOpen}
-                onClick={() => setIsMenuOpen((prev) => !prev)}
+                onClick={toggleMenuDrawer}
                 className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/50 bg-[linear-gradient(145deg,#ffffff_0%,#f4f4f2_100%)] text-zinc-700 shadow-[0_10px_20px_rgba(20,20,24,0.06)] transition-[background-color,box-shadow,border-color,color,transform] duration-300 hover:-translate-y-px hover:border-zinc-400/55 hover:bg-white sm:h-11 sm:w-11"
               >
                 <span
@@ -1091,7 +1329,210 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
       <div
         className={[
-          "fixed inset-0 z-40 origin-top transform-gpu overflow-y-auto border-t border-zinc-300 bg-[#f4f4f4] lg:hidden",
+          "fixed inset-x-0 bottom-0 top-[4.5rem] z-[45] overflow-hidden lg:top-[6rem] lg:bottom-auto lg:h-[52vh]",
+          isSearchDrawerOpen ? "pointer-events-auto" : "pointer-events-none",
+        ].join(" ")}
+        aria-hidden={!isSearchDrawerOpen}
+      >
+        <button
+          type="button"
+          aria-label={t.header.closeMenu}
+          onClick={closeSearchDrawer}
+          className={[
+            "absolute inset-0 bg-black/25 transition-opacity duration-300 lg:bg-[linear-gradient(180deg,rgba(20,20,24,0.1)_0%,rgba(20,20,24,0.06)_30%,rgba(20,20,24,0.02)_55%,rgba(20,20,24,0)_72%)]",
+            isSearchDrawerOpen ? "opacity-100" : "opacity-0",
+          ].join(" ")}
+        />
+
+        <aside
+          className={[
+            "absolute left-0 top-0 flex h-full w-full flex-col bg-[#f5f5f4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[min(92vw,38rem)] lg:left-1/2 lg:w-[min(96vw,72rem)] lg:rounded-b-[1.1rem] lg:border-x lg:border-b lg:border-zinc-200/85 lg:bg-[linear-gradient(180deg,#f8f8f7_0%,#f4f4f3_100%)] lg:shadow-[0_14px_36px_rgba(16,16,20,0.08)]",
+            isSearchDrawerOpen
+              ? "translate-x-0 lg:-translate-x-1/2 lg:translate-y-0"
+              : "-translate-x-full lg:-translate-x-1/2 lg:-translate-y-full",
+          ].join(" ")}
+        >
+          <div className="px-4 pb-3 pt-2 sm:px-6 sm:pt-2.5 lg:px-8 lg:pb-2.5 lg:pt-3.5">
+            <div className="flex items-center gap-2">
+              <label className="flex min-h-12 flex-1 items-center gap-2 border-b border-zinc-300 px-0.5">
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={copy[locale].searchPlaceholder}
+                  className="w-full bg-transparent text-base text-zinc-900 outline-none placeholder:text-zinc-400"
+                />
+                <MagnifyingGlass size={22} weight="regular" className="text-zinc-800" />
+              </label>
+              <button
+                type="button"
+                onClick={closeSearchDrawer}
+                aria-label={t.header.closeMenu}
+                className="grid h-11 w-11 place-items-center text-zinc-900"
+              >
+                <X size={24} weight="regular" />
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 lg:mt-2.5">
+              {searchTabs.map((tab) => {
+                const active = searchTab === tab;
+
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setSearchTab(tab)}
+                    className={[
+                      "group relative shrink-0 px-1 py-1.5 text-[0.98rem] leading-none transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      active
+                        ? "text-zinc-900"
+                        : "text-zinc-600 hover:-translate-y-[1px] hover:text-zinc-900",
+                    ].join(" ")}
+                  >
+                    <span className="relative z-[1]">{copy[locale].searchTabs[tab]}</span>
+                    <span
+                      aria-hidden="true"
+                      className={[
+                        "pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left transition-transform duration-300",
+                        active
+                          ? "scale-x-100 bg-zinc-900"
+                          : "scale-x-0 bg-zinc-500 group-hover:scale-x-100",
+                      ].join(" ")}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 sm:px-6 lg:px-8">
+            {isSearchLoading ? (
+              <div className="flex min-h-[45vh] flex-col items-center justify-center gap-4 pb-8 pt-2 lg:min-h-0 lg:pt-14">
+                <svg viewBox="0 0 120 120" className="h-16 w-16 text-zinc-900" aria-hidden="true">
+                  <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(24,24,27,0.12)" strokeWidth="2" />
+                  <g>
+                    <circle cx="60" cy="18" r="5.5" fill="currentColor">
+                      <animate attributeName="opacity" values="0.25;1;0.25" dur="1.2s" repeatCount="indefinite" />
+                    </circle>
+                    <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="1.3s" repeatCount="indefinite" />
+                  </g>
+                  <g>
+                    <circle cx="60" cy="30" r="3.2" fill="currentColor" opacity="0.55" />
+                    <circle cx="60" cy="90" r="3.2" fill="currentColor" opacity="0.2" />
+                    <animateTransform attributeName="transform" type="rotate" from="360 60 60" to="0 60 60" dur="2.1s" repeatCount="indefinite" />
+                  </g>
+                </svg>
+                <p className="text-sm text-zinc-500">{copy[locale].searchProductsTitle}...</p>
+              </div>
+            ) : null}
+
+            {!isSearchLoading && !hasActiveSearchQuery ? (
+              <div className="flex min-h-[45vh] items-center justify-center pb-8 pt-2 text-center lg:min-h-0 lg:justify-start lg:pt-14">
+                <p className="max-w-[28ch] text-sm leading-6 text-zinc-500">{copy[locale].searchStartHint}</p>
+              </div>
+            ) : null}
+
+            {!isSearchLoading && hasActiveSearchQuery && filteredSearchCategories.length > 0 ? (
+              <div className="pb-8">
+                <p className="mb-1 text-[0.68rem] font-medium tracking-[0.2em] text-zinc-500 uppercase">
+                  {copy[locale].searchCategoriesTitle}
+                </p>
+                <div className="divide-y divide-zinc-200/75">
+                  {filteredSearchCategories.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        router.push(item.href);
+                        closeSearchDrawer();
+                      }}
+                      className="flex min-h-12 items-center justify-between py-1 text-left"
+                    >
+                      <span className="text-[1.03rem] font-medium text-zinc-900">{item.label}</span>
+                      <ArrowRight size={14} weight="regular" className="text-zinc-500" />
+                    </button>
+                  ))}
+
+                  {searchTab === "brands" && searchBrandResults.map((item) => (
+                    <button
+                      key={`brand-row-${item.brand}`}
+                      type="button"
+                      onClick={() => {
+                        router.push(`${toLocalePath("/catalog", locale)}?brand=${encodeURIComponent(item.brand)}`);
+                        closeSearchDrawer();
+                      }}
+                      className="flex min-h-12 items-center justify-between py-1 text-left"
+                    >
+                      <span className="text-[1.03rem] font-medium text-zinc-900">{item.brand}</span>
+                      <span className="text-[0.92rem] text-zinc-500">{item.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {!isSearchLoading && hasActiveSearchQuery && searchTab !== "home" ? (
+              <div className="pb-8">
+                <p className="mb-2 text-[0.68rem] font-medium tracking-[0.2em] text-zinc-500 uppercase">
+                  {copy[locale].searchProductsTitle}
+                </p>
+                <div className="space-y-0">
+                  {searchResults.map((item, index) => (
+                    <button
+                      key={`${item.slug}-${index}`}
+                      type="button"
+                      onClick={() => openSearchProduct(item.slug)}
+                      className="flex w-full items-center gap-3 border-b border-zinc-200/80 py-3 text-left"
+                    >
+                      {item.image.trim() && !brokenSearchImages[item.slug] ? (
+                        <span className="relative h-20 w-[4.3rem] shrink-0 overflow-hidden rounded-md bg-zinc-100">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            sizes="68px"
+                            unoptimized
+                            className="object-contain"
+                            onError={() => {
+                              setBrokenSearchImages((prev) => {
+                                if (prev[item.slug]) {
+                                  return prev;
+                                }
+
+                                return {
+                                  ...prev,
+                                  [item.slug]: true,
+                                };
+                              });
+                            }}
+                          />
+                        </span>
+                      ) : null}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-medium text-zinc-900">{item.name}</span>
+                        <span className="mt-0.5 block truncate text-[0.95rem] text-zinc-600">{item.brand}</span>
+                        <span className="mt-1.5 block text-[0.95rem] font-semibold text-zinc-900">
+                          {item.price !== null ? `${item.price.toFixed(2)} AZN` : "-"}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+
+                  {!searchResults.length ? (
+                    <div className="py-4 text-sm text-zinc-600">
+                      {copy[locale].searchEmpty}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </aside>
+      </div>
+
+      <div
+        className={[
+          "fixed inset-0 z-40 origin-top transform-gpu overflow-y-auto bg-[#f4f4f4] lg:hidden",
           menuTransition,
           isMenuOpen
             ? "pointer-events-auto translate-y-0 opacity-100"
@@ -1101,8 +1542,16 @@ export function Header({ floating = false, locale }: HeaderProps) {
       >
         <div className="mx-auto max-w-[1540px] px-4 pb-[calc(env(safe-area-inset-bottom)+2.75rem)] pt-[4.65rem] sm:px-6">
           <nav className="relative z-10 w-full overflow-x-hidden">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
+            <div className="relative z-30 grid grid-cols-2 gap-3">
+              <div
+                style={{ transitionDelay: isMenuOpen ? "35ms" : "0ms" }}
+                className={[
+                  "relative",
+                  menuTransition,
+                  isMobileLocaleMenuOpen ? "z-50" : "z-20",
+                  isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+                ].join(" ")}
+              >
                 <button
                   type="button"
                   onClick={() => setIsMobileLocaleMenuOpen((current) => !current)}
@@ -1112,15 +1561,28 @@ export function Header({ floating = false, locale }: HeaderProps) {
                   className="inline-flex min-h-13 w-full items-center justify-between border border-zinc-300 bg-[#f6f6f6] px-3.5 py-2 text-sm font-medium text-zinc-900 disabled:cursor-wait disabled:opacity-70"
                 >
                   <span className="flex items-center gap-2">
-                    <span aria-hidden="true" className="text-base">🇦🇿</span>
+                    <Image
+                      src={localeFlagSrc[pendingLocale ?? locale]}
+                      alt={t.languages[pendingLocale ?? locale]}
+                      width={18}
+                      height={18}
+                      className="h-[18px] w-[18px] rounded-full object-cover"
+                    />
                     <span>Dil: {t.languages[pendingLocale ?? locale]}</span>
                   </span>
-                  <CaretDown size={14} weight="bold" className="text-zinc-700" />
+                  <CaretDown
+                    size={14}
+                    weight="bold"
+                    className={[
+                      "text-zinc-700 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      isMobileLocaleMenuOpen ? "rotate-180" : "rotate-0",
+                    ].join(" ")}
+                  />
                 </button>
 
                 <div
                   className={[
-                    "absolute inset-x-0 top-[calc(100%+0.35rem)] z-20 overflow-hidden border border-zinc-300 bg-white shadow-[0_16px_28px_rgba(20,20,24,0.12)] transition-all duration-250",
+                    "absolute inset-x-0 top-[calc(100%+0.35rem)] z-[70] overflow-hidden border border-zinc-300 bg-white shadow-[0_16px_28px_rgba(20,20,24,0.12)] transition-all duration-250",
                     isMobileLocaleMenuOpen
                       ? "pointer-events-auto translate-y-0 opacity-100"
                       : "pointer-events-none -translate-y-1 opacity-0",
@@ -1143,7 +1605,16 @@ export function Header({ floating = false, locale }: HeaderProps) {
                           : "text-zinc-700 hover:bg-zinc-100",
                       ].join(" ")}
                     >
-                      <span>{t.languages[item]}</span>
+                      <span className="inline-flex items-center gap-2">
+                        <Image
+                          src={localeFlagSrc[item]}
+                          alt={t.languages[item]}
+                          width={18}
+                          height={18}
+                          className="h-[18px] w-[18px] rounded-full object-cover"
+                        />
+                        <span>{t.languages[item]}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1152,64 +1623,44 @@ export function Header({ floating = false, locale }: HeaderProps) {
               <Link
                 href={accountHref}
                 onClick={() => setIsMenuOpen(false)}
-                className="inline-flex min-h-13 items-center gap-2.5 border border-zinc-300 bg-[#f6f6f6] px-3.5 py-2 text-sm font-medium text-zinc-900"
+                style={{ transitionDelay: isMenuOpen ? "70ms" : "0ms" }}
+                className={[
+                  "inline-flex min-h-13 items-center gap-2.5 border border-zinc-300 bg-[#f6f6f6] px-3.5 py-2 text-sm font-medium text-zinc-900",
+                  menuTransition,
+                  isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+                ].join(" ")}
               >
                 <UserCircle size={22} weight="regular" aria-hidden="true" />
                 <span>{accountLabel}</span>
               </Link>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-zinc-300/75 bg-white/60 p-2">
-              <button
-                type="button"
-                onClick={() => setIsMobileUtilityExpanded((current) => !current)}
-                className="inline-flex min-h-10 w-full items-center justify-between rounded-xl px-2.5 text-sm font-semibold text-zinc-900"
-              >
-                <span>{copy[locale].quickActions}</span>
-                <CaretDown
-                  size={14}
-                  weight="bold"
-                  className={[
-                    "text-zinc-600 transition-transform duration-300",
-                    isMobileUtilityExpanded ? "rotate-180" : "rotate-0",
-                  ].join(" ")}
-                />
-              </button>
+            <div className="mt-4 border-t border-zinc-200/75 pt-3">
+              <div className="space-y-2">
+                <Link
+                  href={toLocalePath("/catalog", locale)}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-zinc-900/90 bg-zinc-900 px-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(25,25,25,0.18)]"
+                >
+                  <Gift size={17} weight="regular" aria-hidden="true" />
+                  <span>{copy[locale].giftCard}</span>
+                </Link>
+                <Link
+                  href={`${toLocalePath("/catalog", locale)}?special=gift-ideas`}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-300 bg-white/85 px-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-white"
+                >
+                  <span>{copy[locale].giftIdeas}</span>
+                </Link>
+              </div>
 
-              <div
-                className={[
-                  "grid overflow-hidden transition-all duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                  isMobileUtilityExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                ].join(" ")}
-              >
-                <div className="min-h-0">
-                  <div className="mt-2 space-y-2 border-t border-zinc-200/75 pt-2">
-                    <Link
-                      href={toLocalePath("/catalog", locale)}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-600 bg-white px-3 text-sm font-semibold text-rose-600"
-                    >
-                      <Gift size={17} weight="regular" aria-hidden="true" />
-                      <span>{copy[locale].giftCard}</span>
-                    </Link>
-                    <Link
-                      href={toLocalePath("/blog", locale)}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-900 bg-transparent px-3 text-sm font-semibold text-zinc-900"
-                    >
-                      <span>{copy[locale].giftIdeas}</span>
-                    </Link>
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-2.5 overflow-x-auto pb-1 text-[0.92rem] text-zinc-900">
-                    <Link href={`${toLocalePath("/catalog", locale)}?gender=female`} onClick={() => setIsMenuOpen(false)} className="shrink-0">{copy[locale].womenTab}</Link>
-                    <Link href={`${toLocalePath("/catalog", locale)}?gender=male`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded bg-zinc-200 px-2 py-0.5">{copy[locale].menTab}</Link>
-                    <Link href={`${toLocalePath("/catalog", locale)}?gender=unisex`} onClick={() => setIsMenuOpen(false)} className="shrink-0">{copy[locale].unisexTab}</Link>
-                    <Link href={toLocalePath("/brands", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0">{copy[locale].brandsTab}</Link>
-                    <Link href={toLocalePath("/compare", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0">{copy[locale].compareTab}</Link>
-                    <Link href={toLocalePath("/", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0">{copy[locale].homeTab}</Link>
-                  </div>
-                </div>
+              <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-[0.84rem] text-zinc-800">
+                <Link href={`${toLocalePath("/catalog", locale)}?gender=female`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].womenTab}</Link>
+                <Link href={`${toLocalePath("/catalog", locale)}?gender=male`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-white">{copy[locale].menTab}</Link>
+                <Link href={`${toLocalePath("/catalog", locale)}?gender=unisex`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].unisexTab}</Link>
+                <Link href={toLocalePath("/brands", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].brandsTab}</Link>
+                <Link href={toLocalePath("/compare", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].compareTab}</Link>
+                <Link href={toLocalePath("/", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].homeTab}</Link>
               </div>
             </div>
 

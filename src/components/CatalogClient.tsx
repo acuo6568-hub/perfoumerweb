@@ -20,6 +20,7 @@ import {
 
 import { formatMessage, getDictionary, type Locale } from "@/lib/i18n";
 import { localizeNoteLabel } from "@/lib/note-label";
+import { filterPerfumesBySpecialPreset, type CatalogSpecialPreset } from "@/lib/special-items";
 import { ProductCard } from "@/components/ProductCard";
 import type { Perfume } from "@/types/catalog";
 
@@ -39,6 +40,7 @@ type CatalogClientProps = {
   initialQuery?: string;
   initialMinPrice?: number;
   initialMaxPrice?: number;
+  specialPreset?: CatalogSpecialPreset;
   locale: Locale;
 };
 
@@ -391,13 +393,18 @@ export function CatalogClient({
   initialQuery = "",
   initialMinPrice,
   initialMaxPrice,
+  specialPreset,
   locale,
 }: CatalogClientProps) {
   const t = getDictionary(locale);
+  const sourcePerfumes = useMemo(
+    () => filterPerfumesBySpecialPreset(perfumes, specialPreset),
+    [perfumes, specialPreset],
+  );
   const normalizedInitialQuery = initialQuery.trim();
   const resolvedInitialGender = useMemo(
-    () => resolveInitialGenderValue(initialGender, perfumes),
-    [initialGender, perfumes],
+    () => resolveInitialGenderValue(initialGender, sourcePerfumes),
+    [initialGender, sourcePerfumes],
   );
   const [query, setQuery] = useState(normalizedInitialQuery);
   const [draftQuery, setDraftQuery] = useState(normalizedInitialQuery);
@@ -532,14 +539,14 @@ export function CatalogClient({
   };
 
   const genders = useMemo(() => {
-    const unique = new Set(perfumes.map((item) => item.gender.trim()).filter(Boolean));
+    const unique = new Set(sourcePerfumes.map((item) => item.gender.trim()).filter(Boolean));
     return ["all", ...Array.from(unique)];
-  }, [perfumes]);
+  }, [sourcePerfumes]);
 
   const brands = useMemo(() => {
-    const unique = new Set(perfumes.map((item) => item.brand.trim()).filter(Boolean));
+    const unique = new Set(sourcePerfumes.map((item) => item.brand.trim()).filter(Boolean));
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
-  }, [perfumes]);
+  }, [sourcePerfumes]);
 
   const searchSuggestions = useMemo(() => {
     const normalizedQuery = normalizeSearchText(suggestionQuery);
@@ -557,7 +564,7 @@ export function CatalogClient({
           return null;
         }
 
-        const brandProductCount = perfumes.filter(
+        const brandProductCount = sourcePerfumes.filter(
           (item) => normalizeSearchText(item.brand) === normalizedBrand,
         ).length;
 
@@ -577,7 +584,7 @@ export function CatalogClient({
       .sort((a, b) => b.score - a.score)
       .slice(0, 4);
 
-    const perfumeSuggestions = perfumes
+    const perfumeSuggestions = sourcePerfumes
       .map((perfume): SearchSuggestion | null => {
         const normalizedName = normalizeSearchText(perfume.name);
         const normalizedBrand = normalizeSearchText(perfume.brand);
@@ -616,22 +623,22 @@ export function CatalogClient({
       .slice(0, 7);
 
     return merged;
-  }, [brands, perfumes, suggestionQuery]);
+  }, [brands, sourcePerfumes, suggestionQuery]);
 
   const topNotes = useMemo(() => {
-    const unique = new Set(perfumes.flatMap((item) => item.noteSlugs.top));
+    const unique = new Set(sourcePerfumes.flatMap((item) => item.noteSlugs.top));
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
-  }, [perfumes]);
+  }, [sourcePerfumes]);
 
   const heartNotes = useMemo(() => {
-    const unique = new Set(perfumes.flatMap((item) => item.noteSlugs.heart));
+    const unique = new Set(sourcePerfumes.flatMap((item) => item.noteSlugs.heart));
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
-  }, [perfumes]);
+  }, [sourcePerfumes]);
 
   const baseNotes = useMemo(() => {
-    const unique = new Set(perfumes.flatMap((item) => item.noteSlugs.base));
+    const unique = new Set(sourcePerfumes.flatMap((item) => item.noteSlugs.base));
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
-  }, [perfumes]);
+  }, [sourcePerfumes]);
 
   const sortOptions = useMemo<FilterOption[]>(
     () => [
@@ -651,7 +658,7 @@ export function CatalogClient({
   const filteredPerfumes = useMemo(() => {
     const normalizedQuery = normalizeSearchText(deferredQuery);
 
-    const filtered = perfumes.filter((perfume) => {
+    const filtered = sourcePerfumes.filter((perfume) => {
       const smartScore = scoreSmartMatch(perfume, smartSearchIntent);
       const searchPool = toSearchPool(perfume);
       const queryTokens = normalizedQuery.split(" ").filter(Boolean);
@@ -734,7 +741,7 @@ export function CatalogClient({
 
     return filtered;
   }, [
-    perfumes,
+    sourcePerfumes,
     deferredQuery,
     selectedBaseNote,
     selectedBrand,

@@ -244,5 +244,46 @@
         }
       }
     }
+  },
+  "v1::emporio-armani-stronger-with-you-absolutely::az::Emporio Armani Stronger With You Absolutely::Giorgio Armani::Kişi::Stokda Var::berqamot,rom,elemi::lavanda,davana::paçuli,şabalıd,sidr,madaqaskar-vanili::15-20|30-35|50-55": {
+    "slug": "emporio-armani-stronger-with-you-absolutely",
+    "locale": "az",
+    "updatedAt": "2026-04-19T00:02:14.232Z",
+    "data": {
+      "summary": "Emporio Armani Stronger With You Absolutely kişilər üçün güclü və uzunömürlü ətirdir, payız və qış mövsümlərinə uyğundur. Qoxusu lavanda və vanil notları ilə zəngindir.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 0,
+          "moderate": 2,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 2,
+          "high": 4,
+          "very_high": 3
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 4,
+          "spring": 1,
+          "summer": 0
+        },
+        "timeOfDay": {
+          "morning": 2,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
   }
 }

@@ -404,39 +404,35 @@ export default async function PerfumeDetailPage({
           </div>
         </section>
 
-        <section className="mt-10 rounded-[2rem] border border-zinc-200/80 bg-white/88 p-6 shadow-[0_14px_34px_rgba(22,22,24,0.05)] md:p-8">
-          <h2 className="text-3xl leading-tight text-zinc-900 md:text-4xl">Bu məhsulla bağlı keçidlər</h2>
+        <section className="mt-8 rounded-2xl border border-zinc-200/80 bg-white/78 p-4 shadow-[0_10px_24px_rgba(22,22,24,0.04)] md:p-5">
+          <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">Sürətli keçidlər</p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {relatedClusters.map((cluster) => (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {relatedClusters.slice(0, 3).map((cluster) => (
               <Link
                 key={cluster.href}
                 href={cluster.href}
-                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+                className="rounded-full border border-zinc-300 bg-white px-3.5 py-1.5 text-xs text-zinc-700 transition hover:border-zinc-400"
               >
                 {cluster.title}
               </Link>
             ))}
-          </div>
 
-          <div className="mt-5 grid gap-2 md:grid-cols-2">
-            {relatedArticles.map((article) => (
+            {relatedArticles.slice(0, 3).map((article) => (
               <Link
                 key={article.slug}
                 href={`/blog/${article.slug}`}
-                className="rounded-xl border border-zinc-200/80 bg-white px-3 py-3 text-sm text-zinc-700 transition hover:border-zinc-300"
+                className="rounded-full border border-zinc-300 bg-white px-3.5 py-1.5 text-xs text-zinc-700 transition hover:border-zinc-400"
               >
                 {article.title}
               </Link>
             ))}
-          </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            {TRUST_PAGES.slice(0, 4).map((page) => (
+            {TRUST_PAGES.slice(0, 2).map((page) => (
               <Link
                 key={page.href}
                 href={page.href}
-                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
+                className="rounded-full border border-zinc-300 bg-white px-3.5 py-1.5 text-xs text-zinc-700 transition hover:border-zinc-400"
               >
                 {page.label}
               </Link>

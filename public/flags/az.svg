@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" role="img" aria-label="Azerbaijan flag">
+  <rect width="60" height="40" fill="#0099d8"/>
+  <rect y="13.333" width="60" height="13.334" fill="#ed2939"/>
+  <rect y="26.667" width="60" height="13.333" fill="#3f9c35"/>
+  <g transform="translate(28 20)">
+    <circle r="5.1" fill="#fff"/>
+    <circle cx="1.7" r="4.3" fill="#ed2939"/>
+    <path d="M7.2-3.7l.9 2.4 2.6.1-2 1.5.7 2.5-2.2-1.4-2.2 1.4.7-2.5-2-1.5 2.6-.1z" fill="#fff"/>
+  </g>
+</svg>

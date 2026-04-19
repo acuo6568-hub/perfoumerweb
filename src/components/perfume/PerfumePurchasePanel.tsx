@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
+import { WhatsappLogo } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getDictionary, type Locale } from "@/lib/i18n";
@@ -40,7 +41,7 @@ const copyByLocale: Record<Locale, Copy> = {
     bestValue: "Sərfəli",
     perMl: "1ml qiymət",
     addToCart: "Səbətə əlavə et",
-    inquiry: "Sorğu Göndər",
+    inquiry: "Bizə mesaj göndər",
     adding: "Əlavə olunur...",
     added: "Məhsul seçilən ölçü ilə səbətə əlavə olundu.",
     addFailed: "Səbətə əlavə etmək alınmadı. Yenidən cəhd et.",
@@ -432,25 +433,25 @@ export function PerfumePurchasePanel({
             {isSubmitting ? copy.adding : copy.addToCart}
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              void addToCart(true);
-            }}
-            disabled={isSubmitting}
-            className="detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center rounded-full bg-[#31302f] px-6 text-lg font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          <a
+            href={inquiryHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center gap-2.5 rounded-full bg-[#31302f] px-6 text-lg font-medium text-white transition hover:opacity-95"
           >
-            {isSubmitting ? copy.adding : t.detail.order}
-          </button>
+            <WhatsappLogo size={20} weight="fill" aria-hidden="true" />
+            <span>{copy.inquiry}</span>
+          </a>
         </div>
       ) : (
         <a
           href={inquiryHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center rounded-full bg-[#31302f] px-6 text-lg font-medium text-white transition hover:opacity-95"
+          className="detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center gap-2.5 rounded-full bg-[#31302f] px-6 text-lg font-medium text-white transition hover:opacity-95"
         >
-          {copy.inquiry}
+          <WhatsappLogo size={20} weight="fill" aria-hidden="true" />
+          <span>{copy.inquiry}</span>
         </a>
       )}
 
