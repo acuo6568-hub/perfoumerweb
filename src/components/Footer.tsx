@@ -156,12 +156,12 @@ export function Footer({ locale }: FooterProps) {
             href={instagramSnapshot.profileUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex text-[1.12rem] font-semibold tracking-[0.01em] text-zinc-900"
+            className="inline-flex text-[0.98rem] font-semibold tracking-[0.01em] text-zinc-900 sm:text-[1.12rem]"
           >
             {t.footer.styleHandle}
           </a>
 
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
             {displayStyleImages.map((image) => (
               <a
                 key={image.id}
@@ -181,15 +181,18 @@ export function Footer({ locale }: FooterProps) {
             ))}
           </div>
 
-          <div className="mt-6 bg-[#ecece9] px-6 py-10 text-center sm:px-10">
-            <h2 className="text-[clamp(2rem,4vw,3.25rem)] leading-[0.95] tracking-[-0.03em] text-zinc-900">
+          <div className="mt-5 rounded-[1.05rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(244,244,242,0.95)_0%,rgba(236,236,233,0.92)_100%)] px-4 py-8 text-center shadow-[0_14px_28px_rgba(22,22,22,0.04)] sm:mt-6 sm:px-10 sm:py-10">
+            <h2
+              className="text-[clamp(1.72rem,6.2vw,3.25rem)] leading-[0.99] tracking-[-0.02em] text-zinc-900"
+              style={{ fontFamily: "Iowan Old Style, Baskerville, Times New Roman, serif" }}
+            >
               {t.footer.styleTitle}
             </h2>
-            <p className="mx-auto mt-5 max-w-3xl text-[1.14rem] leading-8 text-zinc-700">
+            <p className="mx-auto mt-4 max-w-3xl text-[1.02rem] leading-7 text-zinc-700 sm:mt-5 sm:text-[1.12rem] sm:leading-8">
               {t.footer.styleDescription}
             </p>
 
-            <form onSubmit={handleStyleSubmit} className="mx-auto mt-8 flex w-full max-w-[760px] flex-col gap-2 sm:flex-row">
+            <form onSubmit={handleStyleSubmit} className="mx-auto mt-6 flex w-full max-w-[760px] flex-col gap-2.5 sm:mt-8 sm:flex-row sm:items-stretch sm:gap-2.5">
               <label className="sr-only" htmlFor="style-email-input">
                 {t.footer.styleEmailPlaceholder}
               </label>
@@ -203,13 +206,13 @@ export function Footer({ locale }: FooterProps) {
                   if (styleSuccess) setStyleSuccess("");
                 }}
                 placeholder={t.footer.styleEmailPlaceholder}
-                className="h-12 flex-1 border border-zinc-300 bg-white px-5 text-[1.05rem] text-zinc-900 placeholder:text-zinc-500 focus:border-zinc-700 focus:outline-none"
+                className="h-14 w-full flex-1 rounded-[0.78rem] border border-zinc-300 bg-white px-5 text-[1.03rem] font-normal text-zinc-900 placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_6px_12px_rgba(18,18,18,0.05)] focus:border-zinc-700 focus:outline-none sm:rounded-[0.45rem] sm:px-5 sm:text-[1.04rem] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
                 disabled={isSubmittingStyle}
               />
               <button
                 type="submit"
                 disabled={isSubmittingStyle}
-                className="h-12 min-w-[180px] bg-black px-8 text-[1.03rem] font-semibold tracking-[0.08em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-70"
+                className="h-14 w-full min-w-[180px] rounded-[0.78rem] bg-black px-8 text-[0.98rem] font-semibold tracking-[0.08em] text-white uppercase shadow-[0_8px_18px_rgba(12,12,12,0.22)] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:rounded-[0.45rem] sm:text-[1.02rem]"
               >
                 {isSubmittingStyle ? t.footer.styleSubmitting : t.footer.styleSubscribe}
               </button>
@@ -221,7 +224,7 @@ export function Footer({ locale }: FooterProps) {
               className={[
                 "mx-auto mt-3 w-full max-w-[760px] overflow-hidden rounded-xl border transition-all duration-500",
                 styleSuccess
-                  ? "max-h-24 translate-y-0 border-zinc-300 bg-white/90 px-4 py-3 opacity-100 shadow-[0_10px_24px_rgba(24,24,24,0.08)]"
+                  ? "max-h-44 translate-y-0 border-zinc-300 bg-white/90 px-3 py-3 opacity-100 shadow-[0_10px_24px_rgba(24,24,24,0.08)] sm:max-h-24 sm:px-4"
                   : "pointer-events-none max-h-0 -translate-y-1 border-transparent px-0 py-0 opacity-0",
               ].join(" ")}
               aria-live="polite"
@@ -233,7 +236,7 @@ export function Footer({ locale }: FooterProps) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold tracking-[0.02em] text-zinc-900">{t.footer.styleSuccessTitle}</p>
-                  <p className="mt-1 text-sm leading-6 text-zinc-700">{styleSuccess}</p>
+                  <p className="mt-1 text-sm leading-5 text-zinc-700 sm:leading-6">{styleSuccess}</p>
                 </div>
               </div>
             </div>
