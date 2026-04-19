@@ -45,8 +45,12 @@ export function middleware(request: NextRequest) {
 
   const cookieLocale = request.cookies.get("perfoumer-locale")?.value;
   const normalizedLocale = normalizeLocale(cookieLocale);
+  const effectiveLocale =
+    !cookieLocale || normalizedLocale === defaultLocale || normalizedLocale === "en"
+      ? defaultLocale
+      : normalizedLocale;
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set(localeRequestHeader, normalizedLocale);
+  requestHeaders.set(localeRequestHeader, effectiveLocale);
 
   // Do not force English-prefixed redirects from cookie on bare routes.
   // This prevents stale "en" cookie values from overriding Azerbaijani after reload.
@@ -56,11 +60,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+
+  if (cookieLocale !== effectiveLocale) {
+    response.cookies.set("perfoumer-locale", effectiveLocale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+  }
+
+  return response;
 }
 
 export const config = {

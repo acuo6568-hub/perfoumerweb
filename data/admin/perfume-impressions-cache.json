@@ -367,5 +367,46 @@
         }
       }
     }
+  },
+  "v1::himalaya::az::Himalaya::Creed::Kişi::Stokda Var::berqamot,limon,qreyfrut::səndəl::müşk,sidr,boz-ənbər::15-32|30-55|50-90": {
+    "slug": "himalaya",
+    "locale": "az",
+    "updatedAt": "2026-04-19T03:27:34.221Z",
+    "data": {
+      "summary": "Creed Himalaya kişilər üçün təravətli və təbii ətirdir, uzunömürlü və yüksək iz buraxır. Payız və qış mövsümlərində, həm səhər, həm də axşam istifadə üçün uyğundur.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 1,
+          "moderate": 2,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 2,
+          "high": 4,
+          "very_high": 3
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 3,
+          "spring": 2,
+          "summer": 1
+        },
+        "timeOfDay": {
+          "morning": 3,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
   }
 }
