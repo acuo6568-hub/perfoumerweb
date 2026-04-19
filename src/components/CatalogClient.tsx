@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  CaretDown,
   Check,
   MagnifyingGlass,
   SlidersHorizontal,
@@ -385,6 +386,55 @@ function OptionCluster({
   );
 }
 
+function CollapsibleFilterSection({
+  title,
+  description,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <section className="overflow-hidden rounded-[1.2rem] border border-zinc-200/80 bg-white/80 shadow-[0_10px_24px_rgba(24,24,24,0.04)]">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div>
+          <p className="text-[0.62rem] font-medium tracking-[0.22em] text-zinc-400 uppercase">{title}</p>
+          {description ? <p className="mt-0.5 text-sm text-zinc-500">{description}</p> : null}
+        </div>
+        <CaretDown
+          size={14}
+          weight="bold"
+          className={[
+            "shrink-0 text-zinc-500 transition-transform duration-300",
+            isOpen ? "rotate-180" : "rotate-0",
+          ].join(" ")}
+        />
+      </button>
+
+      <div
+        className={[
+          "grid transition-all duration-300 ease-out",
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        ].join(" ")}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="border-t border-zinc-200/70 px-4 py-3">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function CatalogClient({
   perfumes,
   lockedNoteFilter,
@@ -649,6 +699,17 @@ export function CatalogClient({
     ],
     [t.catalog.featured, t.catalog.nameAsc, t.catalog.priceAsc, t.catalog.priceDesc],
   );
+  const mobileSortOptions = useMemo<FilterOption[]>(
+    () => [
+      { value: "featured", label: t.catalog.featured },
+      { value: "price-asc", label: t.catalog.priceAsc },
+      { value: "price-desc", label: t.catalog.priceDesc },
+    ],
+    [t.catalog.featured, t.catalog.priceAsc, t.catalog.priceDesc],
+  );
+  const mobileSortValue =
+    mobileSortOptions.some((option) => option.value === sortBy) ? sortBy : "featured";
+  const mobileSearchLabel = locale === "az" ? "Axtar" : locale === "ru" ? "Поиск" : "Search";
 
   const smartSearchIntent = useMemo(
     () => parseSmartSearchIntent(deferredQuery),
@@ -994,6 +1055,37 @@ export function CatalogClient({
   return (
     <>
       <section className="relative z-30 mt-4 overflow-visible px-1 sm:px-0">
+        <div className="mb-2 grid grid-cols-2 gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsFiltersPanelOpen(true)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 border-b border-zinc-300/80 px-2 text-sm font-medium text-zinc-800 transition-colors duration-200 hover:text-zinc-950"
+          >
+            <SlidersHorizontal size={15} weight="bold" />
+            <span>{t.catalog.filters}</span>
+          </button>
+
+          <label className="relative inline-flex min-h-11 items-center border-b border-zinc-300/80 px-2 text-sm font-medium text-zinc-800">
+            <select
+              value={mobileSortValue}
+              onChange={(event) => updateSortBy(event.target.value)}
+              className="h-full w-full appearance-none bg-transparent pr-6 outline-none"
+              aria-label={t.catalog.sort}
+            >
+              {mobileSortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <CaretDown
+              size={14}
+              weight="bold"
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600"
+            />
+          </label>
+        </div>
+
         <div className="mt-1 grid gap-2 py-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div ref={searchContainerRef} className="relative">
           <label className="flex items-center gap-3 rounded-none border-b border-zinc-300/70 bg-transparent px-1 py-2.5 transition-all duration-300 focus-within:border-zinc-500">
@@ -1167,7 +1259,7 @@ export function CatalogClient({
                 aria-expanded={isFiltersPanelOpen}
                 aria-controls="catalog-advanced-filters"
                 onClick={() => setIsFiltersPanelOpen((open) => !open)}
-                className="inline-flex min-h-11 items-center gap-3 rounded-full border border-zinc-200/80 bg-white/90 px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[0_10px_24px_rgba(24,24,24,0.04)] transition-all duration-300 hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[0_14px_28px_rgba(24,24,24,0.07)]"
+                className="hidden min-h-11 items-center gap-3 rounded-full border border-zinc-200/80 bg-white/90 px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[0_10px_24px_rgba(24,24,24,0.04)] transition-all duration-300 hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[0_14px_28px_rgba(24,24,24,0.07)] lg:inline-flex"
               >
                 <span className="relative block h-[15px] w-[15px]">
                   <SlidersHorizontal
@@ -1305,7 +1397,7 @@ export function CatalogClient({
               />
 
               <div
-                className="absolute inset-0 z-10 flex items-end justify-center lg:items-center lg:p-6"
+                className="absolute inset-0 z-10 flex items-stretch justify-end lg:items-center lg:justify-center lg:p-6"
                 onPointerDown={(event) => {
                   if (event.target === event.currentTarget) {
                     setIsFiltersPanelOpen(false);
@@ -1319,28 +1411,23 @@ export function CatalogClient({
                   aria-label={t.catalog.filters}
                   onPointerDown={(event) => event.stopPropagation()}
                   className={[
-                    "flex w-full flex-col overflow-hidden border border-zinc-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(250,249,247,0.92)_100%)] backdrop-blur-xl",
-                    "max-h-[calc(100dvh-0.45rem)] rounded-t-[1.7rem] rounded-b-none border-x-0 border-b-0",
+                    "flex h-full w-[min(92vw,24.5rem)] flex-col overflow-hidden border-l border-zinc-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(250,249,247,0.92)_100%)] backdrop-blur-xl",
+                    "rounded-none",
                     "lg:max-h-[calc(100vh-3rem)] lg:max-w-6xl lg:rounded-[2rem] lg:border",
                     "transition-[transform,opacity] duration-560 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-                    "shadow-[0_-24px_70px_rgba(15,15,15,0.18)] lg:shadow-[0_26px_70px_rgba(15,15,15,0.2)]",
+                    "shadow-[-24px_0_58px_rgba(15,15,15,0.2)] lg:shadow-[0_26px_70px_rgba(15,15,15,0.2)]",
                     isFiltersPanelOpen
-                      ? "translate-y-0 scale-100 opacity-100"
-                      : "translate-y-20 scale-[0.992] opacity-0 lg:translate-y-6 lg:scale-[0.972]",
+                      ? "translate-x-0 scale-100 opacity-100 lg:translate-y-0"
+                      : "translate-x-full scale-[0.992] opacity-0 lg:translate-x-0 lg:translate-y-6 lg:scale-[0.972]",
                   ].join(" ")}
                 >
             <div
               className={[
-                "mx-auto mt-3 h-1.5 w-14 rounded-full bg-zinc-200/80 transition-all duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden",
-                isFiltersPanelOpen ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
-              ].join(" ")}
-            />
-
-            <div
-              className={[
                 "flex items-start justify-between gap-4 border-b border-zinc-200/70 px-5 pb-4 pt-4 sm:px-6",
                 "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                isFiltersPanelOpen ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+                isFiltersPanelOpen
+                  ? "translate-x-0 opacity-100 lg:translate-y-0"
+                  : "translate-x-6 opacity-0 lg:translate-x-0 lg:translate-y-2",
               ].join(" ")}
             >
               <div>
@@ -1377,12 +1464,111 @@ export function CatalogClient({
 
             <div
               className={[
-                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:px-6",
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 pb-8 sm:px-6",
                 "transition-all duration-560 delay-75 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                isFiltersPanelOpen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+                isFiltersPanelOpen
+                  ? "translate-x-0 opacity-100 lg:translate-y-0"
+                  : "translate-x-8 opacity-0 lg:translate-x-0 lg:translate-y-3",
               ].join(" ")}
             >
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+              <div className="space-y-3 lg:hidden">
+                <CollapsibleFilterSection
+                  title={t.catalog.brand}
+                  description={
+                    selectedBrand === "all" ? t.catalog.allBrands : selectedBrand
+                  }
+                  defaultOpen
+                >
+                  <OptionCluster
+                    options={brands.map((brand) => ({
+                      value: brand,
+                      label: brand === "all" ? t.catalog.allBrands : brand,
+                    }))}
+                    value={selectedBrand}
+                    onChange={updateBrand}
+                    gridClassName="flex max-h-44 flex-wrap gap-2 overflow-y-auto pr-1"
+                  />
+                </CollapsibleFilterSection>
+
+                <CollapsibleFilterSection
+                  title={t.catalog.sort}
+                  description={sortOptions.find((option) => option.value === sortBy)?.label}
+                  defaultOpen
+                >
+                  <OptionCluster
+                    options={sortOptions}
+                    value={sortBy}
+                    onChange={updateSortBy}
+                    gridClassName="grid grid-cols-1 gap-2"
+                    itemClassName="justify-start px-4 py-3"
+                  />
+                </CollapsibleFilterSection>
+
+                {lockedNoteFilter?.type !== "top" ? (
+                  <CollapsibleFilterSection
+                    title={t.catalog.topNote}
+                    description={
+                      selectedTopNote === "all"
+                        ? t.catalog.topNotes
+                        : toNoteLabel(selectedTopNote, locale)
+                    }
+                  >
+                    <OptionCluster
+                      options={topNotes.map((note) => ({
+                        value: note,
+                        label: note === "all" ? t.catalog.topNotes : toNoteLabel(note, locale),
+                      }))}
+                      value={selectedTopNote}
+                      onChange={updateTopNote}
+                      gridClassName="flex max-h-44 flex-wrap gap-2 overflow-y-auto pr-1"
+                    />
+                  </CollapsibleFilterSection>
+                ) : null}
+
+                {lockedNoteFilter?.type !== "heart" ? (
+                  <CollapsibleFilterSection
+                    title={t.catalog.heartNote}
+                    description={
+                      selectedHeartNote === "all"
+                        ? t.catalog.heartNotes
+                        : toNoteLabel(selectedHeartNote, locale)
+                    }
+                  >
+                    <OptionCluster
+                      options={heartNotes.map((note) => ({
+                        value: note,
+                        label: note === "all" ? t.catalog.heartNotes : toNoteLabel(note, locale),
+                      }))}
+                      value={selectedHeartNote}
+                      onChange={updateHeartNote}
+                      gridClassName="flex max-h-44 flex-wrap gap-2 overflow-y-auto pr-1"
+                    />
+                  </CollapsibleFilterSection>
+                ) : null}
+
+                {lockedNoteFilter?.type !== "base" ? (
+                  <CollapsibleFilterSection
+                    title={t.catalog.baseNote}
+                    description={
+                      selectedBaseNote === "all"
+                        ? t.catalog.baseNotes
+                        : toNoteLabel(selectedBaseNote, locale)
+                    }
+                  >
+                    <OptionCluster
+                      options={baseNotes.map((note) => ({
+                        value: note,
+                        label: note === "all" ? t.catalog.baseNotes : toNoteLabel(note, locale),
+                      }))}
+                      value={selectedBaseNote}
+                      onChange={updateBaseNote}
+                      gridClassName="flex max-h-44 flex-wrap gap-2 overflow-y-auto pr-1"
+                    />
+                  </CollapsibleFilterSection>
+                ) : null}
+              </div>
+
+              <div className="hidden gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
                 <SectionShell title={t.catalog.brand} description={t.catalog.allBrands}>
                   <OptionCluster
                     options={brands.map((brand) => ({
@@ -1406,7 +1592,7 @@ export function CatalogClient({
                 </SectionShell>
               </div>
 
-              <div className="mt-4 rounded-[1.6rem] border border-zinc-200/80 bg-white/72 p-4 shadow-[0_14px_34px_rgba(24,24,24,0.05)] backdrop-blur-sm sm:p-5">
+              <div className="mt-4 hidden rounded-[1.6rem] border border-zinc-200/80 bg-white/72 p-4 shadow-[0_14px_34px_rgba(24,24,24,0.05)] backdrop-blur-sm sm:p-5 lg:block">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[0.66rem] font-medium tracking-[0.24em] text-zinc-400 uppercase">
@@ -1466,6 +1652,16 @@ export function CatalogClient({
                   ) : null}
                 </div>
               </div>
+            </div>
+
+            <div className="shrink-0 border-t border-zinc-200/80 bg-[#f3f3f2] px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:px-6 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setIsFiltersPanelOpen(false)}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-zinc-800"
+              >
+                {mobileSearchLabel}
+              </button>
             </div>
                 </aside>
               </div>

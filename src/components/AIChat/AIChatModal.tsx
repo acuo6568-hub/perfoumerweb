@@ -1568,6 +1568,8 @@ export function AIChatModal({
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [isBackTransitioning, setIsBackTransitioning] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false);
+  const [isAutoNudging, setIsAutoNudging] = useState(false);
   const [presetQuestions, setPresetQuestions] = useState<string[]>(() => selectRandomQuestions(locale));
   const introRotatingTitles = useMemo(
     () => introRotatingTitlesByLocale[locale] ?? [copy.introLine2],
@@ -1596,6 +1598,8 @@ export function AIChatModal({
   const backTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openRafOneRef = useRef<number | null>(null);
   const openRafTwoRef = useRef<number | null>(null);
+  const autoNudgeDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoNudgeResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadActiveChatHistory = async (userId: string) => {
     if (!supabase) return;
@@ -1885,6 +1889,8 @@ export function AIChatModal({
       if (backTimerRef.current) clearTimeout(backTimerRef.current);
       if (openRafOneRef.current !== null) cancelAnimationFrame(openRafOneRef.current);
       if (openRafTwoRef.current !== null) cancelAnimationFrame(openRafTwoRef.current);
+      if (autoNudgeDelayRef.current) clearTimeout(autoNudgeDelayRef.current);
+      if (autoNudgeResetRef.current) clearTimeout(autoNudgeResetRef.current);
     };
   }, []);
 
@@ -1943,6 +1949,65 @@ export function AIChatModal({
       onAfterCloseRef.current?.();
     }, 520);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen || isExpanded) {
+      setIsTriggerHovered(false);
+      setIsAutoNudging(false);
+    }
+  }, [isExpanded, isOpen]);
+
+  useEffect(() => {
+    if (isCompactViewport || isOpen || isTriggerHidden) {
+      if (autoNudgeDelayRef.current) {
+        clearTimeout(autoNudgeDelayRef.current);
+        autoNudgeDelayRef.current = null;
+      }
+      if (autoNudgeResetRef.current) {
+        clearTimeout(autoNudgeResetRef.current);
+        autoNudgeResetRef.current = null;
+      }
+      setIsAutoNudging(false);
+      return;
+    }
+
+    let active = true;
+
+    const scheduleNudge = (isFirstNudge: boolean) => {
+      if (!active) return;
+
+      const delayMs = isFirstNudge
+        ? 15000 + Math.floor(Math.random() * 7000)
+        : 26000 + Math.floor(Math.random() * 22000);
+
+      autoNudgeDelayRef.current = setTimeout(() => {
+        if (!active) return;
+
+        setIsAutoNudging(true);
+
+        const visibleForMs = 2600 + Math.floor(Math.random() * 1800);
+        autoNudgeResetRef.current = setTimeout(() => {
+          if (!active) return;
+          setIsAutoNudging(false);
+          scheduleNudge(false);
+        }, visibleForMs);
+      }, delayMs);
+    };
+
+    scheduleNudge(true);
+
+    return () => {
+      active = false;
+      if (autoNudgeDelayRef.current) {
+        clearTimeout(autoNudgeDelayRef.current);
+        autoNudgeDelayRef.current = null;
+      }
+      if (autoNudgeResetRef.current) {
+        clearTimeout(autoNudgeResetRef.current);
+        autoNudgeResetRef.current = null;
+      }
+    };
+  }, [isCompactViewport, isOpen, isTriggerHidden]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -2245,6 +2310,9 @@ export function AIChatModal({
   };
 
   const frameInset = isCompactViewport ? 12 : 24;
+  const canHoverExpandTrigger = !isExpanded && !isCompactViewport;
+  const isPreviewExpanded = canHoverExpandTrigger && (isTriggerHovered || isAutoNudging);
+  const collapsedTriggerWidth = canHoverExpandTrigger ? (isPreviewExpanded ? 220 : 68) : 220;
   const availableWidth = `calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - ${
     frameInset * 2
   }px)`;
@@ -2253,7 +2321,7 @@ export function AIChatModal({
   }px)`;
 
   const panelStyle: CSSProperties = {
-    width: isExpanded ? (isCompactViewport ? availableWidth : 420) : 220,
+    width: isExpanded ? (isCompactViewport ? availableWidth : 420) : collapsedTriggerWidth,
     height: isExpanded ? (isCompactViewport ? availableHeight : 640) : 56,
     borderRadius: isExpanded ? (isCompactViewport ? 24 : 28) : 999,
     maxWidth: availableWidth,
@@ -2261,13 +2329,15 @@ export function AIChatModal({
     transformOrigin: "right bottom",
     boxShadow: isExpanded
       ? "0 26px 70px rgba(0,0,0,0.45), 0 10px 24px rgba(0,0,0,0.35)"
-      : "0 10px 22px rgba(0,0,0,0.28)",
+      : canHoverExpandTrigger && !isPreviewExpanded
+        ? "0 8px 18px rgba(0,0,0,0.26)"
+        : "0 10px 22px rgba(0,0,0,0.28)",
     transform: "translateZ(0)",
     willChange: "width, height, border-radius, transform, opacity",
     contain: "layout paint",
     transition: isExpanded
       ? "width 420ms cubic-bezier(0.22,1,0.36,1), height 420ms cubic-bezier(0.22,1,0.36,1) 180ms, border-radius 320ms ease 120ms, box-shadow 260ms ease"
-      : "height 380ms cubic-bezier(0.22,1,0.36,1), width 320ms cubic-bezier(0.22,1,0.36,1) 120ms, border-radius 280ms ease 80ms, box-shadow 220ms ease",
+      : "height 380ms cubic-bezier(0.22,1,0.36,1), width 340ms cubic-bezier(0.22,1,0.36,1), border-radius 280ms ease 80ms, box-shadow 220ms ease",
     right: `calc(env(safe-area-inset-right, 0px) + ${frameInset}px)`,
     bottom: `calc(env(safe-area-inset-bottom, 0px) + ${frameInset}px)`,
   };
@@ -2299,6 +2369,10 @@ export function AIChatModal({
         className={`fixed z-50 overflow-hidden bg-gradient-to-b from-zinc-950 via-black to-zinc-950 transform-gpu will-change-transform [transition:transform_640ms_cubic-bezier(0.16,1,0.3,1)] ${
           isExpanded ? "scale-100" : isCompactViewport ? "scale-100" : "hover:scale-[1.03]"
         }`}
+        onMouseEnter={canHoverExpandTrigger ? () => setIsTriggerHovered(true) : undefined}
+        onMouseLeave={canHoverExpandTrigger ? () => setIsTriggerHovered(false) : undefined}
+        onFocusCapture={canHoverExpandTrigger ? () => setIsTriggerHovered(true) : undefined}
+        onBlurCapture={canHoverExpandTrigger ? () => setIsTriggerHovered(false) : undefined}
         style={{
           ...panelStyle,
           opacity: shouldHideTrigger ? 0 : 1,
@@ -2331,12 +2405,18 @@ export function AIChatModal({
               : "opacity 260ms ease 160ms, transform 420ms cubic-bezier(0.22,1,0.36,1) 80ms",
           }}
         >
-          <AnimatedDots />
+          <AnimatedDots className={isPreviewExpanded ? "gap-1.5" : "gap-1"} />
           <span
             className="text-sm"
             style={{
+              maxWidth: canHoverExpandTrigger ? (isPreviewExpanded ? 150 : 0) : 150,
+              opacity: canHoverExpandTrigger ? (isPreviewExpanded ? 1 : 0) : 1,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
               filter: isExpanded ? "blur(6px)" : "blur(0px)",
-              transition: isExpanded ? "filter 280ms ease" : "filter 200ms ease",
+              transition: isExpanded
+                ? "filter 280ms ease"
+                : "filter 200ms ease, opacity 220ms ease, max-width 300ms cubic-bezier(0.22,1,0.36,1)",
             }}
           >
             {triggerLabel || copy.title}

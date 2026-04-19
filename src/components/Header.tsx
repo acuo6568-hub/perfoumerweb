@@ -769,7 +769,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, []);
 
   const searchTabs = useMemo(
-    () => ["all", "women", "men", "unisex", "brands", "home"] as HeaderSearchTab[],
+    () => ["all", "women", "men", "unisex"] as HeaderSearchTab[],
     [],
   );
 
@@ -850,32 +850,31 @@ export function Header({ floating = false, locale }: HeaderProps) {
   );
 
   const updateLocale = async (nextLocale: Locale) => {
-    if (nextLocale === (pendingLocale ?? locale) || isLocalePending) {
+    if (nextLocale === locale || nextLocale === pendingLocale) {
       return;
     }
 
     setPendingLocale(nextLocale);
     setIsMenuOpen(false);
+    setIsMobileLocaleMenuOpen(false);
 
     const nextPath = toLocalePath(basePathname, nextLocale);
 
-    startLocaleTransition(async () => {
-      try {
-        // Update the cookie on the client immediately to avoid stale-locale race conditions.
-        document.cookie = `perfoumer-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+    // Persist locale immediately and navigate with App Router to avoid a full page reload.
+    document.cookie = `perfoumer-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
 
-        await fetch("/api/locale", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ locale: nextLocale }),
-          keepalive: true,
-          cache: "no-store",
-        });
-      } finally {
-        // Use a full navigation so all server-rendered segments resolve with the same locale.
-        window.location.assign(nextPath);
-      }
+    void fetch("/api/locale", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ locale: nextLocale }),
+      keepalive: true,
+      cache: "no-store",
+    }).catch(() => {
+      // Cookie is already set client-side; continue navigation even if this request fails.
     });
+
+    router.replace(nextPath, { scroll: false });
+    router.refresh();
   };
 
   return (
@@ -886,7 +885,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
           floating ? "fixed inset-x-0 top-0" : "relative",
         ].join(" ")}
       >
-        <div className="bg-[#f4f4f4] px-3 py-3 lg:hidden">
+        <div className="bg-[#f3f3f2] px-3 py-3 lg:hidden">
           <div className="relative mx-auto flex h-12 max-w-[1540px] items-center justify-between">
             <div className="flex items-center gap-1">
               <button
@@ -964,18 +963,20 @@ export function Header({ floating = false, locale }: HeaderProps) {
           </div>
         </div>
 
-        <div className="mx-auto hidden max-w-[1540px] px-3 pt-3 sm:px-6 sm:pt-5 md:px-10 lg:block">
+        <div className="hidden w-full px-0 pt-0 sm:px-0 sm:pt-0 md:px-0 lg:block">
           <div
-            className="header-load-in header-shell-glow relative isolate flex items-center gap-3 overflow-hidden rounded-[1.2rem] border border-zinc-300/45 bg-[linear-gradient(145deg,rgba(255,255,255,0.92)_0%,rgba(249,249,248,0.96)_100%)] px-3 py-2.5 text-zinc-900 shadow-[0_8px_20px_rgba(17,17,19,0.06)] ring-1 ring-white/55 backdrop-blur-[6px] transition-[background-color,border-color,box-shadow,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-3 lg:gap-4 lg:px-5"
+            className="header-load-in relative isolate overflow-hidden bg-[#f3f3f2] text-zinc-900 shadow-none ring-0 backdrop-blur-0 transition-[background-color,border-color] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0)_40%),linear-gradient(120deg,rgba(255,255,255,0.5)_0%,rgba(255,255,255,0.08)_48%,rgba(231,229,225,0.18)_100%)] opacity-100 transition-opacity duration-500"
+              className="pointer-events-none absolute inset-0 opacity-0"
             />
             <div
               aria-hidden="true"
-              className="hero-grain pointer-events-none absolute inset-0 opacity-[0.04] transition-opacity duration-500"
+              className="hero-grain pointer-events-none absolute inset-0 opacity-0"
             />
+
+            <div className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 lg:gap-4 lg:px-8">
 
             <Link
               href={toLocalePath("/", locale)}
@@ -983,7 +984,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
               onClick={() => setIsMenuOpen(false)}
             >
               <span
-                className="header-logo-orb grid h-10 w-10 place-items-center overflow-hidden rounded-[0.8rem] border border-zinc-300/45 bg-[linear-gradient(165deg,#ffffff_0%,#f4f4f2_100%)] shadow-none transition-[background-color,border-color,box-shadow] duration-500 sm:h-12 sm:w-12"
+                className="header-logo-orb grid h-10 w-10 place-items-center overflow-hidden rounded-[0.8rem] border border-zinc-300/35 bg-[#f3f3f2] shadow-none transition-[background-color,border-color,box-shadow] duration-500 sm:h-12 sm:w-12"
               >
                 <Image
                   src="/perfoumer_black.png"
@@ -1022,7 +1023,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3">
               <div
-                className="hidden items-center rounded-full border border-zinc-300/45 bg-white/72 p-1 lg:flex"
+                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex"
               >
                 {locales.map((item) => (
                   <button
@@ -1032,8 +1033,8 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     disabled={isLocalePending}
                     className={[
                         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70",
-                      (pendingLocale ?? locale) === item
-                          ? "bg-zinc-900 text-white"
+                        (pendingLocale ?? locale) === item
+                          ? "bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
                           : "text-zinc-500 hover:text-zinc-700",
                     ].join(" ")}
                   >
@@ -1051,29 +1052,42 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
               <button
                 type="button"
-                onClick={openSearchDrawer}
-                aria-label={t.header.products}
-                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/45 bg-[linear-gradient(155deg,#ffffff_0%,#f8f8f6_100%)] text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
+                onClick={isSearchDrawerOpen ? closeSearchDrawer : openSearchDrawer}
+                aria-label={isSearchDrawerOpen ? t.header.closeMenu : t.header.products}
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/35 bg-transparent text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
               >
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_28%_20%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0)_58%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                />
-                <MagnifyingGlass
-                  size={18}
-                  weight="regular"
-                  className="relative z-[1] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-active:translate-y-0 group-active:scale-95 sm:size-[19px]"
-                />
+                <span className="relative z-[1] block h-[19px] w-[19px]">
+                  <MagnifyingGlass
+                    size={18}
+                    weight="regular"
+                    className={[
+                      "absolute inset-0 transition-all duration-300",
+                      isSearchDrawerOpen
+                        ? "rotate-90 scale-75 opacity-0"
+                        : "rotate-0 scale-100 opacity-100 group-hover:-translate-y-0.5 group-hover:scale-[1.04]",
+                    ].join(" ")}
+                  />
+                  <X
+                    size={18}
+                    weight="regular"
+                    className={[
+                      "absolute inset-0 transition-all duration-300",
+                      isSearchDrawerOpen
+                        ? "rotate-0 scale-100 opacity-100"
+                        : "-rotate-90 scale-75 opacity-0",
+                    ].join(" ")}
+                  />
+                </span>
               </button>
 
               <Link
                 href={toLocalePath("/wishlist", locale)}
                 aria-label={copy[locale].wishlist}
-                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/45 bg-[linear-gradient(155deg,#ffffff_0%,#f8f8f6_100%)] text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/35 bg-transparent text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
               >
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_28%_20%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0)_58%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-0 rounded-full opacity-0"
                 />
                 <span
                   aria-hidden="true"
@@ -1095,11 +1109,11 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 type="button"
                 onClick={openCartDrawer}
                 aria-label={t.header.cart}
-                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/45 bg-[linear-gradient(155deg,#ffffff_0%,#f8f8f6_100%)] text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/35 bg-transparent text-zinc-700 shadow-none transition-[transform,box-shadow,background-color,border-color] duration-300 hover:-translate-y-px hover:shadow-none active:translate-y-0 sm:h-11 sm:w-11"
               >
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_28%_20%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0)_58%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-0 rounded-full opacity-0"
                 />
                 <span
                   aria-hidden="true"
@@ -1122,7 +1136,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
                 aria-expanded={isMenuOpen}
                 onClick={toggleMenuDrawer}
-                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/50 bg-[linear-gradient(145deg,#ffffff_0%,#f4f4f2_100%)] text-zinc-700 shadow-[0_10px_20px_rgba(20,20,24,0.06)] transition-[background-color,box-shadow,border-color,color,transform] duration-300 hover:-translate-y-px hover:border-zinc-400/55 hover:bg-white sm:h-11 sm:w-11"
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/35 bg-transparent text-zinc-700 shadow-none transition-[background-color,box-shadow,border-color,color,transform] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent sm:h-11 sm:w-11"
               >
                 <span
                   className={[
@@ -1141,6 +1155,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                   ].join(" ")}
                 />
               </button>
+            </div>
             </div>
           </div>
         </div>
@@ -1346,66 +1361,87 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
         <aside
           className={[
-            "absolute left-0 top-0 flex h-full w-full flex-col bg-[#f5f5f4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[min(92vw,38rem)] lg:left-1/2 lg:w-[min(96vw,72rem)] lg:rounded-b-[1.1rem] lg:border-x lg:border-b lg:border-zinc-200/85 lg:bg-[linear-gradient(180deg,#f8f8f7_0%,#f4f4f3_100%)] lg:shadow-[0_14px_36px_rgba(16,16,20,0.08)]",
+            "absolute left-0 top-0 flex h-full w-full flex-col bg-[#f5f5f4] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[min(92vw,38rem)] lg:left-0 lg:w-full lg:origin-top lg:rounded-none lg:bg-[#f3f3f2]",
             isSearchDrawerOpen
-              ? "translate-x-0 lg:-translate-x-1/2 lg:translate-y-0"
-              : "-translate-x-full lg:-translate-x-1/2 lg:-translate-y-full",
+              ? "translate-x-0 opacity-100 lg:translate-x-0 lg:scale-y-100 lg:border-b lg:border-zinc-200/85 lg:shadow-[0_14px_36px_rgba(16,16,20,0.08)]"
+              : "-translate-x-full opacity-0 lg:translate-x-0 lg:scale-y-0 lg:border-transparent lg:shadow-none",
           ].join(" ")}
         >
-          <div className="px-4 pb-3 pt-2 sm:px-6 sm:pt-2.5 lg:px-8 lg:pb-2.5 lg:pt-3.5">
-            <div className="flex items-center gap-2">
-              <label className="flex min-h-12 flex-1 items-center gap-2 border-b border-zinc-300 px-0.5">
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={copy[locale].searchPlaceholder}
-                  className="w-full bg-transparent text-base text-zinc-900 outline-none placeholder:text-zinc-400"
-                />
-                <MagnifyingGlass size={22} weight="regular" className="text-zinc-800" />
-              </label>
-              <button
-                type="button"
-                onClick={closeSearchDrawer}
-                aria-label={t.header.closeMenu}
-                className="grid h-11 w-11 place-items-center text-zinc-900"
-              >
-                <X size={24} weight="regular" />
-              </button>
-            </div>
+          <div className="mx-auto flex h-full w-full max-w-[1540px] flex-col">
+            <div className="px-4 pb-3 pt-2 sm:px-6 sm:pt-2.5 lg:px-8 lg:pb-2.5 lg:pt-3.5">
+              <div className="flex items-center gap-2">
+                <label className="flex min-h-12 flex-1 items-center gap-2 border-b border-zinc-300 px-0.5">
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={copy[locale].searchPlaceholder}
+                    className="w-full bg-transparent text-base text-zinc-900 outline-none placeholder:text-zinc-400"
+                  />
+                  <MagnifyingGlass size={22} weight="regular" className="text-zinc-800" />
+                </label>
+                <button
+                  type="button"
+                  onClick={closeSearchDrawer}
+                  aria-label={t.header.closeMenu}
+                  className="grid h-11 w-11 place-items-center text-zinc-900 lg:hidden"
+                >
+                  <X size={24} weight="regular" />
+                </button>
 
-            <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 lg:mt-2.5">
-              {searchTabs.map((tab) => {
-                const active = searchTab === tab;
-
-                return (
+                <div
+                  aria-hidden={!hasActiveSearchQuery}
+                  className={[
+                    "hidden overflow-hidden transition-[width,opacity,margin] duration-280 ease-[cubic-bezier(0.22,1,0.36,1)] lg:block",
+                    hasActiveSearchQuery
+                      ? "ml-1 w-11 opacity-100"
+                      : "ml-0 w-0 opacity-0 pointer-events-none",
+                  ].join(" ")}
+                >
                   <button
-                    key={tab}
                     type="button"
-                    onClick={() => setSearchTab(tab)}
-                    className={[
-                      "group relative shrink-0 px-1 py-1.5 text-[0.98rem] leading-none transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                      active
-                        ? "text-zinc-900"
-                        : "text-zinc-600 hover:-translate-y-[1px] hover:text-zinc-900",
-                    ].join(" ")}
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                    tabIndex={hasActiveSearchQuery ? 0 : -1}
+                    className="grid h-11 w-11 place-items-center text-zinc-900"
                   >
-                    <span className="relative z-[1]">{copy[locale].searchTabs[tab]}</span>
-                    <span
-                      aria-hidden="true"
-                      className={[
-                        "pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left transition-transform duration-300",
-                        active
-                          ? "scale-x-100 bg-zinc-900"
-                          : "scale-x-0 bg-zinc-500 group-hover:scale-x-100",
-                      ].join(" ")}
-                    />
+                    <X size={24} weight="regular" />
                   </button>
-                );
-              })}
-            </div>
-          </div>
+                </div>
+              </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 sm:px-6 lg:px-8">
+              <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 lg:mt-2.5">
+                {searchTabs.map((tab) => {
+                  const active = searchTab === tab;
+
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setSearchTab(tab)}
+                      className={[
+                        "group relative shrink-0 px-1 py-1.5 text-[0.98rem] leading-none transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        active
+                          ? "text-zinc-900"
+                          : "text-zinc-600 hover:-translate-y-[1px] hover:text-zinc-900",
+                      ].join(" ")}
+                    >
+                      <span className="relative z-[1]">{copy[locale].searchTabs[tab]}</span>
+                      <span
+                        aria-hidden="true"
+                        className={[
+                          "pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left transition-transform duration-300",
+                          active
+                            ? "scale-x-100 bg-zinc-900"
+                            : "scale-x-0 bg-zinc-500 group-hover:scale-x-100",
+                        ].join(" ")}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 sm:px-6 lg:px-8">
             {isSearchLoading ? (
               <div className="flex min-h-[45vh] flex-col items-center justify-center gap-4 pb-8 pt-2 lg:min-h-0 lg:pt-14">
                 <svg viewBox="0 0 120 120" className="h-16 w-16 text-zinc-900" aria-hidden="true">
@@ -1427,8 +1463,26 @@ export function Header({ floating = false, locale }: HeaderProps) {
             ) : null}
 
             {!isSearchLoading && !hasActiveSearchQuery ? (
-              <div className="flex min-h-[45vh] items-center justify-center pb-8 pt-2 text-center lg:min-h-0 lg:justify-start lg:pt-14">
-                <p className="max-w-[28ch] text-sm leading-6 text-zinc-500">{copy[locale].searchStartHint}</p>
+              <div className="flex min-h-[45vh] items-center justify-center pb-8 pt-3 text-center lg:min-h-0 lg:justify-start lg:pt-16">
+                <div className="flex max-w-[31ch] flex-col items-center gap-3 lg:items-start lg:text-left">
+                  <span className="relative inline-flex h-10 w-10 items-center justify-center text-zinc-500" aria-hidden="true">
+                    <Sparkle
+                      size={18}
+                      weight="fill"
+                      className="animate-pulse"
+                      style={{ animationDuration: "2s" }}
+                    />
+                    <Sparkle
+                      size={11}
+                      weight="fill"
+                      className="absolute -right-0.5 -top-0.5 animate-pulse text-zinc-400"
+                      style={{ animationDuration: "2.4s", animationDelay: "0.35s" }}
+                    />
+                  </span>
+                  <p className="text-[0.98rem] leading-7 tracking-[0.01em] text-zinc-500">
+                    {copy[locale].searchStartHint}
+                  </p>
+                </div>
               </div>
             ) : null}
 
@@ -1482,7 +1536,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                       key={`${item.slug}-${index}`}
                       type="button"
                       onClick={() => openSearchProduct(item.slug)}
-                      className="flex w-full items-center gap-3 border-b border-zinc-200/80 py-3 text-left"
+                      className="flex w-full items-center gap-3 border-b border-zinc-200/80 py-3 text-left transition-colors duration-200 lg:rounded-md lg:px-2 lg:hover:border-zinc-300/80 lg:hover:bg-zinc-200/70"
                     >
                       {item.image.trim() && !brokenSearchImages[item.slug] ? (
                         <span className="relative h-20 w-[4.3rem] shrink-0 overflow-hidden rounded-md bg-zinc-100">
@@ -1526,6 +1580,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 </div>
               </div>
             ) : null}
+            </div>
           </div>
         </aside>
       </div>
