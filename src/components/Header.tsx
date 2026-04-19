@@ -861,7 +861,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
     const nextPath = toLocalePath(basePathname, nextLocale);
 
     // Persist locale immediately and navigate with App Router to avoid a full page reload.
-    document.cookie = `perfoumer-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+    document.cookie = `perfoumer-locale=${encodeURIComponent(nextLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
 
     void fetch("/api/locale", {
       method: "POST",

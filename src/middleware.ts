@@ -48,7 +48,9 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(localeRequestHeader, normalizedLocale);
 
-  if (cookieLocale && normalizedLocale !== defaultLocale) {
+  // Do not force English-prefixed redirects from cookie on bare routes.
+  // This prevents stale "en" cookie values from overriding Azerbaijani after reload.
+  if (cookieLocale && normalizedLocale !== defaultLocale && normalizedLocale !== "en") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = `/${normalizedLocale}${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(redirectUrl);
