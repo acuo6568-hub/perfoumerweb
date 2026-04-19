@@ -144,6 +144,36 @@ create table if not exists public.perfume_summary_cache (
 create index if not exists perfume_summary_cache_slug_locale_idx
   on public.perfume_summary_cache (slug, locale);
 
+create table if not exists public.newsletter_subscribers (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  locale text not null default 'az' check (locale in ('az', 'en', 'ru')),
+  source text not null default 'footer_style' check (char_length(source) between 2 and 80),
+  status text not null default 'subscribed' check (status in ('subscribed', 'unsubscribed')),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists newsletter_subscribers_created_at_idx
+  on public.newsletter_subscribers (created_at desc);
+
+create table if not exists public.newsletter_unsubscribe_tokens (
+  token_hash text primary key,
+  subscriber_email text not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  used_at timestamptz
+);
+
+alter table public.newsletter_unsubscribe_tokens
+  add column if not exists subscriber_email text,
+  add column if not exists created_at timestamptz not null default timezone('utc', now()),
+  add column if not exists updated_at timestamptz not null default timezone('utc', now()),
+  add column if not exists used_at timestamptz;
+
+create index if not exists newsletter_unsubscribe_tokens_email_idx
+  on public.newsletter_unsubscribe_tokens (subscriber_email);
+
 alter table public.cart_items
   add column if not exists perfume_slug text;
 
@@ -256,6 +286,18 @@ before update on public.perfume_summary_cache
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists set_newsletter_subscribers_updated_at on public.newsletter_subscribers;
+create trigger set_newsletter_subscribers_updated_at
+before update on public.newsletter_subscribers
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_newsletter_unsubscribe_tokens_updated_at on public.newsletter_unsubscribe_tokens;
+create trigger set_newsletter_unsubscribe_tokens_updated_at
+before update on public.newsletter_unsubscribe_tokens
+for each row
+execute function public.set_updated_at();
+
 create or replace function public.get_shared_wishlist(p_token text)
 returns table (
   user_id uuid,
@@ -318,6 +360,8 @@ alter table public.ai_chat_sessions enable row level security;
 alter table public.abandoned_cart_recovery enable row level security;
 alter table public.perfume_impression_cache enable row level security;
 alter table public.perfume_summary_cache enable row level security;
+alter table public.newsletter_subscribers enable row level security;
+alter table public.newsletter_unsubscribe_tokens enable row level security;
 
 drop policy if exists "Impression cache is visible to everyone" on public.perfume_impression_cache;
 create policy "Impression cache is visible to everyone"

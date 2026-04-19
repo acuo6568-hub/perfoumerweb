@@ -1,8 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { ArrowCounterClockwise, CheckCircle, ShieldCheck, Truck } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { getDictionary, type Locale } from "@/lib/i18n";
+import { instagramSnapshot } from "@/lib/instagram-snapshot";
 import { getLegalPageLinks } from "@/lib/legal";
 
 function clamp(value: number, min: number, max: number) {
@@ -13,9 +16,20 @@ type FooterProps = {
   locale: Locale;
 };
 
+type StyleImageItem = {
+  id: string;
+  src: string;
+  alt: string;
+  href: string;
+};
+
 export function Footer({ locale }: FooterProps) {
   const footerRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
+  const [email, setEmail] = useState("");
+  const [styleError, setStyleError] = useState("");
+  const [styleSuccess, setStyleSuccess] = useState("");
+  const [isSubmittingStyle, setIsSubmittingStyle] = useState(false);
   const t = getDictionary(locale);
   const legalLinks = getLegalPageLinks(locale);
 
@@ -58,9 +72,191 @@ export function Footer({ locale }: FooterProps) {
     letterSpacing: `${-0.022 + progress * 0.012}em`,
   };
 
+  const trustItems = [
+    {
+      label: t.footer.securePayment,
+      icon: ShieldCheck,
+    },
+    {
+      label: t.footer.fastDelivery,
+      icon: Truck,
+    },
+    {
+      label: t.footer.easyReturns,
+      icon: ArrowCounterClockwise,
+    },
+  ] as const;
+
+  const fallbackStyleImages = [
+    { id: "fallback-1", src: "/perfoumerjar.png", alt: "Perfoumer style image 1", href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-2", src: "/15mlperfoumer.png", alt: "Perfoumer style image 2", href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-3", src: "/30mlperfoumer.png", alt: "Perfoumer style image 3", href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-4", src: "/logo.webp", alt: "Perfoumer style image 4", href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-5", src: "/perfmmob.png", alt: "Perfoumer style image 5", href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-6", src: "/perfmlogo.png", alt: "Perfoumer style image 6", href: "https://www.instagram.com/perfoumer/" },
+  ] as const;
+
+  const snapshotItems = instagramSnapshot.items.map((item) => ({
+    id: item.id,
+    src: item.src,
+    alt: item.alt,
+    href: item.href,
+  })) as StyleImageItem[];
+
+  const displayStyleImages = snapshotItems.length > 0 ? snapshotItems : fallbackStyleImages;
+
+  const handleStyleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmittingStyle) return;
+
+    const normalizedEmail = email.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+    if (!isValidEmail) {
+      setStyleError(t.footer.styleInvalidEmail);
+      setStyleSuccess("");
+      return;
+    }
+
+    setStyleError("");
+    setStyleSuccess("");
+    setIsSubmittingStyle(true);
+
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          locale,
+          source: "footer_style",
+        }),
+      });
+
+      if (!response.ok) {
+        setStyleError(t.footer.styleFailed);
+        return;
+      }
+
+      setEmail("");
+      setStyleSuccess(t.footer.styleSuccess);
+    } catch {
+      setStyleError(t.footer.styleFailed);
+    } finally {
+      setIsSubmittingStyle(false);
+    }
+  };
+
   return (
     <footer id="contact" ref={footerRef} className="mt-16 bg-[#f3f3f2] pb-12 md:mt-20 md:pb-14">
       <div className="mx-auto max-w-[1540px] px-6 md:px-10">
+        <section className="mb-7 md:mb-8" aria-label="Our style">
+          <a
+            href={instagramSnapshot.profileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex text-[1.12rem] font-semibold tracking-[0.01em] text-zinc-900"
+          >
+            {t.footer.styleHandle}
+          </a>
+
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {displayStyleImages.map((image) => (
+              <a
+                key={image.id}
+                href={image.href}
+                target="_blank"
+                rel="noreferrer"
+                className="relative block aspect-square overflow-hidden bg-zinc-200"
+              >
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                  className="object-cover"
+                />
+              </a>
+            ))}
+          </div>
+
+          <div className="mt-6 bg-[#ecece9] px-6 py-10 text-center sm:px-10">
+            <h2 className="text-[clamp(2rem,4vw,3.25rem)] leading-[0.95] tracking-[-0.03em] text-zinc-900">
+              {t.footer.styleTitle}
+            </h2>
+            <p className="mx-auto mt-5 max-w-3xl text-[1.14rem] leading-8 text-zinc-700">
+              {t.footer.styleDescription}
+            </p>
+
+            <form onSubmit={handleStyleSubmit} className="mx-auto mt-8 flex w-full max-w-[760px] flex-col gap-2 sm:flex-row">
+              <label className="sr-only" htmlFor="style-email-input">
+                {t.footer.styleEmailPlaceholder}
+              </label>
+              <input
+                id="style-email-input"
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (styleError) setStyleError("");
+                  if (styleSuccess) setStyleSuccess("");
+                }}
+                placeholder={t.footer.styleEmailPlaceholder}
+                className="h-12 flex-1 border border-zinc-300 bg-white px-5 text-[1.05rem] text-zinc-900 placeholder:text-zinc-500 focus:border-zinc-700 focus:outline-none"
+                disabled={isSubmittingStyle}
+              />
+              <button
+                type="submit"
+                disabled={isSubmittingStyle}
+                className="h-12 min-w-[180px] bg-black px-8 text-[1.03rem] font-semibold tracking-[0.08em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmittingStyle ? t.footer.styleSubmitting : t.footer.styleSubscribe}
+              </button>
+            </form>
+
+            {styleError ? <p className="mt-2 text-sm text-red-700">{styleError}</p> : null}
+
+            <div
+              className={[
+                "mx-auto mt-3 w-full max-w-[760px] overflow-hidden rounded-xl border transition-all duration-500",
+                styleSuccess
+                  ? "max-h-24 translate-y-0 border-zinc-300 bg-white/90 px-4 py-3 opacity-100 shadow-[0_10px_24px_rgba(24,24,24,0.08)]"
+                  : "pointer-events-none max-h-0 -translate-y-1 border-transparent px-0 py-0 opacity-0",
+              ].join(" ")}
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <div className="flex items-start gap-3 text-left">
+                <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-zinc-700 ring-1 ring-zinc-200">
+                  <CheckCircle size={16} weight="regular" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold tracking-[0.02em] text-zinc-900">{t.footer.styleSuccessTitle}</p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-700">{styleSuccess}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mb-5 grid gap-3 md:mb-6 md:grid-cols-3 md:gap-4">
+          {trustItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
+                className="flex min-h-[76px] items-center gap-3 rounded-[0.125rem] border border-zinc-300/75 bg-[#f6f6f5] px-5 py-4"
+              >
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-zinc-700">
+                  <Icon size={20} weight="regular" />
+                </span>
+                <p className="text-[1.08rem] font-medium leading-tight text-zinc-900">{item.label}</p>
+              </div>
+            );
+          })}
+        </div>
+
         <div className="overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.64)_0%,rgba(245,245,243,0.7)_100%)] shadow-[0_24px_56px_rgba(26,26,26,0.06)] ring-1 ring-zinc-200/45">
           <div className="grid gap-10 px-6 pt-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-10 md:px-10 md:pt-12 xl:px-12">
             <div className="text-center md:text-left">
