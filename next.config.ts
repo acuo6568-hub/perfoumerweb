@@ -38,6 +38,11 @@ const nextConfig: NextConfig = {
 				hostname: "www.etirsah.com",
 				pathname: "/storage/photos/**",
 			},
+			{
+				protocol: "https",
+				hostname: "images.unsplash.com",
+				pathname: "/**",
+			},
 		],
 	},
 	async redirects() {

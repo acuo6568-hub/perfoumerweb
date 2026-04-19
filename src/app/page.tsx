@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
 import { BrandLogoMarquee } from "@/components/home/BrandLogoMarquee";
@@ -8,7 +9,7 @@ import { PersonalizedFeaturedGrid } from "@/components/home/PersonalizedFeatured
 import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary, type Locale } from "@/lib/i18n";
-import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
+import { BLOG_ARTICLES } from "@/lib/seo-growth";
 import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
@@ -386,6 +387,16 @@ export default async function Home() {
   ];
   const about = ABOUT_COPY[locale];
   const homepageArticles = BLOG_ARTICLES.slice(0, 8);
+  const blogImagePool = [
+    "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=1200&q=80",
+  ] as const;
+  const homepageArticleCards = homepageArticles.slice(0, 4).map((article, index) => ({
+    ...article,
+    imageSrc: blogImagePool[index % blogImagePool.length],
+  }));
   const faqStructuredData = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -458,57 +469,44 @@ export default async function Home() {
           </Link>
         </div>
 
-        <section className="mt-10 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-          <article className="rounded-[2rem] border border-zinc-200/80 bg-white/82 p-6 shadow-[0_14px_32px_rgba(22,22,24,0.05)] md:p-8">
-            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Seçilmiş kolleksiyalar</p>
-            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Zövqünüzə görə kolleksiyalar</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
-              Kişi, qadın, uniseks, oud, hədiyyə, uzunömürlü, yay və qış kolleksiyalarına keçərək sizə uyğun qoxunu daha rahat seçin.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {CORE_CLUSTER_PAGES.map((cluster) => (
-                <Link
-                  key={cluster.href}
-                  href={cluster.href}
-                  className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
-                >
-                  {cluster.title}
-                </Link>
-              ))}
-            </div>
-          </article>
+        <section className="mt-10 p-1 md:p-0">
+          <div>
+            <p className="text-[0.68rem] font-semibold tracking-[0.24em] text-zinc-500 uppercase">Məqalələr və kampaniyalar</p>
+            <h2 className="mt-2 text-[clamp(2rem,4.2vw,3.4rem)] leading-[1.03] tracking-[-0.02em] text-zinc-900">Faydalı məqalələr</h2>
+          </div>
 
-          <article className="rounded-[2rem] border border-zinc-200/80 bg-white/82 p-6 shadow-[0_14px_32px_rgba(22,22,24,0.05)] md:p-8">
-            <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Məqalələr və kampaniyalar</p>
-            <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">Azərbaycan dilində faydalı məqalələr</h2>
-            <div className="mt-4 space-y-2">
-              {homepageArticles.map((article) => (
-                <Link key={article.slug} href={`/blog/${article.slug}`} className="block rounded-xl border border-zinc-200/80 bg-white px-4 py-3 transition hover:border-zinc-300">
-                  <p className="text-sm font-medium text-zinc-900">{article.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">{article.description}</p>
+          <div className="mt-6 grid gap-5 lg:grid-cols-2 lg:gap-6">
+            {homepageArticleCards.map((article) => (
+              <article key={article.slug} className="grid items-start gap-4 sm:grid-cols-[210px_1fr] sm:gap-5">
+                <Link href={`/blog/${article.slug}`} className="group relative block aspect-[4/3] overflow-hidden rounded-[1.2rem] bg-zinc-200">
+                  <Image
+                    src={article.imageSrc}
+                    alt={article.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 260px"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                  />
                 </Link>
-              ))}
-            </div>
-            <div className="mt-4">
-              <Link href="/blog" className="text-sm font-medium text-zinc-600 transition hover:text-zinc-900">
-                Bütün məqalələrə keç
-              </Link>
-            </div>
-          </article>
-        </section>
 
-        <section className="mt-8 rounded-[2rem] border border-zinc-200/80 bg-white/85 p-6 shadow-[0_14px_30px_rgba(20,20,22,0.05)] md:p-8">
-          <h2 className="text-2xl text-zinc-900 md:text-3xl">Etibar və lokal məlumatlar</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {TRUST_PAGES.map((page) => (
-              <Link
-                key={page.href}
-                href={page.href}
-                className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400"
-              >
-                {page.label}
-              </Link>
+                <div className="pt-0.5">
+                  <Link href={`/blog/${article.slug}`} className="block">
+                    <h3 className="text-[1.95rem] leading-[1.04] tracking-[-0.02em] text-zinc-900 md:text-[2.1rem]">{article.title}</h3>
+                  </Link>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">{article.description}</p>
+                  <Link href={`/blog/${article.slug}`} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-zinc-700 transition hover:text-zinc-900">
+                    Məqaləni oxu
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-300 text-[0.92rem] leading-none">↘</span>
+                  </Link>
+                </div>
+              </article>
             ))}
+          </div>
+
+          <div className="mt-8 flex justify-end">
+            <Link href="/blog" className="inline-flex items-center gap-2 border-b border-zinc-400/70 pb-1 text-[0.82rem] font-semibold tracking-[0.18em] text-zinc-700 uppercase transition-all duration-300 hover:border-zinc-900 hover:text-zinc-900">
+              Bütün məqalələrə bax
+              <span className="text-[0.9rem]">↗</span>
+            </Link>
           </div>
         </section>
 
