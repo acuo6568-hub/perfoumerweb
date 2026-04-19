@@ -285,5 +285,46 @@
         }
       }
     }
+  },
+  "v1::emporio-armani-stronger-with-you-amber::az::Emporio Armani Stronger With You Amber::Giorgio Armani::Unisex::Stokda Var::ənbər::madaqaskar-vanili::lavanda::15-20|30-35|50-55": {
+    "slug": "emporio-armani-stronger-with-you-amber",
+    "locale": "az",
+    "updatedAt": "2026-04-19T00:26:50.046Z",
+    "data": {
+      "summary": "Emporio Armani Stronger With You Amber uniseks ətiridir, ənbər, madaqaskar vanili və lavanda notları ilə zəngindir. Bu ətir payız və qış mövsümləri üçün uyğundur və axşam istifadə üçün idealdır.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 1,
+          "moderate": 3,
+          "long": 4,
+          "very_long": 2
+        },
+        "sillage": {
+          "none": 0,
+          "low": 1,
+          "moderate": 3,
+          "high": 4,
+          "very_high": 2
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 3,
+          "spring": 1,
+          "summer": 0
+        },
+        "timeOfDay": {
+          "morning": 1,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 3,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 2
+        }
+      }
+    }
   }
 }

@@ -65,7 +65,7 @@ const copyByLocale: Record<Locale, Copy> = {
     noItems: "Wishlist boşdur. Məhsul səhifəsindən əlavə edə bilərsən.",
     remove: "Sil",
     confirmRemoveTitle: "Wishlist-dən silinsin?",
-    confirmRemoveBody: "{name} məhsulu istək siyahısından silinəcək.",
+    confirmRemoveBody: "{name} məhsulu seçilmişlərdən silinəcək.",
     cancel: "Ləğv et",
     confirm: "Bəli, sil",
     removing: "Silinir...",

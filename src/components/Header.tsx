@@ -99,7 +99,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
     az: {
       login: "Giriş",
       account: "Hesabım",
-      wishlist: "İstək siyahısı",
+      wishlist: "Seçilmişlər",
       blog: "Blog",
       aboutPage: "Haqqımızda",
       navTitle: "Naviqasiya",

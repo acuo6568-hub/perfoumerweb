@@ -17,7 +17,7 @@ type PerfumeWishlistButtonProps = {
 
 const copy = {
   az: {
-    save: "İstək siyahısına əlavə et",
+    save: "Seçilmişlərə əlavə et",
     saved: "Saxlanılıb",
   },
   en: {

@@ -428,7 +428,7 @@ export function PerfumePurchasePanel({
               void addToCart(false);
             }}
             disabled={isSubmitting}
-            className="inline-flex min-h-13 items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-lg font-medium text-zinc-800 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-13 items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-lg font-semibold text-zinc-900 shadow-[0_8px_22px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-50 hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)] active:translate-y-0 active:bg-zinc-100 active:shadow-[0_7px_16px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:border-zinc-300 disabled:hover:bg-white disabled:hover:text-zinc-900 disabled:hover:shadow-[0_8px_22px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)]"
           >
             {isSubmitting ? copy.adding : copy.addToCart}
           </button>
@@ -437,7 +437,7 @@ export function PerfumePurchasePanel({
             href={inquiryHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center gap-2.5 rounded-full bg-[#31302f] px-6 text-lg font-medium text-white transition hover:opacity-95"
+            className="inline-flex min-h-13 w-full items-center justify-center gap-2.5 rounded-full border border-black bg-black px-6 text-lg font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-transparent hover:text-black hover:shadow-[0_10px_22px_rgba(0,0,0,0.14)] active:translate-y-0 active:bg-black active:text-white active:shadow-[0_7px_18px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
           >
             <WhatsappLogo size={20} weight="fill" aria-hidden="true" />
             <span>{copy.inquiry}</span>
@@ -448,7 +448,7 @@ export function PerfumePurchasePanel({
           href={inquiryHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center gap-2.5 rounded-full bg-[#31302f] px-6 text-lg font-medium text-white transition hover:opacity-95"
+          className="inline-flex min-h-13 w-full items-center justify-center gap-2.5 rounded-full border border-black bg-black px-6 text-lg font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-transparent hover:text-black hover:shadow-[0_10px_22px_rgba(0,0,0,0.14)] active:translate-y-0 active:bg-black active:text-white active:shadow-[0_7px_18px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
         >
           <WhatsappLogo size={20} weight="fill" aria-hidden="true" />
           <span>{copy.inquiry}</span>

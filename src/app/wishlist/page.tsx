@@ -8,7 +8,7 @@ import type { Locale } from "@/lib/i18n";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 
 export const metadata: Metadata = {
-  title: "İstək siyahısı",
+  title: "Seçilmişlər",
   robots: {
     index: false,
     follow: false,
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 const pageCopy: Record<Locale, { title: string; subtitle: string }> = {
   az: {
-    title: "İstək siyahısı",
+    title: "Seçilmişlər",
     subtitle: "Sonra müqayisə etmək və saxlamaq istədiyin ətirlərin şəxsi siyahısı.",
   },
   en: {

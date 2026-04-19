@@ -212,7 +212,7 @@ const legalPages: Record<Locale, Record<LegalPageSlug, LegalPageContent>> = {
         {
           title: "Hesab və istifadəçi məzmunu",
           paragraphs: [
-            "Hesab sahibi giriş məlumatlarının təhlükəsiz saxlanmasına cavabdehdir. Şərh, istək siyahısı və digər hesab funksiyaları saytdakı qaydalara uyğun istifadə edilməlidir.",
+            "Hesab sahibi giriş məlumatlarının təhlükəsiz saxlanmasına cavabdehdir. Şərh, seçilmişlər və digər hesab funksiyaları saytdakı qaydalara uyğun istifadə edilməlidir.",
           ],
           bullets: [
             "Hesab fəaliyyətinə görə əsas məsuliyyət istifadəçiyə aiddir.",
@@ -294,7 +294,7 @@ const legalPages: Record<Locale, Record<LegalPageSlug, LegalPageContent>> = {
           bullets: [
             "Ad, soyad, e-poçt ünvanı və telefon kimi əlaqə məlumatları.",
             "Sifariş detalları, çatdırılma ünvanı və ödənişlə bağlı texniki status məlumatı.",
-            "Hesab fəaliyyəti, istək siyahısı, səbət və saytdakı seçim davranışları.",
+            "Hesab fəaliyyəti, seçilmişlər, səbət və saytdakı seçim davranışları.",
             "Qanuni tələblər əsasında tələb olunduqda təsdiqləyici əməliyyat qeydləri.",
           ],
         },
