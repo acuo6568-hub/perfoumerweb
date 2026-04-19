@@ -151,89 +151,102 @@ export function Footer({ locale }: FooterProps) {
   return (
     <footer id="contact" ref={footerRef} className="mt-16 bg-[#f3f3f2] pb-12 md:mt-20 md:pb-14">
       <div className="mx-auto max-w-[1540px] px-6 md:px-10">
-        <section className="mb-7 md:mb-8" aria-label="Our style">
-          <a
-            href={instagramSnapshot.profileUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex text-[0.98rem] font-semibold tracking-[0.01em] text-zinc-900 sm:text-[1.12rem]"
-          >
-            {t.footer.styleHandle}
-          </a>
+        <section
+          className="relative mb-7 overflow-hidden rounded-[1.2rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(248,248,246,0.95)_0%,rgba(236,236,233,0.92)_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(20,20,20,0.045)] md:mb-8 md:px-6 md:py-6"
+          aria-label="Our style"
+        >
+          <div className="flex items-center gap-3 border-b border-zinc-200/80 pb-3">
+            <a
+              href={instagramSnapshot.profileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex text-[0.92rem] font-semibold tracking-[0.06em] text-zinc-900 uppercase sm:text-[0.98rem]"
+            >
+              {t.footer.styleHandle}
+            </a>
+            <span className="h-px flex-1 bg-zinc-200/90" />
+          </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
+          <div className="mt-4 grid grid-cols-3 gap-2 md:grid-cols-6 md:gap-3">
             {displayStyleImages.map((image) => (
               <a
                 key={image.id}
                 href={image.href}
                 target="_blank"
                 rel="noreferrer"
-                className="relative block aspect-square overflow-hidden bg-zinc-200"
+                className="relative block aspect-[4/5] overflow-hidden rounded-[0.65rem] bg-zinc-200"
               >
                 <Image
                   src={image.src}
                   alt={image.alt}
                   fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                  sizes="(max-width: 768px) 33vw, 16vw"
                   className="object-cover"
                 />
               </a>
             ))}
           </div>
 
-          <div className="mt-5 rounded-[1.05rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(244,244,242,0.95)_0%,rgba(236,236,233,0.92)_100%)] px-4 py-8 text-center shadow-[0_14px_28px_rgba(22,22,22,0.04)] sm:mt-6 sm:px-10 sm:py-10">
-            <h2
-              className="text-[clamp(1.72rem,6.2vw,3.25rem)] leading-[0.99] tracking-[-0.02em] text-zinc-900"
-              style={{ fontFamily: "Iowan Old Style, Baskerville, Times New Roman, serif" }}
-            >
-              {t.footer.styleTitle}
-            </h2>
-            <p className="mx-auto mt-4 max-w-3xl text-[1.02rem] leading-7 text-zinc-700 sm:mt-5 sm:text-[1.12rem] sm:leading-8">
-              {t.footer.styleDescription}
-            </p>
-
-            <form onSubmit={handleStyleSubmit} className="mx-auto mt-6 flex w-full max-w-[760px] flex-col gap-2.5 sm:mt-8 sm:flex-row sm:items-stretch sm:gap-2.5">
-              <label className="sr-only" htmlFor="style-email-input">
-                {t.footer.styleEmailPlaceholder}
-              </label>
-              <input
-                id="style-email-input"
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  if (styleError) setStyleError("");
-                  if (styleSuccess) setStyleSuccess("");
-                }}
-                placeholder={t.footer.styleEmailPlaceholder}
-                className="h-16 w-full flex-1 rounded-[0.78rem] border border-zinc-300 bg-white px-5 text-[1.06rem] font-normal text-zinc-900 placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_6px_12px_rgba(18,18,18,0.05)] focus:border-zinc-700 focus:outline-none md:h-12 md:rounded-[0.45rem] md:px-5 md:text-[1.04rem] md:shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
-                disabled={isSubmittingStyle}
-              />
-              <button
-                type="submit"
-                disabled={isSubmittingStyle}
-                className="h-16 w-full min-w-[180px] rounded-[0.78rem] bg-black px-8 text-[1rem] font-semibold tracking-[0.08em] text-white uppercase shadow-[0_8px_18px_rgba(12,12,12,0.22)] disabled:cursor-not-allowed disabled:opacity-70 md:h-12 md:w-auto md:rounded-[0.45rem] md:text-[1.02rem]"
-              >
-                {isSubmittingStyle ? t.footer.styleSubmitting : t.footer.styleSubscribe}
-              </button>
-            </form>
-
-            {styleError ? <p className="mt-2 text-sm text-red-700">{styleError}</p> : null}
-
-            {styleSuccess ? (
-              <div
-                className="mx-auto mt-4 flex w-full max-w-[760px] items-center justify-center gap-3 text-center text-zinc-900"
-                aria-live="polite"
-                aria-atomic="true"
-              >
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-zinc-900">
-                  <CheckCircle size={20} weight="bold" />
-                </span>
-                <p className="text-[1rem] font-medium leading-6 text-zinc-900 sm:text-[1.06rem]">
-                  {styleSuccess}
+          <div className="mt-5 rounded-[0.95rem] border border-zinc-200/80 bg-white/55 px-4 py-5 backdrop-blur-[1px] sm:px-5 md:mt-6 md:px-6 md:py-5">
+            <div className="grid gap-5 md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-8 lg:gap-10">
+              <div className="text-center md:pr-3 md:text-left">
+                <h2
+                  className="text-[clamp(1.55rem,4vw,2.35rem)] leading-[1.01] tracking-[-0.015em] text-zinc-900"
+                  style={{ fontFamily: "Iowan Old Style, Baskerville, Times New Roman, serif" }}
+                >
+                  {t.footer.styleTitle}
+                </h2>
+                <p className="mt-3 text-[0.95rem] leading-7 text-zinc-700 sm:text-[0.98rem] sm:leading-8">
+                  {t.footer.styleDescription}
                 </p>
               </div>
-            ) : null}
+
+              <div className="md:border-l md:border-zinc-200/80 md:pl-6 lg:pl-7">
+                <form
+                  onSubmit={handleStyleSubmit}
+                  className="flex w-full flex-col gap-2.5 rounded-[0.85rem] border border-zinc-200/80 bg-white/80 p-2.5 shadow-[0_10px_24px_rgba(18,18,18,0.06)]"
+                >
+                  <label className="sr-only" htmlFor="style-email-input">
+                    {t.footer.styleEmailPlaceholder}
+                  </label>
+                  <input
+                    id="style-email-input"
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      if (styleError) setStyleError("");
+                      if (styleSuccess) setStyleSuccess("");
+                    }}
+                    placeholder={t.footer.styleEmailPlaceholder}
+                    className="h-14 w-full rounded-[0.72rem] border border-zinc-300 bg-white px-4 text-[1.02rem] text-zinc-900 placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_5px_12px_rgba(18,18,18,0.05)] focus:border-zinc-700 focus:outline-none md:h-12"
+                    disabled={isSubmittingStyle}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmittingStyle}
+                    className="h-14 w-full rounded-[0.72rem] bg-black px-6 text-[0.98rem] font-semibold tracking-[0.1em] text-white uppercase shadow-[0_10px_20px_rgba(12,12,12,0.23)] disabled:cursor-not-allowed disabled:opacity-70 md:h-12"
+                  >
+                    {isSubmittingStyle ? t.footer.styleSubmitting : t.footer.styleSubscribe}
+                  </button>
+                </form>
+
+                {styleError ? <p className="mt-2 text-sm text-red-700">{styleError}</p> : null}
+
+                {styleSuccess ? (
+                  <div
+                    className="mt-3 flex items-center gap-2.5 text-zinc-900"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center text-zinc-900">
+                      <CheckCircle size={18} weight="bold" />
+                    </span>
+                    <p className="text-[0.98rem] font-medium leading-6 text-zinc-900">{styleSuccess}</p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -282,6 +295,14 @@ export function Footer({ locale }: FooterProps) {
                   WhatsApp
                 </a>
               </div>
+              <a
+                href="https://maps.app.goo.gl/Wpw5PwXDEuhnd6wB6"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex text-[0.98rem] leading-[1.45] text-zinc-600 transition-colors hover:text-zinc-900"
+              >
+                Mirzəağa Əliyev Küçəsi, Bakı 1009, Azerbaijan
+              </a>
             </div>
 
             <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-end md:gap-12">
