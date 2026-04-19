@@ -326,5 +326,46 @@
         }
       }
     }
+  },
+  "v1::aoud::az::Aoud::M. Micallef::Kişi::Stokda Var::qızılgül::darçın,hind-qozu,səndəl,zəfəran,aqar-ağacı-ud::bal,paçuli::15-32|30-55|50-90": {
+    "slug": "aoud",
+    "locale": "az",
+    "updatedAt": "2026-04-19T03:14:33.382Z",
+    "data": {
+      "summary": "M. Micallef Aoud kişilər üçün zəngin və ədviyyatlı ətirdir, xüsusilə payız və qış mövsümləri üçün uyğundur. Uzunömürlü və yüksək iz buraxan bir kompozisiyadır.",
+      "matrix": {
+        "longevity": {
+          "weak": 0,
+          "unstable": 0,
+          "moderate": 1,
+          "long": 4,
+          "very_long": 3
+        },
+        "sillage": {
+          "none": 0,
+          "low": 0,
+          "moderate": 2,
+          "high": 4,
+          "very_high": 3
+        },
+        "season": {
+          "autumn": 4,
+          "winter": 5,
+          "spring": 2,
+          "summer": 1
+        },
+        "timeOfDay": {
+          "morning": 2,
+          "evening": 4
+        },
+        "age": {
+          "under_18": 0,
+          "age_18_25": 2,
+          "age_26_35": 4,
+          "age_35_45": 3,
+          "age_45_plus": 3
+        }
+      }
+    }
   }
 }
