@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowLeft,
@@ -92,6 +92,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const wishlistCountRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
   const { pathname: basePathname } = stripLocalePrefix(pathname);
   const t = getDictionary(locale);
   const supabase = getSupabaseBrowserClient();
@@ -858,23 +859,30 @@ export function Header({ floating = false, locale }: HeaderProps) {
     setIsMenuOpen(false);
     setIsMobileLocaleMenuOpen(false);
 
-    const nextPath = toLocalePath(basePathname, nextLocale);
+    const nextSearch = searchParams.toString();
+    const nextHash = typeof window === "undefined" ? "" : window.location.hash;
+    const nextPath = `${toLocalePath(basePathname, nextLocale)}${nextSearch ? `?${nextSearch}` : ""}${nextHash}`;
 
-    // Persist locale immediately and navigate with App Router to avoid a full page reload.
-    document.cookie = `perfoumer-locale=${encodeURIComponent(nextLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    try {
+      const response = await fetch("/api/locale", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ locale: nextLocale }),
+        keepalive: true,
+        cache: "no-store",
+      });
 
-    void fetch("/api/locale", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ locale: nextLocale }),
-      keepalive: true,
-      cache: "no-store",
-    }).catch(() => {
-      // Cookie is already set client-side; continue navigation even if this request fails.
+      if (!response.ok) {
+        throw new Error("Locale persistence failed.");
+      }
+    } catch {
+      // Fall back to a client cookie if the route handler request fails.
+      document.cookie = `perfoumer-locale=${encodeURIComponent(nextLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    }
+
+    startLocaleTransition(() => {
+      router.replace(nextPath, { scroll: false });
     });
-
-    router.replace(nextPath, { scroll: false });
-    router.refresh();
   };
 
   return (
