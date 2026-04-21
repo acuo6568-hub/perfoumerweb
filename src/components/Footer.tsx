@@ -2,11 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowCounterClockwise, CheckCircle, ShieldCheck, Truck } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
-import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
+import type { Session } from "@supabase/supabase-js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { getDictionary, stripLocalePrefix, toLocalePath, type Locale } from "@/lib/i18n";
 import { instagramSnapshot } from "@/lib/instagram-snapshot";
 import { getLegalPageLinks } from "@/lib/legal";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+
+const SIGNUP_BANNER_DISMISS_KEY = "perfoumer:signup-footer-dismissed";
+const SIGNUP_BANNER_DISMISS_UNTIL_KEY = "perfoumer:signup-footer-dismiss-until";
+const SIGNUP_BANNER_ANIMATION_MS = 260;
+const SIGNUP_BANNER_COOLDOWN_MS = 12 * 60 * 1000;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -30,8 +39,53 @@ export function Footer({ locale }: FooterProps) {
   const [styleError, setStyleError] = useState("");
   const [styleSuccess, setStyleSuccess] = useState("");
   const [isSubmittingStyle, setIsSubmittingStyle] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isSessionResolved, setIsSessionResolved] = useState(() => !isSupabaseConfigured());
+  const [isSignupBannerReady, setIsSignupBannerReady] = useState(false);
+  const [isSignupBannerDismissed, setIsSignupBannerDismissed] = useState(false);
+  const [isSignupBannerMounted, setIsSignupBannerMounted] = useState(false);
+  const [isSignupBannerVisible, setIsSignupBannerVisible] = useState(false);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const t = getDictionary(locale);
   const legalLinks = getLegalPageLinks(locale);
+  const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
+  const { pathname: basePathname } = stripLocalePrefix(pathname);
+  const supabase = getSupabaseBrowserClient();
+  const signupCopy = {
+    az: {
+      title: "Sevdiyin ətirləri itirmə.",
+      body: "Wishlist yarat, müqayisə et və sifarişi daha sürətli tamamla.",
+      cta: "Pulsuz hesab yarat",
+      close: "Banneri bağla",
+    },
+    en: {
+      title: "Don't lose the scents you like.",
+      body: "Create a wishlist, compare favorites, and check out faster.",
+      cta: "Create Free Account",
+      close: "Close banner",
+    },
+    ru: {
+      title: "Не теряйте понравившиеся ароматы.",
+      body: "Сохраняйте избранное, сравнивайте варианты и оформляйте заказ быстрее.",
+      cta: "Создать аккаунт",
+      close: "Закрыть баннер",
+    },
+  } as const;
+  const currentSearch = searchParams.toString();
+  const currentLocalizedPath = useMemo(() => {
+    return `${toLocalePath(basePathname, locale)}${currentSearch ? `?${currentSearch}` : ""}`;
+  }, [basePathname, currentSearch, locale]);
+  const signupHref = useMemo(() => {
+    return `${toLocalePath("/login", locale)}?mode=signup&next=${encodeURIComponent(currentLocalizedPath)}`;
+  }, [currentLocalizedPath, locale]);
+  const isAuthPage = basePathname === "/login" || basePathname.startsWith("/auth");
+  const showSignupBanner =
+    isSessionResolved &&
+    isSignupBannerReady &&
+    !session &&
+    !isAuthPage &&
+    !isSignupBannerDismissed;
 
   useEffect(() => {
     let raf = 0;
@@ -65,6 +119,112 @@ export function Footer({ locale }: FooterProps) {
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setIsSignupBannerReady(true);
+    setPortalRoot(document.body);
+
+    let resetTimer = 0;
+
+    try {
+      const dismissUntil = Number(window.localStorage.getItem(SIGNUP_BANNER_DISMISS_UNTIL_KEY) ?? "0");
+      const sessionDismissed = window.sessionStorage.getItem(SIGNUP_BANNER_DISMISS_KEY) === "1";
+      const remainingMs = dismissUntil - Date.now();
+
+      if (sessionDismissed || (Number.isFinite(dismissUntil) && remainingMs > 0)) {
+        setIsSignupBannerDismissed(true);
+
+        if (remainingMs > 0) {
+          resetTimer = window.setTimeout(() => {
+            window.sessionStorage.removeItem(SIGNUP_BANNER_DISMISS_KEY);
+            window.localStorage.removeItem(SIGNUP_BANNER_DISMISS_UNTIL_KEY);
+            setIsSignupBannerDismissed(false);
+          }, remainingMs);
+        }
+      } else {
+        window.sessionStorage.removeItem(SIGNUP_BANNER_DISMISS_KEY);
+        window.localStorage.removeItem(SIGNUP_BANNER_DISMISS_UNTIL_KEY);
+        setIsSignupBannerDismissed(false);
+      }
+    } catch {
+      setIsSignupBannerDismissed(false);
+    }
+
+    return () => {
+      if (resetTimer) {
+        window.clearTimeout(resetTimer);
+      }
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!supabase || !isSupabaseConfigured()) {
+      setIsSessionResolved(true);
+      return;
+    }
+
+    let isMounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return;
+      setSession(data.session ?? null);
+      setIsSessionResolved(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!isMounted) return;
+      setSession(nextSession);
+      setIsSessionResolved(true);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!showSignupBanner) {
+      setIsSignupBannerVisible(false);
+      const timer = window.setTimeout(() => {
+        setIsSignupBannerMounted(false);
+      }, SIGNUP_BANNER_ANIMATION_MS);
+
+      return () => window.clearTimeout(timer);
+    }
+
+    setIsSignupBannerMounted(true);
+    const frameId = window.requestAnimationFrame(() => {
+      setIsSignupBannerVisible(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [showSignupBanner]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("perfoumer:signup-banner-visibility", {
+        detail: { isOpen: isSignupBannerMounted },
+      }),
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("perfoumer:signup-banner-visibility", {
+          detail: { isOpen: false },
+        }),
+      );
+    };
+  }, [isSignupBannerMounted]);
 
   const wordmarkStyle = {
     transform: `translate3d(0, ${(1 - progress) * 46}px, 0)`,
@@ -104,6 +264,70 @@ export function Footer({ locale }: FooterProps) {
   })) as StyleImageItem[];
 
   const displayStyleImages = snapshotItems.length > 0 ? snapshotItems : fallbackStyleImages;
+
+  const dismissSignupBanner = () => {
+    setIsSignupBannerVisible(false);
+
+    if (typeof window === "undefined") {
+      setIsSignupBannerDismissed(true);
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(SIGNUP_BANNER_DISMISS_KEY, "1");
+      window.localStorage.setItem(
+        SIGNUP_BANNER_DISMISS_UNTIL_KEY,
+        String(Date.now() + SIGNUP_BANNER_COOLDOWN_MS),
+      );
+    } catch {
+      // Ignore storage failures so the banner can still be closed.
+    }
+
+    window.setTimeout(() => {
+      setIsSignupBannerDismissed(true);
+    }, SIGNUP_BANNER_ANIMATION_MS);
+  };
+
+  const signupBannerMarkup = (
+    <section aria-label={signupCopy[locale].title}>
+      <div
+        className="border-t border-zinc-200/80 bg-white/92 shadow-[0_-14px_32px_rgba(20,20,20,0.035)] backdrop-blur-[10px]"
+        style={{
+          opacity: isSignupBannerVisible ? 1 : 0,
+          transform: isSignupBannerVisible ? "translate3d(0, 0, 0) scale(1)" : "translate3d(0, 18px, 0) scale(0.96)",
+          transition: "opacity 260ms cubic-bezier(0.22,1,0.36,1), transform 260ms cubic-bezier(0.22,1,0.36,1)",
+        }}
+      >
+        <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between md:px-10">
+          <div className="min-w-0">
+            <p className="text-[1rem] leading-tight font-medium tracking-[-0.02em] text-zinc-900">
+              {signupCopy[locale].title}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              {signupCopy[locale].body}
+            </p>
+          </div>
+
+          <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-auto md:self-auto">
+            <Link
+              href={signupHref}
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-5 py-2.5 text-[0.74rem] font-semibold tracking-[0.18em] text-white uppercase transition-colors duration-200 hover:bg-zinc-800 sm:flex-none"
+            >
+              {signupCopy[locale].cta}
+            </Link>
+            <button
+              type="button"
+              onClick={dismissSignupBanner}
+              aria-label={signupCopy[locale].close}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 transition-colors duration-200 hover:text-zinc-900"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 
   const handleStyleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -150,6 +374,17 @@ export function Footer({ locale }: FooterProps) {
 
   return (
     <footer id="contact" ref={footerRef} className="mt-16 bg-[#f3f3f2] pb-12 md:mt-20 md:pb-14">
+      {isSignupBannerMounted && portalRoot
+        ? createPortal(
+            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70]">
+              <div className="pointer-events-auto w-full">
+                {signupBannerMarkup}
+              </div>
+            </div>,
+            portalRoot,
+          )
+        : null}
+
       <div className="mx-auto max-w-[1540px] px-6 md:px-10">
         <section
           className="relative mb-7 overflow-hidden rounded-[1.2rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(248,248,246,0.95)_0%,rgba(236,236,233,0.92)_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(20,20,20,0.045)] md:mb-8 md:px-6 md:py-6"

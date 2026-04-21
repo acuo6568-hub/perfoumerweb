@@ -18,6 +18,7 @@ export function AIChatButton({ locale }: AIChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isUiOverlayOpen, setIsUiOverlayOpen] = useState(false);
+  const [isSignupBannerOpen, setIsSignupBannerOpen] = useState(false);
   const copy = copyByLocale[locale];
 
   const handleOpen = useCallback(() => {
@@ -42,10 +43,21 @@ export function AIChatButton({ locale }: AIChatButtonProps) {
       setIsUiOverlayOpen(Boolean(customEvent.detail?.isOpen));
     };
 
+    const handleSignupBannerState = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isOpen?: boolean }>;
+      const nextIsOpen = Boolean(customEvent.detail?.isOpen);
+      setIsSignupBannerOpen(nextIsOpen);
+      if (nextIsOpen) {
+        setIsOpen(false);
+      }
+    };
+
     window.addEventListener("perfoumer:ui-overlay", handleOverlayState as EventListener);
+    window.addEventListener("perfoumer:signup-banner-visibility", handleSignupBannerState as EventListener);
 
     return () => {
       window.removeEventListener("perfoumer:ui-overlay", handleOverlayState as EventListener);
+      window.removeEventListener("perfoumer:signup-banner-visibility", handleSignupBannerState as EventListener);
     };
   }, []);
 
@@ -56,7 +68,7 @@ export function AIChatButton({ locale }: AIChatButtonProps) {
       isOpen={isOpen}
       onOpen={handleOpen}
       onClose={handleClose}
-      isTriggerHidden={isUiOverlayOpen}
+      isTriggerHidden={isUiOverlayOpen || isSignupBannerOpen}
       locale={locale}
       womanVideoUrl="/womanvideo.mp4"
       contactVideoUrl="/contactvideo.mp4"
