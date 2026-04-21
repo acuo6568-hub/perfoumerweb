@@ -348,6 +348,257 @@ function isHomepageEligible(perfume: Perfume) {
   return perfume.sizes.some((size) => Number.isFinite(size.price) && size.price > 0);
 }
 
+// Inference: tuned toward 2026 demand signals (gourmand, warm amber/oud, fresh unisex)
+// and Azerbaijan-facing catalog availability for men, women, and unisex spotlight coverage.
+const HERO_SLUG_WEIGHTS: Record<string, number> = {
+  guidance: 56,
+  "guidance-46": 52,
+  "baccarat-rouge-540": 50,
+  "santal-33": 48,
+  khamrah: 46,
+  "invite-only-amber-23": 46,
+  "vanilla-royale-sugared-patchouli-64": 44,
+  "oud-satin-mood": 44,
+  "wood-sage-sea-salt": 42,
+  "gypsy-water": 40,
+  "santal-royal": 40,
+  "blue-talisman": 39,
+  "erba-pura": 38,
+  "oud-for-greatness": 38,
+  "delina": 50,
+  "delina-exclusif": 48,
+  "love-delight": 46,
+  "eden-sparkling-lychee-39": 44,
+  "vanilla-candy-rock-sugar-42": 43,
+  "libre-vanille-couture": 40,
+  "elysium-pour-homme": 52,
+  "boss-bottled-oud-saffron": 44,
+  hero: 38,
+  "bvlgari-man-wood-essence": 36,
+  "oud-malaki": 34,
+};
+
+const HERO_BRAND_WEIGHTS: Record<string, number> = {
+  amouage: 22,
+  kayali: 20,
+  mfk: 20,
+  "maison francis kurkdjian": 20,
+  "parfums de marly": 19,
+  roja: 18,
+  "le labo": 18,
+  "jo malone": 17,
+  byredo: 17,
+  xerjoff: 16,
+  lattafa: 16,
+  exnihilo: 15,
+  "ex nihilo": 15,
+  kilian: 15,
+  "tom ford": 14,
+  initio: 14,
+  sospiro: 14,
+  guerlain: 13,
+  burberry: 12,
+  bvlgari: 12,
+  boss: 11,
+  "hugo boss": 11,
+};
+
+const HERO_NOTE_WEIGHTS: Record<string, number> = {
+  vanil: 10,
+  ənbər: 9,
+  "aqar-ağacı-ud": 9,
+  zəfəran: 8,
+  darçın: 8,
+  bal: 7,
+  tütün: 7,
+  praline: 7,
+  qəhvəyi: 6,
+  liçi: 6,
+  meyvə: 6,
+  jasmin: 5,
+  qızılgül: 5,
+  berqamot: 5,
+  "portağal-çiçəyi": 5,
+  dəri: 5,
+  müşk: 4,
+  səndəl: 4,
+};
+
+const HERO_BUCKET_TARGETS = ["female", "male", "unisex"] as const;
+const HOME_HERO_ROTATION_SECONDS = 300;
+const HOME_HERO_MIN_ITEMS = 4;
+const HOME_HERO_MAX_ITEMS = 6;
+
+function hashHeroSeed(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 33 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+}
+
+function rotateHeroEntries<T>(items: T[], seed: string) {
+  if (!items.length) {
+    return items;
+  }
+
+  const offset = hashHeroSeed(seed) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
+function normalizeHeroGenderBucket(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.includes("unisex")) return "unisex" as const;
+  if (normalized.includes("qad") || normalized.includes("women") || normalized.includes("female")) {
+    return "female" as const;
+  }
+  if (normalized.includes("kişi") || normalized.includes("men") || normalized.includes("male")) {
+    return "male" as const;
+  }
+
+  return "unisex" as const;
+}
+
+function getHeroRotationSeed() {
+  const bucket = Math.floor(Date.now() / (HOME_HERO_ROTATION_SECONDS * 1000));
+  return `hero-window-${bucket}`;
+}
+
+function getHeroTargetCount(seed: string) {
+  return HOME_HERO_MIN_ITEMS + (hashHeroSeed(`${seed}:count`) % (HOME_HERO_MAX_ITEMS - HOME_HERO_MIN_ITEMS + 1));
+}
+
+function scoreHeroPerfume(perfume: Perfume, featuredIdentitySet: Set<string>) {
+  let score = 0;
+
+  if (perfume.inStock) {
+    score += 30;
+  }
+
+  if (featuredIdentitySet.has(homeIdentity(perfume))) {
+    score += 24;
+  }
+
+  score += HERO_SLUG_WEIGHTS[perfume.slug] ?? 0;
+  score += HERO_BRAND_WEIGHTS[normalizeHomeKeyPart(perfume.brand)] ?? 0;
+
+  const startingPrice = getStartingPrice(perfume);
+  if (Number.isFinite(startingPrice)) {
+    if (startingPrice >= 20 && startingPrice <= 70) {
+      score += 12;
+    } else if (startingPrice <= 110) {
+      score += 6;
+    }
+  }
+
+  score += Math.min(perfume.sizes.length, 3) * 4;
+
+  const genderBucket = normalizeHeroGenderBucket(perfume.gender);
+  if (genderBucket === "unisex") {
+    score += 10;
+  } else if (genderBucket === "female") {
+    score += 6;
+  } else {
+    score += 5;
+  }
+
+  const notePool = new Set([
+    ...perfume.noteSlugs.top,
+    ...perfume.noteSlugs.heart,
+    ...perfume.noteSlugs.base,
+  ]);
+  for (const note of notePool) {
+    score += HERO_NOTE_WEIGHTS[note] ?? 0;
+  }
+
+  return score;
+}
+
+function buildHeroSpotlights(featured: Perfume[], homepagePerfumes: Perfume[]) {
+  const featuredIdentitySet = new Set(featured.map(homeIdentity));
+  const candidates = dedupeForHomepage([...featured, ...homepagePerfumes]).filter(isHomepageEligible);
+  const ranked = candidates
+    .map((perfume, index) => ({
+      perfume,
+      score: scoreHeroPerfume(perfume, featuredIdentitySet),
+      index,
+    }))
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      return left.index - right.index;
+    });
+
+  const selected: Perfume[] = [];
+  const usedBrands = new Set<string>();
+  const genderCounts = {
+    male: 0,
+    female: 0,
+    unisex: 0,
+  };
+  const rotationSeed = getHeroRotationSeed();
+  const targetCount = Math.min(getHeroTargetCount(rotationSeed), ranked.length);
+
+  const canUsePerfume = (perfume: Perfume, relaxed = false) => {
+    const identity = homeIdentity(perfume);
+    if (selected.some((entry) => homeIdentity(entry) === identity)) {
+      return false;
+    }
+
+    const normalizedBrand = normalizeHomeKeyPart(perfume.brand);
+    const genderBucket = normalizeHeroGenderBucket(perfume.gender);
+
+    if (!relaxed && usedBrands.has(normalizedBrand) && selected.length < Math.max(3, targetCount - 2)) {
+      return false;
+    }
+
+    if (!relaxed && genderCounts[genderBucket] >= (genderBucket === "unisex" ? 2 : 1)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const addPerfume = (perfume: Perfume) => {
+    selected.push(perfume);
+    usedBrands.add(normalizeHomeKeyPart(perfume.brand));
+    genderCounts[normalizeHeroGenderBucket(perfume.gender)] += 1;
+  };
+
+  for (const bucket of HERO_BUCKET_TARGETS) {
+    const bucketMatches = ranked.filter((entry) => {
+      return normalizeHeroGenderBucket(entry.perfume.gender) === bucket && canUsePerfume(entry.perfume);
+    });
+    const match = rotateHeroEntries(bucketMatches.slice(0, Math.max(targetCount * 2, 6)), `${rotationSeed}:${bucket}`)[0];
+
+    if (match) {
+      addPerfume(match.perfume);
+    }
+  }
+
+  const rotatedRemainder = rotateHeroEntries(ranked, `${rotationSeed}:wildcard`);
+  for (const entry of rotatedRemainder) {
+    if (selected.length >= targetCount) {
+      break;
+    }
+
+    if (!canUsePerfume(entry.perfume, selected.length >= Math.max(2, targetCount - 3))) {
+      continue;
+    }
+
+    addPerfume(entry.perfume);
+  }
+
+  return selected.slice(0, targetCount);
+}
+
+export const revalidate = 300;
+
 export default async function Home() {
   const locale = await getCurrentLocale();
   const t = getDictionary(locale);
@@ -373,6 +624,8 @@ export default async function Home() {
       }
     }
   }
+
+  const heroSpotlights = buildHeroSpotlights(featured, homepagePerfumes);
 
   const heroProducts = homepagePerfumes.map((perfume) => ({
     slug: perfume.slug,
@@ -437,7 +690,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(featuredListStructuredData) }}
       />
       <div className="mx-auto max-w-[1540px] px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-5 md:px-10 md:pt-4 md:pb-6 xl:max-w-none xl:px-6 xl:pt-4 xl:pb-6">
-        <Hero locale={locale} />
+        <Hero locale={locale} spotlights={heroSpotlights} />
       </div>
 
       <BrandLogoMarquee brands={homepageBrands} />

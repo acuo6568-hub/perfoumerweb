@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 
 import { Header } from "@/components/Header";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
+import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
 
 type AppShellProps = {
@@ -62,7 +63,7 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
   }, [pathname]);
 
   return (
-    <>
+    <CurrencyProvider>
       <div
         aria-hidden="true"
         className="route-preloader"
@@ -81,6 +82,6 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
       >
         {children}
       </div>
-    </>
+    </CurrencyProvider>
   );
 }

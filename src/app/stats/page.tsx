@@ -50,14 +50,14 @@ export default async function StatsPage() {
   }
 
   return (
-    <div className="bg-[#f3f3f2]">
-      <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 md:px-10 md:py-10">
-        <section className="border-b border-zinc-200/85 pb-8">
-          <h1 className="text-[2.2rem] leading-[0.95] tracking-[-0.03em] text-zinc-900 sm:text-5xl">
-            Website Stats
+    <div className="min-h-dvh bg-[#04070c]">
+      <main className="mx-auto max-w-[1560px] px-4 py-6 sm:px-6 md:px-10 md:py-10">
+        <section className="border-b border-white/10 pb-8">
+          <h1 className="text-[2.35rem] leading-[0.95] tracking-[-0.04em] text-white sm:text-6xl">
+            Performance Intelligence
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-zinc-600 sm:text-base">
-            Live traffic, signed-in vs guest users, devices, and top active pages.
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
+            Private analytics for live traffic, identified users, acquisition quality, and ad-ready audience signals.
           </p>
         </section>
 

@@ -42,7 +42,7 @@ export async function createOrder(input: CreateOrderInput) {
         user_id: input.user_id,
         order_number: orderNumber,
         status: input.payment_status === "completed" ? "confirmed" : "new",
-        payment_method: input.payment_method || "kapital_bank",
+        payment_method: input.payment_method || "epoint",
         payment_status: input.payment_status || "pending",
         total_amount: input.total_amount,
         currency: input.currency || "AZN",

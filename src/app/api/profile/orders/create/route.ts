@@ -7,6 +7,8 @@ export const runtime = "nodejs";
 
 type CreateOrderBody = {
   payment_order_id?: string;
+  payment_method?: string;
+  payment_transaction_id?: string;
   payment_status?: "pending" | "completed" | "failed" | "refunded";
   total_amount?: number;
   selected_address_id?: string;
@@ -62,6 +64,10 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentOrderId = typeof body.payment_order_id === "string" ? body.payment_order_id.trim() : "";
+    const paymentMethod = typeof body.payment_method === "string" && body.payment_method.trim()
+      ? body.payment_method.trim()
+      : "epoint";
+    const paymentTransactionId = typeof body.payment_transaction_id === "string" ? body.payment_transaction_id.trim() : "";
 
     const writeClient = supabaseServiceRoleKey
       ? createClient(supabaseUrl, supabaseServiceRoleKey)
@@ -112,13 +118,14 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           order_number: generateOrderNumber(),
           status,
-          payment_method: "kapital_bank",
+          payment_method: paymentMethod,
           payment_status: paymentStatus,
           total_amount: totalAmount,
           currency: "AZN",
           items_json: items,
           delivery_address_json: deliveryAddress,
           kapital_order_id: paymentOrderId || null,
+          kapital_payment_id: paymentTransactionId || null,
         },
       ])
       .select("id,order_number")

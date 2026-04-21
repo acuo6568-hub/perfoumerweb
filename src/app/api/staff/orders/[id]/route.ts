@@ -9,6 +9,7 @@ import {
   isAdminConfigured,
   isStaffConfigured,
 } from "@/lib/admin-auth";
+import { encodeEpointData, getEpointConfig, signEpointData } from "@/lib/epoint";
 import { sendOrderUpdateEmail } from "@/lib/order-notifications";
 import { getSupabaseServiceConfigFromServerResult } from "@/lib/supabase/env.server";
 
@@ -143,6 +144,67 @@ async function executeKapitalRefund(params: {
   }
 
   return { ok: true as const, providerPayload: payload };
+}
+
+async function executeEpointRefund(params: {
+  transaction: string;
+  refundKind: RefundKind;
+  amount?: number;
+}) {
+  const { publicKey, privateKey, apiBaseUrl } = getEpointConfig();
+  if (!publicKey || !privateKey) {
+    return { error: "Epoint credentials are missing. Set EPOINT_PUBLIC_KEY and EPOINT_PRIVATE_KEY." } as const;
+  }
+
+  const payload: Record<string, string> = {
+    public_key: publicKey,
+    language: "az",
+    transaction: params.transaction,
+    currency: "AZN",
+  };
+
+  if (params.refundKind === "partial") {
+    payload.amount = Number(params.amount || 0).toFixed(2);
+  }
+
+  const data = encodeEpointData(payload);
+  const signature = signEpointData(data, privateKey);
+
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}/reverse`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        accept: "application/json,text/plain,*/*",
+      },
+      body: new URLSearchParams({ data, signature }).toString(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    return { error: "Epoint refund request timed out or failed." } as const;
+  }
+
+  const raw = await response.text();
+  let providerPayload: unknown = raw;
+  if (raw) {
+    try {
+      providerPayload = JSON.parse(raw) as unknown;
+    } catch {
+      providerPayload = raw;
+    }
+  }
+
+  if (!response.ok) {
+    return {
+      error: `Epoint reverse API returned HTTP ${response.status}.`,
+      providerStatus: response.status,
+      providerPayload,
+    } as const;
+  }
+
+  return { ok: true as const, providerPayload };
 }
 
 function mapStatusForLegacyConstraint(status: string) {
@@ -369,13 +431,35 @@ export async function PATCH(request: Request, context: RouteContext) {
     const refundKind = payload.refund_kind === "partial" ? "partial" : "full";
     const refundAmount = Number(payload.refund_amount);
     const kapitalOrderId = safeKapitalOrderId((existingOrder as Record<string, unknown>).kapital_order_id as string | undefined);
+    const paymentTransactionId = safeKapitalOrderId((existingOrder as Record<string, unknown>).kapital_payment_id as string | undefined);
     const paymentMethod = String((existingOrder as Record<string, unknown>).payment_method || "").trim().toLowerCase();
 
-    if ((paymentMethod.includes("kapital_bank") || kapitalOrderId) && !kapitalOrderId) {
+    if (paymentMethod.includes("kapital_bank") && !kapitalOrderId) {
       return Response.json({ error: "Kapital order id is required for refunds." }, { status: 400 });
     }
 
-    if (kapitalOrderId) {
+    if (paymentMethod.includes("epoint")) {
+      if (!paymentTransactionId) {
+        return Response.json({ error: "Epoint transaction id is required for refunds." }, { status: 400 });
+      }
+
+      const refundResult = await executeEpointRefund({
+        transaction: paymentTransactionId,
+        refundKind,
+        amount: refundKind === "partial" ? refundAmount : Number(existingOrder.total_amount || 0),
+      });
+
+      if ("error" in refundResult) {
+        return Response.json(
+          {
+            error: refundResult.error,
+            providerStatus: refundResult.providerStatus,
+            providerPayload: refundResult.providerPayload,
+          },
+          { status: 502 },
+        );
+      }
+    } else if (kapitalOrderId) {
       const refundResult = await executeKapitalRefund({
         kapitalOrderId,
         refundKind,

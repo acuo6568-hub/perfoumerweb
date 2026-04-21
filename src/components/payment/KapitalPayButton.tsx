@@ -1,6 +1,7 @@
 "use client";
 
 import type { Locale } from "@/lib/i18n";
+import { toLocalePath } from "@/lib/i18n";
 
 type KapitalPayButtonProps = {
   locale: Locale;
@@ -23,16 +24,16 @@ export function KapitalPayButton({
   className,
   disabled = false,
 }: KapitalPayButtonProps) {
-  const nextPath = `/perfumes/${perfumeSlug}`;
+  const nextPath = toLocalePath(`/perfumes/${perfumeSlug}`, locale);
   const query = new URLSearchParams({
     locale,
     perfumeSlug,
     perfumeName,
     amount: String(amount),
-    returnPath: returnPath ?? `/payment/kapital/callback?next=${encodeURIComponent(nextPath)}`,
+    returnPath: returnPath ?? `${toLocalePath("/payment/epoint/callback", locale)}?next=${encodeURIComponent(nextPath)}`,
   });
 
-  const href = `/api/payments/kapitalbank/test?${query.toString()}`;
+  const href = `/api/payments/epoint?${query.toString()}`;
   const resolvedClassName =
     className ??
     "detail-cta detail-cta-primary inline-flex min-h-13 w-full items-center justify-center rounded-full bg-[#31302f] px-6 text-lg font-medium text-white";

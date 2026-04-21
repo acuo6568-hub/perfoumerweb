@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
 
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatCurrencyFromAzn } from "@/lib/currency";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { CartItemRow } from "@/types/cart";
@@ -107,6 +109,7 @@ const copyByLocale: Record<Locale, CartCopy> = {
 export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartClientProps) {
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
   const copy = copyByLocale[locale];
+  const { selectedCurrency } = useCurrency();
 
   const [session, setSession] = useState<Session | null>(null);
   const [isSessionLoading, setIsSessionLoading] = useState(() => Boolean(supabase));
@@ -437,7 +440,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
                         {perfume?.name || row.perfume_slug}
                       </p>
                       <p className="mt-1 text-sm text-zinc-500">
-                        {row.size_ml} {copy.ml} • {unitPrice} ₼ {copy.each}
+                        {row.size_ml} {copy.ml} • {formatCurrencyFromAzn(unitPrice, selectedCurrency, locale)} {copy.each}
                       </p>
                     </div>
                   </div>
@@ -466,7 +469,9 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
                     </div>
 
                     <div className="text-right">
-                      <p className="text-[1.08rem] font-semibold tracking-[-0.02em] tabular-nums text-zinc-900">{lineTotal} ₼</p>
+                      <p className="text-[1.08rem] font-semibold tracking-[-0.02em] tabular-nums text-zinc-900">
+                        {formatCurrencyFromAzn(lineTotal, selectedCurrency, locale)}
+                      </p>
                       <button
                         type="button"
                         onClick={() => updateQuantity(row, 0)}
@@ -492,7 +497,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
           <div className="mt-5 space-y-2 text-sm">
             <div className="flex items-center justify-between text-zinc-600">
               <span>{copy.subtotal}</span>
-              <span>{subtotal} ₼</span>
+              <span>{formatCurrencyFromAzn(subtotal, selectedCurrency, locale)}</span>
             </div>
             <div className="flex items-center justify-between text-zinc-600">
               <span>{copy.shipping}</span>
@@ -501,7 +506,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
             <div className="mt-3 h-px bg-zinc-200" />
             <div className="flex items-center justify-between text-base font-semibold tracking-[-0.01em] text-zinc-900">
               <span>{copy.total}</span>
-              <span>{subtotal} ₼</span>
+              <span>{formatCurrencyFromAzn(subtotal, selectedCurrency, locale)}</span>
             </div>
           </div>
 

@@ -6,6 +6,8 @@ import type { Session } from "@supabase/supabase-js";
 import { WhatsappLogo } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
@@ -93,6 +95,7 @@ export function PerfumePurchasePanel({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
+  const { selectedCurrency } = useCurrency();
 
   const [selectedMl, setSelectedMl] = useState<number | null>(() => sizes[0]?.ml ?? null);
   const [session, setSession] = useState<Session | null>(null);
@@ -310,7 +313,7 @@ export function PerfumePurchasePanel({
               const isSelected = selectedSize?.ml === size.ml;
               const isBestValue = bestValueMl === size.ml;
               const fillLevel = Math.max(16, Math.round((size.ml / maxMl) * 100));
-              const perMlPrice = (Math.round((size.price / size.ml) * 100) / 100).toFixed(2);
+              const perMlPrice = Math.round((size.price / size.ml) * 100) / 100;
               const imageFrameClass =
                 size.ml >= 50
                   ? "h-[66px] w-[48px] md:h-[108px] md:w-[82px]"
@@ -387,13 +390,10 @@ export function PerfumePurchasePanel({
 
                   <div className="relative mt-1.5 md:mt-2.5">
                     <p className="text-[1.18rem] leading-none tracking-[-0.05em] font-[family-name:var(--font-playfair)] md:text-[1.74rem]">
-                      {size.price}
-                      <span className={isSelected ? "ml-1 text-[0.62em] text-zinc-300" : "ml-1 text-[0.62em] text-zinc-500"}>
-                        ₼
-                      </span>
+                      {formatCurrencyFromAzn(size.price, selectedCurrency, locale)}
                     </p>
                     <p className={["mt-1 hidden text-[0.68rem] md:block", isSelected ? "text-zinc-400" : "text-zinc-500"].join(" ")}>
-                      {copy.perMl}: {perMlPrice} ₼
+                      {copy.perMl}: {formatCurrencyFromAzn(perMlPrice, selectedCurrency, locale)}
                     </p>
 
                     <div

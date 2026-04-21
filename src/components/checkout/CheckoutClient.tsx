@@ -5,6 +5,8 @@ import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatCurrencyFromAzn } from "@/lib/currency";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -131,7 +133,7 @@ const copyByLocale: Record<Locale, Copy> = {
     saveAddressLoading: "Yadda saxlanılır...",
     delivery: "Çatdırılma növü",
     standard: "Standart (Pulsuz)",
-    express: "Ekspress (+5 ₼)",
+    express: "Ekspress",
     review: "Yekun təsdiq",
     subtotal: "Ara cəmi",
     shipping: "Çatdırılma",
@@ -192,7 +194,7 @@ const copyByLocale: Record<Locale, Copy> = {
     saveAddressLoading: "Saving...",
     delivery: "Delivery method",
     standard: "Standard (Free)",
-    express: "Express (+5 AZN)",
+    express: "Express",
     review: "Review and pay",
     subtotal: "Subtotal",
     shipping: "Shipping",
@@ -253,7 +255,7 @@ const copyByLocale: Record<Locale, Copy> = {
     saveAddressLoading: "Сохранение...",
     delivery: "Способ доставки",
     standard: "Стандарт (Бесплатно)",
-    express: "Экспресс (+5 AZN)",
+    express: "Экспресс",
     review: "Подтверждение",
     subtotal: "Подытог",
     shipping: "Доставка",
@@ -314,7 +316,7 @@ const EMAIL_SENT_STORAGE_KEY = "perfoumer.checkout.email.sent-orders.v1";
 const CART_CLEARED_STORAGE_KEY = "perfoumer.checkout.cart-cleared-orders.v1";
 const ORDER_SAVED_STORAGE_KEY = "perfoumer.checkout.order-saved.v1";
 const ORDER_NUMBER_BY_PAYMENT_STORAGE_KEY = "perfoumer.checkout.order-number-by-payment.v1";
-const KAPITAL_DEBUG_FETCHED_STORAGE_KEY = "perfoumer.checkout.kapital-debug-fetched.v1";
+const PAYMENT_STATUS_FETCHED_STORAGE_KEY = "perfoumer.checkout.payment-status-fetched.v1";
 
 type DraftFieldErrors = {
   fullName?: string;
@@ -401,6 +403,7 @@ function normalizeAddressInput(address: Address): Address {
 
 export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: CheckoutClientProps) {
   const copy = copyByLocale[locale];
+  const { selectedCurrency } = useCurrency();
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
   const searchParams = useSearchParams();
 
@@ -423,6 +426,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   const [paymentResult, setPaymentResult] = useState<PaymentResultKind | null>(null);
   const [isPaymentResultResolving, setIsPaymentResultResolving] = useState(false);
   const [paymentStatusText, setPaymentStatusText] = useState("");
+  const [paymentTransactionId, setPaymentTransactionId] = useState("");
   const [canonicalOrderNumber, setCanonicalOrderNumber] = useState("");
   const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null);
   const [isDeliveryEstimating, setIsDeliveryEstimating] = useState(false);
@@ -453,24 +457,34 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const status =
+    const providerOrderId =
+      searchParams.get("epoint_order_id") ||
+      searchParams.get("order_id") ||
+      "";
+    const providerRedirectStatus =
+      searchParams.get("epoint_redirect") ||
+      "";
+    const legacyStatus =
       searchParams.get("STATUS") ||
       searchParams.get("status") ||
       searchParams.get("Result") ||
       searchParams.get("RESULT");
-    const orderId =
+    const legacyOrderId =
       searchParams.get("ID") ||
       searchParams.get("ORDERID") ||
       searchParams.get("OrderID") ||
       "";
     const paymentId =
+      searchParams.get("transaction") ||
       searchParams.get("PAYMENTID") ||
       searchParams.get("PaymentID") ||
       searchParams.get("PID") ||
       searchParams.get("paymentId") ||
       "";
+    const status = providerRedirectStatus || legacyStatus;
+    const orderId = providerOrderId || legacyOrderId;
 
-    if (!status) {
+    if (!status && !providerOrderId) {
       setPaymentResult(null);
       setIsPaymentResultResolving(false);
       setPaymentStatusText("");
@@ -478,30 +492,29 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     }
 
     setIsPaymentResultResolving(true);
-    setPaymentStatusText(status);
+    setPaymentStatusText(status || "new");
+    setPaymentTransactionId(paymentId);
     setStep(2);
 
-    const nextResult = resolvePaymentResultKind(status);
+    if (providerOrderId) {
+      const debugKey = `${providerOrderId}:${(providerRedirectStatus || "check").trim().toUpperCase()}`;
+      let shouldFetchStatus = true;
+      let isMounted = true;
 
-    console.info("[Checkout][Kapital] Callback result", {
-      status,
-      resolvedResult: nextResult,
-      orderId,
-      paymentId,
-    });
-
-    if (orderId) {
-      const debugKey = `${orderId}:${status.trim().toUpperCase()}`;
-      let shouldFetchDebug = true;
+      console.info("[Checkout][Epoint] Redirect result", {
+        status: providerRedirectStatus || "check",
+        orderId: providerOrderId,
+        paymentId,
+      });
 
       try {
-        const raw = window.sessionStorage.getItem(KAPITAL_DEBUG_FETCHED_STORAGE_KEY);
+        const raw = window.sessionStorage.getItem(PAYMENT_STATUS_FETCHED_STORAGE_KEY);
         const fetched = raw ? (JSON.parse(raw) as string[]) : [];
         if (fetched.includes(debugKey)) {
-          shouldFetchDebug = false;
+          shouldFetchStatus = false;
         } else {
           window.sessionStorage.setItem(
-            KAPITAL_DEBUG_FETCHED_STORAGE_KEY,
+            PAYMENT_STATUS_FETCHED_STORAGE_KEY,
             JSON.stringify([debugKey, ...fetched].slice(0, 60)),
           );
         }
@@ -509,26 +522,74 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
         // ignore session storage errors for debug dedupe
       }
 
-      if (shouldFetchDebug) {
-        void (async () => {
+      const fallbackResult = resolvePaymentResultKind(providerRedirectStatus || "pending");
+
+      const resolveStatus = async () => {
+        if (!shouldFetchStatus) {
+          if (isMounted) {
+            setPaymentResult(fallbackResult);
+            setIsPaymentResultResolving(false);
+          }
+          return;
+        }
+
         try {
-          const response = await fetch(`/api/payments/kapitalbank/test/order/${encodeURIComponent(orderId)}`, {
+          const response = await fetch(`/api/payments/epoint/status/${encodeURIComponent(providerOrderId)}`, {
             method: "GET",
             cache: "no-store",
           });
 
-          const payload = (await response.json().catch(() => null)) as unknown;
+          const payload = (await response.json().catch(() => null)) as
+            | {
+                payment?: {
+                  status?: string;
+                  message?: string;
+                  transaction?: string;
+                };
+              }
+            | null;
+
+          if (!isMounted) return;
+
           if (response.ok) {
-            console.info("[Checkout][Kapital] Provider order details", payload);
+            const providerStatus = typeof payload?.payment?.status === "string" ? payload.payment.status : providerRedirectStatus || "pending";
+            const providerTransaction = typeof payload?.payment?.transaction === "string" ? payload.payment.transaction : paymentId;
+            setPaymentStatusText(providerStatus);
+            setPaymentTransactionId(providerTransaction || "");
+            setPaymentResult(resolvePaymentResultKind(providerStatus));
+            console.info("[Checkout][Epoint] Provider status", payload);
           } else {
-            console.warn("[Checkout][Kapital] Provider order details error", payload);
+            setPaymentStatusText(providerRedirectStatus || "pending");
+            setPaymentResult(fallbackResult);
+            console.warn("[Checkout][Epoint] Provider status error", payload);
           }
         } catch (error) {
-          console.warn("[Checkout][Kapital] Provider order details request failed", error);
+          if (!isMounted) return;
+          setPaymentStatusText(providerRedirectStatus || "pending");
+          setPaymentResult(fallbackResult);
+          console.warn("[Checkout][Epoint] Provider status request failed", error);
+        } finally {
+          if (isMounted) {
+            setIsPaymentResultResolving(false);
+          }
         }
-        })();
-      }
+      };
+
+      void resolveStatus();
+
+      return () => {
+        isMounted = false;
+      };
     }
+
+    const nextResult = resolvePaymentResultKind(status || "pending");
+
+    console.info("[Checkout][Legacy] Callback result", {
+      status,
+      resolvedResult: nextResult,
+      orderId,
+      paymentId,
+    });
 
     const timer = window.setTimeout(() => {
       setPaymentResult(nextResult);
@@ -676,6 +737,8 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
 
   const selectedShipping = addresses.find((item) => item.id === selectedShippingId) ?? null;
   const paymentOrderId =
+    searchParams.get("epoint_order_id") ||
+    searchParams.get("order_id") ||
     searchParams.get("ID") ||
     searchParams.get("ORDERID") ||
     searchParams.get("OrderID") ||
@@ -827,6 +890,8 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
         },
         body: JSON.stringify({
           payment_order_id: paymentOrderId,
+          payment_method: "epoint",
+          payment_transaction_id: paymentTransactionId || null,
           payment_status: "completed",
           total_amount: total,
           selected_address_id: selectedShipping?.id || null,
@@ -867,7 +932,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     };
 
     void clearCart();
-  }, [items, paymentOrderId, paymentResult, selectedShipping?.id, session?.access_token, session?.user?.id, supabase, total]);
+  }, [items, paymentOrderId, paymentResult, paymentTransactionId, selectedShipping?.id, session?.access_token, session?.user?.id, supabase, total]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1027,10 +1092,10 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
       perfumeSlug: items[0]?.row.perfume_slug ?? "checkout",
       perfumeName: `Checkout order (${items.length} items)`,
       amount: String(total),
-      returnPath: "/checkout",
+      returnPath: toLocalePath("/checkout", locale),
     });
 
-    return `/api/payments/kapitalbank/test?${query.toString()}`;
+    return `/api/payments/epoint?${query.toString()}`;
   }, [items, locale, total]);
 
   const goNext = () => setStep((prev) => Math.min(2, prev + 1));
@@ -1180,7 +1245,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                   {items.map((item) => (
                     <div key={item.row.id} className="flex items-start justify-between gap-3 text-zinc-700">
                       <span className="max-w-[70%] truncate">{item.perfume?.name || item.row.perfume_slug} x{item.quantity}</span>
-                      <span>{item.lineTotal} ₼</span>
+                      <span>{formatCurrencyFromAzn(item.lineTotal, selectedCurrency, locale)}</span>
                     </div>
                   ))}
                 </div>
@@ -1188,15 +1253,15 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                 <div className="mt-3 space-y-1.5 border-t border-zinc-200 pt-3 text-sm">
                   <div className="flex items-center justify-between text-zinc-600">
                     <span>{copy.subtotal}</span>
-                    <span>{subtotal} ₼</span>
+                    <span>{formatCurrencyFromAzn(subtotal, selectedCurrency, locale)}</span>
                   </div>
                   <div className="flex items-center justify-between text-zinc-600">
                     <span>{copy.shipping}</span>
-                    <span>{shippingPrice} ₼</span>
+                    <span>{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
                   </div>
                   <div className="flex items-center justify-between text-base font-semibold text-zinc-900">
                     <span>{copy.total}</span>
-                    <span>{total} ₼</span>
+                    <span>{formatCurrencyFromAzn(total, selectedCurrency, locale)}</span>
                   </div>
                 </div>
               </div>
@@ -1341,7 +1406,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
               </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 bg-white/88 p-3 transition hover:border-zinc-300">
                 <input type="radio" checked={deliveryMethod === "express"} onChange={() => setDeliveryMethod("express")} />
-                <span>{copy.express}</span>
+                <span>{copy.express} ({formatCurrencyFromAzn(5, selectedCurrency, locale)})</span>
               </label>
 
               <div className="rounded-2xl border border-zinc-200 bg-white/88 p-3 text-sm text-zinc-700">
@@ -1358,7 +1423,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                     </p>
                     <p>
                       <span className="text-zinc-500">{copy.shipping}: </span>
-                      <span className="font-medium text-zinc-900">{shippingPrice} ₼</span>
+                      <span className="font-medium text-zinc-900">{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
                     </p>
                     <p>
                       <span className="text-zinc-500">{copy.deliveryEstimateEta}: </span>
@@ -1415,7 +1480,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
           {items.map((item) => (
             <div key={item.row.id} className="flex items-start justify-between gap-3 text-zinc-700">
               <span className="max-w-[70%] truncate">{item.perfume?.name || item.row.perfume_slug} x{item.quantity}</span>
-              <span>{item.lineTotal} ₼</span>
+              <span>{formatCurrencyFromAzn(item.lineTotal, selectedCurrency, locale)}</span>
             </div>
           ))}
         </div>
@@ -1423,11 +1488,11 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
         <div className="mt-4 space-y-1.5 border-t border-zinc-200 pt-3 text-sm">
           <div className="flex items-center justify-between text-zinc-600">
             <span>{copy.subtotal}</span>
-            <span>{subtotal} ₼</span>
+            <span>{formatCurrencyFromAzn(subtotal, selectedCurrency, locale)}</span>
           </div>
           <div className="flex items-center justify-between text-zinc-600">
             <span>{copy.shipping}</span>
-            <span>{shippingPrice} ₼</span>
+            <span>{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
           </div>
           {deliveryEstimate ? (
             <div className="text-xs text-zinc-500">
@@ -1436,7 +1501,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
           ) : null}
           <div className="flex items-center justify-between text-base font-semibold text-zinc-900">
             <span>{copy.total}</span>
-            <span>{total} ₼</span>
+            <span>{formatCurrencyFromAzn(total, selectedCurrency, locale)}</span>
           </div>
         </div>
       </aside>

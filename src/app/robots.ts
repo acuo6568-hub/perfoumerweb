@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
     "/wishlist",
     "/wishlist/shared",
     "/payment/kapital/callback",
+    "/payment/epoint/callback",
   ];
 
   const localeDisallow = new Set(

@@ -31,6 +31,12 @@ type PerfumeCsvRow = {
   stock_status: string;
 };
 
+type MissingPerfumePngCsvRow = {
+  slug: string;
+  png_url: string;
+  status: string;
+};
+
 const splitByComma = (value: string) =>
   value
     .split(",")
@@ -80,6 +86,7 @@ const NOTES_CSV_FALLBACK_PATH = path.join(process.cwd(), "data", "notes.csv");
 const PERFUMES_CSV_PATH = path.join(process.cwd(), "data", "perfm77.csv");
 const ADMIN_NOTES_JSON_PATH = path.join(process.cwd(), "data", "admin", "notes.json");
 const ADMIN_PERFUMES_JSON_PATH = path.join(process.cwd(), "data", "admin", "perfumes.json");
+const MISSING_PERFUME_PNG_CSV_PATH = path.join(process.cwd(), "data", "admin", "missing-perfume-png-variants.csv");
 
 const PERFUME_CDN_BASE_URL = "https://perfoumer-cdn.vercel.app/perfumes";
 
@@ -300,9 +307,26 @@ export async function getNotes(): Promise<Note[]> {
   return getNotesCached();
 }
 
+async function getMissingPerfumePngSlugs() {
+  try {
+    const raw = await readFile(MISSING_PERFUME_PNG_CSV_PATH, "utf-8");
+    const rows = parseCsv<MissingPerfumePngCsvRow>(raw);
+
+    return new Set(
+      rows
+        .filter((row) => row.status?.trim() === "404")
+        .map((row) => row.slug?.trim().toLowerCase())
+        .filter(Boolean),
+    );
+  } catch {
+    return new Set<string>();
+  }
+}
+
 async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<Perfume[]> {
   const raw = await readFile(PERFUMES_CSV_PATH, "utf-8");
   const rows = parseCsv<PerfumeCsvRow>(raw);
+  const missingPerfumePngSlugs = await getMissingPerfumePngSlugs();
 
   const referenceImageBySlug = new Map<string, string>();
   const referenceImageByName = new Map<string, string>();
@@ -351,7 +375,10 @@ async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<
       (normalizedName ? referenceImageByName.get(normalizedName) : undefined) ||
       referenceImageBySlug.get(slug);
     // Prefer canonical CDN image paths for consistent product visuals across the app.
-    const image = matchedImage || getPerfumeImageUrl(slug) || csvImage;
+    const canonicalImage = getPerfumeImageUrl(slug);
+    const image =
+      matchedImage ||
+      (missingPerfumePngSlugs.has(slug) ? csvImage || canonicalImage : canonicalImage || csvImage);
 
     const parsed: Perfume = {
       id,

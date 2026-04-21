@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import type { Perfume } from "@/types/catalog";
 
@@ -46,6 +48,7 @@ function getShadowProfile(slug: string): ShadowProfile {
 
 export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: ProductCardProps) {
   const startingPrice = perfume.sizes[0]?.price;
+  const { selectedCurrency } = useCurrency();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const imageCandidates = useMemo(() => {
     const encoded = encodeURIComponent(perfume.slug);
@@ -143,7 +146,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
         </h3>
         <p className="mt-1 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
           {startingPrice
-            ? `${startingPrice} ₼ / ${t.productCard.starting}`
+            ? `${formatCurrencyFromAzn(startingPrice, selectedCurrency, locale)} / ${t.productCard.starting}`
             : t.productCard.quote}
         </p>
       </div>

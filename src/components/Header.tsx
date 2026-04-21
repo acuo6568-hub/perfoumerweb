@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Buildings,
   CaretDown,
+  Coins,
   Gift,
   GridFour,
   HeartStraight,
@@ -26,6 +27,14 @@ import {
   X,
 } from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
+import { useCurrency } from "@/components/currency/CurrencyProvider";
+import {
+  CURRENCY_META,
+  SUPPORTED_CURRENCIES,
+  formatCurrencyFromAzn,
+  getCurrencyShortLabel,
+  type SupportedCurrency,
+} from "@/lib/currency";
 import { getDictionary, locales, stripLocalePrefix, toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { CartItemRow } from "@/types/cart";
@@ -78,6 +87,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const [brokenSearchImages, setBrokenSearchImages] = useState<Record<string, true>>({});
   const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
   const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
+  const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
@@ -91,11 +101,13 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const cartCountRequestRef = useRef(0);
   const wishlistCountRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
+  const currencyMenuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
   const { pathname: basePathname } = stripLocalePrefix(pathname);
   const t = getDictionary(locale);
   const supabase = getSupabaseBrowserClient();
+  const { selectedCurrency, setSelectedCurrency } = useCurrency();
   const copy = {
     az: {
       login: "Giriş",
@@ -107,6 +119,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       menuTag: "Menyu",
       accountTag: "Hesab",
       languageTag: "Dil",
+      currencyTag: "Valyuta",
       trendingTag: "Trenddə",
       instagramTag: "Instagram",
       tiktokTag: "Unvan",
@@ -165,6 +178,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       menuTag: "Menu",
       accountTag: "Account",
       languageTag: "Language",
+      currencyTag: "Currency",
       trendingTag: "Trending",
       instagramTag: "Instagram",
       tiktokTag: "Address",
@@ -223,6 +237,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       menuTag: "Меню",
       accountTag: "Аккаунт",
       languageTag: "Язык",
+      currencyTag: "Валюта",
       trendingTag: "Тренды",
       instagramTag: "Instagram",
       tiktokTag: "Адрес",
@@ -535,14 +550,39 @@ export function Header({ floating = false, locale }: HeaderProps) {
     setIsMenuOpen(false);
     setIsCartDrawerOpen(false);
     setIsSearchDrawerOpen(false);
+    setIsCurrencyMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
     if (!isMenuOpen) {
       setOpenMobileCategory(null);
       setIsMobileLocaleMenuOpen(false);
+      setIsCurrencyMenuOpen(false);
     }
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!isCurrencyMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!currencyMenuRef.current) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof Node && !currencyMenuRef.current.contains(target)) {
+        setIsCurrencyMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isCurrencyMenuOpen]);
 
   useEffect(() => {
     if (!isCartDrawerOpen) return;
@@ -824,6 +864,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, [searchCategoryItems, searchQuery, searchTab]);
 
   const hasActiveSearchQuery = searchQuery.trim().length > 0;
+  const currentCurrencyLabel = getCurrencyShortLabel(selectedCurrency);
 
   const cartItems = useMemo(
     () =>
@@ -978,7 +1019,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
 
         <div className="hidden w-full px-0 pt-0 sm:px-0 sm:pt-0 md:px-0 lg:block">
           <div
-            className="header-load-in relative isolate overflow-hidden bg-[#f3f3f2] text-zinc-900 shadow-none ring-0 backdrop-blur-0 transition-[background-color,border-color] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            className="header-load-in relative isolate overflow-visible bg-[#f3f3f2] text-zinc-900 shadow-none ring-0 backdrop-blur-0 transition-[background-color,border-color] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
             <div
               aria-hidden="true"
@@ -1061,6 +1102,105 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     <span>{t.languages[item]}</span>
                   </button>
                 ))}
+              </div>
+
+              <div ref={currencyMenuRef} className="relative z-[70] hidden lg:block">
+                <button
+                  type="button"
+                  onClick={() => setIsCurrencyMenuOpen((current) => !current)}
+                  aria-haspopup="listbox"
+                  aria-expanded={isCurrencyMenuOpen}
+                  className="group relative inline-flex h-11 items-center gap-2 rounded-full border border-zinc-300/35 bg-transparent px-3.5 text-[0.68rem] font-medium tracking-[0.2em] text-zinc-700 uppercase shadow-none transition-[transform,box-shadow,background-color,border-color,color] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent active:translate-y-0"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-full opacity-0"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-zinc-200/0 transition-all duration-300 group-hover:scale-[1.04] group-hover:ring-zinc-300/80 group-active:scale-100"
+                  />
+                  <Coins
+                    size={16}
+                    weight="duotone"
+                    className="relative z-[1] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-active:translate-y-0 group-active:scale-95"
+                  />
+                  <span className="relative z-[1]">{currentCurrencyLabel}</span>
+                  <CaretDown
+                    size={13}
+                    weight="bold"
+                    className={[
+                      "relative z-[1] transition-transform duration-200 group-hover:-translate-y-0.5",
+                      isCurrencyMenuOpen ? "rotate-180" : "rotate-0",
+                    ].join(" ")}
+                  />
+                </button>
+
+                <div
+                  className={[
+                    "absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[16rem] overflow-hidden rounded-[1.35rem] border border-zinc-200/80 bg-white/95 p-1.5 shadow-[0_24px_54px_rgba(20,20,24,0.14)] backdrop-blur-xl transition-all duration-200",
+                    isCurrencyMenuOpen
+                      ? "pointer-events-auto translate-y-0 opacity-100"
+                      : "pointer-events-none -translate-y-1 opacity-0",
+                  ].join(" ")}
+                  role="listbox"
+                >
+                  <div className="px-3 py-2">
+                    <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">
+                      {copy[locale].currencyTag}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    {SUPPORTED_CURRENCIES.map((currency) => {
+                      const active = selectedCurrency === currency;
+
+                      return (
+                        <button
+                          key={currency}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCurrency(currency);
+                            setIsCurrencyMenuOpen(false);
+                          }}
+                          className={[
+                            "flex w-full items-center justify-between rounded-[1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                            active
+                              ? "border-zinc-200 bg-zinc-100/90 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+                              : "border-transparent text-zinc-700 hover:border-zinc-200/80 hover:bg-zinc-50",
+                          ].join(" ")}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span
+                              className={[
+                                "inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors duration-200",
+                                active
+                                  ? "border-zinc-200 bg-white text-zinc-900"
+                                  : "border-zinc-200 bg-zinc-50 text-zinc-700",
+                              ].join(" ")}
+                            >
+                              {CURRENCY_META[currency].symbol}
+                            </span>
+                            <span>
+                              <span className="block text-sm font-medium">{getCurrencyShortLabel(currency)}</span>
+                              <span className={["block text-xs", active ? "text-zinc-500" : "text-zinc-500/90"].join(" ")}>
+                                {CURRENCY_META[currency].label}
+                              </span>
+                            </span>
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className={[
+                              "h-2.5 w-2.5 rounded-full border transition-all duration-200",
+                              active
+                                ? "border-zinc-900 bg-zinc-900 shadow-[0_0_0_4px_rgba(24,24,27,0.08)]"
+                                : "border-zinc-300 bg-transparent",
+                            ].join(" ")}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <button
@@ -1301,8 +1441,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                           </span>
                         </div>
                         <p className="mt-1.5 flex items-end gap-1 text-[1.34rem] leading-none font-semibold tracking-[-0.02em] text-zinc-900">
-                          <span>{item.lineTotal.toFixed(2)}</span>
-                          <span className="text-[0.42rem] font-semibold tracking-[0.08em] text-zinc-700">AZN</span>
+                          <span>{formatCurrencyFromAzn(item.lineTotal, selectedCurrency, locale)}</span>
                         </p>
                       </div>
                       </div>
@@ -1318,7 +1457,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
               <div className="space-y-1.5 text-sm text-zinc-800">
                 <div className="flex items-center justify-between">
                   <span>{copy[locale].subtotal}</span>
-                  <span className="font-medium">{cartSubtotal.toFixed(2)} AZN</span>
+                  <span className="font-medium">{formatCurrencyFromAzn(cartSubtotal, selectedCurrency, locale)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{copy[locale].shipping}</span>
@@ -1326,7 +1465,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 </div>
                 <div className="flex items-center justify-between text-[1.05rem] font-semibold tracking-[-0.01em] text-zinc-900">
                   <span>{copy[locale].total}</span>
-                  <span>{cartSubtotal.toFixed(2)} AZN</span>
+                  <span>{formatCurrencyFromAzn(cartSubtotal, selectedCurrency, locale)}</span>
                 </div>
               </div>
 
@@ -1579,7 +1718,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                         <span className="block truncate text-base font-medium text-zinc-900">{item.name}</span>
                         <span className="mt-0.5 block truncate text-[0.95rem] text-zinc-600">{item.brand}</span>
                         <span className="mt-1.5 block text-[0.95rem] font-semibold text-zinc-900">
-                          {item.price !== null ? `${item.price.toFixed(2)} AZN` : "-"}
+                          {item.price !== null ? formatCurrencyFromAzn(item.price, selectedCurrency, locale) : "-"}
                         </span>
                       </span>
                     </button>
@@ -1701,6 +1840,42 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 <UserCircle size={22} weight="regular" aria-hidden="true" />
                 <span>{accountLabel}</span>
               </Link>
+            </div>
+
+            <div
+              style={{ transitionDelay: isMenuOpen ? "95ms" : "0ms" }}
+              className={[
+                "mt-3 rounded-[1.2rem] border border-zinc-300/85 bg-white/70 p-3",
+                menuTransition,
+                isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+              ].join(" ")}
+            >
+              <div className="mb-2 flex items-center gap-2 text-[0.72rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+                <Coins size={15} weight="duotone" />
+                <span>{copy[locale].currencyTag}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SUPPORTED_CURRENCIES.map((currency) => {
+                  const active = selectedCurrency === currency;
+
+                  return (
+                    <button
+                      key={`mobile-currency-${currency}`}
+                      type="button"
+                      onClick={() => setSelectedCurrency(currency)}
+                      className={[
+                        "inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition",
+                        active
+                          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_10px_24px_rgba(20,20,24,0.16)]"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50",
+                      ].join(" ")}
+                    >
+                      <span className="text-base">{CURRENCY_META[currency].symbol}</span>
+                      <span>{getCurrencyShortLabel(currency)}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mt-4 border-t border-zinc-200/75 pt-3">
