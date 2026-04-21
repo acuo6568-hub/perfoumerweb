@@ -863,6 +863,10 @@ export function Header({ floating = false, locale }: HeaderProps) {
     const nextHash = typeof window === "undefined" ? "" : window.location.hash;
     const nextPath = `${toLocalePath(basePathname, nextLocale)}${nextSearch ? `?${nextSearch}` : ""}${nextHash}`;
 
+    // Persist the locale in the browser immediately so the very next
+    // navigation/reload cannot race against a stale cookie value.
+    document.cookie = `perfoumer-locale=${encodeURIComponent(nextLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+
     try {
       const response = await fetch("/api/locale", {
         method: "POST",
@@ -876,8 +880,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
         throw new Error("Locale persistence failed.");
       }
     } catch {
-      // Fall back to a client cookie if the route handler request fails.
-      document.cookie = `perfoumer-locale=${encodeURIComponent(nextLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      // Keep the client cookie and continue even if the route handler fails.
     }
 
     // Force a fresh request after persisting locale so the App Router
