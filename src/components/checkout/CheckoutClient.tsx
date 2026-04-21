@@ -5,7 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
@@ -805,14 +805,19 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
       if (!session?.access_token) return false;
       if (!items.length) return false;
 
-      const payloadItems = items.map((item) => ({
-        perfume_slug: item.row.perfume_slug,
-        perfume_name: item.perfume?.name || item.row.perfume_slug,
-        size_ml: item.row.size_ml,
-        quantity: item.quantity,
-        unit_price: Number(item.lineTotal / Math.max(item.quantity, 1)),
-        total_price: item.lineTotal,
-      }));
+      const payloadItems = items.map((item) => {
+        // Always use catalog price for unit_price, fallback to parsed unit_price
+        const catalogPrice = item.perfume?.sizes?.find((size: any) => size.ml === item.row.size_ml)?.price ?? 0;
+        const unitPrice = catalogPrice || parsePrice(item.row.unit_price);
+        return {
+          perfume_slug: item.row.perfume_slug,
+          perfume_name: item.perfume?.name || item.row.perfume_slug,
+          size_ml: item.row.size_ml,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          total_price: Math.round(unitPrice * item.quantity * 100) / 100,
+        };
+      });
 
       const response = await fetch("/api/profile/orders/create", {
         method: "POST",
@@ -1059,7 +1064,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
       <div className="rounded-[2rem] border border-zinc-200 bg-white/85 p-7">
         <h2 className="text-2xl text-zinc-900">{copy.signInTitle}</h2>
         <p className="mt-2 text-zinc-600">{copy.signInBody}</p>
-        <Link href="/login?next=%2Fcheckout" className="mt-5 inline-flex min-h-11 items-center rounded-full bg-zinc-900 px-6 text-sm font-medium text-white">
+        <Link href={`${toLocalePath("/login", locale)}?next=${encodeURIComponent(toLocalePath("/checkout", locale))}`} className="mt-5 inline-flex min-h-11 items-center rounded-full bg-zinc-900 px-6 text-sm font-medium text-white">
           {copy.signInAction}
         </Link>
       </div>
@@ -1135,11 +1140,11 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                       {copy.retryPayment}
                     </a>
                   ) : null}
-                  <Link href="/account" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800">
+                  <Link href={toLocalePath("/account", locale)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800">
                     <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h8" strokeLinecap="round" /></svg>
                     {copy.viewOrders}
                   </Link>
-                  <Link href="/" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 text-sm font-medium text-zinc-700 transition hover:-translate-y-0.5 hover:bg-zinc-100">
+                  <Link href={toLocalePath("/", locale)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 text-sm font-medium text-zinc-700 transition hover:-translate-y-0.5 hover:bg-zinc-100">
                     <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3.2 9.2L10 3.8l6.8 5.4v7.2H3.2z" /><path d="M7.4 16.4v-3.8h5.2v3.8" /></svg>
                     {copy.goHome}
                   </Link>

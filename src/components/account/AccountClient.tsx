@@ -22,7 +22,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { AccountAddressesClient } from "@/components/account/AccountAddressesClient";
 import { AccountOrdersClient } from "@/components/account/AccountOrdersClient";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -939,7 +939,7 @@ export function AccountClient({ locale, supabase: supabaseConfig, focusSection =
     if (!supabase) return;
     await supabase.auth.signOut();
     showNotice(copy.signedOut, "info", true);
-    router.push("/login?next=%2Faccount");
+    router.push(`${toLocalePath("/login", locale)}?next=${encodeURIComponent(toLocalePath("/account", locale))}`);
     router.refresh();
   };
 

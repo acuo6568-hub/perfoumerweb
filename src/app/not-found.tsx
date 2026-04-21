@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentLocale } from "@/lib/i18n.server";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, toLocalePath } from "@/lib/i18n";
 
 export default async function NotFound() {
   const locale = await getCurrentLocale();
@@ -13,7 +13,7 @@ export default async function NotFound() {
         <h1 className="mt-2 text-5xl font-semibold text-zinc-800">{t.notFound.title}</h1>
         <p className="mt-3 text-zinc-600">{t.notFound.description}</p>
         <Link
-          href="/"
+          href={toLocalePath("/", locale)}
           className="mt-6 inline-flex rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white"
         >
           {t.notFound.back}

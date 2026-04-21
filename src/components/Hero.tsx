@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getDictionary, type Locale } from "@/lib/i18n";
+import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 
 type HeroProps = {
   locale: Locale;
@@ -36,13 +36,13 @@ export function Hero({ locale }: HeroProps) {
           </p>
           <div className="hero-fade-up hero-delay-4 mt-8 flex flex-wrap gap-3">
             <Link
-              href="/catalog"
+              href={toLocalePath("/catalog", locale)}
               className="rounded-full bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
             >
               {t.hero.discover}
             </Link>
             <Link
-              href="/catalog"
+              href={toLocalePath("/catalog", locale)}
               className="rounded-full border border-white/70 px-6 py-3 text-sm font-medium text-white transition hover:bg-white/10"
             >
               {t.hero.viewAll}

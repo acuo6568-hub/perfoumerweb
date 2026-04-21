@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
@@ -803,7 +803,7 @@ export function LoginClient({
             ) : null}
 
             <div className="mt-5 border-t border-zinc-200 pt-4">
-              <Link href="/" className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline">
+              <Link href={toLocalePath("/", locale)} className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline">
                 {copy.backHome}
               </Link>
             </div>

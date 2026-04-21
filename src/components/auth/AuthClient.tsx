@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
@@ -235,7 +235,7 @@ export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthC
         </form>
 
         <div className="mt-5 pt-4">
-          <Link href="/" className="text-sm text-zinc-500 underline-offset-2 hover:underline">
+          <Link href={toLocalePath("/", locale)} className="text-sm text-zinc-500 underline-offset-2 hover:underline">
             {copy.backHome}
           </Link>
         </div>

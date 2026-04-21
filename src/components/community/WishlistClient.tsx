@@ -8,7 +8,7 @@ import type { Session } from "@supabase/supabase-js";
 import { CaretDown, Check, CopySimple, ShareNetwork } from "@phosphor-icons/react";
 
 import { ProductCard } from "@/components/ProductCard";
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/seo";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
@@ -552,7 +552,7 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
         <h2 className="text-2xl leading-tight text-zinc-900">{copy.signInTitle}</h2>
         <p className="mt-3 text-sm leading-6 text-zinc-600">{copy.signInBody}</p>
         <Link
-          href="/login?next=%2Fwishlist"
+          href={`${toLocalePath("/login", locale)}?next=${encodeURIComponent(toLocalePath("/wishlist", locale))}`}
           className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-medium text-white"
         >
           {copy.signInCta}

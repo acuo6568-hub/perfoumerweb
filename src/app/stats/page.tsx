@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 
 import { LiveStatsClient } from "@/components/stats/LiveStatsClient";
 import { isAdminAuthenticated, isAdminConfigured } from "@/lib/admin-auth";
+import { toLocalePath } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n.server";
 
 export const metadata: Metadata = {
   title: "Live Stats",
@@ -20,6 +22,7 @@ export default async function StatsPage() {
   const isProd = process.env.NODE_ENV === "production";
   const configured = isAdminConfigured();
   const authenticated = configured ? await isAdminAuthenticated() : false;
+  const locale = await getCurrentLocale();
 
   if (!configured && isProd) {
     return (
@@ -31,7 +34,7 @@ export default async function StatsPage() {
               Set ADMIN_PASSWORD in your environment to enable the private analytics dashboard.
             </p>
             <Link
-              href="/"
+              href={toLocalePath("/", locale)}
               className="mt-5 inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-semibold text-white"
             >
               Back to home

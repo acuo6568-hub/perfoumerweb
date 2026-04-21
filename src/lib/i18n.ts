@@ -35,6 +35,15 @@ export function toLocalePath(pathname: string, locale: Locale): string {
   return `/${locale}${stripped}`;
 }
 
+export function toLocaleHref(href: string, locale: Locale): string {
+  if (!href.startsWith("/")) {
+    return href;
+  }
+
+  const url = new URL(href, "https://perfoumer.local");
+  return `${toLocalePath(url.pathname, locale)}${url.search}${url.hash}`;
+}
+
 export function normalizeLocale(value?: string | null): Locale {
   if (value === "en" || value === "ru") {
     return value;

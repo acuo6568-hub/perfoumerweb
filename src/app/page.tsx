@@ -8,6 +8,7 @@ import { HomeFeaturedSearch } from "@/components/home/HomeFeaturedSearch";
 import { PersonalizedFeaturedGrid } from "@/components/home/PersonalizedFeaturedGrid";
 import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
+import { toLocalePath } from "@/lib/i18n";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { BLOG_ARTICLES } from "@/lib/seo-growth";
 import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
@@ -462,7 +463,7 @@ export default async function Home() {
 
         <div className="mt-8 flex justify-center">
           <Link
-            href="/catalog"
+            href={toLocalePath("/catalog", locale)}
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-zinc-400 bg-transparent px-8 text-base font-medium text-zinc-700 transition-all duration-300 hover:bg-white/75 hover:shadow-[0_8px_24px_rgba(31,31,31,0.08)]"
           >
             {t.home.showMore}
@@ -503,7 +504,7 @@ export default async function Home() {
           </div>
 
           <div className="mt-8 flex justify-end">
-            <Link href="/blog" className="inline-flex items-center gap-2 border-b border-zinc-400/70 pb-1 text-[0.82rem] font-semibold tracking-[0.18em] text-zinc-700 uppercase transition-all duration-300 hover:border-zinc-900 hover:text-zinc-900">
+            <Link href={toLocalePath("/blog", locale)} className="inline-flex items-center gap-2 border-b border-zinc-400/70 pb-1 text-[0.82rem] font-semibold tracking-[0.18em] text-zinc-700 uppercase transition-all duration-300 hover:border-zinc-900 hover:text-zinc-900">
               Bütün məqalələrə bax
               <span className="text-[0.9rem]">↗</span>
             </Link>

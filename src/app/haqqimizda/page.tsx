@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
+import { toLocalePath } from "@/lib/i18n";
 import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 const aboutMetadata: Metadata = {
@@ -71,13 +72,13 @@ export default async function AboutPage() {
           </div>
 
           <div className="mt-8 flex flex-wrap gap-2">
-            <Link href="/elaqe" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/elaqe", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Əlaqə və lokal məlumatlar
             </Link>
-            <Link href="/blog" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/blog", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Blog və kampaniyalar
             </Link>
-            <Link href="/catalog" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/catalog", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Kataloq
             </Link>
           </div>

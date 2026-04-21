@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowCounterClockwise, CheckCircle, ShieldCheck, Truck } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
-import { getDictionary, type Locale } from "@/lib/i18n";
+import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 import { instagramSnapshot } from "@/lib/instagram-snapshot";
 import { getLegalPageLinks } from "@/lib/legal";
 
@@ -320,19 +320,19 @@ export function Footer({ locale }: FooterProps) {
               <div className="text-center md:text-right">
                 <p className="text-[0.88rem] font-medium tracking-[0.06em] text-zinc-500 uppercase">{t.footer.pages}</p>
                 <nav className="mt-5 flex flex-col items-center gap-2.5 text-base leading-[1.3] text-zinc-600 md:items-end">
-                  <Link href="/haqqimizda" className="transition-colors hover:text-zinc-900">
+                  <Link href={toLocalePath("/haqqimizda", locale)} className="transition-colors hover:text-zinc-900">
                     Haqqımızda
                   </Link>
-                  <Link href="/catalog" className="transition-colors hover:text-zinc-900">
+                  <Link href={toLocalePath("/catalog", locale)} className="transition-colors hover:text-zinc-900">
                     {t.footer.products}
                   </Link>
-                  <Link href="/brands" className="transition-colors hover:text-zinc-900">
+                  <Link href={toLocalePath("/brands", locale)} className="transition-colors hover:text-zinc-900">
                     {t.footer.brands}
                   </Link>
-                  <Link href="/blog" className="transition-colors hover:text-zinc-900">
+                  <Link href={toLocalePath("/blog", locale)} className="transition-colors hover:text-zinc-900">
                     {t.footer.blog}
                   </Link>
-                  <Link href="/elaqe" className="transition-colors hover:text-zinc-900">
+                  <Link href={toLocalePath("/elaqe", locale)} className="transition-colors hover:text-zinc-900">
                     Əlaqə və ünvan
                   </Link>
                 </nav>

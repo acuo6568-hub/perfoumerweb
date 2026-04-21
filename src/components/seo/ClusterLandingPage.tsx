@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import type { ClusterDefinition, ArticleEntry } from "@/lib/seo-growth";
 import type { Perfume } from "@/types/catalog";
 
@@ -37,19 +37,19 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
 
           <div className="mt-7 flex flex-wrap gap-2">
             <Link
-              href="/catalog"
+              href={toLocalePath("/catalog", locale)}
               className="inline-flex items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
             >
               Kataloqa keç
             </Link>
             <Link
-              href="/blog"
+              href={toLocalePath("/blog", locale)}
               className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900"
             >
               Bələdçi məqalələr
             </Link>
             <Link
-              href="/brands"
+              href={toLocalePath("/brands", locale)}
               className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900"
             >
               Brendlərə bax
@@ -74,7 +74,7 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
               <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Faydalı məqalələr</p>
               <h2 className="mt-2 text-3xl leading-tight text-zinc-900 md:text-4xl">{cluster.title} üçün bələdçi məqalələr</h2>
             </div>
-            <Link href="/blog" className="text-sm font-medium text-zinc-600 transition hover:text-zinc-900">
+            <Link href={toLocalePath("/blog", locale)} className="text-sm font-medium text-zinc-600 transition hover:text-zinc-900">
               Bütün məqalələr
             </Link>
           </div>
@@ -109,16 +109,16 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
         <section className="mt-10 rounded-[2rem] border border-zinc-200/80 bg-white/85 p-6 md:p-8">
           <h2 className="text-2xl text-zinc-900 md:text-3xl">Etibar və servis səhifələri</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/haqqimizda" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/haqqimizda", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Haqqımızda
             </Link>
-            <Link href="/elaqe" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/elaqe", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Əlaqə və ünvan
             </Link>
-            <Link href="/refund-policy" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/refund-policy", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Qaytarılma siyasəti
             </Link>
-            <Link href="/terms-and-conditions" className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
+            <Link href={toLocalePath("/terms-and-conditions", locale)} className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400">
               Şərtlər və qaydalar
             </Link>
           </div>

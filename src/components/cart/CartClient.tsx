@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { CartItemRow } from "@/types/cart";
 
@@ -363,7 +363,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
           <p className="mt-3 text-zinc-600">{copy.signInBody}</p>
 
           <Link
-            href="/login?next=%2Fcart"
+            href={`${toLocalePath("/login", locale)}?next=${encodeURIComponent(toLocalePath("/cart", locale))}`}
             className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-6 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800"
           >
             {copy.signInAction}
@@ -383,7 +383,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
           <p className="mt-3 max-w-2xl text-zinc-600">{copy.emptyBody}</p>
 
           <Link
-            href="/catalog"
+            href={toLocalePath("/catalog", locale)}
             className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-800 transition hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-100"
           >
             {copy.browseCatalog}
@@ -507,14 +507,14 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
 
           <div className="mt-5 space-y-2">
             <Link
-              href="/checkout"
+              href={toLocalePath("/checkout", locale)}
               className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-6 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800"
             >
               {copy.checkout}
             </Link>
 
             <Link
-              href="/catalog"
+              href={toLocalePath("/catalog", locale)}
               className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-100"
             >
               {copy.continueShopping}

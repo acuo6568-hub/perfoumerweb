@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
@@ -345,10 +345,10 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
         <h1 className="text-[1.35rem] tracking-[-0.02em] text-zinc-900 sm:text-[1.6rem]">{copy.title}</h1>
         <p className="mt-2 text-sm text-zinc-600">{copy.emptySubtitle}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href="/catalog" className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50">
+          <Link href={toLocalePath("/catalog", locale)} className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50">
             {copy.ctaCatalog}
           </Link>
-          <Link href="/cart" className="inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800">
+          <Link href={toLocalePath("/cart", locale)} className="inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800">
             {copy.ctaCart}
           </Link>
         </div>

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { ProductCard } from "@/components/ProductCard";
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { humanizeNoteToken, localizeNoteLabel } from "@/lib/note-label";
 import type { Note, Perfume } from "@/types/catalog";
 
@@ -1177,7 +1177,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                   {dictionary.restart}
                 </button>
                 <Link
-                  href="/catalog"
+                  href={toLocalePath("/catalog", locale)}
                   className="inline-flex min-h-9 w-full items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-xs font-semibold text-white shadow-[0_12px_24px_rgba(24,24,24,0.18)] transition duration-300 md:w-auto md:hover:-translate-y-0.5 md:hover:bg-zinc-800"
                 >
                   {dictionary.seeCatalog}
@@ -1276,7 +1276,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
 
                     <div className="mt-3">
                       <Link
-                        href="/catalog"
+                        href={toLocalePath("/catalog", locale)}
                         className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(24,24,24,0.18)]"
                       >
                         {dictionary.seeCatalog}
@@ -1307,7 +1307,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                       </button>
 
                       <Link
-                        href="/catalog"
+                        href={toLocalePath("/catalog", locale)}
                         className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(24,24,24,0.18)]"
                       >
                         {dictionary.seeCatalog}

@@ -58,7 +58,9 @@ function parseAmount(value: unknown): string {
   if (!Number.isFinite(parsed) || parsed <= 0) return "1";
 
   const rounded = Math.round(parsed * 100) / 100;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+  // Kapital expects a major-unit amount with an explicit 2-decimal scale.
+  // Sending bare integers like "25" can be misread by the hosted flow.
+  return rounded.toFixed(2);
 }
 
 function cleanText(input: unknown, fallback: string, maxLength: number): string {

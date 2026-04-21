@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "@phosphor-icons/react";
 
-import { getDictionary, type Locale } from "@/lib/i18n";
+import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 
 type DetailBackButtonProps = {
   locale: Locale;
@@ -71,7 +71,7 @@ export function DetailBackButton({ locale }: DetailBackButtonProps) {
       return;
     }
 
-    router.push("/catalog");
+    router.push(toLocalePath("/catalog", locale));
   };
 
   return (

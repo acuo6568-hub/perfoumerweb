@@ -6,7 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import { WhatsappLogo } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { getDictionary, type Locale } from "@/lib/i18n";
+import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 import type { PerfumeSize } from "@/types/catalog";
@@ -280,7 +280,7 @@ export function PerfumePurchasePanel({
       emitCartUpdated();
 
       if (redirectToCart) {
-        router.push("/cart");
+        router.push(toLocalePath("/cart", locale));
       }
     } finally {
       setIsSubmitting(false);

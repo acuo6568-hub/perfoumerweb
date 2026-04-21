@@ -13,7 +13,7 @@ import {
   pickClusterPerfumes,
 } from "@/lib/seo-growth";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import type { Perfume } from "@/types/catalog";
 
@@ -329,7 +329,7 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
               </section>
 
               <p className="mt-8 text-xs tracking-[0.12em] text-zinc-400 uppercase">{formatDate(article.publishedAt, locale)}</p>
-              <Link href="/blog" className="mt-2 inline-flex text-sm text-zinc-500 transition hover:text-zinc-900">
+              <Link href={toLocalePath("/blog", locale)} className="mt-2 inline-flex text-sm text-zinc-500 transition hover:text-zinc-900">
                 {copy.backToBlog}
               </Link>
             </div>

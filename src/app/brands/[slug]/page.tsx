@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
+import { toLocalePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/i18n";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates, slugifyPathSegment } from "@/lib/seo";
 
@@ -174,7 +175,7 @@ export default async function BrandPage({ params }: BrandPageProps) {
                   ? `Полный список ароматов ${brandLabel}`
                   : `Full ${brandLabel} product list`}
             </h2>
-            <Link href="/catalog" className="text-sm text-zinc-500 transition hover:text-zinc-900">
+            <Link href={toLocalePath("/catalog", locale)} className="text-sm text-zinc-500 transition hover:text-zinc-900">
               Kataloqda davam et
             </Link>
           </div>

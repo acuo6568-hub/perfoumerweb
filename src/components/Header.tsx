@@ -880,8 +880,10 @@ export function Header({ floating = false, locale }: HeaderProps) {
       document.cookie = `perfoumer-locale=${encodeURIComponent(nextLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
     }
 
+    // Force a fresh request after persisting locale so the App Router
+    // doesn't reuse a stale prefetched payload from the previous language.
     startLocaleTransition(() => {
-      router.replace(nextPath, { scroll: false });
+      window.location.assign(nextPath);
     });
   };
 

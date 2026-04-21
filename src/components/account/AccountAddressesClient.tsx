@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
@@ -120,7 +120,7 @@ export function AccountAddressesClient({ locale, supabase: supabaseConfig }: Acc
       <div className="rounded-[1.5rem] border border-zinc-200 bg-white p-5 shadow-[0_8px_22px_rgba(0,0,0,0.04)] sm:p-6">
         <h1 className="text-[1.35rem] tracking-[-0.02em] text-zinc-900 sm:text-[1.6rem]">{copy.title}</h1>
         <p className="mt-2 text-sm text-zinc-600">{copy.loginRequired}</p>
-        <Link href="/login?next=%2Faccount%2Faddresses" className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-medium text-white">
+        <Link href={`${toLocalePath("/login", locale)}?next=${encodeURIComponent(toLocalePath("/account/addresses", locale))}`} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-medium text-white">
           {copy.loginCta}
         </Link>
       </div>

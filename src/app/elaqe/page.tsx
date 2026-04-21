@@ -5,6 +5,7 @@ import { ArrowUpRight, EnvelopeSimple, MapPin, Phone, WhatsappLogo } from "@phos
 
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
+import { toLocalePath } from "@/lib/i18n";
 import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 const contactMetadata: Metadata = {
@@ -198,15 +199,15 @@ export default async function ContactPage() {
                   <span className="text-lg leading-none text-zinc-700 transition-transform group-open:rotate-45">+</span>
                 </summary>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Link href="/haqqimizda" className="group inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900">
+                  <Link href={toLocalePath("/haqqimizda", locale)} className="group inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900">
                     Haqqımızda
                     <ArrowUpRight size={14} weight="bold" className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </Link>
-                  <Link href="/terms-and-conditions" className="group inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900">
+                  <Link href={toLocalePath("/terms-and-conditions", locale)} className="group inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900">
                     Şərtlər və qaydalar
                     <ArrowUpRight size={14} weight="bold" className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </Link>
-                  <Link href="/privacy-policy" className="group inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900">
+                  <Link href={toLocalePath("/privacy-policy", locale)} className="group inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900">
                     Məxfilik siyasəti
                     <ArrowUpRight size={14} weight="bold" className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </Link>

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
-import type { Locale } from "@/lib/i18n";
+import { toLocalePath, type Locale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Ödəniş statusu",
@@ -126,6 +126,20 @@ function findFirstParam(
   return null;
 }
 
+function formatAmountDisplay(amount: string | null, currency: string | null, fallback: string) {
+  if (!amount) {
+    return [amount, currency].filter(Boolean).join(" ") || fallback;
+  }
+
+  const normalized = amount.replace(/\s+/g, "").replace(",", ".");
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) {
+    return [amount, currency].filter(Boolean).join(" ") || fallback;
+  }
+
+  return [`${parsed.toFixed(2)}`, currency].filter(Boolean).join(" ");
+}
+
 function normalizeNextPath(input: string | undefined) {
   if (input && input.startsWith("/") && !input.startsWith("//")) {
     return input;
@@ -159,7 +173,7 @@ export default async function KapitalCallbackPage({ searchParams }: CallbackPage
   const paymentId = findFirstParam(params, ["PAYMENTID", "PaymentID", "PID", "paymentId", "id"]) || orderId;
   const amount = findFirstParam(params, ["AMOUNT", "amount", "Amount", "ORDERAMOUNT", "OrderAmount"]);
   const currency = findFirstParam(params, ["CURRENCY", "currency", "Currency", "ORDERCURRENCY"]);
-  const amountDisplay = [amount, currency].filter(Boolean).join(" ") || copy.noValue;
+  const amountDisplay = formatAmountDisplay(amount, currency, copy.noValue);
 
   const nextPath = normalizeNextPath(toSingleValue(params.next) || undefined);
   const statusKind = resolveStatusKind(status);
@@ -235,7 +249,7 @@ export default async function KapitalCallbackPage({ searchParams }: CallbackPage
                 {copy.back}
               </Link>
               <Link
-                href="/catalog"
+                href={toLocalePath("/catalog", locale)}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-700"
               >
                 {copy.catalog}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Locale } from "@/lib/i18n";
+import { toLocaleHref, type Locale } from "@/lib/i18n";
 
 type ProductOption = {
   slug: string;
@@ -136,11 +136,11 @@ export function HomeFeaturedSearch({ locale, products }: HomeFeaturedSearchProps
   const navigateToCatalog = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
-      router.push("/catalog");
+      router.push(toLocaleHref("/catalog", locale));
       return;
     }
 
-    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+    router.push(toLocaleHref(`/catalog?q=${encodeURIComponent(trimmed)}`, locale));
   };
 
   return (

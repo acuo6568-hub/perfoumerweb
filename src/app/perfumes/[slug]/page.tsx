@@ -20,6 +20,7 @@ import { PerfumePurchasePanel } from "@/components/perfume/PerfumePurchasePanel"
 import { PerfumeShareButton } from "@/components/perfume/PerfumeShareButton";
 import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes, getSimilarPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
+import { toLocalePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/i18n";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
 import { absoluteUrl, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
@@ -396,7 +397,7 @@ export default async function PerfumeDetailPage({
 
           <div className="mt-9 flex justify-center">
             <Link
-              href="/catalog"
+              href={toLocalePath("/catalog", locale)}
               className="inline-flex min-h-13 items-center justify-center rounded-full border border-zinc-400 bg-transparent px-9 text-lg font-medium text-zinc-700 transition md:hover:bg-white/70"
             >
               {t.detail.otherProducts}
