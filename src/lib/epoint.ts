@@ -68,7 +68,7 @@ export function normalizeEpointAmount(value: unknown) {
   return (Math.round(parsed * 100) / 100).toFixed(2);
 }
 
-export function encodeEpointData(payload: EpointRequestPayload) {
+export function encodeEpointData<T extends EpointRequestPayload | Record<string, string>>(payload: T) {
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
 }
 

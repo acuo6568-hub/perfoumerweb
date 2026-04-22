@@ -3,6 +3,8 @@
 :root {
   --background: #f3f3f2;
   --foreground: #1f1f1f;
+  --font-poppins: "Poppins", "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-playfair: "Playfair Display", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
 }
 
 @theme inline {

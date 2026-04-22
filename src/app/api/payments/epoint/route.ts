@@ -134,12 +134,16 @@ export async function GET(request: Request) {
   });
 
   if ("error" in payload) {
+    const errorMessage =
+      typeof payload.error === "string" && payload.error.trim()
+        ? payload.error
+        : "Payment initialization failed.";
     const html = `<!doctype html>
 <html lang="en">
   <head><meta charset="utf-8"><title>Payment Error</title></head>
   <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;">
     <h2>Payment initialization failed</h2>
-    <p>${escapeHtmlAttr(payload.error)}</p>
+    <p>${escapeHtmlAttr(errorMessage)}</p>
     <p><a href="/">Back to site</a></p>
   </body>
 </html>`;
