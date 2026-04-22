@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { Footer } from "@/components/Footer";
+import { formatNumberWithOptionalCents } from "@/lib/currency";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 
@@ -126,7 +127,7 @@ function findFirstParam(
   return null;
 }
 
-function formatAmountDisplay(amount: string | null, currency: string | null, fallback: string) {
+function formatAmountDisplay(amount: string | null, currency: string | null, fallback: string, locale: Locale) {
   if (!amount) {
     return [amount, currency].filter(Boolean).join(" ") || fallback;
   }
@@ -137,7 +138,7 @@ function formatAmountDisplay(amount: string | null, currency: string | null, fal
     return [amount, currency].filter(Boolean).join(" ") || fallback;
   }
 
-  return [`${parsed.toFixed(2)}`, currency].filter(Boolean).join(" ");
+  return [formatNumberWithOptionalCents(parsed, locale), currency].filter(Boolean).join(" ");
 }
 
 function normalizeNextPath(input: string | undefined) {
@@ -173,7 +174,7 @@ export default async function KapitalCallbackPage({ searchParams }: CallbackPage
   const paymentId = findFirstParam(params, ["PAYMENTID", "PaymentID", "PID", "paymentId", "id"]) || orderId;
   const amount = findFirstParam(params, ["AMOUNT", "amount", "Amount", "ORDERAMOUNT", "OrderAmount"]);
   const currency = findFirstParam(params, ["CURRENCY", "currency", "Currency", "ORDERCURRENCY"]);
-  const amountDisplay = formatAmountDisplay(amount, currency, copy.noValue);
+  const amountDisplay = formatAmountDisplay(amount, currency, copy.noValue, locale);
 
   const nextPath = normalizeNextPath(toSingleValue(params.next) || undefined);
   const statusKind = resolveStatusKind(status);

@@ -32,6 +32,8 @@ type PerfumeDetailPageProps = {
   searchParams?: Promise<{ v?: string | string[] }>;
 };
 
+export const dynamic = "force-dynamic";
+
 const getVariantId = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 

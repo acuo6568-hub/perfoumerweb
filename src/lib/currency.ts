@@ -70,6 +70,24 @@ type FormatOptions = {
   maximumFractionDigits?: number;
 };
 
+function hasMeaningfulCents(amount: number) {
+  if (!Number.isFinite(amount)) {
+    return false;
+  }
+
+  return Math.round(Math.abs(amount) * 100) % 100 !== 0;
+}
+
+function resolveFractionDigits(amount: number, options?: FormatOptions) {
+  const minimumFractionDigits = options?.minimumFractionDigits ?? (hasMeaningfulCents(amount) ? 2 : 0);
+  const maximumFractionDigits = options?.maximumFractionDigits ?? Math.max(minimumFractionDigits, 2);
+
+  return {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  };
+}
+
 export function isSupportedCurrency(value: unknown): value is SupportedCurrency {
   return typeof value === "string" && value in CURRENCY_META;
 }
@@ -94,11 +112,12 @@ export function formatCurrencyAmount(
   locale: Locale,
   options?: FormatOptions,
 ) {
+  const { minimumFractionDigits, maximumFractionDigits } = resolveFractionDigits(amount, options);
   const formatter = new Intl.NumberFormat(intlLocaleByAppLocale[locale], {
     style: "currency",
     currency,
-    minimumFractionDigits: options?.minimumFractionDigits ?? 2,
-    maximumFractionDigits: options?.maximumFractionDigits ?? 2,
+    minimumFractionDigits,
+    maximumFractionDigits,
   });
 
   return formatter.format(amount);
@@ -111,6 +130,19 @@ export function formatCurrencyFromAzn(
   options?: FormatOptions,
 ) {
   return formatCurrencyAmount(convertFromAzn(amountAzn, currency), currency, locale, options);
+}
+
+export function formatNumberWithOptionalCents(
+  amount: number,
+  locale: Locale,
+  options?: FormatOptions,
+) {
+  const { minimumFractionDigits, maximumFractionDigits } = resolveFractionDigits(amount, options);
+
+  return new Intl.NumberFormat(intlLocaleByAppLocale[locale], {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  }).format(amount);
 }
 
 export function getCurrencyShortLabel(currency: SupportedCurrency) {

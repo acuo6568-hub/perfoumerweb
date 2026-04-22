@@ -87,6 +87,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const [brokenSearchImages, setBrokenSearchImages] = useState<Record<string, true>>({});
   const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
   const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
+  const [isMobileCurrencyMenuOpen, setIsMobileCurrencyMenuOpen] = useState(false);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
@@ -551,12 +552,14 @@ export function Header({ floating = false, locale }: HeaderProps) {
     setIsCartDrawerOpen(false);
     setIsSearchDrawerOpen(false);
     setIsCurrencyMenuOpen(false);
+    setIsMobileCurrencyMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
     if (!isMenuOpen) {
       setOpenMobileCategory(null);
       setIsMobileLocaleMenuOpen(false);
+      setIsMobileCurrencyMenuOpen(false);
       setIsCurrencyMenuOpen(false);
     }
   }, [isMenuOpen]);
@@ -1845,16 +1848,41 @@ export function Header({ floating = false, locale }: HeaderProps) {
             <div
               style={{ transitionDelay: isMenuOpen ? "95ms" : "0ms" }}
               className={[
-                "mt-3 rounded-[1.2rem] border border-zinc-300/85 bg-white/70 p-3",
+                "relative z-20 mt-3",
                 menuTransition,
                 isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
               ].join(" ")}
             >
-              <div className="mb-2 flex items-center gap-2 text-[0.72rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
-                <Coins size={15} weight="duotone" />
-                <span>{copy[locale].currencyTag}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setIsMobileCurrencyMenuOpen((current) => !current)}
+                aria-haspopup="listbox"
+                aria-expanded={isMobileCurrencyMenuOpen}
+                className="inline-flex min-h-13 w-full items-center justify-between border border-zinc-300 bg-[#f6f6f6] px-3.5 py-2 text-sm font-medium text-zinc-900"
+              >
+                <span className="flex items-center gap-2">
+                  <Coins size={18} weight="duotone" className="text-zinc-700" />
+                  <span>{copy[locale].currencyTag}: {currentCurrencyLabel}</span>
+                </span>
+                <CaretDown
+                  size={14}
+                  weight="bold"
+                  className={[
+                    "text-zinc-700 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    isMobileCurrencyMenuOpen ? "rotate-180" : "rotate-0",
+                  ].join(" ")}
+                />
+              </button>
+
+              <div
+                className={[
+                  "absolute inset-x-0 top-[calc(100%+0.35rem)] z-[70] overflow-hidden border border-zinc-300 bg-white shadow-[0_16px_28px_rgba(20,20,24,0.12)] transition-all duration-250",
+                  isMobileCurrencyMenuOpen
+                    ? "pointer-events-auto translate-y-0 opacity-100"
+                    : "pointer-events-none -translate-y-1 opacity-0",
+                ].join(" ")}
+                role="listbox"
+              >
                 {SUPPORTED_CURRENCIES.map((currency) => {
                   const active = selectedCurrency === currency;
 
@@ -1862,16 +1890,21 @@ export function Header({ floating = false, locale }: HeaderProps) {
                     <button
                       key={`mobile-currency-${currency}`}
                       type="button"
-                      onClick={() => setSelectedCurrency(currency)}
+                      onClick={() => {
+                        setSelectedCurrency(currency);
+                        setIsMobileCurrencyMenuOpen(false);
+                      }}
                       className={[
-                        "inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition",
+                        "flex min-h-11 w-full items-center justify-between border-b border-zinc-200 px-3.5 text-left text-sm font-medium transition-colors duration-200 last:border-b-0",
                         active
-                          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_10px_24px_rgba(20,20,24,0.16)]"
-                          : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50",
+                          ? "bg-zinc-900 text-white"
+                          : "text-zinc-700 hover:bg-zinc-100",
                       ].join(" ")}
                     >
-                      <span className="text-base">{CURRENCY_META[currency].symbol}</span>
-                      <span>{getCurrencyShortLabel(currency)}</span>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="text-base">{CURRENCY_META[currency].symbol}</span>
+                        <span>{getCurrencyShortLabel(currency)}</span>
+                      </span>
                     </button>
                   );
                 })}

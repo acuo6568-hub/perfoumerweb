@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toLocalePath, type Locale } from "@/lib/i18n";
+import {
+  formatCurrencyAmount,
+  formatNumberWithOptionalCents,
+  isSupportedCurrency,
+} from "@/lib/currency";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
@@ -32,6 +37,14 @@ type AccountOrdersClientProps = {
   locale: Locale;
   supabase: SupabasePublicConfig | null;
 };
+
+function formatOrderAmount(amount: number, currency: string, locale: Locale) {
+  if (isSupportedCurrency(currency)) {
+    return formatCurrencyAmount(amount, currency, locale);
+  }
+
+  return `${formatNumberWithOptionalCents(amount, locale)} ${currency}`.trim();
+}
 
 export function AccountOrdersClient({ locale, supabase: supabaseConfig }: AccountOrdersClientProps) {
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
@@ -464,7 +477,7 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
                     <span className="max-w-[68%]">
                       {item.perfume_name} ({item.size_ml}ML) × {item.quantity}
                     </span>
-                    <span className="font-medium text-zinc-900">{item.total_price.toFixed(2)} {order.currency}</span>
+                    <span className="font-medium text-zinc-900">{formatOrderAmount(item.total_price, order.currency, locale)}</span>
                   </div>
                 ))}
               </div>
@@ -473,9 +486,7 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="flex justify-between text-base font-semibold text-zinc-900">
                 <span>{copy.total}</span>
-                <span>
-                  {order.total_amount.toFixed(2)} {order.currency}
-                </span>
+                <span>{formatOrderAmount(order.total_amount, order.currency, locale)}</span>
               </div>
             </div>
 
