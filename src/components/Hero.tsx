@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { formatCurrencyFromAzn, type SupportedCurrency } from "@/lib/currency";
@@ -562,6 +562,8 @@ export function Hero({ locale, spotlights }: HeroProps) {
     .map((perfume) => buildHeroModel(perfume, locale, selectedCurrency));
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const tiltResetRef = useRef<number | null>(null);
   const goPrevious = () => {
     setActiveIndex((current) => (models.length ? (current - 1 + models.length) % models.length : 0));
   };
@@ -586,6 +588,35 @@ export function Hero({ locale, spotlights }: HeroProps) {
   useEffect(() => {
     setActiveIndex((current) => (models.length ? current % models.length : 0));
   }, [models.length]);
+
+  useEffect(() => {
+    return () => {
+      if (tiltResetRef.current !== null) {
+        window.clearTimeout(tiltResetRef.current);
+      }
+    };
+  }, []);
+
+  const pulseTilt = (side: "left" | "right") => {
+    const node = stageRef.current;
+    if (!node) {
+      return;
+    }
+
+    const nextClass = side === "left" ? "hero-shell-stage--pulse-left" : "hero-shell-stage--pulse-right";
+    node.classList.remove("hero-shell-stage--pulse-left", "hero-shell-stage--pulse-right");
+    void node.offsetWidth;
+    node.classList.add(nextClass);
+
+    if (tiltResetRef.current !== null) {
+      window.clearTimeout(tiltResetRef.current);
+    }
+
+    tiltResetRef.current = window.setTimeout(() => {
+      node.classList.remove(nextClass);
+      tiltResetRef.current = null;
+    }, 520);
+  };
 
   if (!models.length) {
     return (
@@ -641,6 +672,10 @@ export function Hero({ locale, spotlights }: HeroProps) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
+      <div
+        ref={stageRef}
+        className="hero-shell-stage absolute inset-0 overflow-hidden rounded-[inherit]"
+      >
       {models.map((model, index) => (
         <div
           key={model.perfume.id}
@@ -685,18 +720,24 @@ export function Hero({ locale, spotlights }: HeroProps) {
           <button
             type="button"
             aria-label={locale === "ru" ? "Предыдущий аромат" : locale === "en" ? "Previous scent" : "Əvvəlki ətir"}
-            onClick={goPrevious}
-            className="absolute left-4 top-1/2 z-[5] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/14 bg-black/10 text-white/84 backdrop-blur-md transition hover:bg-white/12 md:left-6 md:h-12 md:w-12"
+            onClick={() => {
+              pulseTilt("left");
+              goPrevious();
+            }}
+            className="hero-side-switcher hero-side-switcher--left"
           >
-            <ArrowLeft size={18} weight="bold" />
+            <ArrowLeft size={18} weight="bold" className="hero-side-switcher__icon" />
           </button>
           <button
             type="button"
             aria-label={locale === "ru" ? "Следующий аромат" : locale === "en" ? "Next scent" : "Növbəti ətir"}
-            onClick={goNext}
-            className="absolute right-4 top-1/2 z-[5] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/14 bg-black/10 text-white/84 backdrop-blur-md transition hover:bg-white/12 md:right-6 md:h-12 md:w-12"
+            onClick={() => {
+              pulseTilt("right");
+              goNext();
+            }}
+            className="hero-side-switcher hero-side-switcher--right"
           >
-            <ArrowRight size={18} weight="bold" />
+            <ArrowRight size={18} weight="bold" className="hero-side-switcher__icon" />
           </button>
         </>
       ) : null}
@@ -844,6 +885,7 @@ export function Hero({ locale, spotlights }: HeroProps) {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </section>
   );

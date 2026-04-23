@@ -758,6 +758,10 @@ export function Header({ floating = false, locale }: HeaderProps) {
     "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]";
   const stickTransition =
     "absolute left-1/2 top-1/2 block h-0.5 w-4 -translate-x-1/2 rounded-full bg-current opacity-100 transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]";
+  const mobileHeaderClusterClass =
+    "flex items-center gap-0.5 rounded-full border border-white/80 bg-white/72 px-1 py-1 shadow-[0_10px_26px_rgba(20,20,24,0.08)] backdrop-blur-sm";
+  const mobileHeaderButtonClass =
+    "group relative grid h-9 w-9 place-items-center rounded-full text-zinc-900 transition-[transform,background-color,color] duration-200 hover:bg-white/85 active:scale-95";
 
   const isItemActive = useCallback(
     (href: string) => {
@@ -942,15 +946,20 @@ export function Header({ floating = false, locale }: HeaderProps) {
           floating ? "fixed inset-x-0 top-0" : "relative",
         ].join(" ")}
       >
-        <div className="bg-[#f3f3f2] px-3 py-3 lg:hidden">
-          <div className="relative mx-auto flex h-12 max-w-[1540px] items-center justify-between">
-            <div className="flex items-center gap-1">
+        <div className="bg-[#f3f3f2] px-3 py-2.5 lg:hidden">
+          <div className="header-load-in relative mx-auto max-w-[1540px] rounded-[1.65rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(244,244,242,0.82)_100%)] px-2.5 py-2 shadow-[0_18px_42px_rgba(20,20,24,0.08)]">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-[1px] rounded-[inherit] bg-[linear-gradient(135deg,rgba(255,255,255,0.46)_0%,rgba(255,255,255,0.08)_42%,rgba(255,255,255,0.28)_100%)] opacity-70"
+            />
+            <div className="relative mx-auto flex h-11 items-center justify-between">
+            <div className={mobileHeaderClusterClass}>
               <button
                 type="button"
                 aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
                 aria-expanded={isMenuOpen}
                 onClick={toggleMenuDrawer}
-                className="group relative grid h-10 w-10 place-items-center text-zinc-900"
+                className={mobileHeaderButtonClass}
               >
                 <span
                   className={[
@@ -969,36 +978,38 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 type="button"
                 onClick={openSearchDrawer}
                 aria-label={t.header.products}
-                className="grid h-10 w-10 place-items-center text-zinc-900"
+                className={mobileHeaderButtonClass}
               >
-                <MagnifyingGlass size={23} weight="regular" />
+                <MagnifyingGlass size={20} weight="regular" />
               </button>
             </div>
 
             <Link
               href={toLocalePath("/", locale)}
-              className="absolute left-1/2 top-1/2 flex w-full max-w-[calc(100%-10.5rem)] -translate-x-1/2 -translate-y-1/2 justify-center px-1"
+              className="absolute left-1/2 top-1/2 flex w-full max-w-[calc(100%-11.25rem)] -translate-x-1/2 -translate-y-1/2 justify-center px-1"
               onClick={() => setIsMenuOpen(false)}
             >
-              <Image
-                src="/perfmmob.png"
-                alt="Perfoumer"
-                width={174}
-                height={35}
-                priority
-                className="h-[28px] w-[min(46vw,174px)] object-contain"
-              />
+              <span className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/80 bg-white/80 px-3.5 shadow-[0_10px_24px_rgba(20,20,24,0.06)] backdrop-blur-sm">
+                <Image
+                  src="/perfmmob.png"
+                  alt="Perfoumer"
+                  width={174}
+                  height={35}
+                  priority
+                  className="h-[24px] w-[min(40vw,148px)] object-contain"
+                />
+              </span>
             </Link>
 
-            <div className="flex items-center gap-1">
+            <div className={mobileHeaderClusterClass}>
               <Link
                 href={toLocalePath("/wishlist", locale)}
                 aria-label={copy[locale].wishlist}
-                className="relative grid h-10 w-10 place-items-center text-zinc-900"
+                className={mobileHeaderButtonClass}
               >
-                <HeartStraight size={22} weight="regular" />
+                <HeartStraight size={20} weight="regular" />
                 {wishlistItemCount > 0 ? (
-                  <span className="absolute right-[2px] top-[3px] inline-flex min-w-[0.95rem] items-center justify-center rounded-full bg-zinc-900 px-1 py-0.5 text-[9px] font-semibold leading-none text-white">
+                  <span className="absolute right-0 top-0 inline-flex min-w-[0.95rem] items-center justify-center rounded-full bg-zinc-900 px-1 py-0.5 text-[9px] font-semibold leading-none text-white shadow-[0_6px_14px_rgba(24,24,24,0.2)]">
                     {wishlistItemCount > 99 ? "99+" : wishlistItemCount}
                   </span>
                 ) : null}
@@ -1007,15 +1018,16 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 type="button"
                 aria-label={t.header.cart}
                 onClick={openCartDrawer}
-                className="relative grid h-10 w-10 place-items-center text-zinc-900"
+                className={mobileHeaderButtonClass}
               >
-                <ShoppingBag size={22} weight="regular" />
+                <ShoppingBag size={20} weight="regular" />
                 {cartItemCount > 0 ? (
-                  <span className="absolute right-[2px] top-[3px] inline-flex min-w-[0.95rem] items-center justify-center rounded-full bg-zinc-900 px-1 py-0.5 text-[9px] font-semibold leading-none text-white">
+                  <span className="absolute right-0 top-0 inline-flex min-w-[0.95rem] items-center justify-center rounded-full bg-zinc-900 px-1 py-0.5 text-[9px] font-semibold leading-none text-white shadow-[0_6px_14px_rgba(24,24,24,0.2)]">
                     {cartItemCount > 99 ? "99+" : cartItemCount}
                   </span>
                 ) : null}
               </button>
+            </div>
             </div>
           </div>
         </div>
