@@ -124,6 +124,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
             alt={perfume.imageAlt || `${perfume.brand} ${perfume.name} ətiri`}
             fill
             sizes="(max-width: 639px) 44vw, (max-width: 1023px) 42vw, (max-width: 1279px) 28vw, 22vw"
+            quality={70}
             className={[
               "product-image object-contain object-bottom transition-opacity duration-500",
               isImageLoaded ? "opacity-100" : "opacity-0",

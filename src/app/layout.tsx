@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Playfair_Display, Poppins } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -20,6 +21,22 @@ import {
 } from "@/lib/seo";
 
 import "./globals.css";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  fallback: ["Avenir Next", "Segoe UI", "Helvetica", "Arial", "sans-serif"],
+  variable: "--font-poppins",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+  fallback: ["Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Georgia", "serif"],
+  variable: "--font-playfair",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -200,18 +217,10 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className="h-full antialiased"
+      className={`${poppins.variable} ${playfair.variable} h-full antialiased`}
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body className="min-h-full flex flex-col">
-        <Script id="gtm-init" strategy="beforeInteractive">
+        <Script id="gtm-init" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=

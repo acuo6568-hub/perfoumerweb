@@ -60,6 +60,9 @@ export function SiteTracker() {
     const anonymousId = getOrCreateStorageId("perfoumer.analytics.anonymous-id", window.localStorage);
     const sessionId = getOrCreateStorageId("perfoumer.analytics.session-id", window.sessionStorage);
     const userAgent = window.navigator.userAgent || "";
+    let heartbeatId: number | ReturnType<typeof setInterval> | null = null;
+    let idleCallbackId: number | null = null;
+    let fallbackTimeoutId: number | ReturnType<typeof setTimeout> | null = null;
 
     const send = async () => {
       const now = Date.now();
@@ -95,11 +98,18 @@ export function SiteTracker() {
       });
     };
 
-    void send();
-
-    const heartbeatId = window.setInterval(() => {
+    const scheduleInitialSend = () => {
       void send();
-    }, 30000);
+      heartbeatId = window.setInterval(() => {
+        void send();
+      }, 30000);
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleCallbackId = window.requestIdleCallback(scheduleInitialSend, { timeout: 4000 });
+    } else {
+      fallbackTimeoutId = globalThis.setTimeout(scheduleInitialSend, 1800);
+    }
 
     const visibilityHandler = () => {
       if (document.visibilityState === "visible") {
@@ -109,7 +119,17 @@ export function SiteTracker() {
 
     document.addEventListener("visibilitychange", visibilityHandler);
     return () => {
-      window.clearInterval(heartbeatId);
+      if (heartbeatId !== null) {
+        window.clearInterval(heartbeatId);
+      }
+      if (idleCallbackId !== null) {
+        if ("cancelIdleCallback" in window) {
+          window.cancelIdleCallback(idleCallbackId);
+        }
+      }
+      if (fallbackTimeoutId !== null) {
+        globalThis.clearTimeout(fallbackTimeoutId);
+      }
       document.removeEventListener("visibilitychange", visibilityHandler);
     };
   }, [fullPath, supabase]);

@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { ProductCard } from "@/components/ProductCard";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { humanizeNoteToken, localizeNoteLabel } from "@/lib/note-label";
 import type { Note, Perfume } from "@/types/catalog";
@@ -382,6 +381,31 @@ const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
   ß: "ss",
 };
 
+const QUIZ_CARD_COPY: Record<
+  Locale,
+  {
+    viewPerfume: string;
+    startingFrom: string;
+    quote: string;
+  }
+> = {
+  az: {
+    viewPerfume: "Ətirə bax",
+    startingFrom: "Başlayan qiymət",
+    quote: "Qiymət sorğu ilə",
+  },
+  en: {
+    viewPerfume: "View perfume",
+    startingFrom: "Starting from",
+    quote: "Quote on request",
+  },
+  ru: {
+    viewPerfume: "Открыть аромат",
+    startingFrom: "Цена от",
+    quote: "Цена по запросу",
+  },
+};
+
 function normalize(value: string) {
   return value
     .normalize("NFD")
@@ -435,6 +459,92 @@ function getStartingPrice(perfume: Perfume) {
   }
 
   return perfume.sizes.reduce((min, item) => (item.price < min ? item.price : min), perfume.sizes[0].price);
+}
+
+function formatQuizPrice(price: number, locale: Locale) {
+  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : locale === "en" ? "en-US" : "az-AZ", {
+    minimumFractionDigits: price % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(price);
+}
+
+function QuizResultProductCard({ perfume, locale }: { perfume: Perfume; locale: Locale }) {
+  const displayPerfume = sanitizePerfumeForDisplay(perfume);
+  const cardCopy = QUIZ_CARD_COPY[locale];
+  const startingPrice = getStartingPrice(displayPerfume);
+  const noteChips = [
+    ...displayPerfume.noteSlugs.top,
+    ...displayPerfume.noteSlugs.heart,
+    ...displayPerfume.noteSlugs.base,
+  ]
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((slug) =>
+      localizeNoteLabel(
+        {
+          slug,
+          name: humanizeNoteToken(slug),
+        },
+        locale,
+      ),
+    );
+
+  return (
+    <Link
+      href={toLocalePath(`/perfumes/${displayPerfume.slug}`, locale)}
+      className="group block rounded-[1.15rem] border border-zinc-200 bg-[#fcfcfb] p-3 transition duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-white"
+    >
+      <div className="flex items-center gap-3">
+        <div className="relative h-28 w-24 shrink-0 overflow-hidden rounded-[0.95rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(243,243,240,0.9))]">
+          <Image
+            src={displayPerfume.image || "/perfoumerlogo.png"}
+            alt={displayPerfume.imageAlt || `${displayPerfume.brand} ${displayPerfume.name}`}
+            fill
+            sizes="(max-width: 767px) 28vw, 120px"
+            quality={70}
+            className="object-contain object-bottom px-2 py-2 transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.68rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+            {displayPerfume.brand}
+          </p>
+          <h3 className="mt-1 line-clamp-2 text-[1.05rem] leading-tight font-semibold text-zinc-900">
+            {displayPerfume.name}
+          </h3>
+
+          {noteChips.length ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {noteChips.map((note) => (
+                <span
+                  key={`${displayPerfume.id}-${note}`}
+                  className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[0.66rem] font-medium text-zinc-600"
+                >
+                  {note}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[0.62rem] font-semibold tracking-[0.14em] text-zinc-500 uppercase">
+                {cardCopy.startingFrom}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-zinc-900">
+                {Number.isFinite(startingPrice) ? `${formatQuizPrice(startingPrice, locale)} ₼` : cardCopy.quote}
+              </p>
+            </div>
+
+            <span className="inline-flex shrink-0 items-center rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-[0.68rem] font-semibold tracking-[0.08em] text-white uppercase transition duration-300 group-hover:bg-zinc-800">
+              {cardCopy.viewPerfume}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 function scorePerfume(perfume: Perfume, answers: QuizAnswers) {
@@ -1214,7 +1324,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                   </div>
 
                   <div className="mt-3 border-t border-zinc-200 pt-3">
-                    <ProductCard perfume={sanitizePerfumeForDisplay(featuredMatch)} locale={locale} />
+                    <QuizResultProductCard perfume={featuredMatch} locale={locale} />
                   </div>
                 </section>
               ) : null}
@@ -1227,7 +1337,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                       <div key={perfume.id} className="qoxunu-mobile-slide min-w-[82vw] max-w-[82vw] snap-center rounded-xl border border-zinc-200 bg-white p-3">
                         {renderResultMeta(perfume, index + 2, true)}
                         <div className="mt-3 border-t border-zinc-200 pt-3">
-                          <ProductCard perfume={sanitizePerfumeForDisplay(perfume)} locale={locale} />
+                          <QuizResultProductCard perfume={perfume} locale={locale} />
                         </div>
                       </div>
                     ))}
@@ -1380,7 +1490,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                       <div key={perfume.id} className="quiz-result-card-wrap rounded-[1.2rem] border border-zinc-200 bg-white px-2.5 py-2.5 sm:px-3 sm:py-3" style={{ animationDelay: `${110 + index * 90}ms` }}>
                         {renderResultMeta(perfume, index, false)}
                         <div className="mt-2.5 border-t border-zinc-200 pt-2.5">
-                          <ProductCard perfume={perfume} locale={locale} />
+                          <QuizResultProductCard perfume={perfume} locale={locale} />
                         </div>
                       </div>
                     ))}

@@ -56,6 +56,10 @@ export function ConsoleCredit() {
       return;
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      return;
+    }
+
     const imageBlockStyle = [
       "display:block",
       "padding:88px 240px",
@@ -83,42 +87,70 @@ export function ConsoleCredit() {
       "margin-bottom:8px",
     ].join(";");
 
-    console.log("%c ", imageBlockStyle);
-    console.log("%cBAKHISHOV BRANDS", titleStyle);
-    console.log("%cORIGINAL WORK ONLY", subtitleStyle);
+    const printCredit = () => {
+      console.log("%c ", imageBlockStyle);
+      console.log("%cBAKHISHOV BRANDS", titleStyle);
+      console.log("%cORIGINAL WORK ONLY", subtitleStyle);
 
-    let index = 0;
-    const intervalId = window.setInterval(() => {
-      const item = CREDIT_LINES[index % CREDIT_LINES.length];
-      const hue = (index * 37) % 360;
+      let index = 0;
+      const intervalId = window.setInterval(() => {
+        const item = CREDIT_LINES[index % CREDIT_LINES.length];
+        const hue = (index * 37) % 360;
 
-      const lineStyle = [
-        "font:700 14px/1.45 'Poppins',sans-serif",
-        "letter-spacing:.04em",
-        "color:white",
-        `text-shadow:0 0 18px hsla(${hue}, 88%, 74%, .55)`,
-      ].join(";");
-
-      console.log(`%c${item.lang}: ${item.text}`, lineStyle);
-
-      index += 1;
-      if (index >= CREDIT_LINES.length * 2) {
-        window.clearInterval(intervalId);
-
-        const lockStyle = [
-          "font:800 13px/1.4 'Poppins',sans-serif",
-          "letter-spacing:.16em",
-          "text-transform:uppercase",
-          "color:#ffd7b5",
-          "margin-top:4px",
+        const lineStyle = [
+          "font:700 14px/1.45 'Poppins',sans-serif",
+          "letter-spacing:.04em",
+          "color:white",
+          `text-shadow:0 0 18px hsla(${hue}, 88%, 74%, .55)`,
         ].join(";");
 
-        console.log("%cProtected by Bakhishov Brands", lockStyle);
-      }
-    }, 900);
+        console.log(`%c${item.lang}: ${item.text}`, lineStyle);
+
+        index += 1;
+        if (index >= CREDIT_LINES.length * 2) {
+          window.clearInterval(intervalId);
+
+          const lockStyle = [
+            "font:800 13px/1.4 'Poppins',sans-serif",
+            "letter-spacing:.16em",
+            "text-transform:uppercase",
+            "color:#ffd7b5",
+            "margin-top:4px",
+          ].join(";");
+
+          console.log("%cProtected by Bakhishov Brands", lockStyle);
+        }
+      }, 900);
+
+      return intervalId;
+    };
+
+    let intervalId: number | ReturnType<typeof setInterval> | null = null;
+    let idleCallbackId: number | null = null;
+    let fallbackTimeoutId: number | ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = () => {
+      intervalId = printCredit();
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleCallbackId = window.requestIdleCallback(schedule, { timeout: 5000 });
+    } else {
+      fallbackTimeoutId = globalThis.setTimeout(schedule, 2200);
+    }
 
     return () => {
-      window.clearInterval(intervalId);
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      if (idleCallbackId !== null) {
+        if ("cancelIdleCallback" in window) {
+          window.cancelIdleCallback(idleCallbackId);
+        }
+      }
+      if (fallbackTimeoutId !== null) {
+        globalThis.clearTimeout(fallbackTimeoutId);
+      }
     };
   }, []);
 

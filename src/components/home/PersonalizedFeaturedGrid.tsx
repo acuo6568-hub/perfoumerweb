@@ -10,7 +10,6 @@ import type { Perfume } from "@/types/catalog";
 
 type PersonalizedFeaturedGridProps = {
   featured: Perfume[];
-  allPerfumes: Perfume[];
   locale: Locale;
   supabase: SupabasePublicConfig | null;
 };
@@ -99,18 +98,13 @@ function reorderFeatured(
 
 export function PersonalizedFeaturedGrid({
   featured,
-  allPerfumes,
   locale,
   supabase: supabaseConfig,
 }: PersonalizedFeaturedGridProps) {
   const [orderedFeatured, setOrderedFeatured] = useState<Perfume[]>(featured);
-  const supabase = useMemo(
-    () => getSupabaseBrowserClient(supabaseConfig ?? undefined),
-    [supabaseConfig?.url, supabaseConfig?.anonKey],
-  );
   const catalogBySlug = useMemo(
-    () => new Map(allPerfumes.map((perfume) => [perfume.slug, perfume])),
-    [allPerfumes],
+    () => new Map(featured.map((perfume) => [perfume.slug, perfume])),
+    [featured],
   );
 
   useEffect(() => {
@@ -119,10 +113,19 @@ export function PersonalizedFeaturedGrid({
 
   useEffect(() => {
     let isMounted = true;
+    let idleCallbackId: number | null = null;
+    let fallbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let authSubscription: { unsubscribe: () => void } | null = null;
 
     const hydrateForSession = async (session: Session | null) => {
       if (!isMounted) return;
-      if (!supabase || !session?.user) {
+      if (!session?.user) {
+        setOrderedFeatured(featured);
+        return;
+      }
+
+      const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
+      if (!supabase) {
         setOrderedFeatured(featured);
         return;
       }
@@ -164,28 +167,57 @@ export function PersonalizedFeaturedGrid({
       setOrderedFeatured(reorderFeatured(featured, maps));
     };
 
-    if (!supabase) {
+    if (!supabaseConfig?.url || !supabaseConfig?.anonKey) {
       setOrderedFeatured(featured);
       return () => {
         isMounted = false;
       };
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      void hydrateForSession(data.session ?? null);
-    });
+    const startPersonalization = () => {
+      const supabase = getSupabaseBrowserClient(supabaseConfig);
+      if (!supabase) {
+        setOrderedFeatured(featured);
+        return;
+      }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      void hydrateForSession(nextSession);
-    });
+      void supabase.auth.getSession().then(({ data }) => {
+        void hydrateForSession(data.session ?? null);
+      });
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        void hydrateForSession(nextSession);
+      });
+
+      authSubscription = subscription;
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleCallbackId = window.requestIdleCallback(
+        () => {
+          startPersonalization();
+        },
+        { timeout: 1500 },
+      );
+    } else {
+      fallbackTimeoutId = globalThis.setTimeout(() => {
+        startPersonalization();
+      }, 700);
+    }
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      if (idleCallbackId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+      if (fallbackTimeoutId !== null) {
+        window.clearTimeout(fallbackTimeoutId);
+      }
+      authSubscription?.unsubscribe();
     };
-  }, [catalogBySlug, featured, supabase]);
+  }, [catalogBySlug, featured, supabaseConfig]);
 
   return (
     <section className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-5">

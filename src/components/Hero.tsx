@@ -806,8 +806,9 @@ export function Hero({ locale, spotlights }: HeroProps) {
                   alt={model.perfume.imageAlt || model.perfume.name}
                   width={model.scene.main.width}
                   height={Math.round(model.scene.main.width * 1.75)}
-                  sizes="(max-width: 1280px) 34vw, 420px"
+                  sizes="(max-width: 1023px) 0px, (max-width: 1279px) 34vw, 420px"
                   className="h-auto w-full object-contain"
+                  quality={70}
                   priority={index === 0}
                 />
               </div>
@@ -889,8 +890,9 @@ export function Hero({ locale, spotlights }: HeroProps) {
                   src={activeModel.perfume.image}
                   alt={activeModel.perfume.imageAlt || activeModel.perfume.name}
                   fill
-                  sizes="78vw"
+                  sizes="(max-width: 767px) 0px, (max-width: 1023px) 280px, 0px"
                   className="object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.34)]"
+                  quality={70}
                   priority
                 />
               </div>
@@ -908,8 +910,9 @@ export function Hero({ locale, spotlights }: HeroProps) {
           src={activeModel.perfume.image}
           alt={activeModel.perfume.imageAlt || activeModel.perfume.name}
           fill
-          sizes="40vw"
+          sizes="(max-width: 767px) 44vw, 0px"
           className="object-contain object-bottom drop-shadow-[0_24px_40px_rgba(0,0,0,0.28)]"
+          quality={70}
           priority
         />
       </div>

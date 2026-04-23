@@ -3,10 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
 	images: {
 		minimumCacheTTL: 2678400,
-		formats: ["image/webp"],
-		qualities: [75],
-		deviceSizes: [640, 768, 1024, 1280, 1536],
-		imageSizes: [48, 64, 96, 128, 192, 256, 384],
+		formats: ["image/avif", "image/webp"],
+		qualities: [65, 70, 75],
+		deviceSizes: [320, 420, 560, 640, 750, 840, 1080, 1280, 1536],
+		imageSizes: [32, 48, 64, 80, 96, 128, 160, 192, 256, 320, 384],
 		remotePatterns: [
 			{
 				protocol: "https",

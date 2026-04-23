@@ -709,7 +709,6 @@ export default async function Home() {
 
         <PersonalizedFeaturedGrid
           featured={featured}
-          allPerfumes={perfumes}
           locale={locale}
           supabase={supabaseConfig}
         />
@@ -723,14 +722,17 @@ export default async function Home() {
           </Link>
         </div>
 
-        <section className="mt-10 p-1 md:p-0">
+        <section
+          className="mt-10 p-1 md:p-0"
+          style={{ contentVisibility: "auto", containIntrinsicSize: "1px 720px" }}
+        >
           <div>
             <p className="text-[0.68rem] font-semibold tracking-[0.24em] text-zinc-500 uppercase">Məqalələr və kampaniyalar</p>
             <h2 className="mt-2 text-[clamp(2rem,4.2vw,3.4rem)] leading-[1.03] tracking-[-0.02em] text-zinc-900">Faydalı məqalələr</h2>
           </div>
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2 lg:gap-6">
-            {homepageArticleCards.map((article) => (
+            {homepageArticleCards.slice(0, 2).map((article) => (
               <article key={article.slug} className="grid items-start gap-4 sm:grid-cols-[210px_1fr] sm:gap-5">
                 <Link href={`/blog/${article.slug}`} className="group relative block aspect-[4/3] overflow-hidden rounded-[1.2rem] bg-zinc-200">
                   <Image
@@ -764,7 +766,11 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="about" className="mt-20 pb-8 md:mt-24">
+        <section
+          id="about"
+          className="mt-20 pb-8 md:mt-24"
+          style={{ contentVisibility: "auto", containIntrinsicSize: "1px 1400px" }}
+        >
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm text-zinc-500">{t.home.statsEyebrow}</p>
             <h2 className="mt-3 text-5xl leading-[0.95] tracking-[-0.02em] font-medium text-zinc-800 md:text-[4.9rem]">
@@ -806,7 +812,7 @@ export default async function Home() {
                 </p>
 
                 <div className="mt-6 space-y-3">
-                  {about.notes.map((note) => (
+                  {about.notes.slice(0, 1).map((note) => (
                     <p
                       key={note}
                       className="rounded-2xl border border-[#d8c9b4]/40 bg-white/72 px-4 py-3 text-sm leading-relaxed text-zinc-700 shadow-[0_8px_24px_rgba(22,22,24,0.04)]"
@@ -817,8 +823,8 @@ export default async function Home() {
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-1">
-                {about.pillars.map((pillar, index) => (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
+                {about.pillars.slice(0, 2).map((pillar, index) => (
                   <article
                     key={pillar.label}
                     className={[
@@ -858,8 +864,8 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="mt-7 grid gap-3 md:grid-cols-3">
-              {about.trustItems.map((item, index) => (
+            <div className="mt-7 grid gap-3 md:grid-cols-2">
+              {about.trustItems.slice(0, 2).map((item, index) => (
                 <article
                   key={item.title}
                   className="rounded-2xl border border-white/12 bg-white/5 px-5 py-5 shadow-[0_12px_26px_rgba(5,5,6,0.22)] backdrop-blur-sm"
@@ -890,7 +896,7 @@ export default async function Home() {
             </div>
 
             <div className="mt-7 space-y-3">
-              {about.faqItems.map((item, index) => (
+              {about.faqItems.slice(0, 3).map((item, index) => (
                 <article
                   key={item.question}
                   className="rounded-2xl border border-zinc-200/70 bg-white/90 px-5 py-4 shadow-[0_8px_20px_rgba(20,20,22,0.04)]"
@@ -906,6 +912,16 @@ export default async function Home() {
                   </div>
                 </article>
               ))}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Link
+                href={toLocalePath("/haqqimizda", locale)}
+                className="inline-flex items-center gap-2 border-b border-zinc-400/70 pb-1 text-[0.82rem] font-semibold tracking-[0.18em] text-zinc-700 uppercase transition-all duration-300 hover:border-zinc-900 hover:text-zinc-900"
+              >
+                {locale === "ru" ? "Подробнее о Perfoumer" : locale === "en" ? "Learn more about Perfoumer" : "Perfoumer haqqında daha çox"}
+                <span className="text-[0.9rem]">↗</span>
+              </Link>
             </div>
           </div>
         </section>
