@@ -17,6 +17,7 @@ type Order = {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_method?: string;
   total_amount: number;
   currency: string;
   items: OrderItem[];
@@ -113,6 +114,7 @@ export async function GET(request: NextRequest) {
       order_number: String(order.order_number ?? ""),
       status: String(order.status ?? "pending"),
       payment_status: String(order.payment_status ?? "pending"),
+      payment_method: order.payment_method ? String(order.payment_method) : undefined,
       total_amount: Number(order.total_amount ?? 0),
       currency: String(order.currency ?? "AZN"),
       items: Array.isArray(order.items_json) ? order.items_json : [],

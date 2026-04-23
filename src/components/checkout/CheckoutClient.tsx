@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { CASH_PICKUP_PAYMENT_METHOD, type CheckoutSettings } from "@/lib/checkout-settings";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
@@ -17,6 +18,7 @@ type CheckoutClientProps = {
   perfumes: any[];
   locale: Locale;
   supabase: SupabasePublicConfig | null;
+  settings: CheckoutSettings;
 };
 
 type Address = {
@@ -29,6 +31,14 @@ type Address = {
   postalCode: string;
   country: string;
 };
+
+type PickupContact = {
+  fullName: string;
+  phone: string;
+  note: string;
+};
+
+type CheckoutMode = "card" | "cash_pickup";
 
 type Copy = {
   loading: string;
@@ -90,6 +100,34 @@ type Copy = {
   deliveryEstimateLoading: string;
   deliveryEstimateEta: string;
   deliveryEstimateCarrier: string;
+  paymentOptionsTitle: string;
+  paymentOptionsBody: string;
+  cardPaymentTitle: string;
+  cardPaymentBody: string;
+  cashPickupTitle: string;
+  cashPickupBody: string;
+  cashPickupPill: string;
+  pickupContactTitle: string;
+  pickupContactBody: string;
+  pickupNote: string;
+  pickupNotePlaceholder: string;
+  invalidPickupContact: string;
+  pickupSummaryTitle: string;
+  pickupLocationTitle: string;
+  pickupAddressLabel: string;
+  pickupPhoneLabel: string;
+  pickupPaymentHint: string;
+  openMap: string;
+  paymentMethodLabel: string;
+  paymentMethodCard: string;
+  paymentMethodCashPickup: string;
+  cashOrderAction: string;
+  cashOrderLoading: string;
+  cashOrderError: string;
+  cashSuccessTitle: string;
+  cashSuccessBody: string;
+  cashStatusReserved: string;
+  pickupOrderSummaryLabel: string;
 };
 
 type DeliveryEstimate = {
@@ -108,8 +146,8 @@ const copyByLocale: Record<Locale, Copy> = {
     signInBody: "Sifarişi tamamlamaq üçün hesabına daxil ol.",
     signInAction: "Giriş et",
     emptyCart: "Checkout üçün səbətdə məhsul yoxdur.",
-    steps: ["Ünvan", "Çatdırılma", "Yekun"],
-    savedAddresses: "Saxlanmış ünvanlar",
+    steps: ["Əlaqə", "Sifariş seçimi", "Yekun"],
+    savedAddresses: "Çatdırılma ünvanları",
     addAddress: "Yeni ünvan əlavə et",
     fullName: "Ad Soyad",
     phone: "Telefon",
@@ -162,6 +200,34 @@ const copyByLocale: Record<Locale, Copy> = {
     deliveryEstimateLoading: "Çatdırılma hesablanır...",
     deliveryEstimateEta: "Təxmini müddət",
     deliveryEstimateCarrier: "Daşıyıcı",
+    paymentOptionsTitle: "Ödəniş və təhvil seçimi",
+    paymentOptionsBody: "Onlayn kart ödənişini və ya mağazada nağd götürməni seçin. Nağd seçimdə sifarişinizi mağazadan götürüb yerində ödəyəcəksiniz.",
+    cardPaymentTitle: "Kartla onlayn ödəniş",
+    cardPaymentBody: "Çatdırılma ilə davam edin və ödənişi təhlükəsiz şəkildə indi tamamlayın.",
+    cashPickupTitle: "Nağd və mağazadan götürmə",
+    cashPickupBody: "Sifarişi indi rezerv edin, mağazaya gəlib götürərkən nağd ödəyin.",
+    cashPickupPill: "Həmişə mövcuddur",
+    pickupContactTitle: "Götürmə üçün əlaqə məlumatı",
+    pickupContactBody: "Bu məlumat sifarişinizi hazırlayanda sizinlə əlaqə saxlamaq və təhvil zamanı sifarişi yoxlamaq üçün istifadə olunur.",
+    pickupNote: "Qeyd",
+    pickupNotePlaceholder: "Məsələn: axşam gələcəyəm və ya hədiyyə qablaşdırılması istəyirəm",
+    invalidPickupContact: "Nağd götürmə üçün ad və telefon məlumatını düzgün daxil edin.",
+    pickupSummaryTitle: "Nağd götürmə xülasəsi",
+    pickupLocationTitle: "Götürmə ünvanı",
+    pickupAddressLabel: "Ünvan",
+    pickupPhoneLabel: "Əlaqə",
+    pickupPaymentHint: "Ödənişi məhsulu götürərkən nağd şəkildə edəcəksiniz.",
+    openMap: "Xəritədə aç",
+    paymentMethodLabel: "Ödəniş üsulu",
+    paymentMethodCard: "Kart",
+    paymentMethodCashPickup: "Nağd götürmə",
+    cashOrderAction: "Nağd götürmə sifarişini tamamla",
+    cashOrderLoading: "Sifariş hazırlanır...",
+    cashOrderError: "Nağd götürmə sifarişi yaradılmadı. Zəhmət olmasa yenidən cəhd edin.",
+    cashSuccessTitle: "Nağd götürmə sifarişiniz qəbul edildi",
+    cashSuccessBody: "Sifarişiniz rezerv edildi. Mağazaya yaxınlaşarkən komanda ilə əlaqə saxlaya və məhsulu götürərkən nağd ödəyə bilərsiniz.",
+    cashStatusReserved: "Mağazada nağd götürmə",
+    pickupOrderSummaryLabel: "Təhvil forması",
   },
   en: {
     loading: "Loading...",
@@ -169,8 +235,8 @@ const copyByLocale: Record<Locale, Copy> = {
     signInBody: "Log in to complete your order.",
     signInAction: "Sign in",
     emptyCart: "Your cart is empty.",
-    steps: ["Address", "Delivery", "Review"],
-    savedAddresses: "Saved addresses",
+    steps: ["Details", "Order option", "Review"],
+    savedAddresses: "Shipping addresses",
     addAddress: "Add new address",
     fullName: "Full name",
     phone: "Phone",
@@ -223,6 +289,34 @@ const copyByLocale: Record<Locale, Copy> = {
     deliveryEstimateLoading: "Calculating delivery...",
     deliveryEstimateEta: "Estimated time",
     deliveryEstimateCarrier: "Carrier",
+    paymentOptionsTitle: "Payment and handoff",
+    paymentOptionsBody: "Choose between secure card payment and a store pickup order that you pay for in cash when you collect it.",
+    cardPaymentTitle: "Pay online by card",
+    cardPaymentBody: "Continue with delivery and complete payment securely now.",
+    cashPickupTitle: "Cash on store pickup",
+    cashPickupBody: "Reserve the order now, then visit the store and pay in cash when you pick it up.",
+    cashPickupPill: "Always available",
+    pickupContactTitle: "Pickup contact details",
+    pickupContactBody: "We use these details to prepare your order and verify it smoothly at handoff.",
+    pickupNote: "Note",
+    pickupNotePlaceholder: "For example: I will come in the evening or I need gift wrapping",
+    invalidPickupContact: "Please enter a valid name and phone number for pickup.",
+    pickupSummaryTitle: "Cash pickup summary",
+    pickupLocationTitle: "Pickup location",
+    pickupAddressLabel: "Address",
+    pickupPhoneLabel: "Contact",
+    pickupPaymentHint: "You will pay in cash when you collect your order.",
+    openMap: "Open map",
+    paymentMethodLabel: "Payment method",
+    paymentMethodCard: "Card",
+    paymentMethodCashPickup: "Cash pickup",
+    cashOrderAction: "Place cash pickup order",
+    cashOrderLoading: "Placing order...",
+    cashOrderError: "We could not create your cash pickup order. Please try again.",
+    cashSuccessTitle: "Your cash pickup order is confirmed",
+    cashSuccessBody: "Your order has been reserved. You can visit the store, collect it, and pay in cash there.",
+    cashStatusReserved: "Cash at pickup",
+    pickupOrderSummaryLabel: "Pickup format",
   },
   ru: {
     loading: "Загрузка...",
@@ -230,8 +324,8 @@ const copyByLocale: Record<Locale, Copy> = {
     signInBody: "Войдите в аккаунт, чтобы завершить заказ.",
     signInAction: "Войти",
     emptyCart: "Корзина пуста.",
-    steps: ["Адрес", "Доставка", "Подтверждение"],
-    savedAddresses: "Сохраненные адреса",
+    steps: ["Контакт", "Способ заказа", "Подтверждение"],
+    savedAddresses: "Адреса доставки",
     addAddress: "Добавить адрес",
     fullName: "Имя и фамилия",
     phone: "Телефон",
@@ -284,10 +378,61 @@ const copyByLocale: Record<Locale, Copy> = {
     deliveryEstimateLoading: "Рассчитываем доставку...",
     deliveryEstimateEta: "Оценочное время",
     deliveryEstimateCarrier: "Перевозчик",
+    paymentOptionsTitle: "Оплата и получение",
+    paymentOptionsBody: "Выберите безопасную оплату картой или заказ с самовывозом, который вы оплатите наличными при получении.",
+    cardPaymentTitle: "Онлайн-оплата картой",
+    cardPaymentBody: "Продолжайте с доставкой и завершите оплату сейчас.",
+    cashPickupTitle: "Наличные при самовывозе",
+    cashPickupBody: "Зарезервируйте заказ сейчас, затем приезжайте в магазин и оплачивайте наличными при получении.",
+    cashPickupPill: "Всегда доступно",
+    pickupContactTitle: "Контакты для самовывоза",
+    pickupContactBody: "Эти данные нужны, чтобы подготовить заказ и быстро подтвердить его при выдаче.",
+    pickupNote: "Комментарий",
+    pickupNotePlaceholder: "Например: приеду вечером или нужна подарочная упаковка",
+    invalidPickupContact: "Введите корректные имя и телефон для самовывоза.",
+    pickupSummaryTitle: "Сводка самовывоза с наличными",
+    pickupLocationTitle: "Адрес самовывоза",
+    pickupAddressLabel: "Адрес",
+    pickupPhoneLabel: "Контакт",
+    pickupPaymentHint: "Оплата наличными производится при получении заказа.",
+    openMap: "Открыть карту",
+    paymentMethodLabel: "Способ оплаты",
+    paymentMethodCard: "Карта",
+    paymentMethodCashPickup: "Самовывоз за наличные",
+    cashOrderAction: "Оформить заказ на самовывоз",
+    cashOrderLoading: "Оформляем заказ...",
+    cashOrderError: "Не удалось создать заказ на самовывоз. Попробуйте еще раз.",
+    cashSuccessTitle: "Заказ на самовывоз оформлен",
+    cashSuccessBody: "Ваш заказ зарезервирован. Вы сможете забрать его в магазине и оплатить наличными на месте.",
+    cashStatusReserved: "Наличные при получении",
+    pickupOrderSummaryLabel: "Формат выдачи",
   },
 };
 
 type PaymentResultKind = "success" | "declined" | "pending";
+
+type DraftFieldErrors = {
+  fullName?: string;
+  phone?: string;
+  line1?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+};
+
+type PickupFieldErrors = {
+  fullName?: string;
+  phone?: string;
+};
+
+type OrderPayloadItem = {
+  perfume_slug: string;
+  perfume_name: string;
+  size_ml: number;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+};
 
 function resolvePaymentResultKind(status: string): PaymentResultKind {
   const compact = status.trim().toUpperCase().replace(/[^A-Z]/g, "");
@@ -317,15 +462,6 @@ const CART_CLEARED_STORAGE_KEY = "perfoumer.checkout.cart-cleared-orders.v1";
 const ORDER_SAVED_STORAGE_KEY = "perfoumer.checkout.order-saved.v1";
 const ORDER_NUMBER_BY_PAYMENT_STORAGE_KEY = "perfoumer.checkout.order-number-by-payment.v1";
 const PAYMENT_STATUS_FETCHED_STORAGE_KEY = "perfoumer.checkout.payment-status-fetched.v1";
-
-type DraftFieldErrors = {
-  fullName?: string;
-  phone?: string;
-  line1?: string;
-  city?: string;
-  postalCode?: string;
-  country?: string;
-};
 
 function normalizePhone(value: string) {
   return value.replace(/[^\d+]/g, "");
@@ -368,6 +504,20 @@ function validateDraftAddress(address: Address, copy: Copy): DraftFieldErrors {
   return errors;
 }
 
+function validatePickupContact(contact: PickupContact, copy: Copy): PickupFieldErrors {
+  const errors: PickupFieldErrors = {};
+
+  if (!/^[\p{L}][\p{L}\s'-]{2,}$/u.test(contact.fullName.trim())) {
+    errors.fullName = copy.invalidFullName;
+  }
+
+  if (!/^\+?[\d]{7,15}$/.test(normalizePhone(contact.phone.trim()))) {
+    errors.phone = copy.invalidPhone;
+  }
+
+  return errors;
+}
+
 function parsePrice(value: string | number): number {
   const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -386,6 +536,14 @@ function emptyAddress(): Address {
   };
 }
 
+function emptyPickupContact(): PickupContact {
+  return {
+    fullName: "",
+    phone: "",
+    note: "",
+  };
+}
+
 function normalizeAddressInput(address: Address): Address {
   const normalizedCity = resolveAzerbaijanCity(address.city);
 
@@ -401,7 +559,15 @@ function normalizeAddressInput(address: Address): Address {
   };
 }
 
-export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: CheckoutClientProps) {
+function normalizePickupContact(contact: PickupContact): PickupContact {
+  return {
+    fullName: contact.fullName.trim(),
+    phone: normalizePhone(contact.phone.trim()),
+    note: contact.note.trim(),
+  };
+}
+
+export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, settings }: CheckoutClientProps) {
   const copy = copyByLocale[locale];
   const { selectedCurrency } = useCurrency();
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
@@ -422,6 +588,15 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   const [recentlyAddedAddressId, setRecentlyAddedAddressId] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<"standard" | "express">("standard");
   const [isAddAddressOpen, setIsAddAddressOpen] = useState(false);
+
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>(
+    settings.cardPaymentsEnabled ? "card" : "cash_pickup",
+  );
+  const [pickupContact, setPickupContact] = useState<PickupContact>(emptyPickupContact());
+  const [pickupErrors, setPickupErrors] = useState<PickupFieldErrors>({});
+  const [cashOrderState, setCashOrderState] = useState<"idle" | "submitting" | "success">("idle");
+  const [cashOrderError, setCashOrderError] = useState("");
+
   const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResultKind | null>(null);
   const [isPaymentResultResolving, setIsPaymentResultResolving] = useState(false);
@@ -431,6 +606,11 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null);
   const [isDeliveryEstimating, setIsDeliveryEstimating] = useState(false);
   const reviewStepEnteredAtRef = useRef(0);
+
+  useEffect(() => {
+    if (settings.cardPaymentsEnabled) return;
+    setCheckoutMode("cash_pickup");
+  }, [settings.cardPaymentsEnabled]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -501,12 +681,6 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
       let shouldFetchStatus = true;
       let isMounted = true;
 
-      console.info("[Checkout][Epoint] Redirect result", {
-        status: providerRedirectStatus || "check",
-        orderId: providerOrderId,
-        paymentId,
-      });
-
       try {
         const raw = window.sessionStorage.getItem(PAYMENT_STATUS_FETCHED_STORAGE_KEY);
         const fetched = raw ? (JSON.parse(raw) as string[]) : [];
@@ -557,17 +731,14 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
             setPaymentStatusText(providerStatus);
             setPaymentTransactionId(providerTransaction || "");
             setPaymentResult(resolvePaymentResultKind(providerStatus));
-            console.info("[Checkout][Epoint] Provider status", payload);
           } else {
             setPaymentStatusText(providerRedirectStatus || "pending");
             setPaymentResult(fallbackResult);
-            console.warn("[Checkout][Epoint] Provider status error", payload);
           }
-        } catch (error) {
+        } catch {
           if (!isMounted) return;
           setPaymentStatusText(providerRedirectStatus || "pending");
           setPaymentResult(fallbackResult);
-          console.warn("[Checkout][Epoint] Provider status request failed", error);
         } finally {
           if (isMounted) {
             setIsPaymentResultResolving(false);
@@ -583,14 +754,6 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     }
 
     const nextResult = resolvePaymentResultKind(status || "pending");
-
-    console.info("[Checkout][Legacy] Callback result", {
-      status,
-      resolvedResult: nextResult,
-      orderId,
-      paymentId,
-    });
-
     const timer = window.setTimeout(() => {
       setPaymentResult(nextResult);
       setIsPaymentResultResolving(false);
@@ -661,7 +824,6 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
       if (!isMounted) return;
 
       if (error) {
-        // Fallback to local data if DB table is unavailable or not migrated yet.
         if (typeof window !== "undefined") {
           const raw = window.localStorage.getItem(STORAGE_KEY);
           if (raw) {
@@ -727,15 +889,34 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     [cartRows, perfumesBySlug],
   );
 
+  const payloadItems = useMemo<OrderPayloadItem[]>(
+    () =>
+      items.map((item) => {
+        const catalogPrice = item.perfume?.sizes?.find((size: any) => size.ml === item.row.size_ml)?.price ?? 0;
+        const unitPrice = catalogPrice || parsePrice(item.row.unit_price);
+        return {
+          perfume_slug: item.row.perfume_slug,
+          perfume_name: item.perfume?.name || item.row.perfume_slug,
+          size_ml: item.row.size_ml,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          total_price: Math.round(unitPrice * item.quantity * 100) / 100,
+        };
+      }),
+    [items],
+  );
+
   const subtotal = useMemo(() => Math.round(items.reduce((sum, item) => sum + item.lineTotal, 0) * 100) / 100, [items]);
-  const shippingPrice = Number.isFinite(deliveryEstimate?.fee)
-    ? Number(deliveryEstimate?.fee)
-    : deliveryMethod === "express"
-      ? 5
-      : 0;
+  const selectedShipping = addresses.find((item) => item.id === selectedShippingId) ?? null;
+  const shippingPrice = checkoutMode === "cash_pickup"
+    ? 0
+    : Number.isFinite(deliveryEstimate?.fee)
+      ? Number(deliveryEstimate?.fee)
+      : deliveryMethod === "express"
+        ? 5
+        : 0;
   const total = Math.round((subtotal + shippingPrice) * 100) / 100;
 
-  const selectedShipping = addresses.find((item) => item.id === selectedShippingId) ?? null;
   const paymentOrderId =
     searchParams.get("epoint_order_id") ||
     searchParams.get("order_id") ||
@@ -747,7 +928,9 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!paymentOrderId) {
-      setCanonicalOrderNumber("");
+      if (cashOrderState !== "success") {
+        setCanonicalOrderNumber("");
+      }
       return;
     }
 
@@ -761,16 +944,22 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     } catch {
       // ignore malformed storage payload
     }
-  }, [paymentOrderId]);
+  }, [cashOrderState, paymentOrderId]);
+
+  const isPickupContactValid = useMemo(
+    () => Object.keys(validatePickupContact(pickupContact, copy)).length === 0,
+    [copy, pickupContact],
+  );
 
   const canStepForward = useMemo(() => {
-    if (step === 0) return Boolean(selectedShipping);
-    if (step === 1) return true;
+    if (step === 0) {
+      return checkoutMode === "cash_pickup" ? isPickupContactValid : Boolean(selectedShipping);
+    }
     return true;
-  }, [selectedShipping, step]);
+  }, [checkoutMode, isPickupContactValid, selectedShipping, step]);
 
   useEffect(() => {
-    if (!selectedShipping) {
+    if (checkoutMode === "cash_pickup" || !selectedShipping) {
       setDeliveryEstimate(null);
       return;
     }
@@ -818,7 +1007,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     return () => {
       isMounted = false;
     };
-  }, [deliveryMethod, selectedShipping, subtotal]);
+  }, [checkoutMode, deliveryMethod, selectedShipping, subtotal, locale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -866,21 +1055,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
         return true;
       }
       if (!session?.access_token) return false;
-      if (!items.length) return false;
-
-      const payloadItems = items.map((item) => {
-        // Always use catalog price for unit_price, fallback to parsed unit_price
-        const catalogPrice = item.perfume?.sizes?.find((size: any) => size.ml === item.row.size_ml)?.price ?? 0;
-        const unitPrice = catalogPrice || parsePrice(item.row.unit_price);
-        return {
-          perfume_slug: item.row.perfume_slug,
-          perfume_name: item.perfume?.name || item.row.perfume_slug,
-          size_ml: item.row.size_ml,
-          quantity: item.quantity,
-          unit_price: unitPrice,
-          total_price: Math.round(unitPrice * item.quantity * 100) / 100,
-        };
-      });
+      if (!payloadItems.length) return false;
 
       const response = await fetch("/api/profile/orders/create", {
         method: "POST",
@@ -896,6 +1071,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
           total_amount: total,
           selected_address_id: selectedShipping?.id || null,
           items: payloadItems,
+          fulfillment_method: "delivery",
         }),
       });
 
@@ -932,13 +1108,16 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     };
 
     void clearCart();
-  }, [items, paymentOrderId, paymentResult, paymentTransactionId, selectedShipping?.id, session?.access_token, session?.user?.id, supabase, total]);
+  }, [payloadItems, paymentOrderId, paymentResult, paymentTransactionId, selectedShipping?.id, session?.access_token, session?.user?.id, supabase, total]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (paymentResult !== "success") return;
-    if (!paymentOrderId) return;
     if (!canonicalOrderNumber) return;
+
+    const isCardSuccess = paymentResult === "success" && Boolean(paymentOrderId);
+    const isCashSuccess = cashOrderState === "success";
+
+    if (!isCardSuccess && !isCashSuccess) return;
 
     const email = session?.user?.email?.trim();
     if (!email) return;
@@ -962,8 +1141,6 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     };
 
     if (parseSent().includes(orderKey)) return;
-
-    // Mark immediately to prevent duplicate sends from reload/rerender races.
     markSent();
 
     const send = async () => {
@@ -977,7 +1154,8 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
             locale,
             email,
             orderId: canonicalOrderNumber,
-            status: paymentStatusText || "",
+            status: isCardSuccess ? paymentStatusText || "" : copy.cashStatusReserved,
+            paymentMethod: isCardSuccess ? "epoint" : CASH_PICKUP_PAYMENT_METHOD,
             total,
             shippingPrice,
             subtotal,
@@ -986,7 +1164,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
               quantity: item.quantity,
               lineTotal: item.lineTotal,
             })),
-            shippingAddress: selectedShipping
+            shippingAddress: isCardSuccess && selectedShipping
               ? {
                   fullName: selectedShipping.fullName,
                   line1: selectedShipping.line1,
@@ -994,6 +1172,13 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                   city: selectedShipping.city,
                   postalCode: selectedShipping.postalCode,
                   country: selectedShipping.country,
+                }
+              : null,
+            pickupLocation: isCashSuccess
+              ? {
+                  name: settings.pickupLocationName,
+                  address: settings.pickupAddress,
+                  phone: settings.pickupPhone,
                 }
               : null,
           }),
@@ -1004,7 +1189,24 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     };
 
     void send();
-  }, [canonicalOrderNumber, items, locale, paymentOrderId, paymentResult, paymentStatusText, selectedShipping, session?.user?.email, shippingPrice, subtotal, total]);
+  }, [
+    canonicalOrderNumber,
+    cashOrderState,
+    copy.cashStatusReserved,
+    items,
+    locale,
+    paymentOrderId,
+    paymentResult,
+    paymentStatusText,
+    selectedShipping,
+    session?.user?.email,
+    settings.pickupAddress,
+    settings.pickupLocationName,
+    settings.pickupPhone,
+    shippingPrice,
+    subtotal,
+    total,
+  ]);
 
   const addAddress = async () => {
     if (isSavingAddress) return;
@@ -1101,7 +1303,102 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
   const goNext = () => setStep((prev) => Math.min(2, prev + 1));
   const goBack = () => setStep((prev) => Math.max(0, prev - 1));
 
+  const submitCashPickupOrder = async () => {
+    if (cashOrderState === "submitting") return;
+    if (!session?.access_token) {
+      setCashOrderError(copy.cashOrderError);
+      return;
+    }
+
+    const nextErrors = validatePickupContact(pickupContact, copy);
+    setPickupErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setCashOrderError(copy.invalidPickupContact);
+      return;
+    }
+
+    if (!payloadItems.length) {
+      setCashOrderError(copy.cashOrderError);
+      return;
+    }
+
+    const normalizedPickupContact = normalizePickupContact(pickupContact);
+
+    setCashOrderState("submitting");
+    setCashOrderError("");
+
+    try {
+      const response = await fetch("/api/profile/orders/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          payment_method: CASH_PICKUP_PAYMENT_METHOD,
+          payment_status: "pending",
+          total_amount: total,
+          items: payloadItems,
+          fulfillment_method: "pickup",
+          pickup_contact: {
+            full_name: normalizedPickupContact.fullName,
+            phone: normalizedPickupContact.phone,
+            note: normalizedPickupContact.note || null,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        setCashOrderState("idle");
+        setCashOrderError(copy.cashOrderError);
+        return;
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        order?: { order_number?: string };
+      };
+
+      const orderNumber = payload.order?.order_number?.trim();
+      if (!orderNumber) {
+        setCashOrderState("idle");
+        setCashOrderError(copy.cashOrderError);
+        return;
+      }
+
+      setCanonicalOrderNumber(orderNumber);
+
+      if (supabase && session.user?.id) {
+        const { error } = await supabase
+          .from("cart_items")
+          .delete()
+          .eq("user_id", session.user.id);
+
+        if (!error) {
+          setCartRows([]);
+        }
+      } else {
+        setCartRows([]);
+      }
+
+      setCashOrderState("success");
+      setStep(2);
+    } catch {
+      setCashOrderState("idle");
+      setCashOrderError(copy.cashOrderError);
+    }
+  };
+
   const handleNext = () => {
+    if (step === 0 && checkoutMode === "cash_pickup") {
+      const nextErrors = validatePickupContact(pickupContact, copy);
+      setPickupErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) {
+        setCashOrderError(copy.invalidPickupContact);
+        return;
+      }
+      setCashOrderError("");
+    }
+
     if (step < 2) {
       if (step === 1) {
         reviewStepEnteredAtRef.current = Date.now();
@@ -1110,9 +1407,12 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
       return;
     }
 
-    // Guard against accidental double-click/enter triggering payment immediately
-    // after the button morphs from "Next" to "Pay" on step transition.
     if (Date.now() - reviewStepEnteredAtRef.current < 700) {
+      return;
+    }
+
+    if (checkoutMode === "cash_pickup") {
+      void submitCashPickupOrder();
       return;
     }
 
@@ -1136,24 +1436,31 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
     );
   }
 
-  const isPaymentFeedbackVisible = isPaymentResultResolving || Boolean(paymentResult);
-  const feedbackTitle = isPaymentResultResolving
-    ? copy.processingTitle
-    : paymentResult === "success"
-      ? copy.successTitle
-      : paymentResult === "declined"
-        ? copy.declinedTitle
-        : copy.pendingTitle;
-  const feedbackBody = isPaymentResultResolving
-    ? copy.processingBody
-    : paymentResult === "success"
-      ? copy.successBody
-      : paymentResult === "declined"
-        ? copy.declinedBody
-        : copy.pendingBody;
-  const friendlyPaymentStatus = isPaymentResultResolving
-    ? copy.paymentStatusPending
-    : resolveFriendlyPaymentStatus(paymentResult, copy);
+  const isCashOrderSuccess = cashOrderState === "success";
+  const isPaymentFeedbackVisible = isPaymentResultResolving || Boolean(paymentResult) || isCashOrderSuccess;
+  const feedbackTitle = isCashOrderSuccess
+    ? copy.cashSuccessTitle
+    : isPaymentResultResolving
+      ? copy.processingTitle
+      : paymentResult === "success"
+        ? copy.successTitle
+        : paymentResult === "declined"
+          ? copy.declinedTitle
+          : copy.pendingTitle;
+  const feedbackBody = isCashOrderSuccess
+    ? copy.cashSuccessBody
+    : isPaymentResultResolving
+      ? copy.processingBody
+      : paymentResult === "success"
+        ? copy.successBody
+        : paymentResult === "declined"
+          ? copy.declinedBody
+          : copy.pendingBody;
+  const friendlyPaymentStatus = isCashOrderSuccess
+    ? copy.cashStatusReserved
+    : isPaymentResultResolving
+      ? copy.paymentStatusPending
+      : resolveFriendlyPaymentStatus(paymentResult, copy);
 
   if (items.length === 0 && !isPaymentFeedbackVisible) {
     return (
@@ -1172,15 +1479,19 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
               <div className="flex items-start gap-4">
                 <div className={[
                   "mt-1 inline-flex h-12 w-12 items-center justify-center rounded-2xl",
-                  isPaymentResultResolving
-                    ? "bg-zinc-900 text-white"
-                    : paymentResult === "success"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : paymentResult === "declined"
-                        ? "bg-rose-100 text-rose-700"
-                        : "bg-amber-100 text-amber-700",
+                  isCashOrderSuccess
+                    ? "bg-amber-100 text-amber-700"
+                    : isPaymentResultResolving
+                      ? "bg-zinc-900 text-white"
+                      : paymentResult === "success"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : paymentResult === "declined"
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-amber-100 text-amber-700",
                 ].join(" ")}>
-                  {isPaymentResultResolving ? (
+                  {isCashOrderSuccess ? (
+                    <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><path d="M4 10.5l4 4L16 6.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  ) : isPaymentResultResolving ? (
                     <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
                   ) : paymentResult === "success" ? (
                     <svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><path d="M4 10.5l4 4L16 6.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -1194,6 +1505,11 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                 <div>
                   <h3 className="text-[1.45rem] font-semibold tracking-[-0.02em] text-zinc-900 md:text-[1.7rem]">{feedbackTitle}</h3>
                   <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">{feedbackBody}</p>
+                  {canonicalOrderNumber ? (
+                    <div className="mt-4 inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-700">
+                      #{canonicalOrderNumber}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1226,18 +1542,32 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
                   <div
                     className={[
                       "h-full rounded-full transition-all duration-700",
-                      isPaymentResultResolving
-                        ? "w-2/3 bg-zinc-800"
-                        : paymentResult === "success"
-                          ? "w-full bg-emerald-500"
-                          : paymentResult === "declined"
-                            ? "w-full bg-rose-500"
-                            : "w-5/6 bg-amber-500",
+                      isCashOrderSuccess
+                        ? "w-full bg-amber-500"
+                        : isPaymentResultResolving
+                          ? "w-2/3 bg-zinc-800"
+                          : paymentResult === "success"
+                            ? "w-full bg-emerald-500"
+                            : paymentResult === "declined"
+                              ? "w-full bg-rose-500"
+                              : "w-5/6 bg-amber-500",
                     ].join(" ")}
                   />
                 </div>
-
               </div>
+
+              {isCashOrderSuccess ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+                  <p className="text-xs font-semibold tracking-[0.09em] text-amber-700 uppercase">{copy.pickupLocationTitle}</p>
+                  <p className="mt-2 text-sm font-medium text-zinc-900">{settings.pickupLocationName}</p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-700">{settings.pickupAddress}</p>
+                  <p className="mt-1 text-sm text-zinc-700">{settings.pickupPhone}</p>
+                  <p className="mt-3 text-sm text-amber-800">{copy.pickupPaymentHint}</p>
+                  <a href={settings.pickupMapUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-10 items-center rounded-full border border-amber-300 bg-white px-4 text-sm font-medium text-zinc-800 transition hover:bg-amber-100">
+                    {copy.openMap}
+                  </a>
+                </div>
+              ) : null}
 
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50/85 p-4">
                 <p className="text-xs font-semibold tracking-[0.09em] text-zinc-500 uppercase">{copy.orderSummaryTitle}</p>
@@ -1272,239 +1602,427 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig }: C
 
       {!isPaymentFeedbackVisible ? (
         <>
-      <div className="space-y-5 rounded-[1.8rem] border border-zinc-200/85 bg-[linear-gradient(165deg,#ffffff_0%,#fbfbfa_58%,#f3f3f1_100%)] p-4 shadow-[0_18px_40px_rgba(24,24,24,0.06)] md:p-6">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-          {copy.steps.map((item, index) => {
-            const isDone = index < step;
-            const isCurrent = index === step;
+          <div className="space-y-5 rounded-[1.8rem] border border-zinc-200/85 bg-[linear-gradient(165deg,#ffffff_0%,#fbfbfa_58%,#f3f3f1_100%)] p-4 shadow-[0_18px_40px_rgba(24,24,24,0.06)] md:p-6">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+              {copy.steps.map((item, index) => {
+                const isDone = index < step;
+                const isCurrent = index === step;
 
-            return (
-              <div
-                key={item}
-                className={[
-                  "rounded-full border px-3 py-2 text-center text-sm font-medium transition",
-                  isCurrent
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : isDone
-                      ? "border-zinc-300 bg-zinc-100 text-zinc-700"
-                      : "border-zinc-200 bg-white/70 text-zinc-400",
-                ].join(" ")}
-              >
-                {item}
-              </div>
-            );
-          })}
-        </div>
+                return (
+                  <div
+                    key={item}
+                    className={[
+                      "rounded-full border px-3 py-2 text-center text-sm font-medium transition",
+                      isCurrent
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : isDone
+                          ? "border-zinc-300 bg-zinc-100 text-zinc-700"
+                          : "border-zinc-200 bg-white/70 text-zinc-400",
+                    ].join(" ")}
+                  >
+                    {item}
+                  </div>
+                );
+              })}
+            </div>
 
-        <div key={`checkout-step-${step}`} style={{ animation: "fadeUp 360ms cubic-bezier(0.22,1,0.36,1) both" }}>
-          {step === 0 ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.savedAddresses}</h3>
+            <div key={`checkout-step-${step}`} style={{ animation: "fadeUp 360ms cubic-bezier(0.22,1,0.36,1) both" }}>
+              {step === 0 ? (
+                checkoutMode === "cash_pickup" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[1.45rem] border border-amber-200 bg-[linear-gradient(145deg,#fffaf1_0%,#fff2de_100%)] p-5">
+                      <p className="inline-flex rounded-full border border-amber-300 bg-white/80 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.cashPickupPill}</p>
+                      <h3 className="mt-4 text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.pickupContactTitle}</h3>
+                      <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600">{copy.pickupContactBody}</p>
 
-              <div className="space-y-2">
-                {addresses.map((address) => {
-                  const isSelected = selectedShippingId === address.id;
-                  const isRecentlyAdded = recentlyAddedAddressId === address.id;
-
-                  return (
-                    <div
-                      key={address.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        setSelectedShippingId(address.id);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          setSelectedShippingId(address.id);
-                        }
-                      }}
-                      className={[
-                        "cursor-pointer rounded-2xl border p-3 transition",
-                        isSelected
-                          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_12px_24px_rgba(24,24,24,0.2)]"
-                          : "border-zinc-200 bg-white/90 text-zinc-700 hover:border-zinc-300",
-                        isRecentlyAdded ? "ring-2 ring-emerald-300/80 ring-offset-2 ring-offset-white" : "",
-                      ].join(" ")}
-                      style={isRecentlyAdded ? { animation: "fadeUp 520ms cubic-bezier(0.22,1,0.36,1) both" } : undefined}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-sm leading-relaxed">
-                          <p className={isSelected ? "font-semibold text-white" : "font-semibold text-zinc-900"}>{address.fullName}</p>
-                          <p>{address.line1}{address.line2 ? `, ${address.line2}` : ""}</p>
-                          <p>{address.city} {address.postalCode}</p>
-                          <p>{address.phone}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void removeAddress(address.id);
-                          }}
-                          className={[
-                            "rounded-full border px-3 py-1 text-xs font-medium transition",
-                            isSelected
-                              ? "border-white/40 bg-white/15 text-white hover:bg-white/25"
-                              : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100",
-                          ].join(" ")}
-                        >
-                          {copy.remove}
-                        </button>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <label className="space-y-1 text-sm text-zinc-600">
+                          <span>{copy.fullName}</span>
+                          <input
+                            value={pickupContact.fullName}
+                            onChange={(event) => {
+                              setPickupContact((prev) => ({ ...prev, fullName: event.target.value }));
+                              setPickupErrors((prev) => ({ ...prev, fullName: undefined }));
+                            }}
+                            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+                          />
+                          {pickupErrors.fullName ? <span className="text-xs text-red-600">{pickupErrors.fullName}</span> : null}
+                        </label>
+                        <label className="space-y-1 text-sm text-zinc-600">
+                          <span>{copy.phone}</span>
+                          <input
+                            value={pickupContact.phone}
+                            onChange={(event) => {
+                              setPickupContact((prev) => ({ ...prev, phone: event.target.value }));
+                              setPickupErrors((prev) => ({ ...prev, phone: undefined }));
+                            }}
+                            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+                          />
+                          {pickupErrors.phone ? <span className="text-xs text-red-600">{pickupErrors.phone}</span> : null}
+                        </label>
+                        <label className="space-y-1 text-sm text-zinc-600 md:col-span-2">
+                          <span>{copy.pickupNote}</span>
+                          <textarea
+                            value={pickupContact.note}
+                            onChange={(event) => setPickupContact((prev) => ({ ...prev, note: event.target.value }))}
+                            rows={4}
+                            placeholder={copy.pickupNotePlaceholder}
+                            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </label>
                       </div>
                     </div>
-                  );
-                })}
-                {addresses.length === 0 ? (
-                  <p className="rounded-xl border border-zinc-200 bg-white/85 px-3 py-2 text-sm text-zinc-500">{copy.noAddressYet}</p>
-                ) : null}
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white/92 p-4">
-                <button
-                  type="button"
-                  onClick={() => setIsAddAddressOpen((prev) => !prev)}
-                  className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 bg-zinc-50 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  {copy.addAddress}
-                </button>
-
-                {isAddAddressOpen ? (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.fullName}</span><input value={draftAddress.fullName} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, fullName: event.target.value })); setDraftErrors((prev) => ({ ...prev, fullName: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.fullName ? <span className="text-xs text-red-600">{draftErrors.fullName}</span> : null}</label>
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.phone}</span><input value={draftAddress.phone} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, phone: event.target.value })); setDraftErrors((prev) => ({ ...prev, phone: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.phone ? <span className="text-xs text-red-600">{draftErrors.phone}</span> : null}</label>
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.line1}</span><input value={draftAddress.line1} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, line1: event.target.value })); setDraftErrors((prev) => ({ ...prev, line1: undefined })); }} placeholder={copy.line1} autoComplete="street-address" className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.line1 ? <span className="text-xs text-red-600">{draftErrors.line1}</span> : null}</label>
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.line2}</span><input value={draftAddress.line2} onChange={(event) => setDraftAddress((prev) => ({ ...prev, line2: event.target.value }))} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" /></label>
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.city}</span><select value={draftAddress.city} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, city: event.target.value })); setDraftErrors((prev) => ({ ...prev, city: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"><option value="">{copy.city}</option>{AZERBAIJAN_CITIES.map((cityName) => (<option key={cityName} value={cityName}>{cityName}</option>))}</select>{draftErrors.city ? <span className="text-xs text-red-600">{draftErrors.city}</span> : null}</label>
-                    <label className="space-y-1 text-sm text-zinc-600"><span>{copy.postalCode}</span><input value={draftAddress.postalCode} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, postalCode: event.target.value })); setDraftErrors((prev) => ({ ...prev, postalCode: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.postalCode ? <span className="text-xs text-red-600">{draftErrors.postalCode}</span> : null}</label>
-                    <label className="space-y-1 text-sm text-zinc-600 md:col-span-2"><span>{copy.country}</span><input value={draftAddress.country} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, country: event.target.value })); setDraftErrors((prev) => ({ ...prev, country: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.country ? <span className="text-xs text-red-600">{draftErrors.country}</span> : null}</label>
-
-                    <div className="md:col-span-2">
-                      {hasTriedSaveAddress && !canSaveAddress ? <p className="mb-2 text-xs text-red-600">{copy.invalidForm}</p> : null}
-                      <button type="button" onClick={() => { void addAddress(); }} disabled={!canSaveAddress || isSavingAddress} className="inline-flex min-h-10 items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-45">
-                        {isSavingAddress ? (
-                          <span className="inline-flex items-center gap-2">
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
-                            {copy.saveAddressLoading}
-                          </span>
-                        ) : (
-                          copy.saveAddress
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
-          {step === 1 ? (
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.delivery}</h3>
-              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 bg-white/88 p-3 transition hover:border-zinc-300">
-                <input type="radio" checked={deliveryMethod === "standard"} onChange={() => setDeliveryMethod("standard")} />
-                <span>{copy.standard}</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 bg-white/88 p-3 transition hover:border-zinc-300">
-                <input type="radio" checked={deliveryMethod === "express"} onChange={() => setDeliveryMethod("express")} />
-                <span>{copy.express} ({formatCurrencyFromAzn(5, selectedCurrency, locale)})</span>
-              </label>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white/88 p-3 text-sm text-zinc-700">
-                <p className="text-xs font-semibold tracking-[0.09em] text-zinc-500 uppercase">
-                  {copy.deliveryEstimateTitle}
-                </p>
-                {isDeliveryEstimating ? (
-                  <p className="mt-2 text-zinc-500">{copy.deliveryEstimateLoading}</p>
-                ) : deliveryEstimate ? (
-                  <div className="mt-2 space-y-1.5">
-                    <p>
-                      <span className="text-zinc-500">{copy.deliveryEstimateCarrier}: </span>
-                      <span className="font-medium text-zinc-900">{deliveryEstimate.carrier}</span>
-                    </p>
-                    <p>
-                      <span className="text-zinc-500">{copy.shipping}: </span>
-                      <span className="font-medium text-zinc-900">{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
-                    </p>
-                    <p>
-                      <span className="text-zinc-500">{copy.deliveryEstimateEta}: </span>
-                      <span className="font-medium text-zinc-900">{deliveryEstimate.etaLabel}</span>
-                    </p>
                   </div>
                 ) : (
-                  <p className="mt-2 text-zinc-500">-</p>
-                )}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.savedAddresses}</h3>
+
+                    <div className="space-y-2">
+                      {addresses.map((address) => {
+                        const isSelected = selectedShippingId === address.id;
+                        const isRecentlyAdded = recentlyAddedAddressId === address.id;
+
+                        return (
+                          <div
+                            key={address.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setSelectedShippingId(address.id);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                setSelectedShippingId(address.id);
+                              }
+                            }}
+                            className={[
+                              "cursor-pointer rounded-2xl border p-3 transition",
+                              isSelected
+                                ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_12px_24px_rgba(24,24,24,0.2)]"
+                                : "border-zinc-200 bg-white/90 text-zinc-700 hover:border-zinc-300",
+                              isRecentlyAdded ? "ring-2 ring-emerald-300/80 ring-offset-2 ring-offset-white" : "",
+                            ].join(" ")}
+                            style={isRecentlyAdded ? { animation: "fadeUp 520ms cubic-bezier(0.22,1,0.36,1) both" } : undefined}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="text-sm leading-relaxed">
+                                <p className={isSelected ? "font-semibold text-white" : "font-semibold text-zinc-900"}>{address.fullName}</p>
+                                <p>{address.line1}{address.line2 ? `, ${address.line2}` : ""}</p>
+                                <p>{address.city} {address.postalCode}</p>
+                                <p>{address.phone}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void removeAddress(address.id);
+                                }}
+                                className={[
+                                  "rounded-full border px-3 py-1 text-xs font-medium transition",
+                                  isSelected
+                                    ? "border-white/40 bg-white/15 text-white hover:bg-white/25"
+                                    : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100",
+                                ].join(" ")}
+                              >
+                                {copy.remove}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {addresses.length === 0 ? (
+                        <p className="rounded-xl border border-zinc-200 bg-white/85 px-3 py-2 text-sm text-zinc-500">{copy.noAddressYet}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white/92 p-4">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddAddressOpen((prev) => !prev)}
+                        className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 bg-zinc-50 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+                      >
+                        {copy.addAddress}
+                      </button>
+
+                      {isAddAddressOpen ? (
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          <label className="space-y-1 text-sm text-zinc-600"><span>{copy.fullName}</span><input value={draftAddress.fullName} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, fullName: event.target.value })); setDraftErrors((prev) => ({ ...prev, fullName: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.fullName ? <span className="text-xs text-red-600">{draftErrors.fullName}</span> : null}</label>
+                          <label className="space-y-1 text-sm text-zinc-600"><span>{copy.phone}</span><input value={draftAddress.phone} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, phone: event.target.value })); setDraftErrors((prev) => ({ ...prev, phone: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.phone ? <span className="text-xs text-red-600">{draftErrors.phone}</span> : null}</label>
+                          <label className="space-y-1 text-sm text-zinc-600"><span>{copy.line1}</span><input value={draftAddress.line1} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, line1: event.target.value })); setDraftErrors((prev) => ({ ...prev, line1: undefined })); }} placeholder={copy.line1} autoComplete="street-address" className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.line1 ? <span className="text-xs text-red-600">{draftErrors.line1}</span> : null}</label>
+                          <label className="space-y-1 text-sm text-zinc-600"><span>{copy.line2}</span><input value={draftAddress.line2} onChange={(event) => setDraftAddress((prev) => ({ ...prev, line2: event.target.value }))} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" /></label>
+                          <label className="space-y-1 text-sm text-zinc-600"><span>{copy.city}</span><select value={draftAddress.city} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, city: event.target.value })); setDraftErrors((prev) => ({ ...prev, city: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"><option value="">{copy.city}</option>{AZERBAIJAN_CITIES.map((cityName) => (<option key={cityName} value={cityName}>{cityName}</option>))}</select>{draftErrors.city ? <span className="text-xs text-red-600">{draftErrors.city}</span> : null}</label>
+                          <label className="space-y-1 text-sm text-zinc-600"><span>{copy.postalCode}</span><input value={draftAddress.postalCode} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, postalCode: event.target.value })); setDraftErrors((prev) => ({ ...prev, postalCode: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.postalCode ? <span className="text-xs text-red-600">{draftErrors.postalCode}</span> : null}</label>
+                          <label className="space-y-1 text-sm text-zinc-600 md:col-span-2"><span>{copy.country}</span><input value={draftAddress.country} onChange={(event) => { setDraftAddress((prev) => ({ ...prev, country: event.target.value })); setDraftErrors((prev) => ({ ...prev, country: undefined })); }} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm" />{draftErrors.country ? <span className="text-xs text-red-600">{draftErrors.country}</span> : null}</label>
+
+                          <div className="md:col-span-2">
+                            {hasTriedSaveAddress && !canSaveAddress ? <p className="mb-2 text-xs text-red-600">{copy.invalidForm}</p> : null}
+                            <button type="button" onClick={() => { void addAddress(); }} disabled={!canSaveAddress || isSavingAddress} className="inline-flex min-h-10 items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-45">
+                              {isSavingAddress ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+                                  {copy.saveAddressLoading}
+                                </span>
+                              ) : (
+                                copy.saveAddress
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              ) : null}
+
+              {step === 1 ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.paymentOptionsTitle}</h3>
+                    <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-600">{copy.paymentOptionsBody}</p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {settings.cardPaymentsEnabled ? (
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutMode("card")}
+                        className={[
+                          "rounded-[1.35rem] border p-4 text-left transition",
+                          checkoutMode === "card"
+                            ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_18px_28px_rgba(24,24,24,0.18)]"
+                            : "border-zinc-200 bg-white/90 text-zinc-800 hover:border-zinc-300",
+                        ].join(" ")}
+                      >
+                        <p className="text-sm font-semibold">{copy.cardPaymentTitle}</p>
+                        <p className={checkoutMode === "card" ? "mt-2 text-sm leading-6 text-white/80" : "mt-2 text-sm leading-6 text-zinc-600"}>{copy.cardPaymentBody}</p>
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutMode("cash_pickup")}
+                      className={[
+                        "rounded-[1.35rem] border p-4 text-left transition",
+                        checkoutMode === "cash_pickup"
+                          ? "border-amber-300 bg-[linear-gradient(150deg,#fff8ed_0%,#ffefcf_100%)] text-zinc-900 shadow-[0_18px_28px_rgba(165,118,36,0.12)]"
+                          : "border-zinc-200 bg-white/90 text-zinc-800 hover:border-zinc-300",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold">{copy.cashPickupTitle}</p>
+                        <span className="rounded-full border border-amber-300 bg-white/85 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.cashPickupPill}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.cashPickupBody}</p>
+                    </button>
+                  </div>
+
+                  {checkoutMode === "card" ? (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold tracking-[-0.01em] text-zinc-900">{copy.delivery}</h4>
+                      <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 bg-white/88 p-3 transition hover:border-zinc-300">
+                        <input type="radio" checked={deliveryMethod === "standard"} onChange={() => setDeliveryMethod("standard")} />
+                        <span>{copy.standard}</span>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 bg-white/88 p-3 transition hover:border-zinc-300">
+                        <input type="radio" checked={deliveryMethod === "express"} onChange={() => setDeliveryMethod("express")} />
+                        <span>{copy.express} ({formatCurrencyFromAzn(5, selectedCurrency, locale)})</span>
+                      </label>
+
+                      <div className="rounded-2xl border border-zinc-200 bg-white/88 p-3 text-sm text-zinc-700">
+                        <p className="text-xs font-semibold tracking-[0.09em] text-zinc-500 uppercase">
+                          {copy.deliveryEstimateTitle}
+                        </p>
+                        {isDeliveryEstimating ? (
+                          <p className="mt-2 text-zinc-500">{copy.deliveryEstimateLoading}</p>
+                        ) : deliveryEstimate ? (
+                          <div className="mt-2 space-y-1.5">
+                            <p>
+                              <span className="text-zinc-500">{copy.deliveryEstimateCarrier}: </span>
+                              <span className="font-medium text-zinc-900">{deliveryEstimate.carrier}</span>
+                            </p>
+                            <p>
+                              <span className="text-zinc-500">{copy.shipping}: </span>
+                              <span className="font-medium text-zinc-900">{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
+                            </p>
+                            <p>
+                              <span className="text-zinc-500">{copy.deliveryEstimateEta}: </span>
+                              <span className="font-medium text-zinc-900">{deliveryEstimate.etaLabel}</span>
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-zinc-500">-</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.4rem] border border-amber-200 bg-[linear-gradient(150deg,#fffaf1_0%,#fff1d8_100%)] p-4">
+                      <p className="text-xs font-semibold tracking-[0.11em] text-amber-700 uppercase">{copy.pickupSummaryTitle}</p>
+                      <h4 className="mt-2 text-base font-semibold tracking-[-0.01em] text-zinc-900">{settings.pickupLocationName}</h4>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-white/70 bg-white/70 p-3">
+                          <p className="text-[11px] font-semibold tracking-[0.12em] text-zinc-500 uppercase">{copy.pickupAddressLabel}</p>
+                          <p className="mt-2 text-sm leading-6 text-zinc-700">{settings.pickupAddress}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/70 bg-white/70 p-3">
+                          <p className="text-[11px] font-semibold tracking-[0.12em] text-zinc-500 uppercase">{copy.pickupPhoneLabel}</p>
+                          <p className="mt-2 text-sm leading-6 text-zinc-700">{settings.pickupPhone}</p>
+                        </div>
+                      </div>
+                      <p className="mt-4 text-sm leading-6 text-amber-900">{copy.pickupPaymentHint}</p>
+                      <a href={settings.pickupMapUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-10 items-center rounded-full border border-amber-300 bg-white px-4 text-sm font-medium text-zinc-800 transition hover:bg-amber-100">
+                        {copy.openMap}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {step === 2 ? (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.review}</h3>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl border border-zinc-200 bg-white/85 p-3 text-sm text-zinc-700">
+                      <p className="font-medium text-zinc-900">{copy.paymentMethodLabel}</p>
+                      <p className="mt-1">{checkoutMode === "cash_pickup" ? copy.paymentMethodCashPickup : copy.paymentMethodCard}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-200 bg-white/85 p-3 text-sm text-zinc-700">
+                      <p className="font-medium text-zinc-900">{copy.pickupOrderSummaryLabel}</p>
+                      <p className="mt-1">{checkoutMode === "cash_pickup" ? copy.cashPickupTitle : copy.cardPaymentTitle}</p>
+                    </div>
+                  </div>
+
+                  {checkoutMode === "cash_pickup" ? (
+                    <>
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm text-zinc-700">
+                        <p className="font-medium text-zinc-900">{copy.pickupContactTitle}</p>
+                        <p>{pickupContact.fullName || "-"}</p>
+                        <p>{pickupContact.phone || "-"}</p>
+                        {pickupContact.note.trim() ? <p>{pickupContact.note.trim()}</p> : null}
+                      </div>
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm text-zinc-700">
+                        <p className="font-medium text-zinc-900">{copy.pickupLocationTitle}</p>
+                        <p>{settings.pickupLocationName}</p>
+                        <p>{settings.pickupAddress}</p>
+                        <p>{settings.pickupPhone}</p>
+                        <p className="mt-2 text-amber-900">{copy.pickupPaymentHint}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-zinc-200 bg-white/85 p-3 text-sm text-zinc-700">
+                      <p className="font-medium text-zinc-900">{copy.shippingAddressLabel}</p>
+                      <p>{selectedShipping?.fullName || "-"}</p>
+                      <p>{selectedShipping?.line1 || "-"}</p>
+                      <p>{selectedShipping?.city || "-"}</p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            {cashOrderError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {cashOrderError}
+              </div>
+            ) : null}
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={step === 0 || cashOrderState === "submitting"}
+                className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 bg-white px-5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-45"
+              >
+                {copy.back}
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={isRedirectingToPayment || cashOrderState === "submitting" || !canStepForward}
+                className="inline-flex min-h-10 items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-45"
+              >
+                {isRedirectingToPayment ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
+                    {copy.processingTitle}
+                  </span>
+                ) : cashOrderState === "submitting" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
+                    {copy.cashOrderLoading}
+                  </span>
+                ) : step === 2 ? (
+                  checkoutMode === "cash_pickup" ? copy.cashOrderAction : copy.pay
+                ) : copy.next}
+              </button>
+            </div>
+          </div>
+
+          <aside className="h-fit rounded-[1.7rem] border border-zinc-200/85 bg-[linear-gradient(160deg,#ffffff_0%,#f8f8f7_52%,#f1f1ef_100%)] p-5 shadow-[0_20px_44px_rgba(24,24,24,0.08)] xl:sticky xl:top-24">
+            <div className="space-y-2 text-sm">
+              {items.map((item) => (
+                <div key={item.row.id} className="flex items-start justify-between gap-3 text-zinc-700">
+                  <span className="max-w-[70%] truncate">{item.perfume?.name || item.row.perfume_slug} x{item.quantity}</span>
+                  <span>{formatCurrencyFromAzn(item.lineTotal, selectedCurrency, locale)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-[1.25rem] border border-zinc-200 bg-white/70 p-4">
+              <p className="text-[11px] font-semibold tracking-[0.12em] text-zinc-500 uppercase">{copy.paymentMethodLabel}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {settings.cardPaymentsEnabled ? (
+                  <span className={[
+                    "rounded-full border px-3 py-1.5 text-xs font-semibold",
+                    checkoutMode === "card"
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-300 bg-white text-zinc-600",
+                  ].join(" ")}>
+                    {copy.paymentMethodCard}
+                  </span>
+                ) : null}
+                <span className={[
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold",
+                  checkoutMode === "cash_pickup"
+                    ? "border-amber-300 bg-amber-100 text-amber-800"
+                    : "border-zinc-300 bg-white text-zinc-600",
+                ].join(" ")}>
+                  {copy.paymentMethodCashPickup}
+                </span>
               </div>
             </div>
-          ) : null}
 
-          {step === 2 ? (
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.review}</h3>
-              <div className="rounded-xl border border-zinc-200 bg-white/85 p-3 text-sm text-zinc-700">
-                <p className="font-medium text-zinc-900">{copy.shippingAddressLabel}</p>
-                <p>{selectedShipping?.fullName || "-"}</p>
-                <p>{selectedShipping?.line1 || "-"}</p>
-                <p>{selectedShipping?.city || "-"}</p>
+            {checkoutMode === "cash_pickup" ? (
+              <div className="mt-4 rounded-[1.3rem] border border-amber-200 bg-[linear-gradient(155deg,#fff9ef_0%,#fff0d4_100%)] p-4">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.pickupLocationTitle}</p>
+                <p className="mt-2 text-sm font-medium text-zinc-900">{settings.pickupLocationName}</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-700">{settings.pickupAddress}</p>
+                <p className="mt-1 text-sm text-zinc-700">{settings.pickupPhone}</p>
+                <p className="mt-3 text-sm leading-6 text-amber-900">{copy.pickupPaymentHint}</p>
+              </div>
+            ) : null}
+
+            <div className="mt-4 space-y-1.5 border-t border-zinc-200 pt-3 text-sm">
+              <div className="flex items-center justify-between text-zinc-600">
+                <span>{copy.subtotal}</span>
+                <span>{formatCurrencyFromAzn(subtotal, selectedCurrency, locale)}</span>
+              </div>
+              <div className="flex items-center justify-between text-zinc-600">
+                <span>{copy.shipping}</span>
+                <span>{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
+              </div>
+              {checkoutMode === "card" && deliveryEstimate ? (
+                <div className="text-xs text-zinc-500">
+                  {copy.deliveryEstimateTitle}: {deliveryEstimate.etaLabel}
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between text-base font-semibold text-zinc-900">
+                <span>{copy.total}</span>
+                <span>{formatCurrencyFromAzn(total, selectedCurrency, locale)}</span>
               </div>
             </div>
-          ) : null}
-        </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={step === 0}
-            className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 bg-white px-5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-45"
-          >
-            {copy.back}
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={isRedirectingToPayment || !canStepForward}
-            className="inline-flex min-h-10 items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-45"
-          >
-            {isRedirectingToPayment ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
-                {copy.processingTitle}
-              </span>
-            ) : step === 2 ? copy.pay : copy.next}
-          </button>
-        </div>
-      </div>
-
-      <aside className="h-fit rounded-[1.7rem] border border-zinc-200/85 bg-[linear-gradient(160deg,#ffffff_0%,#f8f8f7_52%,#f1f1ef_100%)] p-5 shadow-[0_20px_44px_rgba(24,24,24,0.08)] xl:sticky xl:top-24">
-        <div className="space-y-2 text-sm">
-          {items.map((item) => (
-            <div key={item.row.id} className="flex items-start justify-between gap-3 text-zinc-700">
-              <span className="max-w-[70%] truncate">{item.perfume?.name || item.row.perfume_slug} x{item.quantity}</span>
-              <span>{formatCurrencyFromAzn(item.lineTotal, selectedCurrency, locale)}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 space-y-1.5 border-t border-zinc-200 pt-3 text-sm">
-          <div className="flex items-center justify-between text-zinc-600">
-            <span>{copy.subtotal}</span>
-            <span>{formatCurrencyFromAzn(subtotal, selectedCurrency, locale)}</span>
-          </div>
-          <div className="flex items-center justify-between text-zinc-600">
-            <span>{copy.shipping}</span>
-            <span>{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
-          </div>
-          {deliveryEstimate ? (
-            <div className="text-xs text-zinc-500">
-              {copy.deliveryEstimateTitle}: {deliveryEstimate.etaLabel}
-            </div>
-          ) : null}
-          <div className="flex items-center justify-between text-base font-semibold text-zinc-900">
-            <span>{copy.total}</span>
-            <span>{formatCurrencyFromAzn(total, selectedCurrency, locale)}</span>
-          </div>
-        </div>
-      </aside>
+          </aside>
         </>
       ) : null}
     </section>

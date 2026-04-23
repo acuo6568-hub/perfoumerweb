@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import {
   formatCurrencyAmount,
@@ -25,6 +26,7 @@ type Order = {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_method?: string;
   total_amount: number;
   currency: string;
   items: OrderItem[];
@@ -52,6 +54,9 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [orderNotice, setOrderNotice] = useState<Record<string, { tone: "success" | "error"; message: string }>>({});
 
   const copy =
     locale === "az"
@@ -75,6 +80,18 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
           stepDelivered: "Tamamlandı",
           cancelledHint: "Bu sifariş ləğv edilib",
           refundedHint: "Bu sifariş üçün geri ödəniş edilib",
+          pickupHint: "Bu sifariş mağazadan nağd götürmə üçündür.",
+          pickupDetails: "Götürmə",
+          pickupDetailsValue: "Mağazada nağd ödəniş və götürmə",
+          orderSettings: "Sifariş ayarları",
+          openSettings: "Ayarları göstər",
+          closeSettings: "Ayarları gizlət",
+          cancelOrder: "Sifarişi ləğv et",
+          cancelling: "Ləğv edilir...",
+          cancelOrderHint: "Hazırlanmamış nağd götürmə sifarişlərini hesabınızdan ləğv edə bilərsiniz.",
+          cancelOrderConfirm: "Bu nağd götürmə sifarişini ləğv etmək istədiyinizə əminsiniz?",
+          cancelOrderSuccess: "Sifariş ləğv edildi.",
+          cancelOrderError: "Sifarişi ləğv etmək mümkün olmadı.",
           statusNew: "Yeni",
           statusConfirmed: "Təsdiqləndi",
           statusPreparing: "Hazırlanır",
@@ -93,6 +110,8 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
           paymentCompleted: "Ödəndi",
           paymentFailed: "Uğursuz",
           paymentRefunded: "Geri ödəndi",
+          paymentCashPending: "Mağazada nağd ödəniş",
+          paymentCashCompleted: "Mağazada ödənilib",
         }
       : locale === "ru"
         ? {
@@ -115,6 +134,18 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             stepDelivered: "Завершен",
             cancelledHint: "Этот заказ отменен",
             refundedHint: "По этому заказу оформлен возврат",
+            pickupHint: "Этот заказ оформлен как самовывоз с оплатой наличными в магазине.",
+            pickupDetails: "Выдача",
+            pickupDetailsValue: "Самовывоз и оплата наличными в магазине",
+            orderSettings: "Настройки заказа",
+            openSettings: "Показать настройки",
+            closeSettings: "Скрыть настройки",
+            cancelOrder: "Отменить заказ",
+            cancelling: "Отмена...",
+            cancelOrderHint: "Неоплаченные заказы на самовывоз можно отменить прямо из аккаунта.",
+            cancelOrderConfirm: "Вы уверены, что хотите отменить этот заказ на самовывоз?",
+            cancelOrderSuccess: "Заказ отменен.",
+            cancelOrderError: "Не удалось отменить заказ.",
             statusNew: "Новый",
             statusConfirmed: "Подтвержден",
             statusPreparing: "Готовится",
@@ -133,6 +164,8 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             paymentCompleted: "Оплачено",
             paymentFailed: "Завершилось с ошибкой",
             paymentRefunded: "Возвращено",
+            paymentCashPending: "Наличные при получении",
+            paymentCashCompleted: "Оплачено в магазине",
           }
         : {
             title: "Past orders",
@@ -154,6 +187,18 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             stepDelivered: "Completed",
             cancelledHint: "This order was cancelled",
             refundedHint: "This order was refunded",
+            pickupHint: "This order is set for store pickup with cash payment in store.",
+            pickupDetails: "Pickup",
+            pickupDetailsValue: "Store pickup and cash payment",
+            orderSettings: "Order settings",
+            openSettings: "Open settings",
+            closeSettings: "Hide settings",
+            cancelOrder: "Cancel order",
+            cancelling: "Cancelling...",
+            cancelOrderHint: "You can cancel unpaid cash pickup orders directly from your account.",
+            cancelOrderConfirm: "Are you sure you want to cancel this cash pickup order?",
+            cancelOrderSuccess: "Order cancelled.",
+            cancelOrderError: "We could not cancel this order.",
             statusNew: "New",
             statusConfirmed: "Confirmed",
             statusPreparing: "Preparing",
@@ -172,7 +217,17 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             paymentCompleted: "Paid",
             paymentFailed: "Failed",
             paymentRefunded: "Refunded",
+            paymentCashPending: "Cash on pickup",
+            paymentCashCompleted: "Paid in store",
           };
+
+  const isCashPickupOrder = (order: Order) =>
+    (order.payment_method || "").trim().toLowerCase() === CASH_PICKUP_PAYMENT_METHOD;
+
+  const isOrderCancellable = (order: Order) =>
+    isCashPickupOrder(order) &&
+    order.payment_status.trim().toLowerCase() === "pending" &&
+    ["new", "confirmed", "preparing", "ready_for_pickup", "pending", "processing"].includes(order.status.trim().toLowerCase());
 
   useEffect(() => {
     async function fetchData() {
@@ -251,14 +306,24 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
     return statusMap[status] || status;
   };
 
-  const getPaymentLabel = (status: string) => {
+  const getPaymentLabel = (order: Order) => {
+    if (isCashPickupOrder(order)) {
+      if (order.payment_status === "completed") {
+        return copy.paymentCashCompleted;
+      }
+
+      if (order.payment_status === "pending") {
+        return copy.paymentCashPending;
+      }
+    }
+
     const paymentMap: Record<string, string> = {
       pending: copy.paymentPending,
       completed: copy.paymentCompleted,
       failed: copy.paymentFailed,
       refunded: copy.paymentRefunded,
     };
-    return paymentMap[status] || status;
+    return paymentMap[order.payment_status] || order.payment_status;
   };
 
   const getStatusColor = (status: string) => {
@@ -279,6 +344,20 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
       refunded: "border-orange-200 bg-orange-50/90 text-orange-700",
     };
     return colors[status] || "border-zinc-200 bg-zinc-50/90 text-zinc-700";
+  };
+
+  const getPaymentColor = (order: Order) => {
+    if (isCashPickupOrder(order)) {
+      if (order.payment_status === "completed") {
+        return "border-emerald-200 bg-emerald-50/90 text-emerald-700";
+      }
+
+      if (order.payment_status === "pending") {
+        return "border-amber-200 bg-amber-50/90 text-amber-700";
+      }
+    }
+
+    return getStatusColor(order.payment_status);
   };
 
   const getProgressIndex = (status: string) => {
@@ -315,6 +394,73 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
       });
     } catch {
       return dateString;
+    }
+  };
+
+  const cancelOrder = async (order: Order) => {
+    if (!supabase) return;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setOrderNotice((prev) => ({
+        ...prev,
+        [order.id]: { tone: "error", message: copy.cancelOrderError },
+      }));
+      return;
+    }
+
+    const shouldCancel = window.confirm(copy.cancelOrderConfirm);
+    if (!shouldCancel) return;
+
+    setCancellingOrderId(order.id);
+    setOrderNotice((prev) => {
+      const next = { ...prev };
+      delete next[order.id];
+      return next;
+    });
+
+    try {
+      const response = await fetch(`/api/profile/orders/${order.id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        order?: Partial<Order>;
+      };
+
+      if (!response.ok || !payload.order) {
+        throw new Error(payload.error || copy.cancelOrderError);
+      }
+
+      setOrders((current) =>
+        current.map((entry) =>
+          entry.id === order.id
+            ? {
+                ...entry,
+                ...payload.order,
+              }
+            : entry,
+        ),
+      );
+      setOrderNotice((prev) => ({
+        ...prev,
+        [order.id]: { tone: "success", message: copy.cancelOrderSuccess },
+      }));
+    } catch (err) {
+      setOrderNotice((prev) => ({
+        ...prev,
+        [order.id]: {
+          tone: "error",
+          message: err instanceof Error ? err.message : copy.cancelOrderError,
+        },
+      }));
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -388,9 +534,9 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden="true" />
                   {getStatusLabel(order.status)}
                 </div>
-                <div className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ${getStatusColor(order.payment_status)}`}>
+                <div className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ${getPaymentColor(order)}`}>
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-sm bg-current opacity-80" aria-hidden="true" />
-                  {copy.payment} · {getPaymentLabel(order.payment_status)}
+                  {copy.payment} · {getPaymentLabel(order)}
                 </div>
               </div>
             </div>
@@ -490,8 +636,63 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
               </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-600">
-              {copy.tracking}: <span className="font-medium text-zinc-900">{order.tracking_number || copy.noTracking}</span>
+            {isCashPickupOrder(order) ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-900">
+                <p className="font-medium">{copy.pickupHint}</p>
+                <p className="mt-2">
+                  {copy.pickupDetails}: <span className="font-semibold text-zinc-900">{copy.pickupDetailsValue}</span>
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-600">
+                {copy.tracking}: <span className="font-medium text-zinc-900">{order.tracking_number || copy.noTracking}</span>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-medium text-zinc-900">{copy.orderSettings}</p>
+                {isOrderCancellable(order) ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedOrderId((current) => (current === order.id ? null : order.id))}
+                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+                  >
+                    {expandedOrderId === order.id ? copy.closeSettings : copy.openSettings}
+                  </button>
+                ) : null}
+              </div>
+
+              {isOrderCancellable(order) ? (
+                <div className="mt-3">
+                  <p className="text-sm text-zinc-600">{copy.cancelOrderHint}</p>
+
+                  {expandedOrderId === order.id ? (
+                    <div className="mt-4 rounded-2xl border border-rose-200 bg-white p-4">
+                      <button
+                        type="button"
+                        onClick={() => void cancelOrder(order)}
+                        disabled={cancellingOrderId === order.id}
+                        className="inline-flex min-h-10 items-center justify-center rounded-full border border-rose-300 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {cancellingOrderId === order.id ? copy.cancelling : copy.cancelOrder}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {orderNotice[order.id] ? (
+                <div
+                  className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
+                    orderNotice[order.id]?.tone === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-rose-200 bg-rose-50 text-rose-700"
+                  }`}
+                >
+                  {orderNotice[order.id]?.message}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

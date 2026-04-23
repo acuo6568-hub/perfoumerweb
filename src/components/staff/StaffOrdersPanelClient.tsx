@@ -30,6 +30,7 @@ import {
   XmarkCircleOutlined,
 } from "@lineiconshq/free-icons";
 import Lineicons, { type LineiconsProps } from "@lineiconshq/react-lineicons";
+import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
 import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
 import { formatMessage, type Locale } from "@/lib/i18n";
 
@@ -223,7 +224,7 @@ const STAFF_COPY_EN = {
   paymentAdvanced: "Payment (advanced)",
   hidePayment: "Hide payment",
   allFilter: "All",
-  cashOnDelivery: "Cash on delivery",
+  cashOnDelivery: "Cash orders",
   searchPlaceholder: "Search order, customer, item",
   backToActiveQueue: "Back to active queue",
   viewHistory: "View history",
@@ -379,6 +380,8 @@ const STAFF_COPY_EN = {
     pending: "Pending",
     failed: "Failed",
     refunded: "Refunded",
+    cashPending: "Cash on pickup",
+    cashCompleted: "Collected in store",
   },
   auditLabels: {
     status_change: "Status updated",
@@ -411,6 +414,7 @@ const STAFF_COPY_EN = {
   waitAgoMinutes: "{minutes}m ago",
   waitAgoHours: "{hours}h ago",
   waitAgoHoursMinutes: "{hours}h {minutes}m ago",
+  cashOrderSupportHint: "Cash pickup orders only need a cancel option before handoff. Payment is collected in store during pickup.",
 } as const;
 
 const STAFF_COPY_AZ = {
@@ -450,7 +454,7 @@ const STAFF_COPY_AZ = {
   paymentAdvanced: "Ödəniş (əlavə)",
   hidePayment: "Ödənişi gizlət",
   allFilter: "Hamısı",
-  cashOnDelivery: "Qapıda ödəniş",
+  cashOnDelivery: "Nağd sifarişlər",
   searchPlaceholder: "Sifariş, müştəri və ya məhsul axtar",
   backToActiveQueue: "Aktiv növbəyə qayıt",
   viewHistory: "Tarixçəni göstər",
@@ -606,6 +610,8 @@ const STAFF_COPY_AZ = {
     pending: "Gözləmədədir",
     failed: "Uğursuzdur",
     refunded: "Geri ödənilib",
+    cashPending: "Mağazada nağd ödəniş",
+    cashCompleted: "Mağazada ödənilib",
   },
   auditLabels: {
     status_change: "Status yeniləndi",
@@ -638,6 +644,7 @@ const STAFF_COPY_AZ = {
   waitAgoMinutes: "{minutes} dəq əvvəl",
   waitAgoHours: "{hours} saat əvvəl",
   waitAgoHoursMinutes: "{hours} saat {minutes} dəq əvvəl",
+  cashOrderSupportHint: "Nağd götürmə sifarişlərində təhvilə qədər yalnız ləğv əməliyyatı kifayətdir. Ödəniş mağazada götürmə zamanı alınır.",
 } as const;
 
 const STAFF_COPY = {
@@ -774,8 +781,17 @@ function getAddressField(address: Record<string, unknown> | null, keys: string[]
   return "";
 }
 
+function isPickupAddressRecord(address: Record<string, unknown> | null) {
+  const mode = getAddressField(address, ["fulfillmentMethod", "fulfillment_method", "mode"]);
+  return mode.toLowerCase() === "pickup";
+}
+
 function getOrderMode(order: StaffOrder): OrderMode {
-  return order.delivery_address_json ? "delivery" : "pickup";
+  if (!order.delivery_address_json) {
+    return "pickup";
+  }
+
+  return isPickupAddressRecord(order.delivery_address_json) ? "pickup" : "delivery";
 }
 
 function getCustomerName(order: StaffOrder, copy: StaffCopy) {
@@ -825,7 +841,7 @@ function getCity(address: Record<string, unknown>) {
 
 function getAddressLines(order: StaffOrder, copy: StaffCopy) {
   const address = order.delivery_address_json;
-  if (!address) {
+  if (!address || isPickupAddressRecord(address)) {
     return [copy.storePickup];
   }
 
@@ -848,7 +864,7 @@ function getAddressLines(order: StaffOrder, copy: StaffCopy) {
 
 function getAddressSummaryForList(order: StaffOrder, copy: StaffCopy) {
   const address = order.delivery_address_json;
-  if (!address) {
+  if (!address || isPickupAddressRecord(address)) {
     return copy.storePickup;
   }
 
@@ -864,7 +880,7 @@ function getAddressSummaryForList(order: StaffOrder, copy: StaffCopy) {
 }
 
 function buildAddressFormFromOrder(order: StaffOrder | null, copy: StaffCopy): AddressFormState {
-  if (!order?.delivery_address_json) {
+  if (!order?.delivery_address_json || isPickupAddressRecord(order.delivery_address_json)) {
     return { ...DEFAULT_ADDRESS_FORM, country: copy.countryDefault };
   }
 
@@ -900,7 +916,35 @@ function getOrderModeLabel(mode: OrderMode, copy: StaffCopy) {
   return copy.modeLabels[mode];
 }
 
-function getPaymentLabel(status: string, copy: StaffCopy) {
+function isCashOrder(order: StaffOrder) {
+  const paymentMethod = (order.payment_method || "").trim().toLowerCase();
+  return (
+    paymentMethod === CASH_PICKUP_PAYMENT_METHOD ||
+    paymentMethod.includes("cod") ||
+    paymentMethod.includes("cash") ||
+    paymentMethod.includes("nagd") ||
+    paymentMethod.includes("na\u011fd")
+  );
+}
+
+function isCashOrderPaid(order: StaffOrder) {
+  return order.payment_status.trim().toLowerCase() === "completed";
+}
+
+function getPaymentLabel(order: StaffOrder, copy: StaffCopy) {
+  if (isCashOrder(order)) {
+    if (order.payment_status.trim().toLowerCase() === "refunded") {
+      return copy.paymentLabels.refunded;
+    }
+
+    if (isCashOrderPaid(order)) {
+      return copy.paymentLabels.cashCompleted;
+    }
+
+    return copy.paymentLabels.cashPending;
+  }
+
+  const status = order.payment_status;
   switch (status.trim().toLowerCase()) {
     case "completed":
       return copy.paymentLabels.completed;
@@ -918,6 +962,31 @@ function getPaymentLabel(status: string, copy: StaffCopy) {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(" ") || copy.paymentUnknown
       );
+  }
+}
+
+function getPaymentBadgeClass(order: StaffOrder) {
+  if (isCashOrder(order)) {
+    if (order.payment_status.trim().toLowerCase() === "refunded") {
+      return "border-orange-200 bg-orange-50 text-orange-700";
+    }
+
+    if (isCashOrderPaid(order)) {
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    }
+
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  switch (order.payment_status.trim().toLowerCase()) {
+    case "completed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "failed":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "refunded":
+      return "border-orange-200 bg-orange-50 text-orange-700";
+    default:
+      return "border-zinc-200 bg-zinc-50 text-zinc-700";
   }
 }
 
@@ -974,13 +1043,7 @@ function getWaitUrgency(minutes: number, copy: StaffCopy) {
 }
 
 function isCodOrder(order: StaffOrder) {
-  const paymentMethod = (order.payment_method || "").trim().toLowerCase();
-  return (
-    paymentMethod.includes("cod") ||
-    paymentMethod.includes("cash") ||
-    paymentMethod.includes("nagd") ||
-    paymentMethod.includes("na\u011fd")
-  );
+  return isCashOrder(order);
 }
 
 function formatDateTime(value: string, locale: Locale) {
@@ -1636,6 +1699,7 @@ export function StaffOrdersPanelClient({
       return (
         order.order_number.toLowerCase().includes(normalizedQuery) ||
         getStatusLabel(statusName, copy).toLowerCase().includes(normalizedQuery) ||
+        getPaymentLabel(order, copy).toLowerCase().includes(normalizedQuery) ||
         order.payment_status.toLowerCase().includes(normalizedQuery) ||
         name.includes(normalizedQuery) ||
         phone.includes(normalizedQuery) ||
@@ -1648,6 +1712,7 @@ export function StaffOrdersPanelClient({
     ? normalizeOperationalStatus(selectedOrder.status)
     : null;
   const selectedMode = selectedOrder ? getOrderMode(selectedOrder) : null;
+  const selectedIsCashOrder = selectedOrder ? isCashOrder(selectedOrder) : false;
   const selectedItems = selectedOrder ? parseItems(selectedOrder.items_json) : [];
   const selectedActions = selectedOrder ? getActions(selectedOrder, copy) : [];
   const pickupCode = selectedOrder ? derivePickupCode(selectedOrder) : "";
@@ -2332,7 +2397,7 @@ export function StaffOrdersPanelClient({
                         </p>
 
                         <div className={cx("mt-3 flex items-center justify-between text-xs", selectedOrderId === order.id ? "text-zinc-300" : "text-zinc-500")}>
-                          <span>{getPaymentLabel(order.payment_status, copy)}</span>
+                          <span>{getPaymentLabel(order, copy)}</span>
                           {queueTab === "history" ? null : (
                             <span className={selectedOrderId === order.id ? "text-zinc-300" : urgency.className}>{urgency.label}</span>
                           )}
@@ -2377,8 +2442,8 @@ export function StaffOrdersPanelClient({
                           )}>
                             {selectedMode ? getOrderModeLabel(selectedMode, copy) : copy.modeLabels.pickup}
                           </span>
-                          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700">
-                            {getPaymentLabel(selectedOrder.payment_status, copy)}
+                          <span className={cx("inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold", getPaymentBadgeClass(selectedOrder))}>
+                            {getPaymentLabel(selectedOrder, copy)}
                           </span>
                         </div>
                       </div>
@@ -2403,6 +2468,11 @@ export function StaffOrdersPanelClient({
                             ? copy.pickupLocationValue
                             : getAddressSummaryForList(selectedOrder, copy)}
                         </p>
+                        {selectedIsCashOrder ? (
+                          <p className="mt-3 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                            {getPaymentLabel(selectedOrder, copy)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -2646,7 +2716,7 @@ export function StaffOrdersPanelClient({
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <span>{copy.payment}</span>
-                          <span className="font-medium text-zinc-900">{getPaymentLabel(selectedOrder.payment_status, copy)}</span>
+                          <span className="font-medium text-zinc-900">{getPaymentLabel(selectedOrder, copy)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <span>{copy.orderQueue}</span>
@@ -2667,9 +2737,11 @@ export function StaffOrdersPanelClient({
                         </div>
                       ) : (
                         <>
-                          <p className="mt-2 text-sm text-zinc-600">{copy.supportActionsHint}</p>
+                          <p className="mt-2 text-sm text-zinc-600">
+                            {selectedIsCashOrder ? copy.cashOrderSupportHint : copy.supportActionsHint}
+                          </p>
 
-                          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                          <div className={cx("mt-4 grid gap-2", selectedIsCashOrder ? "" : "sm:grid-cols-2")}>
                             <button
                               type="button"
                               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100"
@@ -2679,15 +2751,17 @@ export function StaffOrdersPanelClient({
                               <AppIcon name="cancel" size={16} />
                               {activeControl === "cancel" ? copy.cancelling : copy.cancelOrder}
                             </button>
-                            <button
-                              type="button"
-                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-4 text-sm font-semibold text-orange-700 hover:bg-orange-100"
-                              disabled={busy}
-                              onClick={() => openActionModal("refund")}
-                            >
-                              <AppIcon name="refund" size={16} />
-                              {activeControl === "refund" ? copy.refunding : copy.refundOrder}
-                            </button>
+                            {!selectedIsCashOrder ? (
+                              <button
+                                type="button"
+                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-4 text-sm font-semibold text-orange-700 hover:bg-orange-100"
+                                disabled={busy}
+                                onClick={() => openActionModal("refund")}
+                              >
+                                <AppIcon name="refund" size={16} />
+                                {activeControl === "refund" ? copy.refunding : copy.refundOrder}
+                              </button>
+                            ) : null}
                           </div>
                         </>
                       )}
@@ -2901,69 +2975,75 @@ export function StaffOrdersPanelClient({
             : null}
 
           {selectedOrder && selectedMode === "pickup" && showHandoff ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]">
-              <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] border border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] p-5 shadow-[0_24px_60px_rgba(16,185,129,0.14)]">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">{copy.handoffEyebrow}</p>
-                  <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-zinc-950">{copy.handoffTitle}</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.handoffDescription}</p>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700"
-                  onClick={() => setShowHandoff(false)}
-                >
-                  <AppIcon name="wait" size={15} />
-                  {copy.close}
-                </button>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.customerCard}</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900">{getCustomerName(selectedOrder, copy)}</p>
-                </div>
-                <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.orderId}</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900">{selectedOrder.order_number}</p>
-                </div>
-                <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.phone}</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900">{getCustomerPhone(selectedOrder, copy)}</p>
-                </div>
-                <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.pickupCode}</p>
-                  <p className="mt-2 text-xl font-semibold tracking-[0.12em] text-zinc-950">{pickupCode}</p>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-[1.4rem] border border-white/70 bg-white/90 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.itemsInHandoff}</p>
-                <div className="mt-3 space-y-2">
-                  {selectedItems.map((item, index) => (
-                    <div key={`${item.perfume_slug}-${index}`} className="flex items-center justify-between gap-3 text-sm text-zinc-700">
-                      <span>{item.perfume_name} ({item.size_ml}ML) × {item.quantity}</span>
-                      <span className="font-medium text-zinc-900">{item.total_price.toFixed(2)} {selectedOrder.currency}</span>
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/35 p-3 backdrop-blur-[2px] sm:p-4">
+              <div className="flex min-h-full items-center justify-center">
+                <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] shadow-[0_24px_60px_rgba(16,185,129,0.14)] sm:max-h-[calc(100dvh-2rem)]">
+                  <div className="flex flex-wrap items-start justify-between gap-4 border-b border-emerald-100/80 px-4 py-4 sm:px-5">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">{copy.handoffEyebrow}</p>
+                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-zinc-950">{copy.handoffTitle}</h3>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.handoffDescription}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <button
+                      type="button"
+                      className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700"
+                      onClick={() => setShowHandoff(false)}
+                    >
+                      <AppIcon name="wait" size={15} />
+                      {copy.close}
+                    </button>
+                  </div>
 
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-500"
-                  disabled={busy || selectedStatus !== "ready_for_pickup"}
-                  onClick={() => void updateStatus("handed_over", copy.pickupCompletedDetails)}
-                >
-                  <AppIcon name="check" size={16} />
-                  {copy.confirmHandover}
-                </button>
-                <div className="inline-flex min-h-14 items-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 text-sm text-emerald-700">
-                  {copy.handoffLockHint}
+                  <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.customerCard}</p>
+                        <p className="mt-2 text-sm font-semibold text-zinc-900">{getCustomerName(selectedOrder, copy)}</p>
+                      </div>
+                      <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.orderId}</p>
+                        <p className="mt-2 text-sm font-semibold text-zinc-900">{selectedOrder.order_number}</p>
+                      </div>
+                      <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.phone}</p>
+                        <p className="mt-2 text-sm font-semibold text-zinc-900">{getCustomerPhone(selectedOrder, copy)}</p>
+                      </div>
+                      <div className="rounded-[1.3rem] border border-white/70 bg-white/90 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.pickupCode}</p>
+                        <p className="mt-2 text-xl font-semibold tracking-[0.12em] text-zinc-950">{pickupCode}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-[1.4rem] border border-white/70 bg-white/90 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.itemsInHandoff}</p>
+                      <div className="mt-3 space-y-2">
+                        {selectedItems.map((item, index) => (
+                          <div key={`${item.perfume_slug}-${index}`} className="flex items-center justify-between gap-3 text-sm text-zinc-700">
+                            <span>{item.perfume_name} ({item.size_ml}ML) × {item.quantity}</span>
+                            <span className="font-medium text-zinc-900">{item.total_price.toFixed(2)} {selectedOrder.currency}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-emerald-100/80 bg-white/75 px-4 py-4 backdrop-blur sm:px-5">
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-500"
+                        disabled={busy || selectedStatus !== "ready_for_pickup"}
+                        onClick={() => void updateStatus("handed_over", copy.pickupCompletedDetails)}
+                      >
+                        <AppIcon name="check" size={16} />
+                        {copy.confirmHandover}
+                      </button>
+                      <div className="inline-flex min-h-14 items-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 text-sm text-emerald-700">
+                        {copy.handoffLockHint}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
           ) : null}

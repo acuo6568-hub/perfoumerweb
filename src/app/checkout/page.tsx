@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { CheckoutClient } from "@/components/checkout/CheckoutClient";
 import { Footer } from "@/components/Footer";
 import { getPerfumes } from "@/lib/catalog";
+import { getCheckoutSettingsFromServer } from "@/lib/checkout-settings";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 
 export default async function CheckoutPage() {
   const supabaseConfig = getSupabasePublicConfigFromServer();
+  const checkoutSettings = getCheckoutSettingsFromServer();
   const locale = await getCurrentLocale();
   const perfumes = await getPerfumes();
 
@@ -27,11 +29,13 @@ export default async function CheckoutPage() {
             Sifarişi tamamla
           </h1>
           <p className="mt-2 max-w-2xl text-zinc-600">
-            Seçilmiş ətirlərinizi bir neçə addımda təsdiqləyin və təhlükəsiz ödənişə keçin.
+            {checkoutSettings.cardPaymentsEnabled
+              ? "Seçilmiş ətirlərinizi bir neçə addımda təsdiqləyin, onlayn ödənişi tamamlayın və ya mağazada nağd götürməni seçin."
+              : "Seçilmiş ətirlərinizi bir neçə addımda təsdiqləyin və mağazada nağd götürmə üçün sifarişinizi tamamlayın."}
           </p>
         </section>
 
-        <CheckoutClient perfumes={perfumes} locale={locale} supabase={supabaseConfig} />
+        <CheckoutClient perfumes={perfumes} locale={locale} supabase={supabaseConfig} settings={checkoutSettings} />
       </div>
 
       <Footer locale={locale} />

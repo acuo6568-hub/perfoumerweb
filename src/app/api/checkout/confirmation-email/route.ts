@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
+
 type Locale = "az" | "en" | "ru";
 
 type EmailItem = {
@@ -17,28 +19,38 @@ type ShippingAddress = {
   country: string;
 } | null;
 
+type PickupLocation = {
+  name: string;
+  address: string;
+  phone: string;
+} | null;
+
 type EmailPayload = {
   locale?: string;
   email?: string;
   orderId?: string;
   status?: string;
+  paymentMethod?: string;
   total?: number;
   shippingPrice?: number;
   subtotal?: number;
   items?: EmailItem[];
   shippingAddress?: ShippingAddress;
+  pickupLocation?: PickupLocation;
 };
 
 type Copy = {
   subject: string;
   title: string;
   intro: string;
+  pickupIntro: string;
   orderLabel: string;
   subtotalLabel: string;
   shippingLabel: string;
   totalLabel: string;
   itemsLabel: string;
   addressLabel: string;
+  pickupLabel: string;
   supportTitle: string;
   supportBody: string;
   supportCta: string;
@@ -57,12 +69,14 @@ const copyByLocale: Record<Locale, Copy> = {
     subject: "Sifariş təsdiqi",
     title: "Sifarişiniz qəbul edildi",
     intro: "Ödəniş uğurla tamamlandı. Sifarişiniz hazırlanma mərhələsinə keçdi.",
+    pickupIntro: "Sifarişiniz mağazada nağd götürmə üçün rezerv edildi. Məhsulu götürərkən ödənişi yerində tamamlayacaqsınız.",
     orderLabel: "Sifariş ID",
     subtotalLabel: "Ara cəmi",
     shippingLabel: "Çatdırılma",
     totalLabel: "Ümumi",
     itemsLabel: "Məhsullar",
     addressLabel: "Çatdırılma ünvanı",
+    pickupLabel: "Götürmə ünvanı",
     supportTitle: "Dəstək lazımdır?",
     supportBody: "Çatdırılma, məhsul və ya sifariş barədə hər sualınız üçün komandamız sizə kömək etməyə hazırdır.",
     supportCta: "Dəstəyə yazın",
@@ -79,12 +93,14 @@ const copyByLocale: Record<Locale, Copy> = {
     subject: "Order confirmation",
     title: "Your order is confirmed",
     intro: "Payment was successful and your order is now being prepared.",
+    pickupIntro: "Your order has been reserved for store pickup. You will complete payment in cash when you collect it.",
     orderLabel: "Order ID",
     subtotalLabel: "Subtotal",
     shippingLabel: "Shipping",
     totalLabel: "Total",
     itemsLabel: "Items",
     addressLabel: "Shipping address",
+    pickupLabel: "Pickup location",
     supportTitle: "Need help?",
     supportBody: "Our team is ready to help with delivery details, product questions, or anything else.",
     supportCta: "Contact support",
@@ -101,12 +117,14 @@ const copyByLocale: Record<Locale, Copy> = {
     subject: "Подтверждение заказа",
     title: "Ваш заказ подтвержден",
     intro: "Оплата прошла успешно, заказ передан в обработку.",
+    pickupIntro: "Ваш заказ зарезервирован для самовывоза. Вы оплатите его наличными при получении в магазине.",
     orderLabel: "Номер заказа",
     subtotalLabel: "Подытог",
     shippingLabel: "Доставка",
     totalLabel: "Итого",
     itemsLabel: "Товары",
     addressLabel: "Адрес доставки",
+    pickupLabel: "Адрес самовывоза",
     supportTitle: "Нужна помощь?",
     supportBody: "Наша команда поможет с доставкой, вопросами по товару и деталями заказа.",
     supportCta: "Написать в поддержку",
@@ -193,6 +211,8 @@ export async function POST(request: Request) {
   const total = Number.isFinite(body.total) ? Number(body.total) : subtotal + shipping;
   const orderId = typeof body.orderId === "string" && body.orderId.trim() ? body.orderId.trim() : "-";
   const isTestEmail = orderId.startsWith("TEST-");
+  const paymentMethod = typeof body.paymentMethod === "string" ? body.paymentMethod.trim() : "";
+  const isCashPickup = paymentMethod === CASH_PICKUP_PAYMENT_METHOD;
 
   const from = process.env.ORDER_EMAIL_FROM || process.env.RESEND_FROM_EMAIL;
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -211,9 +231,15 @@ export async function POST(request: Request) {
     .join("\n");
 
   const address = body.shippingAddress;
-  const addressHtml = address
-    ? `<p style="margin:0;color:#000000;line-height:1.65;">${escapeHtml(address.fullName)}<br/>${escapeHtml(address.line1)}${address.line2 ? `<br/>${escapeHtml(address.line2)}` : ""}<br/>${escapeHtml(address.city)} ${escapeHtml(address.postalCode)}<br/>${escapeHtml(address.country)}</p>`
-    : `<p style="margin:0;color:#000000;">-</p>`;
+  const pickupLocation = body.pickupLocation;
+  const detailLabel = isCashPickup ? copy.pickupLabel : copy.addressLabel;
+  const detailHtml = isCashPickup
+    ? pickupLocation
+      ? `<p style="margin:0;color:#000000;line-height:1.65;"><strong>${escapeHtml(pickupLocation.name)}</strong><br/>${escapeHtml(pickupLocation.address)}<br/>${escapeHtml(pickupLocation.phone)}</p>`
+      : `<p style="margin:0;color:#000000;">-</p>`
+    : address
+      ? `<p style="margin:0;color:#000000;line-height:1.65;">${escapeHtml(address.fullName)}<br/>${escapeHtml(address.line1)}${address.line2 ? `<br/>${escapeHtml(address.line2)}` : ""}<br/>${escapeHtml(address.city)} ${escapeHtml(address.postalCode)}<br/>${escapeHtml(address.country)}</p>`
+      : `<p style="margin:0;color:#000000;">-</p>`;
 
   const subject = `${copy.subject}${orderId !== "-" ? ` #${orderId}` : ""}${isTestEmail ? " [Template v2]" : ""}`;
 
@@ -293,7 +319,7 @@ export async function POST(request: Request) {
       <div class="panel" style="background:#fffdf8;border:1px solid #d8d0bb;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 16px 40px rgba(60,52,35,0.12);">
         <div class="hero" style="padding:42px 28px;text-align:center;background:linear-gradient(160deg,#f8f3e7 0%,#efe7d6 100%);">
           <h1 class="title" style="margin:0;color:#1d1a14;font-size:40px;line-height:1.14;letter-spacing:-0.02em;font-family:'Playfair Display',Georgia,serif;">${copy.title}</h1>
-          <p class="intro" style="margin:16px 0 0;color:#4e4637;font-family:Poppins,Arial,sans-serif;font-size:16px;line-height:1.6;">${copy.intro}</p>
+          <p class="intro" style="margin:16px 0 0;color:#4e4637;font-family:Poppins,Arial,sans-serif;font-size:16px;line-height:1.6;">${isCashPickup ? copy.pickupIntro : copy.intro}</p>
         </div>
 
         <div class="body" style="padding:26px 24px 28px;">
@@ -310,8 +336,8 @@ export async function POST(request: Request) {
             <div><strong>${copy.totalLabel}:</strong> ${money(total)}</div>
           </div>
 
-          <p class="heading" style="margin:14px 0 8px;color:#5c5547;font-family:Poppins,Arial,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:0.09em;">${copy.addressLabel}</p>
-          <div class="addr" style="margin-top:14px;padding:12px 13px;border:1px solid #e0d5bc;border-radius:12px;background:#fffaf0;">${addressHtml}</div>
+          <p class="heading" style="margin:14px 0 8px;color:#5c5547;font-family:Poppins,Arial,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:0.09em;">${detailLabel}</p>
+          <div class="addr" style="margin-top:14px;padding:12px 13px;border:1px solid #e0d5bc;border-radius:12px;background:#fffaf0;">${detailHtml}</div>
         </div>
       </div>
 
@@ -352,7 +378,7 @@ export async function POST(request: Request) {
 
   const textLines = [
     copy.title,
-    copy.intro,
+    isCashPickup ? copy.pickupIntro : copy.intro,
     `${copy.orderLabel}: ${orderId}`,
     "",
     `${copy.itemsLabel}:`,
@@ -363,7 +389,15 @@ export async function POST(request: Request) {
     `${copy.totalLabel}: ${money(total)}`,
   ];
 
-  if (address) {
+  if (isCashPickup && pickupLocation) {
+    textLines.push(
+      "",
+      `${copy.pickupLabel}:`,
+      `${pickupLocation.name}`,
+      `${pickupLocation.address}`,
+      `${pickupLocation.phone}`,
+    );
+  } else if (address) {
     textLines.push(
       "",
       `${copy.addressLabel}:`,

@@ -9,6 +9,7 @@ import {
   isAdminConfigured,
   isStaffConfigured,
 } from "@/lib/admin-auth";
+import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
 import { encodeEpointData, getEpointConfig, signEpointData } from "@/lib/epoint";
 import { sendOrderUpdateEmail } from "@/lib/order-notifications";
 import { getSupabaseServiceConfigFromServerResult } from "@/lib/supabase/env.server";
@@ -267,6 +268,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function isCashPaymentMethod(value: unknown) {
+  const paymentMethod = String(value || "").trim().toLowerCase();
+  return (
+    paymentMethod === CASH_PICKUP_PAYMENT_METHOD ||
+    paymentMethod.includes("cod") ||
+    paymentMethod.includes("cash") ||
+    paymentMethod.includes("nagd") ||
+    paymentMethod.includes("nağd")
+  );
+}
+
 type AuthLookupClient = {
   auth: {
     admin: {
@@ -401,6 +413,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     updateData.status = status;
+    if (
+      isCashPaymentMethod((existingOrder as Record<string, unknown>).payment_method) &&
+      (status === "handed_over" || status === "delivered" || status === "completed")
+    ) {
+      updateData.payment_status = "completed";
+    }
     if (status === "completed" || status === "delivered") {
       updateData.completed_at = new Date().toISOString();
     }
@@ -425,6 +443,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (action === "cancel") {
     updateData.status = "cancelled";
+    if (isCashPaymentMethod((existingOrder as Record<string, unknown>).payment_method)) {
+      updateData.payment_status = "failed";
+    }
   }
 
   if (action === "refund") {

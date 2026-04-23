@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
 import { generateOrderNumber } from "@/lib/order-number";
 
 export const runtime = "nodejs";
@@ -12,6 +13,12 @@ type CreateOrderBody = {
   payment_status?: "pending" | "completed" | "failed" | "refunded";
   total_amount?: number;
   selected_address_id?: string;
+  fulfillment_method?: "delivery" | "pickup";
+  pickup_contact?: {
+    full_name?: string;
+    phone?: string;
+    note?: string | null;
+  };
   items?: Array<{
     perfume_slug: string;
     perfume_name: string;
@@ -64,9 +71,12 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentOrderId = typeof body.payment_order_id === "string" ? body.payment_order_id.trim() : "";
+    const fulfillmentMethod = body.fulfillment_method === "pickup" ? "pickup" : "delivery";
     const paymentMethod = typeof body.payment_method === "string" && body.payment_method.trim()
       ? body.payment_method.trim()
-      : "epoint";
+      : fulfillmentMethod === "pickup"
+        ? CASH_PICKUP_PAYMENT_METHOD
+        : "epoint";
     const paymentTransactionId = typeof body.payment_transaction_id === "string" ? body.payment_transaction_id.trim() : "";
 
     const writeClient = supabaseServiceRoleKey
@@ -87,7 +97,22 @@ export async function POST(request: NextRequest) {
     }
 
     let deliveryAddress: Record<string, unknown> | null = null;
-    if (typeof body.selected_address_id === "string" && body.selected_address_id.trim()) {
+    if (fulfillmentMethod === "pickup") {
+      const pickupName = typeof body.pickup_contact?.full_name === "string" ? body.pickup_contact.full_name.trim() : "";
+      const pickupPhone = typeof body.pickup_contact?.phone === "string" ? body.pickup_contact.phone.trim() : "";
+      const pickupNote = typeof body.pickup_contact?.note === "string" ? body.pickup_contact.note.trim() : "";
+
+      if (!pickupName || !pickupPhone) {
+        return NextResponse.json({ error: "Pickup contact details are required" }, { status: 400 });
+      }
+
+      deliveryAddress = {
+        fulfillmentMethod: "pickup",
+        fullName: pickupName,
+        phone: pickupPhone,
+        note: pickupNote || null,
+      };
+    } else if (typeof body.selected_address_id === "string" && body.selected_address_id.trim()) {
       const { data: address } = await writeClient
         .from("checkout_addresses")
         .select("full_name,phone,line1,line2,city,postal_code,country")
@@ -97,6 +122,7 @@ export async function POST(request: NextRequest) {
 
       if (address) {
         deliveryAddress = {
+          fulfillmentMethod: "delivery",
           fullName: address.full_name,
           phone: address.phone,
           line1: address.line1,
@@ -108,7 +134,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const paymentStatus = body.payment_status ?? "completed";
+    const paymentStatus = body.payment_status ?? (fulfillmentMethod === "pickup" ? "pending" : "completed");
     const status = paymentStatus === "completed" ? "confirmed" : "new";
 
     const { data: createdOrder, error: createError } = await writeClient
