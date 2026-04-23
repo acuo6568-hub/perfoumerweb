@@ -4,7 +4,16 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
-import { SEO_CONTACT, SEO_LOCAL_BUSINESS, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
+import {
+  SEO_CONTACT,
+  SEO_LOCAL_BUSINESS,
+  absoluteUrlForLocale,
+  buildAzeriPageKeywords,
+  buildLocaleAlternates,
+  buildStoreGeoCoordinates,
+  buildStoreOpeningHoursSpecification,
+  buildStorePostalAddress,
+} from "@/lib/seo";
 
 const aboutMetadata: Metadata = {
   title: "Haqqımızda - Perfoumer",
@@ -33,16 +42,18 @@ export default async function AboutPage() {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": "https://perfoumer.az/#organization",
     name: "Perfoumer",
     url: absoluteUrlForLocale("/", locale),
     email: SEO_CONTACT.email,
     telephone: SEO_CONTACT.phone,
+    foundingDate: SEO_LOCAL_BUSINESS.foundingDate,
     areaServed: SEO_LOCAL_BUSINESS.areaServed,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: SEO_LOCAL_BUSINESS.city,
-      addressCountry: SEO_LOCAL_BUSINESS.countryName,
-    },
+    address: buildStorePostalAddress(),
+    geo: buildStoreGeoCoordinates(),
+    hasMap: SEO_LOCAL_BUSINESS.mapUrl,
+    openingHoursSpecification: buildStoreOpeningHoursSpecification(),
+    sameAs: [...SEO_LOCAL_BUSINESS.sameAs],
   };
 
   return (

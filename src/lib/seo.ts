@@ -19,14 +19,63 @@ export const SEO_CONTACT = {
   whatsappUrl: "https://wa.me/994507078070",
 } as const;
 
+export const SEO_SOCIAL_LINKS = {
+  instagram: "https://www.instagram.com/perfoumer/",
+} as const;
+
 export const SEO_LOCAL_BUSINESS = {
+  streetAddress: "Mirzəağa Əliyev Küçəsi",
+  postalCode: "1009",
   city: "Baku",
+  cityNative: "Bakı",
+  region: "Baku",
   country: "AZ",
   countryName: "Azerbaijan",
+  latitude: 40.375092,
+  longitude: 49.833675,
+  mapUrl: "https://maps.app.goo.gl/Wpw5PwXDEuhnd6wB6",
   areaServed: ["Azerbaijan", "Baku"],
+  priceRange: "₼₼",
   currenciesAccepted: "AZN",
   paymentAccepted: ["Cash", "Card"],
+  foundingDate: "2020",
+  sameAs: [SEO_CONTACT.whatsappUrl, SEO_SOCIAL_LINKS.instagram],
+  openingHoursSpecification: [
+    {
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "10:00",
+      closes: "19:00",
+    },
+    {
+      dayOfWeek: ["Sunday"],
+      opens: "10:00",
+      closes: "18:00",
+    },
+  ],
 } as const;
+
+export const buildStorePostalAddress = () => ({
+  "@type": "PostalAddress",
+  streetAddress: SEO_LOCAL_BUSINESS.streetAddress,
+  addressLocality: SEO_LOCAL_BUSINESS.cityNative,
+  addressRegion: SEO_LOCAL_BUSINESS.region,
+  postalCode: SEO_LOCAL_BUSINESS.postalCode,
+  addressCountry: SEO_LOCAL_BUSINESS.country,
+});
+
+export const buildStoreGeoCoordinates = () => ({
+  "@type": "GeoCoordinates",
+  latitude: SEO_LOCAL_BUSINESS.latitude,
+  longitude: SEO_LOCAL_BUSINESS.longitude,
+});
+
+export const buildStoreOpeningHoursSpecification = () =>
+  SEO_LOCAL_BUSINESS.openingHoursSpecification.map((entry) => ({
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: [...entry.dayOfWeek],
+    opens: entry.opens,
+    closes: entry.closes,
+  }));
 
 const AZ_INTENTS = ["al", "onlayn al", "sifariş et", "qiymət", "orijinal", "premium"];
 

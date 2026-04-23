@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Storefront, User } from "@phosphor-icons/react/dist/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 import { DetailAccordion } from "@/components/DetailAccordion";
 import { DetailBackButton } from "@/components/DetailBackButton";
@@ -23,13 +24,25 @@ import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/i18n";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
-import { absoluteUrl, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
+import {
+  SITE_URL,
+  absoluteUrl,
+  absoluteUrlForLocale,
+  buildAzeriPageKeywords,
+  buildLocaleAlternates,
+} from "@/lib/seo";
 import { slugifyPathSegment } from "@/lib/seo";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 
 type PerfumeDetailPageProps = {
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{ v?: string | string[] }>;
+};
+
+type ProductCommentRow = {
+  rating?: number | null;
+  comment?: string | null;
+  created_at?: string | null;
 };
 
 export const dynamic = "force-dynamic";
@@ -194,6 +207,51 @@ export default async function PerfumeDetailPage({
   const relatedArticles = BLOG_ARTICLES.filter((item) =>
     item.relatedClusterHrefs.some((href) => productClusterLinks.includes(href)),
   ).slice(0, 6);
+  let reviewRows: ProductCommentRow[] = [];
+
+  if (supabaseConfig) {
+    const { data } = await createClient(supabaseConfig.url, supabaseConfig.anonKey)
+      .from("comments")
+      .select("rating,comment,created_at")
+      .eq("perfume_slug", perfume.slug)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    reviewRows = Array.isArray(data) ? (data as ProductCommentRow[]) : [];
+  }
+
+  const normalizedReviews = reviewRows
+    .map((entry) => ({
+      rating: Number.isFinite(Number(entry.rating)) ? Math.max(1, Math.min(5, Number(entry.rating))) : 0,
+      comment: typeof entry.comment === "string" ? entry.comment.trim() : "",
+      createdAt: typeof entry.created_at === "string" ? entry.created_at : "",
+    }))
+    .filter((entry) => entry.rating > 0);
+  const averageRating = normalizedReviews.length
+    ? Number(
+        (
+          normalizedReviews.reduce((total, entry) => total + entry.rating, 0) / normalizedReviews.length
+        ).toFixed(1),
+      )
+    : null;
+  const reviewStructuredData = normalizedReviews
+    .filter((entry) => entry.comment)
+    .slice(0, 3)
+    .map((entry) => ({
+      "@type": "Review",
+      reviewBody: entry.comment,
+      datePublished: entry.createdAt || undefined,
+      author: {
+        "@type": "Person",
+        name: "Perfoumer customer",
+      },
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: entry.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }));
 
   const productStructuredData = {
     "@context": "https://schema.org",
@@ -208,6 +266,17 @@ export default async function PerfumeDetailPage({
     sku: perfume.id,
     category: "Perfume",
     url: canonicalUrl,
+    seller: {
+      "@id": `${SITE_URL}/#store`,
+    },
+    aggregateRating: averageRating
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: averageRating,
+          reviewCount: normalizedReviews.length,
+        }
+      : undefined,
+    review: reviewStructuredData.length ? reviewStructuredData : undefined,
     offers: {
       "@type": "AggregateOffer",
       url: canonicalUrl,
@@ -216,6 +285,7 @@ export default async function PerfumeDetailPage({
       highPrice: highestPrice,
       offerCount: perfume.sizes.length,
       availability: perfume.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
     },
   };
 

@@ -55,6 +55,32 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
               Brendlərə bax
             </Link>
           </div>
+
+          <div className="mt-7 grid gap-3 rounded-[1.5rem] border border-zinc-200/75 bg-white/85 p-4 shadow-[0_12px_28px_rgba(20,20,24,0.04)] md:grid-cols-[1.08fr_0.92fr] md:p-5">
+            <div>
+              <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">Bakı mağazası + onlayn sifariş</p>
+              <h2 className="mt-2 text-2xl leading-tight tracking-[-0.02em] text-zinc-900 md:text-3xl">
+                {cluster.title} seçimlərini mağazada baxıb, onlayn sifariş edə bilərsiniz
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
+                Perfoumer həm real Bakı mağazası, həm də onlayn mağaza kimi işləyir. {cluster.title} kolleksiyasını mağazada yaxından baxa, sonra isə saytdan və ya birbaşa dəstək üzərindən sifariş edə bilərsiniz.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+              <Link
+                href={toLocalePath("/elaqe", locale)}
+                className="inline-flex items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                Bakı mağazası ünvanı
+              </Link>
+              <Link
+                href={toLocalePath("/qoxunu", locale)}
+                className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-900"
+              >
+                Qoxunu Tap
+              </Link>
+            </div>
+          </div>
         </section>
 
         <section className="mt-8 border-b border-zinc-200/80 pb-6">

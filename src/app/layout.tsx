@@ -17,6 +17,9 @@ import {
   SITE_URL,
   absoluteUrl,
   absoluteUrlForLocale,
+  buildStoreGeoCoordinates,
+  buildStoreOpeningHoursSpecification,
+  buildStorePostalAddress,
   buildAzeriPageKeywords,
 } from "@/lib/seo";
 
@@ -123,11 +126,15 @@ export default async function RootLayout({
   const orgStructuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": `${SITE_URL}/#organization`,
     name: SITE_NAME,
     url: absoluteUrlForLocale("/", locale),
-    logo: absoluteUrlForLocale("/perfmlogo.png", locale),
+    logo: absoluteUrl("/perfmlogo.png"),
     email: SEO_CONTACT.email,
     telephone: SEO_CONTACT.phone,
+    foundingDate: SEO_LOCAL_BUSINESS.foundingDate,
+    address: buildStorePostalAddress(),
+    areaServed: SEO_LOCAL_BUSINESS.areaServed,
     contactPoint: [
       {
         "@type": "ContactPoint",
@@ -138,12 +145,13 @@ export default async function RootLayout({
         availableLanguage: ["az", "en", "ru"],
       },
     ],
-    sameAs: [SEO_CONTACT.whatsappUrl],
+    sameAs: [...SEO_LOCAL_BUSINESS.sameAs],
   };
 
   const siteStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": `${SITE_URL}/#website`,
     name: SITE_NAME,
     url: absoluteUrlForLocale("/", locale),
     inLanguage: ["az", "en", "ru"],
@@ -186,19 +194,22 @@ export default async function RootLayout({
     "@type": "Store",
     "@id": `${SITE_URL}/#store`,
     name: SITE_NAME,
-    image: absoluteUrlForLocale(DEFAULT_OG_IMAGE, locale),
+    image: absoluteUrl(DEFAULT_OG_IMAGE),
     url: absoluteUrlForLocale("/", locale),
     telephone: SEO_CONTACT.phone,
     email: SEO_CONTACT.email,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: SEO_LOCAL_BUSINESS.city,
-      addressCountry: SEO_LOCAL_BUSINESS.country,
-    },
+    description:
+      "Perfoumer Bakıda real mağazası olan və Azərbaycan üzrə onlayn sifariş qəbul edən premium və orijinal ətir mağazasıdır.",
+    address: buildStorePostalAddress(),
+    geo: buildStoreGeoCoordinates(),
+    hasMap: SEO_LOCAL_BUSINESS.mapUrl,
+    openingHoursSpecification: buildStoreOpeningHoursSpecification(),
     areaServed: SEO_LOCAL_BUSINESS.areaServed,
     availableLanguage: ["az", "en", "ru"],
+    priceRange: SEO_LOCAL_BUSINESS.priceRange,
     currenciesAccepted: SEO_LOCAL_BUSINESS.currenciesAccepted,
     paymentAccepted: SEO_LOCAL_BUSINESS.paymentAccepted,
+    sameAs: [...SEO_LOCAL_BUSINESS.sameAs],
   };
 
   const navigationStructuredData = {
