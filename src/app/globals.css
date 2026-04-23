@@ -459,8 +459,8 @@ h6 {
 }
 
 .hero-shell {
-  height: min(680px, calc(100svh - 88px));
-  min-height: 560px;
+  height: min(620px, calc(100svh - 92px));
+  min-height: 500px;
 }
 
 .hero-shell-stage {
@@ -538,10 +538,40 @@ h6 {
   animation: heroShellStagePulseRight 460ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes heroShellStagePulseLeftMobile {
+  0% {
+    transform: perspective(1800px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 0) scale(1);
+    box-shadow: 0 16px 34px rgba(16, 16, 20, 0.14);
+  }
+  28% {
+    transform: perspective(1800px) rotateX(0.34deg) rotateY(2.2deg) translate3d(3px, 0, 10px) scale(0.9989);
+    box-shadow: 14px 22px 44px rgba(16, 16, 20, 0.18);
+  }
+  100% {
+    transform: perspective(1800px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 0) scale(1);
+    box-shadow: 0 16px 34px rgba(16, 16, 20, 0.14);
+  }
+}
+
+@keyframes heroShellStagePulseRightMobile {
+  0% {
+    transform: perspective(1800px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 0) scale(1);
+    box-shadow: 0 16px 34px rgba(16, 16, 20, 0.14);
+  }
+  28% {
+    transform: perspective(1800px) rotateX(0.34deg) rotateY(-2.2deg) translate3d(-3px, 0, 10px) scale(0.9989);
+    box-shadow: -14px 22px 44px rgba(16, 16, 20, 0.18);
+  }
+  100% {
+    transform: perspective(1800px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 0) scale(1);
+    box-shadow: 0 16px 34px rgba(16, 16, 20, 0.14);
+  }
+}
+
 @media (min-width: 640px) {
   .hero-shell {
-    height: min(720px, calc(100svh - 96px));
-    min-height: 600px;
+    height: min(700px, calc(100svh - 96px));
+    min-height: 560px;
   }
 }
 
@@ -1544,6 +1574,38 @@ h6 {
   transform: translateX(0.32rem) scale(0.96);
 }
 
+@media (max-width: 767px) {
+  .hero-shell-stage {
+    box-shadow: 0 16px 34px rgba(16, 16, 20, 0.14);
+  }
+
+  .hero-shell-stage::after {
+    opacity: 0.3;
+  }
+
+  .hero-shell-stage--pulse-left {
+    animation: heroShellStagePulseLeftMobile 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .hero-shell-stage--pulse-right {
+    animation: heroShellStagePulseRightMobile 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .hero-side-switcher {
+    height: 5.8rem;
+    width: 2.9rem;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .hero-side-switcher::before {
+    opacity: 0.72;
+  }
+
+  .hero-side-switcher__icon {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.18));
+  }
+}
+
 @keyframes headerLogoLoop {
   0% {
     transform: translateY(0) scale(1);
@@ -2243,6 +2305,82 @@ h6 {
   }
 }
 
+@keyframes scentJourneyFloat {
+  0% {
+    transform: translate3d(0, 0, 0);
+    box-shadow: 0 18px 42px rgba(15, 15, 18, 0.12);
+  }
+  50% {
+    transform: translate3d(0, -2px, 0);
+    box-shadow: 0 22px 48px rgba(15, 15, 18, 0.16);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    box-shadow: 0 18px 42px rgba(15, 15, 18, 0.12);
+  }
+}
+
+@keyframes scentJourneyDotPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+}
+
+.scent-journey-launcher {
+  position: relative;
+  overflow: hidden;
+  animation: scentJourneyFloat 4.8s ease-in-out infinite;
+}
+
+.scent-journey-launcher::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 18%, rgba(255, 255, 255, 0.88) 50%, transparent 82%);
+  opacity: 0;
+  transform: translate3d(-120%, 0, 0);
+  animation: scentJourneySheen 6.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.scent-journey-launcher-dot {
+  animation: scentJourneyDotPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes scentJourneySheen {
+  0%,
+  72%,
+  100% {
+    opacity: 0;
+    transform: translate3d(-120%, 0, 0);
+  }
+  18%,
+  28% {
+    opacity: 0.55;
+    transform: translate3d(120%, 0, 0);
+  }
+}
+
+.scent-journey-panel-shell::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
 .perfume-cover-aura-layer {
   will-change: transform, opacity, filter;
 }
@@ -2302,6 +2440,9 @@ h6 {
   .perfume-cover-aura-layer-b,
   .perfume-cover-aura-layer-c,
   .perfume-cover-image,
+  .scent-journey-launcher,
+  .scent-journey-launcher::after,
+  .scent-journey-launcher-dot,
   .quiz-results-spark-main,
   .quiz-results-spark-soft {
     animation: none;

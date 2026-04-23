@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import { Header } from "@/components/Header";
+import { ScentFinderPrompt } from "@/components/ScentFinderPrompt";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
@@ -82,6 +83,7 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
       >
         {children}
       </div>
+      {hideNavigationChrome ? null : <ScentFinderPrompt locale={_locale} />}
     </CurrencyProvider>
   );
 }

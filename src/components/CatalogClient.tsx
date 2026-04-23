@@ -723,12 +723,16 @@ export function CatalogClient({
       const smartScore = scoreSmartMatch(perfume, smartSearchIntent);
       const searchPool = toSearchPool(perfume);
       const queryTokens = normalizedQuery.split(" ").filter(Boolean);
+      const smartQueryThreshold =
+        queryTokens.length >= 3 ? 18 : queryTokens.length === 2 ? 14 : 10;
       const hasAllQueryTokens = queryTokens.every((token) => searchPool.includes(token));
       const hasExactQuery = searchPool.includes(normalizedQuery);
+      const matchesSmartQuery = normalizedQuery.length > 0 && smartScore >= smartQueryThreshold;
       const matchesQuery =
         !normalizedQuery ||
         hasExactQuery ||
-        hasAllQueryTokens;
+        hasAllQueryTokens ||
+        matchesSmartQuery;
 
       const matchesGender =
         selectedGender === "all" ||

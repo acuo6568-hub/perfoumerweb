@@ -816,52 +816,64 @@ export function Hero({ locale, spotlights }: HeroProps) {
         })}
       </div>
 
-      <div className="relative z-[3] mx-auto flex h-full max-w-[1540px] px-6 py-10 text-white md:px-10 xl:py-14">
-        <div className="w-full pt-24 md:pt-28 lg:max-w-[52rem] lg:pt-20 lg:pr-[20rem] xl:max-w-[56rem] xl:pr-[24rem]">
+      <div className="relative z-[3] mx-auto flex h-full max-w-[1540px] px-5 py-5 text-white sm:px-6 sm:py-6 md:px-10 xl:py-14">
+        <div className="w-full pt-[3.5rem] pr-[31vw] pb-[calc(env(safe-area-inset-bottom)+2.75rem)] sm:pt-[4.25rem] sm:pr-[28vw] sm:pb-[calc(env(safe-area-inset-bottom)+3rem)] md:pt-28 md:pr-0 md:pb-0 lg:max-w-[52rem] lg:pt-20 lg:pr-[20rem] xl:max-w-[56rem] xl:pr-[24rem]">
           <div key={activeModel.perfume.id} className="hero-reveal">
-            <p className="text-[0.72rem] font-medium tracking-[0.24em] text-white/56 uppercase">
+            <p className="text-[0.66rem] font-medium tracking-[0.22em] text-white/56 uppercase sm:text-[0.72rem] sm:tracking-[0.24em]">
               {activeModel.perfume.brand}
             </p>
 
-            <h1 className="mt-4 max-w-[10ch] text-[clamp(2.4rem,4.6vw,3.9rem)] leading-[0.94] font-semibold tracking-[-0.05em] text-white md:max-w-[11ch]">
+            <h1 className="mt-3 max-w-[7.2ch] text-[clamp(1.9rem,9.5vw,2.7rem)] leading-[0.9] font-semibold tracking-[-0.06em] text-white sm:mt-4 sm:max-w-[8ch] md:max-w-[11ch] md:text-[clamp(2.4rem,4.6vw,3.9rem)] md:leading-[0.94] md:tracking-[-0.05em]">
               {activeModel.title}
             </h1>
-            <p className="mt-4 max-w-[36rem] text-[0.96rem] leading-7 text-white/68 md:text-[0.98rem]">
+            <p className="mt-3 max-w-[15rem] text-[0.88rem] leading-[1.32rem] text-white/74 sm:mt-4 sm:max-w-[16.5rem] sm:text-[0.93rem] sm:leading-[1.42rem] md:max-w-[36rem] md:text-[0.98rem] md:leading-7">
               {activeModel.description}
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-white/66">
-              <span className="font-semibold tracking-[0.18em] text-white/54 uppercase">
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[0.8rem] text-white/68 sm:mt-5 sm:gap-3 sm:text-sm">
+              <span className="rounded-full border border-white/12 bg-white/6 px-2.5 py-1 font-semibold tracking-[0.16em] text-white/58 uppercase">
                 {copy.priceLabel}
               </span>
-              <span className="text-[1.05rem] font-medium text-white">{activeModel.priceLabel}</span>
+              <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[0.94rem] font-medium text-white shadow-[0_12px_24px_rgba(0,0,0,0.12)] sm:text-[1.05rem]">
+                {activeModel.priceLabel}
+              </span>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6 grid max-w-[14rem] gap-2.5 sm:mt-7 sm:max-w-[15rem] md:max-w-[22rem] md:gap-3 lg:max-w-none lg:flex lg:flex-wrap">
               <Link
                 href={toLocalePath(`/perfumes/${activeModel.perfume.slug}`, locale)}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-zinc-950 transition hover:bg-zinc-100"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-zinc-950 transition hover:bg-zinc-100 lg:w-auto"
               >
                 <span>{activeModel.primaryCta}</span>
                 <ArrowRight size={16} weight="bold" />
               </Link>
               <Link
                 href={toLocalePath("/catalog", locale)}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 bg-white/6 px-5 text-sm font-medium text-white transition hover:bg-white/10"
+                className="inline-flex min-h-9 items-center justify-start px-1 text-[0.86rem] font-medium text-white/78 transition hover:text-white md:min-h-11 md:w-full md:justify-center md:rounded-full md:border md:border-white/20 md:bg-white/6 md:px-5 md:text-sm lg:w-auto"
               >
                 {copy.secondaryCta}
               </Link>
             </div>
 
-            <div className="mt-8">
-              <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-white/55 uppercase">
+            <div className="mt-5 max-w-[14rem] sm:mt-6 sm:max-w-[15rem] md:max-w-none md:mt-8">
+              <p className="hidden text-[0.68rem] font-semibold tracking-[0.18em] text-white/55 uppercase sm:text-[0.72rem] sm:tracking-[0.2em] md:block">
                 {copy.notesLabel}
               </p>
-              <p className="mt-3 text-[0.95rem] text-white/72">
+              <div className="mt-2 flex flex-wrap gap-2 md:hidden">
+                {activeModel.notePills.slice(0, 2).map((note) => (
+                  <span
+                    key={note}
+                    className="rounded-full border border-white/12 bg-white/7 px-3 py-1.5 text-[0.76rem] font-medium text-white/76"
+                  >
+                    {note}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 hidden text-[0.95rem] text-white/72 md:block">
                 {activeModel.notePills.join(" / ")}
               </p>
             </div>
 
-            <div className="relative mt-10 h-[260px] overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/10 lg:hidden">
+            <div className="relative mt-8 hidden h-[248px] overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/10 shadow-[0_18px_36px_rgba(0,0,0,0.16)] md:block lg:hidden">
               <div
                 className="absolute inset-0"
                 style={{
@@ -869,10 +881,10 @@ export function Hero({ locale, spotlights }: HeroProps) {
                 }}
               />
               <div
-                className="hero-aura-float absolute left-1/2 top-1/2 h-[10.5rem] w-[10.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+                className="hero-aura-float absolute left-1/2 top-1/2 h-[8.75rem] w-[8.75rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl sm:h-[10.5rem] sm:w-[10.5rem]"
                 style={{ background: activeModel.theme.orb }}
               />
-              <div className="absolute inset-x-10 bottom-5 top-8">
+              <div className="absolute inset-x-8 bottom-4 top-7 sm:inset-x-10 sm:bottom-5 sm:top-8">
                 <Image
                   src={activeModel.perfume.image}
                   alt={activeModel.perfume.imageAlt || activeModel.perfume.name}
@@ -885,6 +897,21 @@ export function Hero({ locale, spotlights }: HeroProps) {
             </div>
           </div>
         </div>
+      </div>
+      <div className="pointer-events-none absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-[0.35rem] z-[2] h-[14.25rem] w-[40vw] max-w-[10rem] md:hidden">
+        <div
+          className="absolute left-1/2 top-[40%] h-[7rem] w-[7rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+          style={{ background: activeModel.theme.orb }}
+        />
+        <div className="absolute inset-x-[6%] bottom-[1rem] h-[1rem] rounded-full bg-black/24 blur-2xl" />
+        <Image
+          src={activeModel.perfume.image}
+          alt={activeModel.perfume.imageAlt || activeModel.perfume.name}
+          fill
+          sizes="40vw"
+          className="object-contain object-bottom drop-shadow-[0_24px_40px_rgba(0,0,0,0.28)]"
+          priority
+        />
       </div>
       </div>
     </section>
