@@ -11,6 +11,7 @@ import {
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const ALLOWED_FOLDERS = new Set(["perfumes", "notes"]);
+const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 
 function safeBaseName(fileName: string) {
   const base = fileName
@@ -78,8 +79,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "File is required." }, { status: 400 });
   }
 
-  if (!file.type.startsWith("image/")) {
-    return Response.json({ error: "Only image files are allowed." }, { status: 400 });
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return Response.json({ error: "Only PNG, JPG, and WebP images are allowed." }, { status: 400 });
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {

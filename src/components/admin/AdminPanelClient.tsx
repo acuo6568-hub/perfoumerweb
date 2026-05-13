@@ -241,6 +241,8 @@ const adminCopy = {
     addLinkedNote: "Not əlavə et",
     mediaQuickActions: "Sürətli media əməliyyatları",
     uploadImage: "Şəkil yüklə",
+    replaceImage: "Şəkli yenilə",
+    uploading: "Yüklənir...",
     imageMetadata: "Şəkil məlumatı",
     imageMetadataDescription:
       "Yüklənmiş şəkilin keçidini və alt mətnini idarə edin.",
@@ -453,6 +455,8 @@ const adminCopy = {
     addLinkedNote: "Add note",
     mediaQuickActions: "Media quick actions",
     uploadImage: "Upload image",
+    replaceImage: "Replace image",
+    uploading: "Uploading...",
     imageMetadata: "Image metadata",
     imageMetadataDescription:
       "Control the uploaded image reference and alt text.",
@@ -1094,15 +1098,41 @@ function ImagePreview({
   src,
   alt,
   emptyLabel,
+  fit = "cover",
+  showCheckerboard = false,
 }: {
   src: string;
   alt: string;
   emptyLabel: string;
+  fit?: "cover" | "contain";
+  showCheckerboard?: boolean;
 }) {
+  const checkerboardStyle = showCheckerboard
+    ? {
+        backgroundImage:
+          "linear-gradient(45deg, rgba(228,228,231,0.8) 25%, transparent 25%)," +
+          "linear-gradient(-45deg, rgba(228,228,231,0.8) 25%, transparent 25%)," +
+          "linear-gradient(45deg, transparent 75%, rgba(228,228,231,0.8) 75%)," +
+          "linear-gradient(-45deg, transparent 75%, rgba(228,228,231,0.8) 75%)",
+        backgroundPosition: "0 0, 0 6px, 6px -6px, -6px 0px",
+        backgroundSize: "12px 12px",
+      }
+    : undefined;
+
   return (
-    <div className="overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-zinc-100">
+    <div
+      className="overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-zinc-100"
+      style={checkerboardStyle}
+    >
       {src ? (
-        <img src={src} alt={alt || emptyLabel} className="aspect-[4/3] h-full w-full object-cover" />
+        <img
+          src={src}
+          alt={alt || emptyLabel}
+          className={[
+            "aspect-[4/3] h-full w-full",
+            fit === "contain" ? "object-contain" : "object-cover",
+          ].join(" ")}
+        />
       ) : (
         <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_top,rgba(228,228,231,0.95),rgba(244,244,245,0.92))] px-6 text-center text-sm text-zinc-500">
           {emptyLabel}
@@ -3088,10 +3118,10 @@ export function AdminPanelClient({
                       <ImagePreview
                         src={selectedPerfume.image}
                         alt={selectedPerfume.imageAlt || selectedPerfume.name}
-                        emptyLabel="Upload a perfume image to preview it here."
+                        emptyLabel={copy.uploadPerfumePreview}
                       />
                       <div className={cx(ui.soft, "p-4")}>
-                        <p className="text-sm font-semibold text-zinc-900">Media quick actions</p>
+                        <p className="text-sm font-semibold text-zinc-900">{copy.mediaQuickActions}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
@@ -3100,21 +3130,25 @@ export function AdminPanelClient({
                             disabled={uploading}
                           >
                             <UploadSimple size={16} weight="bold" />
-                            {uploading ? "Uploading..." : "Upload image"}
+                            {uploading
+                              ? copy.uploading
+                              : selectedPerfume.image
+                                ? copy.replaceImage
+                                : copy.uploadImage}
                           </button>
                           <button
                             type="button"
                             className={ui.secondaryButton}
-                            onClick={() => void copyToClipboard(selectedPerfume.image, "Image URL")}
+                            onClick={() => void copyToClipboard(selectedPerfume.image, copy.imageUrl)}
                           >
                             <CopySimple size={16} weight="bold" />
-                            Copy URL
+                            {copy.copyImageUrl}
                           </button>
                         </div>
                         <input
                           ref={perfumeImageInputRef}
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/webp"
                           className="hidden"
                           onChange={(event) => {
                             void onUploadPerfumeImage(event);
@@ -3126,12 +3160,12 @@ export function AdminPanelClient({
                     <div className={cx(ui.soft, "p-4 sm:p-5")}>
                       <SectionLabel
                         icon={<ImageSquare size={16} weight="bold" />}
-                        title="Image metadata"
-                        detail="Control how the uploaded image is referenced and announced."
+                        title={copy.imageMetadata}
+                        detail={copy.imageMetadataDescription}
                       />
 
                       <div className="mt-5 grid gap-4">
-                        <Field label="Image URL">
+                        <Field label={copy.imageUrl}>
                           <input
                             className={ui.input}
                             value={selectedPerfume.image}
@@ -3139,7 +3173,7 @@ export function AdminPanelClient({
                             placeholder="/uploads/admin/perfumes/..."
                           />
                         </Field>
-                        <Field label="Image alt text">
+                        <Field label={copy.imageAlt}>
                           <input
                             className={ui.input}
                             value={selectedPerfume.imageAlt}
@@ -3307,10 +3341,12 @@ export function AdminPanelClient({
                     <ImagePreview
                       src={selectedNote.image}
                       alt={selectedNote.imageAlt || selectedNote.name}
-                      emptyLabel="Upload a note image to preview it here."
+                      emptyLabel={copy.uploadNotePreview}
+                      fit="contain"
+                      showCheckerboard
                     />
                     <div className={cx(ui.soft, "p-4")}>
-                      <p className="text-sm font-semibold text-zinc-900">Media quick actions</p>
+                      <p className="text-sm font-semibold text-zinc-900">{copy.mediaQuickActions}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           type="button"
@@ -3319,21 +3355,25 @@ export function AdminPanelClient({
                           disabled={uploading}
                         >
                           <UploadSimple size={16} weight="bold" />
-                          {uploading ? "Uploading..." : "Upload image"}
+                          {uploading
+                            ? copy.uploading
+                            : selectedNote.image
+                              ? copy.replaceImage
+                              : copy.uploadImage}
                         </button>
                         <button
                           type="button"
                           className={ui.secondaryButton}
-                          onClick={() => void copyToClipboard(selectedNote.image, "Image URL")}
+                          onClick={() => void copyToClipboard(selectedNote.image, copy.imageUrl)}
                         >
                           <CopySimple size={16} weight="bold" />
-                          Copy URL
+                          {copy.copyImageUrl}
                         </button>
                       </div>
                       <input
                         ref={noteImageInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp"
                         className="hidden"
                         onChange={(event) => {
                           void onUploadNoteImage(event);
@@ -3345,12 +3385,12 @@ export function AdminPanelClient({
                   <div className={cx(ui.soft, "p-4 sm:p-5")}>
                     <SectionLabel
                       icon={<ImageSquare size={16} weight="bold" />}
-                      title="Image metadata"
-                      detail="Keep the note artwork and alt text in sync with the content."
+                        title={copy.imageMetadata}
+                        detail={copy.imageMetadataDescription}
                     />
 
                     <div className="mt-5 grid gap-4">
-                      <Field label="Image URL">
+                      <Field label={copy.imageUrl}>
                         <input
                           className={ui.input}
                           value={selectedNote.image}
@@ -3358,7 +3398,7 @@ export function AdminPanelClient({
                           placeholder="/uploads/admin/notes/..."
                         />
                       </Field>
-                      <Field label="Image alt text">
+                      <Field label={copy.imageAlt}>
                         <input
                           className={ui.input}
                           value={selectedNote.imageAlt}

@@ -344,7 +344,7 @@ function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.6rem] border border-zinc-200/80 bg-white/72 p-4 shadow-[0_14px_34px_rgba(24,24,24,0.05)] backdrop-blur-sm sm:p-5">
+    <section className="rounded-[1.8rem] border border-zinc-200/80 bg-white/82 p-4 shadow-[0_18px_40px_rgba(24,24,24,0.06)] backdrop-blur-sm sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[0.66rem] font-medium tracking-[0.24em] text-zinc-400 uppercase">
@@ -1094,7 +1094,7 @@ export function CatalogClient({
 
         <div className="mt-1 grid gap-2 py-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div ref={searchContainerRef} className="relative">
-          <label className="flex items-center gap-3 rounded-none border-b border-zinc-300/70 bg-transparent px-1 py-2.5 transition-all duration-300 focus-within:border-zinc-500">
+          <label className="flex items-center gap-3 rounded-none border-b border-zinc-300/70 bg-transparent px-1 py-2.5 transition-all duration-300 focus-within:border-zinc-500 lg:rounded-full lg:border lg:border-zinc-200/80 lg:bg-white/85 lg:px-3 lg:py-2 lg:shadow-[0_12px_28px_rgba(24,24,24,0.06)] lg:backdrop-blur-sm">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300/70 bg-zinc-50 text-zinc-600">
               <MagnifyingGlass size={18} weight="bold" />
             </div>
@@ -1237,7 +1237,7 @@ export function CatalogClient({
 
           <div className="flex flex-col gap-2 items-start lg:items-end">
             <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3 lg:w-auto lg:justify-end">
-              <div className="inline-flex w-full items-center rounded-full border border-zinc-200/80 bg-white/88 p-1 shadow-[0_10px_24px_rgba(24,24,24,0.04)] backdrop-blur-sm sm:w-auto">
+              <div className="inline-flex w-full items-center rounded-full border border-zinc-200/80 bg-white/88 p-1 shadow-[0_12px_28px_rgba(24,24,24,0.05)] backdrop-blur-sm sm:w-auto">
               {genders.map((gender) => {
                 const active = selectedGender === gender;
 
@@ -1265,7 +1265,7 @@ export function CatalogClient({
                 aria-expanded={isFiltersPanelOpen}
                 aria-controls="catalog-advanced-filters"
                 onClick={() => setIsFiltersPanelOpen((open) => !open)}
-                className="hidden min-h-11 items-center gap-3 rounded-full border border-zinc-200/80 bg-white/90 px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[0_10px_24px_rgba(24,24,24,0.04)] transition-all duration-300 hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[0_14px_28px_rgba(24,24,24,0.07)] lg:inline-flex"
+                  className="hidden min-h-11 items-center gap-3 rounded-full border border-zinc-200/80 bg-white/90 px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-[0_12px_28px_rgba(24,24,24,0.05)] transition-all duration-300 hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[0_16px_32px_rgba(24,24,24,0.08)] lg:inline-flex"
               >
                 <span className="relative block h-[15px] w-[15px]">
                   <SlidersHorizontal
@@ -1296,7 +1296,7 @@ export function CatalogClient({
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-200/80 bg-white/90 px-4 py-2 text-sm font-medium text-zinc-600 transition-all duration-300 hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[0_10px_24px_rgba(24,24,24,0.06)]"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-200/80 bg-white/90 px-4 py-2 text-sm font-medium text-zinc-600 transition-all duration-300 hover:border-zinc-300 hover:text-zinc-900 hover:shadow-[0_12px_26px_rgba(24,24,24,0.07)]"
                 >
                   <X size={14} weight="bold" />
                   {t.catalog.reset}
@@ -1304,7 +1304,7 @@ export function CatalogClient({
               ) : null}
 
               {activeFilterCount > 0 ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/90 px-3 py-1.5 text-sm text-zinc-600 shadow-[0_8px_20px_rgba(24,24,24,0.04)]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/90 px-3 py-1.5 text-sm text-zinc-600 shadow-[0_10px_22px_rgba(24,24,24,0.05)]">
                   <Sparkle size={14} weight="fill" className="text-zinc-400" />
                   {formatMessage(t.catalog.activeChoices, { count: activeFilterCount })}
                 </div>
@@ -1321,7 +1321,7 @@ export function CatalogClient({
                   key={chip.key}
                   type="button"
                   onClick={chip.onClear}
-                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-zinc-200/80 bg-white/85 px-3 py-2 text-sm text-zinc-600 shadow-[0_8px_18px_rgba(24,24,24,0.04)] transition-all duration-300 hover:border-zinc-300 hover:bg-white hover:text-zinc-900"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-zinc-200/80 bg-white/85 px-3 py-2 text-sm text-zinc-600 shadow-[0_10px_22px_rgba(24,24,24,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-white hover:text-zinc-900 hover:shadow-[0_14px_28px_rgba(24,24,24,0.08)]"
                 >
                   {chip.icon ? <span className="text-zinc-400">{chip.icon}</span> : null}
                   <span className="max-w-[10rem] truncate sm:max-w-[14rem]">{chip.label}</span>
@@ -1419,7 +1419,7 @@ export function CatalogClient({
                   className={[
                     "flex h-full w-[min(92vw,24.5rem)] flex-col overflow-hidden border-l border-zinc-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(250,249,247,0.92)_100%)] backdrop-blur-xl",
                     "rounded-none",
-                    "lg:max-h-[calc(100vh-3rem)] lg:max-w-6xl lg:rounded-[2rem] lg:border",
+                    "lg:h-auto lg:w-[min(92vw,72rem)] lg:max-h-[calc(100vh-3.5rem)] lg:max-w-[72rem] lg:rounded-[2.4rem] lg:border",
                     "transition-[transform,opacity] duration-560 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
                     "shadow-[-24px_0_58px_rgba(15,15,15,0.2)] lg:shadow-[0_26px_70px_rgba(15,15,15,0.2)]",
                     isFiltersPanelOpen
@@ -1429,7 +1429,7 @@ export function CatalogClient({
                 >
             <div
               className={[
-                "flex items-start justify-between gap-4 border-b border-zinc-200/70 px-5 pb-4 pt-4 sm:px-6",
+                "flex items-start justify-between gap-4 border-b border-zinc-200/70 px-5 pb-4 pt-4 sm:px-6 lg:sticky lg:top-0 lg:z-10 lg:bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(252,251,249,0.96)_100%)] lg:px-8 lg:pt-6 lg:backdrop-blur",
                 "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
                 isFiltersPanelOpen
                   ? "translate-x-0 opacity-100 lg:translate-y-0"
@@ -1470,7 +1470,7 @@ export function CatalogClient({
 
             <div
               className={[
-                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 pb-8 sm:px-6",
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 pb-8 sm:px-6 lg:px-8 lg:py-6",
                 "transition-all duration-560 delay-75 ease-[cubic-bezier(0.22,1,0.36,1)]",
                 isFiltersPanelOpen
                   ? "translate-x-0 opacity-100 lg:translate-y-0"
@@ -1574,7 +1574,7 @@ export function CatalogClient({
                 ) : null}
               </div>
 
-              <div className="hidden gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+              <div className="hidden gap-5 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                 <SectionShell title={t.catalog.brand} description={t.catalog.allBrands}>
                   <OptionCluster
                     options={brands.map((brand) => ({
@@ -1583,7 +1583,7 @@ export function CatalogClient({
                     }))}
                     value={selectedBrand}
                     onChange={updateBrand}
-                    gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1"
+                    gridClassName="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto pr-2 xl:grid-cols-3"
                   />
                 </SectionShell>
 
@@ -1598,7 +1598,7 @@ export function CatalogClient({
                 </SectionShell>
               </div>
 
-              <div className="mt-4 hidden rounded-[1.6rem] border border-zinc-200/80 bg-white/72 p-4 shadow-[0_14px_34px_rgba(24,24,24,0.05)] backdrop-blur-sm sm:p-5 lg:block">
+              <div className="mt-5 hidden rounded-[1.8rem] border border-zinc-200/80 bg-white/82 p-4 shadow-[0_18px_40px_rgba(24,24,24,0.06)] backdrop-blur-sm sm:p-5 lg:block">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[0.66rem] font-medium tracking-[0.24em] text-zinc-400 uppercase">
@@ -1614,7 +1614,7 @@ export function CatalogClient({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                <div className="mt-4 grid gap-5 lg:grid-cols-3">
                   {lockedNoteFilter?.type !== "top" ? (
                     <SectionShell title={t.catalog.topNote} description={t.catalog.topNotes}>
                       <OptionCluster
@@ -1624,7 +1624,7 @@ export function CatalogClient({
                         }))}
                         value={selectedTopNote}
                         onChange={updateTopNote}
-                        gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1"
+                        gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-2"
                       />
                     </SectionShell>
                   ) : null}
@@ -1638,7 +1638,7 @@ export function CatalogClient({
                         }))}
                         value={selectedHeartNote}
                         onChange={updateHeartNote}
-                        gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1"
+                        gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-2"
                       />
                     </SectionShell>
                   ) : null}
@@ -1652,7 +1652,7 @@ export function CatalogClient({
                         }))}
                         value={selectedBaseNote}
                         onChange={updateBaseNote}
-                        gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1"
+                        gridClassName="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-2"
                       />
                     </SectionShell>
                   ) : null}

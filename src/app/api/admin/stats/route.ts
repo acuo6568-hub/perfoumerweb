@@ -5,7 +5,66 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+
+function parseDateInput(value: string | null, endOfDay = false) {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map((part) => Number(part));
+  if (!year || !month || !day) return null;
+
+  return new Date(
+    Date.UTC(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0),
+  );
+}
+
+function resolveDateRange(dateFilter: string, startDate: string | null, endDate: string | null) {
+  const now = new Date();
+  let rangeStart: Date | null = null;
+  let rangeEnd: Date | null = now;
+
+  if (dateFilter === "custom") {
+    rangeStart = parseDateInput(startDate);
+    rangeEnd = parseDateInput(endDate, true) || now;
+  } else if (dateFilter === "today") {
+    rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  } else if (dateFilter === "thisMonth") {
+    rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  } else if (dateFilter === "thisYear") {
+    rangeStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  }
+
+  return { rangeStart, rangeEnd, now };
+}
+
+async function listAllUsers(supabase: SupabaseClient) {
+  const perPage = 1000;
+  let page = 1;
+  let users: Array<{
+    id: string;
+    email: string | null;
+    created_at: string | null;
+    last_sign_in_at: string | null;
+    email_confirmed_at: string | null;
+  }> = [];
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      throw new Error("Failed to fetch users");
+    }
+
+    users = users.concat(data.users as typeof users);
+    if (data.users.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return users;
+}
 
 async function ensureAuthorized() {
   if (!isAdminConfigured()) {
@@ -25,20 +84,6 @@ async function ensureAuthorized() {
   return null;
 }
 
-type UserStats = {
-  id: string;
-  email: string;
-  created_at: string;
-  last_sign_in_at: string | null;
-  email_confirmed_at: string | null;
-  recent_activity?: string;
-  country?: string;
-  city?: string;
-  has_comments: boolean;
-  has_wishlist: boolean;
-  has_cart: boolean;
-};
-
 export async function GET(request: Request) {
   const authError = await ensureAuthorized();
   if (authError) {
@@ -48,8 +93,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const dateFilter = url.searchParams.get("dateFilter") || "allTime";
+    const startDateParam = url.searchParams.get("startDate");
+    const endDateParam = url.searchParams.get("endDate");
 
-    // Create Supabase client with admin key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -58,149 +104,171 @@ export async function GET(request: Request) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get date range
-    const now = new Date();
-    let queryStartDate: Date | null = null;
-
-    switch (dateFilter) {
-      case "today":
-        queryStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case "thisMonth":
-        queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case "thisYear":
-        queryStartDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        queryStartDate = null;
-    }
-
-    // Fetch all users
-    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-
-    if (usersError || !users) {
-      throw new Error("Failed to fetch users");
-    }
-
+    const { rangeStart, rangeEnd, now } = resolveDateRange(dateFilter, startDateParam, endDateParam);
+    const users = await listAllUsers(supabase);
     const totalUsers = users.length;
 
-    // Get active users (logged in within last 24 hours)
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const activeUsers = users.filter((user) => {
-      if (!user.last_sign_in_at) return false;
-      return new Date(user.last_sign_in_at) > oneDayAgo;
-    });
-
-    // Get users from date range
-    const usersInRange = queryStartDate
-      ? users.filter((user) => new Date(user.created_at!) > queryStartDate!)
-      : users;
-
-    // Fetch detailed user activity
     const { data: comments } = await supabase
       .from("comments")
-      .select("user_id, user_email, created_at")
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .select("user_id")
+      .order("created_at", { ascending: false });
 
     const { data: wishlists } = await supabase
       .from("wishlists")
-      .select("user_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .select("user_id")
+      .order("created_at", { ascending: false });
 
     const { data: cartItems } = await supabase
       .from("cart_items")
-      .select("user_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .select("user_id")
+      .order("created_at", { ascending: false });
 
-    const { data: addresses } = await supabase
-      .from("checkout_addresses")
-      .select("user_id, country, city")
-      .limit(1000);
-
-    // Fetch chat sessions
     const { data: chatSessions } = await supabase
       .from("ai_chat_sessions")
-      .select("user_id, created_at, last_message_at")
-      .order("last_message_at", { ascending: false })
-      .limit(100);
+      .select("user_id")
+      .order("last_message_at", { ascending: false });
 
-    // Count user interactions
     const userComments = new Set(comments?.map((c) => c.user_id) || []);
     const userWishlists = new Set(wishlists?.map((w) => w.user_id) || []);
     const userCarts = new Set(cartItems?.map((c) => c.user_id) || []);
     const userChats = new Set(chatSessions?.map((c) => c.user_id) || []);
 
-    // Count by country
+    const sessionsQuery = supabase
+      .from("website_live_sessions")
+      .select("session_id, anonymous_id, user_id, first_seen, last_seen, page_views, country, city");
+
+    if (rangeStart) {
+      sessionsQuery.gte("last_seen", rangeStart.toISOString());
+    }
+
+    if (rangeEnd) {
+      sessionsQuery.lte("last_seen", rangeEnd.toISOString());
+    }
+
+    const { data: liveSessions } = await sessionsQuery;
+    const sessions = liveSessions ?? [];
+    const uniqueVisitors = new Set(sessions.map((session) => session.anonymous_id)).size;
+    const totalSessions = sessions.length;
+    const totalPageViewsFromSessions = sessions.reduce(
+      (sum, session) => sum + Math.max(0, Number(session.page_views ?? 0)),
+      0,
+    );
+
     const countryMap = new Map<string, number>();
-    addresses?.forEach((addr) => {
-      if (addr.country) {
-        countryMap.set(addr.country, (countryMap.get(addr.country) || 0) + 1);
+    sessions.forEach((session) => {
+      if (session.country) {
+        countryMap.set(session.country, (countryMap.get(session.country) || 0) + 1);
       }
     });
-
     const topCountries = Array.from(countryMap.entries())
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([country, count]) => ({ country, count }));
 
-    // Get active user details
-    const userDetails: UserStats[] = users
-      .filter((u) => activeUsers.includes(u))
-      .slice(0, 10)
-      .map((user) => {
-        const userAddr = addresses?.find((a) => a.user_id === user.id);
-        return {
-          id: user.id,
-          email: user.email || "N/A",
-          created_at: user.created_at || "",
-          last_sign_in_at: user.last_sign_in_at ?? null,
-          email_confirmed_at: user.email_confirmed_at ?? null,
-          country: userAddr?.country,
-          city: userAddr?.city,
-          has_comments: userComments.has(user.id),
-          has_wishlist: userWishlists.has(user.id),
-          has_cart: userCarts.has(user.id),
-        };
-      });
+    const totalDurationSeconds = sessions.reduce((sum, session) => {
+      const start = new Date(session.first_seen).getTime();
+      const end = new Date(session.last_seen).getTime();
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        return sum;
+      }
+      return sum + Math.max(0, Math.round((end - start) / 1000));
+    }, 0);
+    const avgSessionDuration = totalSessions ? Math.round(totalDurationSeconds / totalSessions) : 0;
+    const singlePageSessions = sessions.filter((session) => Number(session.page_views) <= 1).length;
+    const bounceRate = totalSessions ? Math.round((singlePageSessions / totalSessions) * 100) : 0;
 
-    // Calculate engagement metrics
-    const emailConfirmed = users.filter((u) => u.email_confirmed_at).length;
-    const withActivity =
-      users.length > 0
-        ? Math.round(((userComments.size + userWishlists.size + userCarts.size) / users.length) * 100)
-        : 0;
-    const avgSessionDuration = Math.floor(Math.random() * 300) + 120; // 2-6 minutes
-    const bounceRate = Math.max(0, Math.floor(Math.random() * 60) - 5); // 0-55%
-    const conversionRate = (userCarts.size / totalUsers) * 100;
+    const eventsQuery = supabase
+      .from("website_analytics_events")
+      .select("id", { count: "exact", head: true });
+
+    if (rangeStart) {
+      eventsQuery.gte("created_at", rangeStart.toISOString());
+    }
+
+    if (rangeEnd) {
+      eventsQuery.lte("created_at", rangeEnd.toISOString());
+    }
+
+    const { count: pageViews } = await eventsQuery;
+
+    const ordersQuery = supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true });
+
+    if (rangeStart) {
+      ordersQuery.gte("created_at", rangeStart.toISOString());
+    }
+
+    if (rangeEnd) {
+      ordersQuery.lte("created_at", rangeEnd.toISOString());
+    }
+
+    const { count: ordersCount } = await ordersQuery;
+
+    const newsletterTotalQuery = supabase
+      .from("newsletter_subscribers")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "subscribed");
+
+    const newsletterRangeQuery = supabase
+      .from("newsletter_subscribers")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "subscribed");
+
+    if (rangeStart) {
+      newsletterRangeQuery.gte("created_at", rangeStart.toISOString());
+    }
+
+    if (rangeEnd) {
+      newsletterRangeQuery.lte("created_at", rangeEnd.toISOString());
+    }
+
+    const [{ count: newsletterSubscribed }, { count: newsletterSubscribedInRange }] = await Promise.all([
+      newsletterTotalQuery,
+      newsletterRangeQuery,
+    ]);
+
+    const onlineThreshold = new Date(now.getTime() - ONLINE_THRESHOLD_MS).toISOString();
+    const { data: onlineSessions } = await supabase
+      .from("website_live_sessions")
+      .select("user_id, last_seen")
+      .not("user_id", "is", null)
+      .gte("last_seen", onlineThreshold);
+    const onlineUserIds = new Set(
+      (onlineSessions ?? [])
+        .map((session) => session.user_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const activeUserIds = new Set([
+      ...Array.from(userComments),
+      ...Array.from(userWishlists),
+      ...Array.from(userCarts),
+      ...Array.from(userChats),
+    ]);
+    const withActivity = totalUsers ? Math.round((activeUserIds.size / totalUsers) * 100) : 0;
+    const conversionRate = totalUsers ? ((ordersCount ?? 0) / totalUsers) * 100 : 0;
 
     const stats = {
       totalUsers,
-      onlineUsers: activeUsers.length,
-      onlineUsersInRange: usersInRange.length,
-      newsletterSubscribed: emailConfirmed,
-      newsletterSubscribedInRange: usersInRange.filter((u) => u.email_confirmed_at).length,
-      pageViews: Math.floor(totalUsers * 12),
-      pageViewsInRange: Math.floor(usersInRange.length * 8),
-      uniqueVisitors: totalUsers,
-      uniqueVisitorsInRange: usersInRange.length,
+      onlineUsers: onlineUserIds.size,
+      newsletterSubscribed: newsletterSubscribed ?? 0,
+      newsletterSubscribedInRange: newsletterSubscribedInRange ?? 0,
+      pageViews: pageViews ?? totalPageViewsFromSessions,
+      pageViewsInRange: pageViews ?? totalPageViewsFromSessions,
+      uniqueVisitors,
+      uniqueVisitorsInRange: uniqueVisitors,
       avgSessionDuration,
       bounceRate,
       conversionRate: Math.round(conversionRate * 100) / 100,
       dateFilter,
-      dateRange: queryStartDate ? { start: queryStartDate.toISOString(), end: now.toISOString() } : null,
-      // Additional data
+      dateRange: rangeStart ? { start: rangeStart.toISOString(), end: (rangeEnd ?? now).toISOString() } : null,
       userEngagement: withActivity,
       usersWithComments: userComments.size,
       usersWithWishlists: userWishlists.size,
       usersWithCart: userCarts.size,
       usersWithChats: userChats.size,
       topCountries,
-      activeUserDetails: userDetails,
     };
 
     return Response.json(stats);
