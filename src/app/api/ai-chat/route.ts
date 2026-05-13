@@ -3,6 +3,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
+import { applySiteBranding, type SiteSettings } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
+
 type ChatRequest = {
   message: string;
   locale: string;
@@ -1597,14 +1600,23 @@ function buildCatalogContext(message: string, perfumes: Perfume[]): string {
     .join("\n");
 }
 
-function developerReply(locale: string): string {
+function developerReply(locale: string, settings: SiteSettings): string {
   if (locale === "az") {
-    return "Perfoumer vebsaytı və bu AI təcrübəsi Bakhishov Brands tərəfindən hazırlanıb.";
+    return applySiteBranding(
+      "Perfoumer vebsaytı və bu AI təcrübəsi Bakhishov Brands tərəfindən hazırlanıb.",
+      settings,
+    );
   }
   if (locale === "ru") {
-    return "Сайт Perfoumer и этот AI-интерфейс были разработаны Bakhishov Brands.";
+    return applySiteBranding(
+      "Сайт Perfoumer и этот AI-интерфейс были разработаны Bakhishov Brands.",
+      settings,
+    );
   }
-  return "The Perfoumer website and this AI experience were developed by Bakhishov Brands.";
+  return applySiteBranding(
+    "The Perfoumer website and this AI experience were developed by Bakhishov Brands.",
+    settings,
+  );
 }
 
 function developerContactReply(locale: string): string {
@@ -2541,6 +2553,7 @@ Respond only in English.`,
 
 export async function POST(request: Request) {
   try {
+    const siteSettings = await getSiteSettings();
     const body = (await request.json().catch(() => ({}))) as ChatRequest;
     const { message, locale = "en" } = body;
     const effectiveMessage = resolveConfirmedTypoMessage(body) || message;
@@ -2560,7 +2573,7 @@ export async function POST(request: Request) {
     }
 
     if (isDeveloperQuestion(effectiveMessage)) {
-      return NextResponse.json({ response: developerReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
+      return NextResponse.json({ response: developerReply(locale, siteSettings), followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     if (isSensitiveDataExfiltrationQuery(effectiveMessage)) {
@@ -2617,7 +2630,10 @@ export async function POST(request: Request) {
     const brands = [...new Set(perfumes.map((p) => p.brand))].slice(0, 25);
     const relevantCatalogContext = buildCatalogContext(effectiveMessage, perfumes);
 
-    const systemPrompt = systemPromptByLocale[locale] || systemPromptByLocale.en;
+    const systemPrompt = applySiteBranding(
+      systemPromptByLocale[locale] || systemPromptByLocale.en,
+      siteSettings,
+    );
     const conversationMessages = buildConversationMessages(body);
 
     // Enhanced with catalog context

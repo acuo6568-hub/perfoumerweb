@@ -1,3 +1,9 @@
+import {
+  applySiteBranding,
+  normalizeSiteSettings,
+  type SiteSettings,
+} from "@/lib/site-branding";
+
 export const locales = ["az", "en", "ru"] as const;
 
 export type Locale = (typeof locales)[number];
@@ -613,6 +619,6 @@ export const translations = {
   },
 } as const;
 
-export function getDictionary(locale: Locale) {
-  return translations[locale];
+export function getDictionary(locale: Locale, settings?: SiteSettings) {
+  return applySiteBranding(translations[locale], normalizeSiteSettings(settings));
 }

@@ -28,6 +28,7 @@ import {
 } from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import {
   CURRENCY_META,
   SUPPORTED_CURRENCIES,
@@ -75,6 +76,7 @@ function slugToName(slug: string): string {
 }
 
 export function Header({ floating = false, locale }: HeaderProps) {
+  const siteSettings = useSiteSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
@@ -106,7 +108,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
   const { pathname: basePathname } = stripLocalePrefix(pathname);
-  const t = getDictionary(locale);
+  const t = getDictionary(locale, siteSettings);
   const supabase = getSupabaseBrowserClient();
   const { selectedCurrency, setSelectedCurrency } = useCurrency();
   const copy = {
@@ -335,6 +337,14 @@ export function Header({ floating = false, locale }: HeaderProps) {
         { href: `${toLocalePath("/catalog", locale)}?gender=female`, label: copy[locale].womenCategory },
         { href: `${toLocalePath("/catalog", locale)}?gender=unisex`, label: copy[locale].unisexCategory },
         { href: toLocalePath("/brands", locale), label: t.header.brands },
+      ],
+    },
+    {
+      id: "gifts",
+      label: copy[locale].giftCard,
+      items: [
+        { href: toLocalePath("/catalog", locale), label: copy[locale].giftCard },
+        { href: `${toLocalePath("/catalog", locale)}?special=gift-ideas`, label: copy[locale].giftIdeas },
       ],
     },
     {
@@ -879,14 +889,14 @@ export function Header({ floating = false, locale }: HeaderProps) {
         return {
           row,
           name: meta?.name || slugToName(row.perfume_slug),
-          brand: meta?.brand || "Perfoumer",
+          brand: meta?.brand || siteSettings.siteName,
           image: meta?.image || "/perfoumerlogo.png",
           quantity,
           unitPrice,
           lineTotal: Math.round(unitPrice * quantity * 100) / 100,
         };
       }),
-    [cartMetaBySlug, cartRows],
+    [cartMetaBySlug, cartRows, siteSettings.siteName],
   );
 
   const cartSubtotal = useMemo(
@@ -982,7 +992,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
             >
               <Image
                 src="/perfmmob.png"
-                alt="Perfoumer"
+                alt={siteSettings.siteName}
                 width={174}
                 height={35}
                 priority
@@ -1045,7 +1055,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
               >
                 <Image
                   src="/perfoumer_black.png"
-                  alt="Perfoumer"
+                  alt={siteSettings.siteName}
                   width={28}
                   height={28}
                   unoptimized
@@ -1054,7 +1064,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
                 />
               </span>
               <span className="brand-wordmark text-[1.42rem] tracking-[-0.055em] text-zinc-900 sm:text-[1.72rem]">
-                Perfoumer
+                {siteSettings.siteName}
               </span>
             </Link>
 
@@ -1911,32 +1921,33 @@ export function Header({ floating = false, locale }: HeaderProps) {
               </div>
             </div>
 
-            <div className="mt-4 border-t border-zinc-200/75 pt-3">
-              <div className="space-y-2">
+            <div className="mt-3 border-t border-zinc-200/75 pt-2">
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
                 <Link
-                  href={toLocalePath("/catalog", locale)}
+                  href={toLocalePath("/compare", locale)}
                   onClick={() => setIsMenuOpen(false)}
-                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-zinc-900/90 bg-zinc-900 px-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(25,25,25,0.18)]"
+                  className="group relative inline-flex min-h-10 flex-col items-center justify-center gap-1 rounded-lg border border-zinc-300 bg-white/70 px-1.5 py-2 text-[0.7rem] font-semibold text-zinc-800 transition-all duration-300 hover:bg-white hover:border-zinc-400 active:scale-95 overflow-hidden"
                 >
-                  <Gift size={17} weight="regular" aria-hidden="true" />
-                  <span>{copy[locale].giftCard}</span>
+                  <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-zinc-100/0 via-white/40 to-zinc-100/0 animate-shimmer" />
+                  <Scales size={14} weight="regular" aria-hidden="true" className="relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="relative z-10 truncate text-center leading-tight">{copy[locale].compareTab}</span>
                 </Link>
                 <Link
-                  href={`${toLocalePath("/catalog", locale)}?special=gift-ideas`}
+                  href={toLocalePath("/qoxunu", locale)}
                   onClick={() => setIsMenuOpen(false)}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-zinc-300 bg-white/85 px-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-white"
+                  className="group relative inline-flex min-h-10 flex-col items-center justify-center gap-1 rounded-lg border border-zinc-900/80 bg-zinc-900/95 px-1.5 py-2 text-[0.7rem] font-semibold text-white transition-all duration-300 hover:bg-zinc-800 active:scale-95 overflow-hidden"
                 >
-                  <span>{copy[locale].giftIdeas}</span>
+                  <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/0 via-white/30 to-white/0 animate-shimmer" />
+                  <Sparkle size={14} weight="fill" className="relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="relative z-10 truncate text-center leading-tight">{t.header.scentQuiz}</span>
                 </Link>
               </div>
 
-              <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-[0.84rem] text-zinc-800">
-                <Link href={`${toLocalePath("/catalog", locale)}?gender=female`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].womenTab}</Link>
-                <Link href={`${toLocalePath("/catalog", locale)}?gender=male`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-white">{copy[locale].menTab}</Link>
-                <Link href={`${toLocalePath("/catalog", locale)}?gender=unisex`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].unisexTab}</Link>
-                <Link href={toLocalePath("/brands", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].brandsTab}</Link>
-                <Link href={toLocalePath("/compare", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].compareTab}</Link>
-                <Link href={toLocalePath("/", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5">{copy[locale].homeTab}</Link>
+              <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 text-[0.75rem] font-medium text-zinc-700">
+                <Link href={`${toLocalePath("/catalog", locale)}?gender=female`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-2.5 py-1">{copy[locale].womenTab}</Link>
+                <Link href={`${toLocalePath("/catalog", locale)}?gender=male`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-900 bg-zinc-900 px-2.5 py-1 text-white">{copy[locale].menTab}</Link>
+                <Link href={`${toLocalePath("/catalog", locale)}?gender=unisex`} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-2.5 py-1">{copy[locale].unisexTab}</Link>
+                <Link href={toLocalePath("/brands", locale)} onClick={() => setIsMenuOpen(false)} className="shrink-0 rounded-full border border-zinc-300 bg-white px-2.5 py-1">{copy[locale].brandsTab}</Link>
               </div>
             </div>
 

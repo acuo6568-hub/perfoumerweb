@@ -15,6 +15,7 @@ import {
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n.server";
+import { getSiteSettings } from "@/lib/site-settings";
 import type { Perfume } from "@/types/catalog";
 
 type BlogArticlePageProps = {
@@ -161,6 +162,7 @@ function formatAznPrice(value: number) {
 export default async function BlogArticlePage({ params }: BlogArticlePageProps) {
   const { slug } = await params;
   const locale = await getCurrentLocale();
+  const { siteName } = await getSiteSettings();
   const article = getBlogArticleBySlug(slug);
 
   if (!article) {
@@ -227,11 +229,11 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
     mainEntityOfPage: absoluteUrlForLocale(`/blog/${article.slug}`, locale),
     author: {
       "@type": "Organization",
-      name: "Perfoumer",
+      name: siteName,
     },
     publisher: {
       "@type": "Organization",
-      name: "Perfoumer",
+      name: siteName,
     },
   };
 

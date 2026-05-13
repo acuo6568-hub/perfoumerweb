@@ -6,6 +6,8 @@ import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
 import { buildAzeriPageKeywords, buildLocaleAlternates, slugifyPathSegment } from "@/lib/seo";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 
 const brandsMetadata: Metadata = {
   title: "Ətir Brendləri",
@@ -22,9 +24,10 @@ const brandsMetadata: Metadata = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
 
   return {
-    ...brandsMetadata,
+    ...applySiteBranding(brandsMetadata, settings),
     alternates: buildLocaleAlternates("/brands", locale),
   };
 }
@@ -88,8 +91,9 @@ function getCategoryOptions(locale: "az" | "en" | "ru") {
 
 export default async function BrandsPage() {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
   const perfumes = await getPerfumes();
-  const t = getDictionary(locale);
+  const t = getDictionary(locale, settings);
 
   const brandCategoryMap = new Map<string, Set<string>>();
   for (const perfume of perfumes) {

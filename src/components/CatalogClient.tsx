@@ -19,6 +19,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatMessage, getDictionary, type Locale } from "@/lib/i18n";
 import { localizeNoteLabel } from "@/lib/note-label";
 import { filterPerfumesBySpecialPreset, type CatalogSpecialPreset } from "@/lib/special-items";
@@ -446,7 +447,8 @@ export function CatalogClient({
   specialPreset,
   locale,
 }: CatalogClientProps) {
-  const t = getDictionary(locale);
+  const siteSettings = useSiteSettings();
+  const t = getDictionary(locale, siteSettings);
   const sourcePerfumes = useMemo(
     () => filterPerfumesBySpecialPreset(perfumes, specialPreset),
     [perfumes, specialPreset],

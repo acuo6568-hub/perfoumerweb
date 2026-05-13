@@ -1,5 +1,7 @@
 import { getPerfumes } from "@/lib/catalog";
 import { absoluteUrl } from "@/lib/seo";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-static";
 
@@ -22,17 +24,25 @@ function toAvailability(inStock: boolean) {
   return inStock ? "in stock" : "out of stock";
 }
 
-function toDescription(brand: string, name: string, gender: string, sizeLabel: string) {
-  return `${brand} ${name} ${sizeLabel} ölçüdə ${gender} üçün orijinal ətir. Perfoumer Bakı mağazası və onlayn sifariş ilə təqdim olunur.`;
+function toDescription(
+  brand: string,
+  name: string,
+  gender: string,
+  sizeLabel: string,
+  siteName: string,
+) {
+  return `${brand} ${name} ${sizeLabel} ölçüdə ${gender} üçün orijinal ətir. ${siteName} Bakı mağazası və onlayn sifariş ilə təqdim olunur.`;
 }
 
 export async function GET() {
+  const settings = await getSiteSettings();
+  const { siteName } = settings;
   const perfumes = await getPerfumes();
   const items = perfumes.flatMap((perfume) =>
     perfume.sizes.map((size) => ({
       id: `${perfume.id}-${size.ml}`,
       title: `${perfume.brand} ${perfume.name} ${size.label}`,
-      description: toDescription(perfume.brand, perfume.name, perfume.gender, size.label),
+      description: toDescription(perfume.brand, perfume.name, perfume.gender, size.label, siteName),
       link: absoluteUrl(`/perfumes/${perfume.slug}`),
       imageLink: toAbsoluteImageUrl(perfume.image),
       availability: toAvailability(perfume.inStock),
@@ -46,9 +56,9 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
-    <title>Perfoumer Merchant Feed</title>
+    <title>${escapeXml(applySiteBranding("Perfoumer Merchant Feed", settings))}</title>
     <link>${escapeXml(absoluteUrl("/"))}</link>
-    <description>Perfoumer product feed for Google Merchant Center and free listings.</description>
+    <description>${escapeXml(applySiteBranding("Perfoumer product feed for Google Merchant Center and free listings.", settings))}</description>
 ${items
   .map(
     (item) => `    <item>

@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       const saved = await saveAdminData({
         perfumes: current.perfumes,
         notes: importedNotes,
+        settings: current.settings,
       });
 
       revalidatePath("/", "layout");
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
     const saved = await saveAdminData({
       perfumes: importedPerfumes,
       notes: current.notes,
+      settings: current.settings,
     });
 
     revalidatePath("/", "layout");

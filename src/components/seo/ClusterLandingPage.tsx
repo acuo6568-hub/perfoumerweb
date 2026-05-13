@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { toLocalePath, type Locale } from "@/lib/i18n";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 import type { ClusterDefinition, ArticleEntry } from "@/lib/seo-growth";
 import type { Perfume } from "@/types/catalog";
 
@@ -13,7 +15,8 @@ type ClusterLandingPageProps = {
   articles: ArticleEntry[];
 };
 
-export function ClusterLandingPage({ locale, cluster, perfumes, articles }: ClusterLandingPageProps) {
+export async function ClusterLandingPage({ locale, cluster, perfumes, articles }: ClusterLandingPageProps) {
+  const settings = await getSiteSettings();
   return (
     <div className="bg-[#f3f3f2]">
       <main className="mx-auto max-w-[1540px] px-4 pt-6 sm:px-6 md:px-10 md:pt-10">
@@ -63,7 +66,10 @@ export function ClusterLandingPage({ locale, cluster, perfumes, articles }: Clus
                 {cluster.title} seçimlərini mağazada baxıb, onlayn sifariş edə bilərsiniz
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
-                Perfoumer həm real Bakı mağazası, həm də onlayn mağaza kimi işləyir. {cluster.title} kolleksiyasını mağazada yaxından baxa, sonra isə saytdan və ya birbaşa dəstək üzərindən sifariş edə bilərsiniz.
+                {applySiteBranding(
+                  `Perfoumer həm real Bakı mağazası, həm də onlayn mağaza kimi işləyir. ${cluster.title} kolleksiyasını mağazada yaxından baxa, sonra isə saytdan və ya birbaşa dəstək üzərindən sifariş edə bilərsiniz.`,
+                  settings,
+                )}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 md:justify-end">

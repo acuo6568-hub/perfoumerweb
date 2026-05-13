@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import type { Perfume } from "@/types/catalog";
@@ -47,6 +48,7 @@ function getShadowProfile(slug: string): ShadowProfile {
 }
 
 export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: ProductCardProps) {
+  const siteSettings = useSiteSettings();
   const startingPrice = perfume.sizes[0]?.price;
   const { selectedCurrency } = useCurrency();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
@@ -63,7 +65,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
     return Array.from(new Set(candidates.map((item) => item?.trim()).filter(Boolean)));
   }, [perfume.slug, perfume.image]);
   const [imageCandidateIndex, setImageCandidateIndex] = useState(0);
-  const t = getDictionary(locale);
+  const t = getDictionary(locale, siteSettings);
   const shadowProfile = getShadowProfile(perfume.slug);
   const imageSrc = imageCandidates[imageCandidateIndex] || "/perfoumerlogo.png";
 

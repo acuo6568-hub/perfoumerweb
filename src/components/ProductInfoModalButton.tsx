@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info, X } from "@phosphor-icons/react";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { getDictionary, type Locale } from "@/lib/i18n";
 
 type ProductInfoModalButtonProps = {
@@ -12,7 +13,8 @@ type ProductInfoModalButtonProps = {
 export function ProductInfoModalButton({ locale }: ProductInfoModalButtonProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const t = getDictionary(locale);
+  const siteSettings = useSiteSettings();
+  const t = getDictionary(locale, siteSettings);
 
   const openModal = () => {
     setIsMounted(true);

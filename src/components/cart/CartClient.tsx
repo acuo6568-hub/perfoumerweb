@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -107,6 +108,7 @@ const copyByLocale: Record<Locale, CartCopy> = {
 };
 
 export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartClientProps) {
+  const siteSettings = useSiteSettings();
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
   const copy = copyByLocale[locale];
   const { selectedCurrency } = useCurrency();
@@ -359,7 +361,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
         <div className="pointer-events-none absolute -bottom-14 -left-12 h-40 w-40 rounded-full bg-[radial-gradient(circle,#efefed_0%,rgba(239,239,237,0)_72%)]" />
 
         <div className="relative max-w-xl">
-          <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Perfoumer</p>
+          <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{siteSettings.siteName}</p>
           <h2 className="mt-2 text-[2rem] leading-[0.95] tracking-[-0.035em] text-zinc-900 md:text-[2.5rem]">
             {copy.signInTitle}
           </h2>
@@ -430,7 +432,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
                         />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-xs font-medium text-zinc-400 uppercase">
-                          Perfoumer
+                          {siteSettings.siteName}
                         </div>
                       )}
                     </div>

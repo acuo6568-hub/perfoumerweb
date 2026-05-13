@@ -9,6 +9,7 @@ import { getCurrentLocale } from "@/lib/i18n.server";
 import { localizeNoteLabel } from "@/lib/note-label";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES } from "@/lib/seo-growth";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
+import { getSiteSettings } from "@/lib/site-settings";
 
 type NoteFilterType = "top" | "heart" | "base";
 
@@ -112,7 +113,8 @@ export default async function NotePage({
   searchParams,
 }: NotePageProps) {
   const locale = await getCurrentLocale();
-  const t = getDictionary(locale);
+  const settings = await getSiteSettings();
+  const t = getDictionary(locale, settings);
   const [{ slug }, { type }] = await Promise.all([params, searchParams]);
   const noteType = normalizeType(type);
   const [notes, perfumes] = await Promise.all([getNotes(), getPerfumes()]);

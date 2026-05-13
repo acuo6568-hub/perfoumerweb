@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
@@ -92,7 +94,8 @@ const copyByLocale: Record<Locale, Copy> = {
 const normalizeNextPath = (input: string) => (input.startsWith("/") ? input : "/wishlist");
 
 export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthClientProps) {
-  const copy = copyByLocale[locale];
+  const siteSettings = useSiteSettings();
+  const copy = applySiteBranding(copyByLocale[locale], siteSettings);
   const router = useRouter();
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");

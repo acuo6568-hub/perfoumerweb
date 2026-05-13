@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "@phosphor-icons/react";
 
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 
 type DetailBackButtonProps = {
@@ -40,7 +41,8 @@ function getStoredContext(): StoredContext | null {
 
 export function DetailBackButton({ locale }: DetailBackButtonProps) {
   const router = useRouter();
-  const t = getDictionary(locale);
+  const siteSettings = useSiteSettings();
+  const t = getDictionary(locale, siteSettings);
   const [source, setSource] = useState<StoredContext | null>(null);
 
   useEffect(() => {

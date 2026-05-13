@@ -1,5 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 
+import { applySiteBranding, normalizeSiteSettings, type SiteSettings } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
+
 type SupportedLocale = "az" | "en" | "ru";
 
 type NewsletterEmailInput = {
@@ -17,7 +20,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
-function getCopy(locale: SupportedLocale) {
+function getCopy(locale: SupportedLocale, settings?: SiteSettings) {
   const copy = {
     az: {
       subject: "Perfoumer abunəliyi təsdiqləndi",
@@ -45,7 +48,7 @@ function getCopy(locale: SupportedLocale) {
     },
   } as const;
 
-  return copy[locale];
+  return applySiteBranding(copy[locale], normalizeSiteSettings(settings));
 }
 
 function getResendConfig() {
@@ -76,7 +79,8 @@ export async function sendNewsletterWelcomeEmail(input: NewsletterEmailInput) {
     throw new Error("email_service_unavailable");
   }
 
-  const copy = getCopy(input.locale);
+  const siteSettings = await getSiteSettings();
+  const copy = getCopy(input.locale, siteSettings);
 
   const html = `
     <div style="font-family:Arial,sans-serif;background:#f4f4f2;padding:24px;">

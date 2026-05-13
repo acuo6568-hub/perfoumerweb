@@ -3,6 +3,7 @@
 import { Check, ShareNetwork } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import type { Locale } from "@/lib/i18n";
 
 type PerfumeShareButtonProps = {
@@ -30,6 +31,7 @@ const copyByLocale = {
 } as const;
 
 export function PerfumeShareButton({ locale, title, url }: PerfumeShareButtonProps) {
+  const siteSettings = useSiteSettings();
   const copy = copyByLocale[locale];
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -37,10 +39,10 @@ export function PerfumeShareButton({ locale, title, url }: PerfumeShareButtonPro
   const shareData = useMemo(
     () => ({
       title,
-      text: `${title} · Perfoumer`,
+      text: `${title} · ${siteSettings.siteName}`,
       url,
     }),
-    [title, url],
+    [siteSettings.siteName, title, url],
   );
 
   useEffect(() => {

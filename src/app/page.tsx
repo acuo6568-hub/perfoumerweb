@@ -12,6 +12,8 @@ import { toLocalePath } from "@/lib/i18n";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { BLOG_ARTICLES } from "@/lib/seo-growth";
 import { SITE_NAME, absoluteUrl, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
@@ -30,9 +32,10 @@ const homeMetadata: Metadata = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
 
   return {
-    ...homeMetadata,
+    ...applySiteBranding(homeMetadata, settings),
     alternates: buildLocaleAlternates("/", locale),
   };
 }
@@ -601,7 +604,8 @@ export const revalidate = 300;
 
 export default async function Home() {
   const locale = await getCurrentLocale();
-  const t = getDictionary(locale);
+  const settings = await getSiteSettings();
+  const t = getDictionary(locale, settings);
   const supabaseConfig = getSupabasePublicConfigFromServer();
   const featuredRaw = await getFeaturedPerfumes();
   const perfumes = await getPerfumes();
@@ -639,7 +643,7 @@ export default async function Home() {
     { value: "15k+", ...t.home.stats[2] },
     { value: "4.9/5", ...t.home.stats[3] },
   ];
-  const about = ABOUT_COPY[locale];
+  const about = applySiteBranding(ABOUT_COPY[locale], settings);
   const homepageArticles = BLOG_ARTICLES.slice(0, 8);
   const blogImagePool = [
     "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1200&q=80",
@@ -919,7 +923,14 @@ export default async function Home() {
                 href={toLocalePath("/haqqimizda", locale)}
                 className="inline-flex items-center gap-2 border-b border-zinc-400/70 pb-1 text-[0.82rem] font-semibold tracking-[0.18em] text-zinc-700 uppercase transition-all duration-300 hover:border-zinc-900 hover:text-zinc-900"
               >
-                {locale === "ru" ? "Подробнее о Perfoumer" : locale === "en" ? "Learn more about Perfoumer" : "Perfoumer haqqında daha çox"}
+                {applySiteBranding(
+                  locale === "ru"
+                    ? "Подробнее о Perfoumer"
+                    : locale === "en"
+                      ? "Learn more about Perfoumer"
+                      : "Perfoumer haqqında daha çox",
+                  settings,
+                )}
                 <span className="text-[0.9rem]">↗</span>
               </Link>
             </div>

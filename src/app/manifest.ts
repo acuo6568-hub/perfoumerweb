@@ -1,13 +1,15 @@
 import type { MetadataRoute } from "next";
 
-import { SITE_NAME } from "@/lib/seo";
+import { buildDefaultSiteDescription } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const { siteName } = await getSiteSettings();
+
   return {
-    name: SITE_NAME,
-    short_name: SITE_NAME,
-    description:
-      "Perfoumer-də orijinal və premium ətirləri kəşf edin: niş və dizayner kolleksiyaları, sürətli çatdırılma və seçilmiş qoxular.",
+    name: siteName,
+    short_name: siteName,
+    description: buildDefaultSiteDescription(siteName),
     start_url: "/",
     display: "standalone",
     background_color: "#f3f3f2",

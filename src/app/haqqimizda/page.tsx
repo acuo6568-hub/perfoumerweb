@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 import {
   SEO_CONTACT,
   SEO_LOCAL_BUSINESS,
@@ -29,21 +31,23 @@ const aboutMetadata: Metadata = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
 
   return {
-    ...aboutMetadata,
+    ...applySiteBranding(aboutMetadata, settings),
     alternates: buildLocaleAlternates("/haqqimizda", locale),
   };
 }
 
 export default async function AboutPage() {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
 
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": "https://perfoumer.az/#organization",
-    name: "Perfoumer",
+    name: settings.siteName,
     url: absoluteUrlForLocale("/", locale),
     email: SEO_CONTACT.email,
     telephone: SEO_CONTACT.phone,
@@ -63,7 +67,7 @@ export default async function AboutPage() {
         <section className="rounded-[2rem] border border-zinc-200/80 bg-white/90 p-6 shadow-[0_14px_34px_rgba(22,22,24,0.06)] md:p-10">
           <h1 className="text-[2.5rem] leading-[0.95] tracking-[-0.02em] text-zinc-900 md:text-6xl">Haqqımızda</h1>
           <p className="mt-4 text-base leading-8 text-zinc-700">
-            Perfoumer komandası 2020-ci ildən etibarən Azərbaycan bazarında premium və orijinal ətir seçimini daha rahat və şəffaf etmək üçün çalışır.
+            {applySiteBranding("Perfoumer komandası 2020-ci ildən etibarən Azərbaycan bazarında premium və orijinal ətir seçimini daha rahat və şəffaf etmək üçün çalışır.", settings)}
             Məqsədimiz istifadəçiyə yalnız məhsul satmaq deyil, ehtiyaca uyğun qoxunu düzgün seçməkdə real kömək etməkdir.
           </p>
 

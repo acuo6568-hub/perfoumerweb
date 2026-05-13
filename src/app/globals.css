@@ -679,6 +679,196 @@ h6 {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* iPad optimization - make layout more compact */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Header optimization for iPad */
+  .header-load-in--logo {
+    gap: 0.5rem !important;
+  }
+
+  .brand-wordmark {
+    font-size: 1.25rem !important;
+    letter-spacing: -0.055em;
+  }
+
+  /* Reduce padding and gaps for more compact layout */
+  header {
+    padding: 0.4rem !important;
+  }
+
+  /* Make gift card section more compact */
+  .grid.grid-cols-2 {
+    gap: 0.4rem !important;
+  }
+
+  /* Optimize padding on mobile menu */
+  .bg-\[\#f4f4f4\] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Tighter spacing in modals and drawers */
+  aside {
+    padding: 0.5rem;
+  }
+
+  /* Make buttons more compact on iPad */
+  button,
+  [role="button"],
+  a {
+    font-size: 0.8rem;
+  }
+
+  /* Optimize gap sizes */
+  .gap-3 {
+    gap: 0.35rem !important;
+  }
+
+  .gap-4 {
+    gap: 0.5rem !important;
+  }
+
+  .gap-2 {
+    gap: 0.35rem !important;
+  }
+
+  /* Make navigation more compact */
+  nav {
+    gap: 0.35rem;
+  }
+
+  /* Reduce hero height for iPad landscape */
+  .hero-shell {
+    height: min(450px, calc(100svh - 90px)) !important;
+  }
+
+  /* Compact spacing for menu sections */
+  .mt-3 {
+    margin-top: 0.6rem !important;
+  }
+
+  .mt-4 {
+    margin-top: 0.8rem !important;
+  }
+
+  .pt-3 {
+    padding-top: 0.6rem !important;
+  }
+
+  .py-1\.5 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  /* Tighten button padding */
+  .px-3 {
+    padding-left: 0.6rem !important;
+    padding-right: 0.6rem !important;
+  }
+
+  /* Reduce text sizes */
+  .text-sm {
+    font-size: 0.8rem;
+  }
+
+  .text-\[0\.84rem\] {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Mobile optimization - button text for small screens */
+@media (max-width: 767px) {
+  /* Make quick action buttons more compact on mobile */
+  .grid.grid-cols-2 {
+    gap: 0.4rem !important;
+  }
+
+  /* Compact button styling on mobile */
+  .flex.flex-col.items-center.justify-center {
+    gap: 0.25rem !important;
+  }
+
+  .py-2 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Ensure text is readable but compact */
+  .text-\[0\.7rem\] {
+    line-height: 1;
+  }
+}
+
+/* Help Button Animations */
+@keyframes helpButtonExpand {
+  from {
+    width: 2.75rem;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+  to {
+    width: 13rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@keyframes helpButtonCollapse {
+  from {
+    width: 13rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  to {
+    width: 2.75rem;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+}
+
+/* Z-Index Stacking System for Modals */
+/* z-1-10: Regular content */
+/* z-20-40: Dropdowns and tooltips */
+/* z-45: Help button (minimized) */
+/* z-50: Help button expanded + AI Chat modal container */
+/* z-40: AI Chat modal backdrop */
+/* z-[75]: Signup banner (above help button) */
+/* z-[90]: Catalog filters + other secondary modals */
+/* z-[120]: Toast notifications */
+/* z-[130]: Primary modals (product info, account, comments, wishlist) */
+
+/* Ensure modals don't overlap with signup banner */
+@media (min-width: 0px) {
+  /* Help button is at z-45 by default */
+  /* Signup banner is at z-75 when visible */
+  /* Primary modals are at z-130 */
+  
+  /* Ensure AI chat modal is below signup banner but can expand to z-50 */
+  [data-modal-backdrop] {
+    z-index: auto;
+  }
+}
+
 .scent-summary-panel {
   animation: scentSummaryPanelIn 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

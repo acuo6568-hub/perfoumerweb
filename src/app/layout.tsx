@@ -4,23 +4,28 @@ import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 
 import { AppShell } from "@/components/AppShell";
-import { AIChatButton } from "@/components/AIChat/AIChatButton";
 import { SiteTracker } from "@/components/analytics/SiteTracker";
 import { ConsoleCredit } from "@/components/ConsoleCredit";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import {
+  DEFAULT_SITE_NAME,
+  buildDefaultSiteDescription,
+  buildDefaultSiteTitle,
+} from "@/lib/site-branding";
+import {
+  getSiteSettings,
+} from "@/lib/site-settings";
+import {
   DEFAULT_OG_IMAGE,
   SEO_CONTACT,
-  SEO_KEYWORDS,
   SEO_LOCAL_BUSINESS,
-  SITE_NAME,
   SITE_URL,
   absoluteUrl,
   absoluteUrlForLocale,
   buildStoreGeoCoordinates,
   buildStoreOpeningHoursSpecification,
   buildStorePostalAddress,
-  buildAzeriPageKeywords,
+  resolveSiteMetaKeywords,
 } from "@/lib/seo";
 
 import "./globals.css";
@@ -41,81 +46,86 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "Perfoumer | Orijinal və Premium Ətirlər",
-    template: `%s | ${SITE_NAME}`,
-  },
-  description:
-    "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
-  keywords: buildAzeriPageKeywords(SEO_KEYWORDS),
-  alternates: {
-    canonical: "/",
-  },
-  applicationName: SITE_NAME,
-  category: "shopping",
-  referrer: "origin-when-cross-origin",
-  formatDetection: {
-    telephone: true,
-    email: true,
-    address: false,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    nocache: false,
-    googleBot: {
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  const defaultTitle = settings.siteTitle || buildDefaultSiteTitle(settings.siteName);
+  const defaultDescription =
+    settings.siteDescription || buildDefaultSiteDescription(settings.siteName);
+  const keywordList = resolveSiteMetaKeywords(settings.metaKeywords, settings.siteName);
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: defaultTitle,
+      template: `%s | ${settings.siteName}`,
+    },
+    description: defaultDescription,
+    keywords: keywordList,
+    alternates: {
+      canonical: "/",
+    },
+    applicationName: settings.siteName,
+    category: "shopping",
+    referrer: "origin-when-cross-origin",
+    formatDetection: {
+      telephone: true,
+      email: true,
+      address: false,
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  authors: [{ name: SITE_NAME, url: SITE_URL }],
-  creator: SITE_NAME,
-  publisher: SITE_NAME,
-  icons: {
-    icon: [
-      { url: "/perfmlogo.png", type: "image/png", sizes: "512x512" },
-    ],
-    shortcut: "/perfmlogo.png",
-    apple: [
-      { url: "/perfmlogo.png", type: "image/png", sizes: "180x180" },
-    ],
-  },
-  openGraph: {
-    title: "Perfoumer | Orijinal və Premium Ətirlər",
-    description:
-      "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
-    url: absoluteUrl("/"),
-    siteName: SITE_NAME,
-    locale: "az_AZ",
-    alternateLocale: ["en_US", "ru_RU"],
-    type: "website",
-    images: [
-      {
-        url: DEFAULT_OG_IMAGE,
-        width: 1200,
-        height: 630,
-        alt: "Perfoumer",
+      nocache: false,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
       },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Perfoumer | Orijinal və Premium Ətirlər",
-    description:
-      "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
-    images: [DEFAULT_OG_IMAGE],
-    site: "@perfoumer",
-  },
-  other: {
-    thumbnail: absoluteUrl(DEFAULT_OG_IMAGE),
-  },
-  manifest: "/manifest.webmanifest",
-};
+    },
+    authors: [{ name: settings.siteName, url: SITE_URL }],
+    creator: settings.siteName,
+    publisher: settings.siteName,
+    icons: {
+      icon: [
+        { url: "/perfmlogo.png", type: "image/png", sizes: "512x512" },
+      ],
+      shortcut: "/perfmlogo.png",
+      apple: [
+        { url: "/perfmlogo.png", type: "image/png", sizes: "180x180" },
+      ],
+    },
+    openGraph: {
+      title: settings.openGraphTitle || defaultTitle,
+      description: settings.openGraphDescription || defaultDescription,
+      url: absoluteUrl("/"),
+      siteName: settings.siteName,
+      locale: "az_AZ",
+      alternateLocale: ["en_US", "ru_RU"],
+      type: "website",
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: settings.siteName,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: settings.twitterTitle || defaultTitle,
+      description: settings.twitterDescription || defaultDescription,
+      images: [DEFAULT_OG_IMAGE],
+      site: "@perfoumer",
+    },
+    other: {
+      thumbnail: absoluteUrl(DEFAULT_OG_IMAGE),
+    },
+    manifest: "/manifest.webmanifest",
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -123,11 +133,13 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
+  const { siteName } = settings;
   const orgStructuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${SITE_URL}/#organization`,
-    name: SITE_NAME,
+    name: siteName,
     url: absoluteUrlForLocale("/", locale),
     logo: absoluteUrl("/perfmlogo.png"),
     email: SEO_CONTACT.email,
@@ -152,7 +164,7 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
-    name: SITE_NAME,
+    name: siteName,
     url: absoluteUrlForLocale("/", locale),
     inLanguage: ["az", "en", "ru"],
     hasPart: [
@@ -193,13 +205,13 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "Store",
     "@id": `${SITE_URL}/#store`,
-    name: SITE_NAME,
+    name: siteName,
     image: absoluteUrl(DEFAULT_OG_IMAGE),
     url: absoluteUrlForLocale("/", locale),
     telephone: SEO_CONTACT.phone,
     email: SEO_CONTACT.email,
     description:
-      "Perfoumer Bakıda real mağazası olan və Azərbaycan üzrə onlayn sifariş qəbul edən premium və orijinal ətir mağazasıdır.",
+      `${siteName} Bakıda real mağazası olan və Azərbaycan üzrə onlayn sifariş qəbul edən premium və orijinal ətir mağazasıdır.`,
     address: buildStorePostalAddress(),
     geo: buildStoreGeoCoordinates(),
     hasMap: SEO_LOCAL_BUSINESS.mapUrl,
@@ -302,9 +314,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <SiteTracker />
         <Analytics />
         <div className="relative z-[1]">
-          <AppShell locale={locale}>{children}</AppShell>
+          <AppShell locale={locale} settings={settings}>{children}</AppShell>
         </div>
-        <AIChatButton locale={locale} />
       </body>
     </html>
   );

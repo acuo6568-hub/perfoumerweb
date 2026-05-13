@@ -9,6 +9,8 @@ import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/i18n";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates, slugifyPathSegment } from "@/lib/seo";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 
 type BrandPageProps = {
   params: Promise<{ slug: string }>;
@@ -59,6 +61,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: BrandPageProps): Promise<Metadata> {
   const { slug } = await params;
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
   const perfumes = await getPerfumes();
   const brandPerfumes = findBrandPerfumes(perfumes, slug);
 
@@ -88,7 +91,7 @@ export async function generateMetadata({ params }: BrandPageProps): Promise<Meta
 
   return {
     title: titleByLocale[locale],
-    description: descriptionByLocale[locale],
+    description: applySiteBranding(descriptionByLocale[locale], settings),
     keywords: buildAzeriPageKeywords([
       `${brandLabel} ətirləri`,
       `${brandLabel} parfum`,
@@ -98,7 +101,7 @@ export async function generateMetadata({ params }: BrandPageProps): Promise<Meta
     alternates: buildLocaleAlternates(canonicalPath, locale),
     openGraph: {
       title: titleByLocale[locale],
-      description: descriptionByLocale[locale],
+      description: applySiteBranding(descriptionByLocale[locale], settings),
       url: absoluteUrlForLocale(canonicalPath, locale),
       type: "website",
     },
@@ -108,7 +111,8 @@ export async function generateMetadata({ params }: BrandPageProps): Promise<Meta
 export default async function BrandPage({ params }: BrandPageProps) {
   const { slug } = await params;
   const locale = await getCurrentLocale();
-  const t = getDictionary(locale);
+  const settings = await getSiteSettings();
+  const t = getDictionary(locale, settings);
   const perfumes = await getPerfumes();
   const brandPerfumes = findBrandPerfumes(perfumes, slug);
 
@@ -129,7 +133,7 @@ export default async function BrandPage({ params }: BrandPageProps) {
   const itemListStructuredData = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `${brandLabel} perfumes`,
+    name: applySiteBranding(`${brandLabel} perfumes`, settings),
     itemListElement: allBrandPerfumes.map((perfume, index) => ({
       "@type": "ListItem",
       position: index + 1,

@@ -5,18 +5,22 @@ import { useEffect, useLayoutEffect, useState } from "react";
 
 import { Header } from "@/components/Header";
 import { ScentFinderPrompt } from "@/components/ScentFinderPrompt";
+import { AIChatButton } from "@/components/AIChat/AIChatButton";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
+import { SiteSettingsProvider } from "@/components/site-settings/SiteSettingsProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
+import type { SiteSettings } from "@/lib/site-branding";
 
 type AppShellProps = {
   children: React.ReactNode;
   locale: Locale;
+  settings: SiteSettings;
 };
 
 const MAX_SCROLL_RESTORE_AGE_MS = 30_000;
 
-export function AppShell({ children, locale: _locale }: AppShellProps) {
+export function AppShell({ children, locale: _locale, settings }: AppShellProps) {
   const pathname = usePathname() || "/";
   const { pathname: basePathname } = stripLocalePrefix(pathname);
   const [loadedPathname, setLoadedPathname] = useState(pathname);
@@ -64,26 +68,29 @@ export function AppShell({ children, locale: _locale }: AppShellProps) {
   }, [pathname]);
 
   return (
-    <CurrencyProvider>
-      <div
-        aria-hidden="true"
-        className="route-preloader"
-        data-visible={isRouteLoading ? "true" : "false"}
-      >
-        <div className="route-preloader-bar" />
-      </div>
-      <ScrollRestoreOnNavigation />
-      {hideNavigationChrome ? null : <Header floating locale={_locale} />}
-      <div
-        key={pathname}
-        className={[
-          "route-page-enter",
-          shouldOffsetForHeader ? "pt-22 sm:pt-24" : "",
-        ].join(" ")}
-      >
-        {children}
-      </div>
-      {hideNavigationChrome ? null : <ScentFinderPrompt locale={_locale} />}
-    </CurrencyProvider>
+    <SiteSettingsProvider settings={settings}>
+      <CurrencyProvider>
+        <div
+          aria-hidden="true"
+          className="route-preloader"
+          data-visible={isRouteLoading ? "true" : "false"}
+        >
+          <div className="route-preloader-bar" />
+        </div>
+        <ScrollRestoreOnNavigation />
+        {hideNavigationChrome ? null : <Header floating locale={_locale} />}
+        <div
+          key={pathname}
+          className={[
+            "route-page-enter",
+            shouldOffsetForHeader ? "pt-22 sm:pt-24" : "",
+          ].join(" ")}
+        >
+          {children}
+        </div>
+        {hideNavigationChrome ? null : <ScentFinderPrompt locale={_locale} />}
+        <AIChatButton locale={_locale} />
+      </CurrencyProvider>
+    </SiteSettingsProvider>
   );
 }

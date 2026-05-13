@@ -32,6 +32,8 @@ import {
   buildLocaleAlternates,
 } from "@/lib/seo";
 import { slugifyPathSegment } from "@/lib/seo";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 
 type PerfumeDetailPageProps = {
@@ -102,6 +104,7 @@ export async function generateMetadata({
 }: PerfumeDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const perfume = await getPerfumeBySlug(slug, getVariantId(resolvedSearchParams?.v));
 
@@ -119,7 +122,10 @@ export async function generateMetadata({
   const perfumePreviewImage = perfume.image || absoluteUrl("/perfoumerlogo.png");
   return {
     title: `${perfume.name} - ${perfume.brand}`,
-    description: `${perfume.brand} ${perfume.name} ətiri: ${perfume.gender} üçün notlar, ölçülər və qiymətlər.`,
+      description: applySiteBranding(
+        `${perfume.brand} ${perfume.name} ətiri: ${perfume.gender} üçün notlar, ölçülər və qiymətlər.`,
+        settings,
+      ),
     keywords: buildAzeriPageKeywords([
       `${perfume.name} ətri`,
       `${perfume.brand} ətri`,
@@ -133,7 +139,10 @@ export async function generateMetadata({
     alternates: buildLocaleAlternates(canonicalPath, locale),
     openGraph: {
       title: `${perfume.name} - ${perfume.brand}`,
-      description: `${perfume.brand} ${perfume.name} ətiri üçün notlar, ölçülər və qiymətlər.`,
+      description: applySiteBranding(
+        `${perfume.brand} ${perfume.name} ətiri üçün notlar, ölçülər və qiymətlər.`,
+        settings,
+      ),
       url: absoluteUrlForLocale(canonicalPath, locale),
       images: [
         {
@@ -146,7 +155,10 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: `${perfume.name} - ${perfume.brand}`,
-      description: `${perfume.brand} ${perfume.name} ətiri üçün notlar, ölçülər və qiymətlər.`,
+      description: applySiteBranding(
+        `${perfume.brand} ${perfume.name} ətiri üçün notlar, ölçülər və qiymətlər.`,
+        settings,
+      ),
       images: [perfumePreviewImage],
     },
   };
@@ -158,7 +170,8 @@ export default async function PerfumeDetailPage({
 }: PerfumeDetailPageProps) {
   const supabaseConfig = getSupabasePublicConfigFromServer();
   const locale = await getCurrentLocale();
-  const t = getDictionary(locale);
+  const settings = await getSiteSettings();
+  const t = getDictionary(locale, settings);
   const requestHeaders = await headers();
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
@@ -243,7 +256,7 @@ export default async function PerfumeDetailPage({
       datePublished: entry.createdAt || undefined,
       author: {
         "@type": "Person",
-        name: "Perfoumer customer",
+        name: `${settings.siteName} customer`,
       },
       reviewRating: {
         "@type": "Rating",

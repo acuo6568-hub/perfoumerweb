@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { perfumesToCsv } from "@/lib/admin-csv";
 import { getNotes, getPerfumes } from "@/lib/catalog";
+import { normalizeSiteSettings, readSiteSettings, SITE_SETTINGS_PATH, type SiteSettings } from "@/lib/site-settings";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
 
 const ADMIN_DATA_DIR = path.join(process.cwd(), "data", "admin");
@@ -149,15 +150,20 @@ export async function readAdminNotes() {
 }
 
 export async function getAdminData() {
-  const [notes, catalogPerfumes] = await Promise.all([readAdminNotes(), getPerfumes()]);
+  const [notes, catalogPerfumes, settings] = await Promise.all([
+    readAdminNotes(),
+    getPerfumes(),
+    readSiteSettings(),
+  ]);
 
   return {
     perfumes: catalogPerfumes,
     notes: notes ?? (await getNotes()),
+    settings: settings ?? normalizeSiteSettings(null),
   };
 }
 
-export async function saveAdminData(input: { perfumes: unknown; notes: unknown }) {
+export async function saveAdminData(input: { perfumes: unknown; notes: unknown; settings?: unknown }) {
   if (!Array.isArray(input.perfumes) || !Array.isArray(input.notes)) {
     throw new Error("Perfumes and notes must be arrays.");
   }
@@ -166,6 +172,7 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown }
     .map(normalizePerfume)
     .filter((item): item is Perfume => item !== null);
   const notes = input.notes.map(normalizeNote).filter((item): item is Note => item !== null);
+  const settings: SiteSettings = normalizeSiteSettings(input.settings);
 
   await mkdir(ADMIN_DATA_DIR, { recursive: true });
 
@@ -175,7 +182,8 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown }
     writeFile(PERFUMES_CSV_PATH, `${perfumesCsv}\n`, "utf-8"),
     writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8"),
     writeFile(ADMIN_NOTES_PATH, `${JSON.stringify(notes, null, 2)}\n`, "utf-8"),
+    writeFile(SITE_SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`, "utf-8"),
   ]);
 
-  return { perfumes, notes };
+  return { perfumes, notes, settings };
 }

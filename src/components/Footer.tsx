@@ -7,6 +7,7 @@ import { ArrowCounterClockwise, CheckCircle, ShieldCheck, Truck } from "@phospho
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { getDictionary, stripLocalePrefix, toLocalePath, type Locale } from "@/lib/i18n";
 import { instagramSnapshot } from "@/lib/instagram-snapshot";
 import { getLegalPageLinks } from "@/lib/legal";
@@ -33,6 +34,7 @@ type StyleImageItem = {
 };
 
 export function Footer({ locale }: FooterProps) {
+  const siteSettings = useSiteSettings();
   const footerRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
   const [email, setEmail] = useState("");
@@ -46,8 +48,8 @@ export function Footer({ locale }: FooterProps) {
   const [isSignupBannerMounted, setIsSignupBannerMounted] = useState(false);
   const [isSignupBannerVisible, setIsSignupBannerVisible] = useState(false);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
-  const t = getDictionary(locale);
-  const legalLinks = getLegalPageLinks(locale);
+  const t = getDictionary(locale, siteSettings);
+  const legalLinks = getLegalPageLinks(locale, siteSettings);
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
   const { pathname: basePathname } = stripLocalePrefix(pathname);
@@ -248,12 +250,12 @@ export function Footer({ locale }: FooterProps) {
   ] as const;
 
   const fallbackStyleImages = [
-    { id: "fallback-1", src: "/perfoumerjar.png", alt: "Perfoumer style image 1", href: "https://www.instagram.com/perfoumer/" },
-    { id: "fallback-2", src: "/15mlperfoumer.png", alt: "Perfoumer style image 2", href: "https://www.instagram.com/perfoumer/" },
-    { id: "fallback-3", src: "/30mlperfoumer.png", alt: "Perfoumer style image 3", href: "https://www.instagram.com/perfoumer/" },
-    { id: "fallback-4", src: "/logo.webp", alt: "Perfoumer style image 4", href: "https://www.instagram.com/perfoumer/" },
-    { id: "fallback-5", src: "/perfmmob.png", alt: "Perfoumer style image 5", href: "https://www.instagram.com/perfoumer/" },
-    { id: "fallback-6", src: "/perfmlogo.png", alt: "Perfoumer style image 6", href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-1", src: "/perfoumerjar.png", alt: `${siteSettings.siteName} style image 1`, href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-2", src: "/15mlperfoumer.png", alt: `${siteSettings.siteName} style image 2`, href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-3", src: "/30mlperfoumer.png", alt: `${siteSettings.siteName} style image 3`, href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-4", src: "/logo.webp", alt: `${siteSettings.siteName} style image 4`, href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-5", src: "/perfmmob.png", alt: `${siteSettings.siteName} style image 5`, href: "https://www.instagram.com/perfoumer/" },
+    { id: "fallback-6", src: "/perfmlogo.png", alt: `${siteSettings.siteName} style image 6`, href: "https://www.instagram.com/perfoumer/" },
   ] as const;
 
   const snapshotItems = instagramSnapshot.items.map((item) => ({
@@ -376,7 +378,7 @@ export function Footer({ locale }: FooterProps) {
     <footer id="contact" ref={footerRef} className="mt-16 bg-[#f3f3f2] pb-12 md:mt-20 md:pb-14">
       {isSignupBannerMounted && portalRoot
         ? createPortal(
-            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70]">
+            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[75]">
               <div className="pointer-events-auto w-full">
                 {signupBannerMarkup}
               </div>
@@ -621,7 +623,7 @@ export function Footer({ locale }: FooterProps) {
                 rel="noreferrer"
                 className="text-sm text-zinc-500 transition-colors hover:text-zinc-700"
               >
-                © 2026 Bakhishov Brands <span className="mx-2">—</span> Perfoumer.az
+                © 2026 Bakhishov Brands <span className="mx-2">—</span> {siteSettings.siteDomain}
               </a>
               <p
                 className="footer-wordmark footer-wordmark-animated mt-2 select-none whitespace-nowrap leading-[0.78] text-zinc-800 will-change-transform"
@@ -632,7 +634,7 @@ export function Footer({ locale }: FooterProps) {
                   transform: `${wordmarkStyle.transform} translateX(0) translateY(8px)`,
                 }}
               >
-                   PERFOUMER
+                   {siteSettings.siteName.toUpperCase()}
               </p>
             </div>
           </div>

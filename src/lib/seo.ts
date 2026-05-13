@@ -1,4 +1,5 @@
 import { defaultLocale, locales, type Locale } from "@/lib/i18n";
+import { DEFAULT_SITE_NAME } from "@/lib/site-branding";
 
 const DEFAULT_SITE_URL = "https://perfoumer.az";
 
@@ -10,7 +11,7 @@ export const SITE_URL = normalizeSiteUrl(
     : DEFAULT_SITE_URL,
 );
 
-export const SITE_NAME = "Perfoumer";
+export const SITE_NAME = DEFAULT_SITE_NAME;
 export const DEFAULT_OG_IMAGE = "/perfoumerlogo.png";
 
 export const SEO_CONTACT = {
@@ -77,9 +78,52 @@ export const buildStoreOpeningHoursSpecification = () =>
     closes: entry.closes,
   }));
 
-const AZ_INTENTS = ["al", "onlayn al", "sifariş et", "qiymət", "orijinal", "premium"];
+const AZ_INTENTS = [
+  "al",
+  "onlayn al",
+  "sifariş et",
+  "qiymət",
+  "orijinal",
+  "premium",
+  "endirim",
+  "çatdırılma",
+  "ən yaxşı",
+  "top",
+  "baku",
+  "azərbaycanda",
+];
 
-const AZ_CONTEXT = ["mağazası", "kataloqu", "qiyməti", "seçimi", "çatdırılma", "bakı", "azərbaycan"];
+const AZ_CONTEXT = [
+  "mağazası",
+  "kataloqu",
+  "qiyməti",
+  "seçimi",
+  "çatdırılma",
+  "bakı",
+  "azərbaycan",
+  "bakıda",
+  "onlayn mağaza",
+  "rəsmi mağaza",
+  "stokda",
+  "kampaniya",
+];
+
+const AZ_MODIFIERS = [
+  "orijinal",
+  "premium",
+  "lüks",
+  "niş",
+  "qalıcı",
+  "uzunömürlü",
+  "şleyfli",
+  "gündəlik",
+  "axşam üçün",
+  "yay üçün",
+  "qış üçün",
+  "ofis üçün",
+  "hədiyyə üçün",
+  "trend",
+];
 
 const DEFAULT_AZ_TERMS = [
   "ətir",
@@ -97,20 +141,72 @@ const DEFAULT_AZ_TERMS = [
   "ərəb ətri",
   "ətir mağazası",
   "ətir kataloqu",
+  "ətir satışı",
+  "ətir sifarişi",
+  "ətir outlet",
+  "ətir online shop",
+  "bakıda ətir",
+  "azərbaycanda ətir",
+  "ətir endirim",
+  "ətir qiyməti",
+  "parfum mağazası",
+  "parfum kataloqu",
+  "fragrance shop",
+  "perfume shop",
+  "designer perfume",
+  "niche perfume",
+  "luxury perfume",
+  "original perfume",
+  "best perfume for men",
+  "best perfume for women",
+  "unisex perfume",
+  "arabic perfume",
+  "oud perfume",
+  "long lasting perfume",
+  "fresh perfume",
+  "sweet perfume",
+  "woody perfume",
+  "floral perfume",
+  "citrus perfume",
+  "vanilla perfume",
+  "musky perfume",
+  "gift perfume",
+  "baku perfume store",
+  "azerbaijan perfume",
+  "ətir baku",
+  "ətir az",
+  "kişi parfum",
+  "qadın parfum",
+  "lux parfume",
+  "brend ətir",
+  "imza qoxu",
+  "signature scent",
+  "travel size perfume",
+  "50ml ətir",
+  "100ml ətir",
+  "tester parfum",
 ];
+
+export const DEFAULT_SITE_META_KEYWORD_COUNT = 180;
 
 export const buildAzeriPageKeywords = (
   pageTerms: string[],
   maxCount = 28,
+  siteName = SITE_NAME,
 ): string[] => {
+  const normalizedPageTerms = pageTerms.map((item) => item.trim()).filter(Boolean);
   const seedTerms = Array.from(
-    new Set([...DEFAULT_AZ_TERMS, ...pageTerms.map((item) => item.trim()).filter(Boolean)]),
+    new Set([...normalizedPageTerms, ...DEFAULT_AZ_TERMS]),
   );
 
   const keywords = new Set<string>([
-    SITE_NAME,
-    "Perfoumer Azərbaycan",
-    "Perfoumer Bakı",
+    siteName,
+    `${siteName} Azərbaycan`,
+    `${siteName} Bakı`,
+    `${siteName} ətir`,
+    `${siteName} parfum`,
+    `${siteName} perfume`,
+    `${siteName} online shop`,
     ...seedTerms,
   ]);
 
@@ -122,12 +218,34 @@ export const buildAzeriPageKeywords = (
     for (const context of AZ_CONTEXT) {
       keywords.add(`${term} ${context}`);
     }
+
+    for (const modifier of AZ_MODIFIERS) {
+      keywords.add(`${modifier} ${term}`);
+    }
   }
 
   return Array.from(keywords).slice(0, Math.max(8, maxCount));
 };
 
-export const SEO_KEYWORDS = buildAzeriPageKeywords([]);
+export const resolveSiteMetaKeywords = (
+  configuredKeywords: readonly string[] | null | undefined,
+  siteName = SITE_NAME,
+  maxCount = DEFAULT_SITE_META_KEYWORD_COUNT,
+) => {
+  const normalizedKeywords = Array.from(
+    new Set(
+      (configuredKeywords ?? [])
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  return normalizedKeywords.length
+    ? normalizedKeywords
+    : buildAzeriPageKeywords([], maxCount, siteName);
+};
+
+export const SEO_KEYWORDS = buildAzeriPageKeywords([], DEFAULT_SITE_META_KEYWORD_COUNT);
 
 export const absoluteUrl = (path = "/") => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

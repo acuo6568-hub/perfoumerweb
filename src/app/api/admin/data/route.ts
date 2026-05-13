@@ -11,6 +11,7 @@ import { getAdminData, saveAdminData } from "@/lib/admin-data";
 type SavePayload = {
   perfumes?: unknown;
   notes?: unknown;
+  settings?: unknown;
 };
 
 async function ensureAuthorized() {
@@ -59,6 +60,7 @@ export async function PUT(request: Request) {
     const data = await saveAdminData({
       perfumes: payload.perfumes,
       notes: payload.notes,
+      settings: payload.settings,
     });
 
     revalidatePath("/", "layout");

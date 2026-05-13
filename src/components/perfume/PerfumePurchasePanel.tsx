@@ -7,6 +7,7 @@ import { WhatsappLogo } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -90,7 +91,8 @@ export function PerfumePurchasePanel({
   sizes,
   supabase: supabaseConfig,
 }: PerfumePurchasePanelProps) {
-  const t = getDictionary(locale);
+  const siteSettings = useSiteSettings();
+  const t = getDictionary(locale, siteSettings);
   const copy = copyByLocale[locale];
   const pathname = usePathname();
   const router = useRouter();
@@ -376,7 +378,7 @@ export function PerfumePurchasePanel({
                       />
                       <Image
                         src={sizeImage}
-                        alt="Perfoumer"
+                        alt={siteSettings.siteName}
                         fill
                         sizes="(max-width: 767px) 52px, 96px"
                         unoptimized

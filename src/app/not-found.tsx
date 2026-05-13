@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary, toLocalePath } from "@/lib/i18n";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export default async function NotFound() {
   const locale = await getCurrentLocale();
-  const t = getDictionary(locale);
+  const settings = await getSiteSettings();
+  const t = getDictionary(locale, settings);
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f3f3f2] px-6 text-center">

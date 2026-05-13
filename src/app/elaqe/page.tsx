@@ -6,6 +6,8 @@ import { ArrowUpRight, EnvelopeSimple, MapPin, Phone, WhatsappLogo } from "@phos
 import { Footer } from "@/components/Footer";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 import {
   SEO_CONTACT,
   SEO_LOCAL_BUSINESS,
@@ -34,16 +36,18 @@ const contactMetadata: Metadata = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
 
   return {
-    ...contactMetadata,
+    ...applySiteBranding(contactMetadata, settings),
     alternates: buildLocaleAlternates("/elaqe", locale),
   };
 }
 
 export default async function ContactPage() {
   const locale = await getCurrentLocale();
-  const faqEntries = [
+  const settings = await getSiteSettings();
+  const faqEntries = applySiteBranding([
     {
       question: "Perfoumer-in Bakı mağazası haradadır?",
       answer: "Perfoumer mağazası Mirzəağa Əliyev Küçəsi, Bakı 1009, Azerbaijan ünvanında yerləşir və xəritə bağlantısı ilə birbaşa açılır.",
@@ -56,19 +60,22 @@ export default async function ContactPage() {
       question: "Onlayn sifariş və çatdırılma varmı?",
       answer: "Bəli. Bakı və Azərbaycan üzrə onlayn sifariş, WhatsApp dəstəyi və çatdırılma xidməti təqdim olunur.",
     },
-  ] as const;
+  ] as const, settings);
 
   const localBusinessSchema = {
     "@context": "https://schema.org",
     "@type": "Store",
     "@id": "https://perfoumer.az/#store",
-    name: "Perfoumer",
+    name: settings.siteName,
     image: absoluteUrl("/perfoumerlogo.png"),
     url: absoluteUrlForLocale("/", locale),
     telephone: SEO_CONTACT.phone,
     email: SEO_CONTACT.email,
     description:
-      "Perfoumer Bakıda real mağazası olan, həm mağazadan seçim, həm də Azərbaycan üzrə onlayn ətir sifarişi təqdim edən premium ətir mağazasıdır.",
+      applySiteBranding(
+        "Perfoumer Bakıda real mağazası olan, həm mağazadan seçim, həm də Azərbaycan üzrə onlayn ətir sifarişi təqdim edən premium ətir mağazasıdır.",
+        settings,
+      ),
     address: buildStorePostalAddress(),
     geo: buildStoreGeoCoordinates(),
     hasMap: SEO_LOCAL_BUSINESS.mapUrl,
@@ -119,7 +126,7 @@ export default async function ContactPage() {
       <main className="mx-auto max-w-[1540px] px-3 pt-8 sm:px-5 md:px-8 md:pt-10">
         <section className="relative overflow-hidden rounded-[1.5rem] border border-zinc-300/80 bg-[#f4f4f3] p-5 shadow-[0_24px_70px_rgba(22,22,22,0.08)] sm:p-7 md:p-9 lg:p-10">
           <div className="flex items-center justify-between border-b border-zinc-300/80 pb-3 text-[0.68rem] tracking-[0.14em] text-zinc-600 uppercase">
-            <span>Perfoumer</span>
+            <span>{settings.siteName}</span>
             <span>Bakı mağazası</span>
           </div>
 
@@ -129,7 +136,7 @@ export default async function ContactPage() {
                 ƏLAQƏ VƏ ÜNVAN
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-700 sm:text-base sm:leading-8">
-                Perfoumer həm onlayn sifariş, həm də Bakı mağazasında canlı seçim üçün açıqdır. Sifariş, nota uyğun seçim, hədiyyə məsləhəti və çatdırılma ilə bağlı suallar üçün bizimlə birbaşa əlaqə saxlayın.
+                {applySiteBranding("Perfoumer həm onlayn sifariş, həm də Bakı mağazasında canlı seçim üçün açıqdır. Sifariş, nota uyğun seçim, hədiyyə məsləhəti və çatdırılma ilə bağlı suallar üçün bizimlə birbaşa əlaqə saxlayın.", settings)}
               </p>
 
               <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -188,7 +195,7 @@ export default async function ContactPage() {
             <div className="relative min-h-[420px] overflow-hidden rounded-[0.9rem] border border-zinc-300/80 bg-[linear-gradient(180deg,#ededeb_0%,#e4e4e2_100%)] lg:min-h-[460px]">
               <Image
                 src="/perfmmob.png"
-                alt="Perfoumer contact visual"
+                alt={`${settings.siteName} contact visual`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 42vw"
                 className="object-contain object-center p-6 grayscale contrast-105"
@@ -201,7 +208,7 @@ export default async function ContactPage() {
           <section className="relative mt-8 md:mt-10">
             <div className="relative h-[520px] overflow-hidden rounded-[1.05rem] border border-zinc-300/80 bg-white shadow-[0_12px_34px_rgba(20,20,20,0.08)] md:h-[620px]">
               <iframe
-                title="Perfoumer location map"
+                title={`${settings.siteName} location map`}
                 src="https://www.google.com/maps?q=40.375092,49.833675&z=16&output=embed"
                 className="absolute inset-0 h-full w-full"
                 loading="lazy"
@@ -257,7 +264,10 @@ export default async function ContactPage() {
                 Mağazada bax, onlayn sifariş et
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-700 sm:text-base">
-                Perfoumer-in Bakı mağazası real ünvanda yerləşir. İstəsəniz mağazaya gəlib ətirlərə baxa, istəsəniz onlayn kataloqdan seçim edib WhatsApp və ya sayt üzərindən sifariş verə bilərsiniz.
+                {applySiteBranding(
+                  "Perfoumer-in Bakı mağazası real ünvanda yerləşir. İstəsəniz mağazaya gəlib ətirlərə baxa, istəsəniz onlayn kataloqdan seçim edib WhatsApp və ya sayt üzərindən sifariş verə bilərsiniz.",
+                  settings,
+                )}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 md:justify-end">

@@ -9,8 +9,10 @@ import {
   useState,
   type ChangeEvent,
   type ReactNode,
+  Suspense,
 } from "react";
 import {
+  TrendUp,
   ArrowsClockwise,
   CheckCircle,
   ClockCounterClockwise,
@@ -35,18 +37,33 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 
+import {
+  DEFAULT_SITE_NAME,
+  buildDefaultSiteDescription,
+  buildDefaultSiteTitle,
+  normalizeKeywordList,
+  normalizeSiteSettings,
+  type SiteSettings,
+} from "@/lib/site-branding";
+import {
+  DEFAULT_SITE_META_KEYWORD_COUNT,
+  resolveSiteMetaKeywords,
+} from "@/lib/seo";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
 type AdminPanelClientProps = {
   configured: boolean;
   initialAuthenticated: boolean;
   initialPerfumesJson: string;
   initialNotesJson: string;
+  initialSettingsJson: string;
 };
 
 type PerfumeDraft = Perfume;
 type NoteDraft = Note;
-type AdminView = "perfumes" | "notes";
+type SiteSettingsDraft = SiteSettings;
+type AdminView = "dashboard" | "perfumes" | "notes" | "branding";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
@@ -124,6 +141,7 @@ const adminCopy = {
     saveChanges: "Dəyişiklikləri saxla",
     saving: "Saxlanılır...",
     logout: "Çıxış",
+    dashboard: "İnformasiya Paneli",
     perfumes: "Ətirlər",
     notes: "Notlar",
     linkedNotes: "Bağlı notlar",
@@ -133,6 +151,28 @@ const adminCopy = {
     dataOperations: "Məlumat əməliyyatları",
     dataOperationsDescription:
       "Strukturlaşdırılmış məlumatı iş sahəsindən çıxmadan import və export edin.",
+    branding: "Brendinq",
+    brandingDescription:
+      "Saytın başlığını və admin paneldə görünən əsas brend adını bir yerdən dəyişin.",
+    siteName: "Sayt adı",
+    siteNameHint:
+      "Bu ad sayt başlığında və admin paneldə əsas brend adı kimi istifadə olunur.",
+    siteDomain: "Sayt domen mətnı",
+    siteDomainHint:
+      "Mətn daxilində görünən domen adı. Məsələn: brand.az",
+    siteTitle: "Default meta title",
+    siteDescription: "Default meta description",
+    metaKeywords: "Meta keywords",
+    metaKeywordsHint:
+      "Açar sözləri vergüllə ayırın. Boş olduqda sistem güclü standart siyahını istifadə edir.",
+    metaKeywordsCount:
+      "Hazırda metadata üçün {count} açar söz istifadə olunur.",
+    openGraphTitle: "Open Graph title",
+    openGraphDescription: "Open Graph description",
+    twitterTitle: "Twitter title",
+    twitterDescription: "Twitter description",
+    brandingPreview: "Önizləmə",
+    brandingPreviewDetail: "Brauzer başlığında və admin iş sahəsində belə görünəcək.",
     exportPerfumesCsv: "Ətirləri CSV export et",
     exportNotesCsv: "Notları CSV export et",
     importPerfumesCsv: "Ətir CSV import et",
@@ -313,6 +353,7 @@ const adminCopy = {
     saveChanges: "Save changes",
     saving: "Saving...",
     logout: "Log out",
+    dashboard: "Dashboard",
     perfumes: "Perfumes",
     notes: "Notes",
     linkedNotes: "Linked notes",
@@ -322,6 +363,28 @@ const adminCopy = {
     dataOperations: "Data operations",
     dataOperationsDescription:
       "Import and export structured data without leaving the workspace.",
+    branding: "Branding",
+    brandingDescription:
+      "Change the website title and the main brand name shown across the admin from one place.",
+    siteName: "Site title",
+    siteNameHint:
+      "This name is used for the browser title and as the primary brand label in admin.",
+    siteDomain: "Display domain",
+    siteDomainHint:
+      "The domain text shown inside copy, for example: brand.az",
+    siteTitle: "Default meta title",
+    siteDescription: "Default meta description",
+    metaKeywords: "Meta keywords",
+    metaKeywordsHint:
+      "Separate keywords with commas. When left empty, the system uses the stronger built-in list.",
+    metaKeywordsCount:
+      "{count} keywords are currently being used in metadata.",
+    openGraphTitle: "Open Graph title",
+    openGraphDescription: "Open Graph description",
+    twitterTitle: "Twitter title",
+    twitterDescription: "Twitter description",
+    brandingPreview: "Preview",
+    brandingPreviewDetail: "This is how it will read in the browser title and admin workspace.",
     exportPerfumesCsv: "Export perfumes CSV",
     exportNotesCsv: "Export notes CSV",
     importPerfumesCsv: "Import perfumes CSV",
@@ -724,6 +787,58 @@ function safeParseNotes(raw: string) {
   }
 }
 
+function safeParseSettings(raw: string) {
+  try {
+    return normalizeSiteSettings(JSON.parse(raw));
+  } catch {
+    return normalizeSiteSettings({ siteName: DEFAULT_SITE_NAME });
+  }
+}
+
+function formatMetaKeywordsInput(settings: SiteSettingsDraft) {
+  return resolveSiteMetaKeywords(settings.metaKeywords, settings.siteName).join(", ");
+}
+
+function updateSiteSettingsForNameChange(current: SiteSettingsDraft, nextSiteName: string) {
+  const normalizedCurrent = normalizeSiteSettings(current);
+  const normalizedNext = normalizeSiteSettings({
+    ...normalizedCurrent,
+    siteName: nextSiteName,
+  });
+  const previousDefaultTitle = buildDefaultSiteTitle(normalizedCurrent.siteName);
+  const previousDefaultDescription = buildDefaultSiteDescription(normalizedCurrent.siteName);
+  const nextDefaultTitle = buildDefaultSiteTitle(normalizedNext.siteName);
+  const nextDefaultDescription = buildDefaultSiteDescription(normalizedNext.siteName);
+
+  return {
+    ...normalizedNext,
+    siteTitle:
+      normalizedCurrent.siteTitle === previousDefaultTitle
+        ? nextDefaultTitle
+        : normalizedCurrent.siteTitle,
+    siteDescription:
+      normalizedCurrent.siteDescription === previousDefaultDescription
+        ? nextDefaultDescription
+        : normalizedCurrent.siteDescription,
+    openGraphTitle:
+      normalizedCurrent.openGraphTitle === previousDefaultTitle
+        ? nextDefaultTitle
+        : normalizedCurrent.openGraphTitle,
+    openGraphDescription:
+      normalizedCurrent.openGraphDescription === previousDefaultDescription
+        ? nextDefaultDescription
+        : normalizedCurrent.openGraphDescription,
+    twitterTitle:
+      normalizedCurrent.twitterTitle === previousDefaultTitle
+        ? nextDefaultTitle
+        : normalizedCurrent.twitterTitle,
+    twitterDescription:
+      normalizedCurrent.twitterDescription === previousDefaultDescription
+        ? nextDefaultDescription
+        : normalizedCurrent.twitterDescription,
+  } satisfies SiteSettingsDraft;
+}
+
 async function parseResponse(response: Response) {
   try {
     return (await response.json()) as Record<string, unknown>;
@@ -1002,12 +1117,17 @@ export function AdminPanelClient({
   initialAuthenticated,
   initialPerfumesJson,
   initialNotesJson,
+  initialSettingsJson,
 }: AdminPanelClientProps) {
   const initialPerfumes = useMemo(
     () => safeParsePerfumes(initialPerfumesJson),
     [initialPerfumesJson],
   );
   const initialNotes = useMemo(() => safeParseNotes(initialNotesJson), [initialNotesJson]);
+  const initialSettings = useMemo(
+    () => safeParseSettings(initialSettingsJson),
+    [initialSettingsJson],
+  );
 
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [locale, setLocale] = useState<AdminLocale>("az");
@@ -1020,8 +1140,13 @@ export function AdminPanelClient({
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>("all");
   const [perfumes, setPerfumes] = useState<PerfumeDraft[]>(initialPerfumes);
   const [notes, setNotes] = useState<NoteDraft[]>(initialNotes);
+  const [settings, setSettings] = useState<SiteSettingsDraft>(initialSettings);
+  const [metaKeywordsInput, setMetaKeywordsInput] = useState(
+    formatMetaKeywordsInput(initialSettings),
+  );
   const [savedPerfumes, setSavedPerfumes] = useState<PerfumeDraft[]>(cloneDeep(initialPerfumes));
   const [savedNotes, setSavedNotes] = useState<NoteDraft[]>(cloneDeep(initialNotes));
+  const [savedSettings, setSavedSettings] = useState<SiteSettingsDraft>(cloneDeep(initialSettings));
   const [selectedPerfumeId, setSelectedPerfumeId] = useState(
     initialPerfumes[0]?.id || initialPerfumes[0]?.slug || "",
   );
@@ -1045,6 +1170,11 @@ export function AdminPanelClient({
   const copy = adminCopy[locale];
   const t = (key: keyof typeof copy, values: Record<string, string | number> = {}) =>
     interpolate(copy[key], values);
+  const siteName = settings.siteName || DEFAULT_SITE_NAME;
+  const effectiveMetaKeywords = useMemo(
+    () => resolveSiteMetaKeywords(settings.metaKeywords, siteName),
+    [settings.metaKeywords, siteName],
+  );
 
   const selectedPerfume = useMemo(
     () =>
@@ -1180,9 +1310,10 @@ export function AdminPanelClient({
   const dirty = useMemo(() => {
     return (
       JSON.stringify(perfumes) !== JSON.stringify(savedPerfumes) ||
-      JSON.stringify(notes) !== JSON.stringify(savedNotes)
+      JSON.stringify(notes) !== JSON.stringify(savedNotes) ||
+      JSON.stringify(settings) !== JSON.stringify(savedSettings)
     );
-  }, [notes, perfumes, savedNotes, savedPerfumes]);
+  }, [notes, perfumes, savedNotes, savedPerfumes, savedSettings, settings]);
 
   const stats = useMemo(() => {
     const linkedNotes = new Set<string>();
@@ -1257,11 +1388,24 @@ export function AdminPanelClient({
     }
   }, [notes, selectedNoteSlug]);
 
-  const applyServerData = (nextPerfumes: PerfumeDraft[], nextNotes: NoteDraft[]) => {
+  useEffect(() => {
+    if (!settings.metaKeywords.length) {
+      setMetaKeywordsInput(formatMetaKeywordsInput(settings));
+    }
+  }, [settings.metaKeywords, settings.siteName]);
+
+  const applyServerData = (
+    nextPerfumes: PerfumeDraft[],
+    nextNotes: NoteDraft[],
+    nextSettings: SiteSettingsDraft,
+  ) => {
     setPerfumes(nextPerfumes);
     setNotes(nextNotes);
+    setSettings(nextSettings);
+    setMetaKeywordsInput(formatMetaKeywordsInput(nextSettings));
     setSavedPerfumes(cloneDeep(nextPerfumes));
     setSavedNotes(cloneDeep(nextNotes));
+    setSavedSettings(cloneDeep(nextSettings));
     setSelectedPerfumeId((current) => {
       if (nextPerfumes.some((item) => item.id === current || item.slug === current)) {
         return current;
@@ -1536,6 +1680,8 @@ export function AdminPanelClient({
   const cancelEditing = () => {
     setPerfumes(cloneDeep(savedPerfumes));
     setNotes(cloneDeep(savedNotes));
+    setSettings(cloneDeep(savedSettings));
+    setMetaKeywordsInput(formatMetaKeywordsInput(savedSettings));
     setStatus({ tone: "neutral", message: t("statusWorkspaceReset") });
   };
 
@@ -1669,8 +1815,9 @@ export function AdminPanelClient({
         JSON.stringify(dataBody.perfumes ?? [], null, 2),
       );
       const nextNotes = safeParseNotes(JSON.stringify(dataBody.notes ?? [], null, 2));
+      const nextSettings = normalizeSiteSettings(dataBody.settings);
 
-      applyServerData(nextPerfumes, nextNotes);
+      applyServerData(nextPerfumes, nextNotes, nextSettings);
       setAuthenticated(true);
       setPassword("");
       setStatus({ tone: "success", message: t("statusWorkspaceReady") });
@@ -1719,7 +1866,8 @@ export function AdminPanelClient({
 
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
-      applyServerData(nextPerfumes, nextNotes);
+      const nextSettings = normalizeSiteSettings(body.settings);
+      applyServerData(nextPerfumes, nextNotes, nextSettings);
       setStatus({ tone: "success", message: t("statusWorkspaceSynced") });
     } catch {
       setStatus({
@@ -1757,6 +1905,7 @@ export function AdminPanelClient({
         body: JSON.stringify({
           perfumes: perfumesPayload,
           notes: notesPayload,
+          settings: normalizeSiteSettings(settings),
         }),
       });
 
@@ -1769,7 +1918,8 @@ export function AdminPanelClient({
 
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
-      applyServerData(nextPerfumes, nextNotes);
+      const nextSettings = normalizeSiteSettings(body.settings);
+      applyServerData(nextPerfumes, nextNotes, nextSettings);
       setStatus({
         tone: "success",
         message: t("statusSaved"),
@@ -1847,7 +1997,8 @@ export function AdminPanelClient({
 
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
-      applyServerData(nextPerfumes, nextNotes);
+      const nextSettings = normalizeSiteSettings(body.settings);
+      applyServerData(nextPerfumes, nextNotes, nextSettings);
       setStatus({
         tone: "success",
         message: type === "perfumes" ? t("statusImportedPerfumes") : t("statusImportedNotes"),
@@ -2202,6 +2353,15 @@ export function AdminPanelClient({
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <TabButton
+              active={view === "dashboard"}
+              icon={<TrendUp size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("dashboard"));
+              }}
+            >
+              {copy.dashboard}
+            </TabButton>
+            <TabButton
               active={view === "perfumes"}
               icon={<SquaresFour size={15} weight="bold" />}
               onClick={() => {
@@ -2219,204 +2379,433 @@ export function AdminPanelClient({
             >
               {copy.notes}
             </TabButton>
+            <TabButton
+              active={view === "branding"}
+              icon={<TextT size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("branding"));
+              }}
+            >
+              {copy.branding}
+            </TabButton>
           </div>
 
-          <label className="relative mt-5 block">
-            <span className="sr-only">Search admin records</span>
-            <MagnifyingGlass
-              size={16}
-              weight="bold"
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
-            />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={view === "perfumes" ? copy.searchPerfumes : copy.searchNotes}
-              className={cx(ui.input, "pl-11")}
-            />
-          </label>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {view === "perfumes" ? (
-              <>
-                <button type="button" className={ui.primaryButton} onClick={addPerfume}>
-                  <Plus size={16} weight="bold" />
-                  {copy.addPerfume}
-                </button>
-                <button
-                  type="button"
-                  className={ui.secondaryButton}
-                  onClick={duplicatePerfume}
-                  disabled={!selectedPerfume}
-                >
-                  <CopySimple size={16} weight="bold" />
-                  {copy.duplicate}
-                </button>
-                <button
-                  type="button"
-                  className={ui.dangerButton}
-                  onClick={deletePerfume}
-                  disabled={!selectedPerfume}
-                >
-                  <Trash size={16} weight="bold" />
-                  {copy.delete}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className={ui.primaryButton} onClick={addNote}>
-                  <Plus size={16} weight="bold" />
-                  {copy.addNote}
-                </button>
-                <button
-                  type="button"
-                  className={ui.secondaryButton}
-                  onClick={duplicateNote}
-                  disabled={!selectedNote}
-                >
-                  <CopySimple size={16} weight="bold" />
-                  {copy.duplicate}
-                </button>
-                <button
-                  type="button"
-                  className={ui.dangerButton}
-                  onClick={deleteNote}
-                  disabled={!selectedNote}
-                >
-                  <Trash size={16} weight="bold" />
-                  {copy.delete}
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {view === "perfumes"
-              ? ([
-                  ["all", copy.all],
-                  ["missingImage", copy.missingImage],
-                  ["missingNotes", copy.missingNotes],
-                ] as const).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={cx(
-                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                      perfumeListFilter === value
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
-                    )}
-                    onClick={() => setPerfumeListFilter(value)}
-                  >
-                    {label}
-                  </button>
-                ))
-              : ([
-                  ["all", copy.all],
-                  ["linked", copy.linked],
-                  ["unlinked", copy.unlinked],
-                  ["missingImage", copy.missingImage],
-                ] as const).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={cx(
-                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                      noteListFilter === value
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
-                    )}
-                    onClick={() => setNoteListFilter(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-            <span>
-              {view === "perfumes" ? copy.perfumeList : copy.noteList}
-            </span>
-            <span>
-              {t("recordsShown", {
-                shown: view === "perfumes" ? filteredPerfumes.length : filteredNotes.length,
-                total: view === "perfumes" ? perfumes.length : notes.length,
-              })}
-              {isFiltering ? ` • ${copy.updating}` : ""}
-            </span>
-          </div>
-
-          <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-2">
-            <div className="mb-2 flex items-center justify-between px-2 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-              <span>{view === "perfumes" ? copy.perfumeList : copy.noteList}</span>
-              <span>{view === "perfumes" ? filteredPerfumes.length : filteredNotes.length}</span>
+          {view === "dashboard" ? null : view === "branding" ? (
+            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+              <p className="text-sm font-semibold text-zinc-900">{copy.branding}</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.brandingDescription}</p>
             </div>
+          ) : (
+            <>
+              <label className="relative mt-5 block">
+                <span className="sr-only">Search admin records</span>
+                <MagnifyingGlass
+                  size={16}
+                  weight="bold"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={view === "perfumes" ? copy.searchPerfumes : copy.searchNotes}
+                  className={cx(ui.input, "pl-11")}
+                />
+              </label>
 
-            <div className="h-[min(56vh,38rem)] space-y-2 overflow-y-auto pr-1 xl:h-[calc(100dvh-25rem)]">
-              {view === "perfumes" ? (
-                filteredPerfumes.length ? (
-                  filteredPerfumes.map((item) => (
-                    <RecordButton
-                      key={item.id}
-                      active={selectedPerfume?.id === item.id}
-                      title={item.name}
-                      subtitle={formatPerfumeMeta(item, copy)}
-                      meta={formatStartingPrice(item, copy)}
-                      onClick={() => {
-                        startTransition(() => {
-                          setView("perfumes");
-                          setSelectedPerfumeId(item.id);
-                        });
-                      }}
-                    />
-                  ))
+              <div className="mt-5 flex flex-wrap gap-2">
+                {view === "perfumes" ? (
+                  <>
+                    <button type="button" className={ui.primaryButton} onClick={addPerfume}>
+                      <Plus size={16} weight="bold" />
+                      {copy.addPerfume}
+                    </button>
+                    <button
+                      type="button"
+                      className={ui.secondaryButton}
+                      onClick={duplicatePerfume}
+                      disabled={!selectedPerfume}
+                    >
+                      <CopySimple size={16} weight="bold" />
+                      {copy.duplicate}
+                    </button>
+                    <button
+                      type="button"
+                      className={ui.dangerButton}
+                      onClick={deletePerfume}
+                      disabled={!selectedPerfume}
+                    >
+                      <Trash size={16} weight="bold" />
+                      {copy.delete}
+                    </button>
+                  </>
                 ) : (
-                  <EmptyState
-                    title={copy.noPerfumesFound}
-                    detail={copy.noPerfumesFoundDescription}
-                    action={
-                      <button type="button" className={ui.secondaryButton} onClick={addPerfume}>
-                        <Plus size={16} weight="bold" />
-                        {copy.addPerfume}
-                      </button>
-                    }
-                  />
-                )
-              ) : filteredNotes.length ? (
-                filteredNotes.map((item) => (
-                  <RecordButton
-                    key={item.slug}
-                    active={selectedNote?.slug === item.slug}
-                    title={item.name}
-                    subtitle={item.slug}
-                    meta={t("usedByPerfumes", { count: noteUsageCounts.get(item.slug) || 0 })}
-                    onClick={() => {
-                      startTransition(() => {
-                        setView("notes");
-                        setSelectedNoteSlug(item.slug);
-                      });
-                    }}
-                  />
-                ))
-              ) : (
-                <EmptyState
-                  title={copy.noNotesFound}
-                  detail={copy.noNotesFoundDescription}
-                  action={
-                    <button type="button" className={ui.secondaryButton} onClick={addNote}>
+                  <>
+                    <button type="button" className={ui.primaryButton} onClick={addNote}>
                       <Plus size={16} weight="bold" />
                       {copy.addNote}
                     </button>
-                  }
-                />
-              )}
-            </div>
-          </div>
+                    <button
+                      type="button"
+                      className={ui.secondaryButton}
+                      onClick={duplicateNote}
+                      disabled={!selectedNote}
+                    >
+                      <CopySimple size={16} weight="bold" />
+                      {copy.duplicate}
+                    </button>
+                    <button
+                      type="button"
+                      className={ui.dangerButton}
+                      onClick={deleteNote}
+                      disabled={!selectedNote}
+                    >
+                      <Trash size={16} weight="bold" />
+                      {copy.delete}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {view === "perfumes"
+                  ? ([
+                      ["all", copy.all],
+                      ["missingImage", copy.missingImage],
+                      ["missingNotes", copy.missingNotes],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={cx(
+                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                          perfumeListFilter === value
+                            ? "border-zinc-900 bg-zinc-900 text-white"
+                            : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                        )}
+                        onClick={() => setPerfumeListFilter(value)}
+                      >
+                        {label}
+                      </button>
+                    ))
+                  : ([
+                      ["all", copy.all],
+                      ["linked", copy.linked],
+                      ["unlinked", copy.unlinked],
+                      ["missingImage", copy.missingImage],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={cx(
+                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                          noteListFilter === value
+                            ? "border-zinc-900 bg-zinc-900 text-white"
+                            : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                        )}
+                        onClick={() => setNoteListFilter(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                <span>
+                  {view === "perfumes" ? copy.perfumeList : copy.noteList}
+                </span>
+                <span>
+                  {t("recordsShown", {
+                    shown: view === "perfumes" ? filteredPerfumes.length : filteredNotes.length,
+                    total: view === "perfumes" ? perfumes.length : notes.length,
+                  })}
+                  {isFiltering ? ` • ${copy.updating}` : ""}
+                </span>
+              </div>
+
+              <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-2">
+                <div className="mb-2 flex items-center justify-between px-2 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                  <span>{view === "perfumes" ? copy.perfumeList : copy.noteList}</span>
+                  <span>{view === "perfumes" ? filteredPerfumes.length : filteredNotes.length}</span>
+                </div>
+
+                <div className="h-[min(56vh,38rem)] space-y-2 overflow-y-auto pr-1 xl:h-[calc(100dvh-25rem)]">
+                  {view === "perfumes" ? (
+                    filteredPerfumes.length ? (
+                      filteredPerfumes.map((item) => (
+                        <RecordButton
+                          key={item.id}
+                          active={selectedPerfume?.id === item.id}
+                          title={item.name}
+                          subtitle={formatPerfumeMeta(item, copy)}
+                          meta={formatStartingPrice(item, copy)}
+                          onClick={() => {
+                            startTransition(() => {
+                              setView("perfumes");
+                              setSelectedPerfumeId(item.id);
+                            });
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <EmptyState
+                        title={copy.noPerfumesFound}
+                        detail={copy.noPerfumesFoundDescription}
+                        action={
+                          <button type="button" className={ui.secondaryButton} onClick={addPerfume}>
+                            <Plus size={16} weight="bold" />
+                            {copy.addPerfume}
+                          </button>
+                        }
+                      />
+                    )
+                  ) : filteredNotes.length ? (
+                    filteredNotes.map((item) => (
+                      <RecordButton
+                        key={item.slug}
+                        active={selectedNote?.slug === item.slug}
+                        title={item.name}
+                        subtitle={item.slug}
+                        meta={t("usedByPerfumes", { count: noteUsageCounts.get(item.slug) || 0 })}
+                        onClick={() => {
+                          startTransition(() => {
+                            setView("notes");
+                            setSelectedNoteSlug(item.slug);
+                          });
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <EmptyState
+                      title={copy.noNotesFound}
+                      detail={copy.noNotesFoundDescription}
+                      action={
+                        <button type="button" className={ui.secondaryButton} onClick={addNote}>
+                          <Plus size={16} weight="bold" />
+                          {copy.addNote}
+                        </button>
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            </>
+          )}
           </div>
         </aside>
 
         <div className="space-y-6">
-          {view === "perfumes" ? (
+          {view === "dashboard" ? (
+            <div className={ui.card}>
+              <Suspense fallback={<div className="text-center text-sm text-zinc-500">Loading dashboard...</div>}>
+                <AdminDashboard locale={locale} />
+              </Suspense>
+            </div>
+          ) : view === "branding" ? (
+            <div className={ui.card}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    <TextT size={14} weight="bold" />
+                    {copy.branding}
+                  </div>
+                  <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                    {siteName}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+                    {copy.brandingDescription}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <SectionLabel
+                    icon={<TextT size={16} weight="bold" />}
+                    title={copy.siteName}
+                    detail={copy.siteNameHint}
+                  />
+
+                  <div className="mt-5 grid gap-4">
+                    <Field label={copy.siteName} hint={copy.siteNameHint}>
+                      <input
+                        className={ui.input}
+                        value={settings.siteName}
+                        onChange={(event) =>
+                          setSettings((current) =>
+                            updateSiteSettingsForNameChange(current, event.target.value),
+                          )
+                        }
+                        placeholder={DEFAULT_SITE_NAME}
+                      />
+                    </Field>
+
+                    <Field label={copy.siteDomain} hint={copy.siteDomainHint}>
+                      <input
+                        className={ui.input}
+                        value={settings.siteDomain}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            siteDomain: event.target.value,
+                          }))
+                        }
+                        placeholder="brand.az"
+                      />
+                    </Field>
+
+                    <Field label={copy.siteTitle}>
+                      <input
+                        className={ui.input}
+                        value={settings.siteTitle}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            siteTitle: event.target.value,
+                          }))
+                        }
+                        placeholder={buildDefaultSiteTitle(siteName)}
+                      />
+                    </Field>
+
+                    <Field label={copy.siteDescription}>
+                      <textarea
+                        className={ui.textarea}
+                        value={settings.siteDescription}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            siteDescription: event.target.value,
+                          }))
+                        }
+                        rows={4}
+                        placeholder={buildDefaultSiteDescription(siteName)}
+                      />
+                    </Field>
+
+                    <Field
+                      label={copy.metaKeywords}
+                      hint={`${copy.metaKeywordsHint} ${t("metaKeywordsCount", {
+                        count: effectiveMetaKeywords.length || DEFAULT_SITE_META_KEYWORD_COUNT,
+                      })}`}
+                    >
+                      <textarea
+                        className={ui.textarea}
+                        value={metaKeywordsInput}
+                        onChange={(event) =>
+                          {
+                            const nextValue = event.target.value;
+                            setMetaKeywordsInput(nextValue);
+                            setSettings((current) => ({
+                              ...current,
+                              metaKeywords: normalizeKeywordList(nextValue),
+                            }));
+                          }
+                        }
+                        rows={8}
+                        placeholder={formatMetaKeywordsInput({
+                          ...settings,
+                          metaKeywords: [],
+                        })}
+                      />
+                    </Field>
+
+                    <Field label={copy.openGraphTitle}>
+                      <input
+                        className={ui.input}
+                        value={settings.openGraphTitle}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            openGraphTitle: event.target.value,
+                          }))
+                        }
+                        placeholder={settings.siteTitle}
+                      />
+                    </Field>
+
+                    <Field label={copy.openGraphDescription}>
+                      <textarea
+                        className={ui.textarea}
+                        value={settings.openGraphDescription}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            openGraphDescription: event.target.value,
+                          }))
+                        }
+                        rows={3}
+                        placeholder={settings.siteDescription}
+                      />
+                    </Field>
+
+                    <Field label={copy.twitterTitle}>
+                      <input
+                        className={ui.input}
+                        value={settings.twitterTitle}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            twitterTitle: event.target.value,
+                          }))
+                        }
+                        placeholder={settings.siteTitle}
+                      />
+                    </Field>
+
+                    <Field label={copy.twitterDescription}>
+                      <textarea
+                        className={ui.textarea}
+                        value={settings.twitterDescription}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            twitterDescription: event.target.value,
+                          }))
+                        }
+                        rows={3}
+                        placeholder={settings.siteDescription}
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <SectionLabel
+                    icon={<Sparkle size={16} weight="bold" />}
+                    title={copy.brandingPreview}
+                    detail={copy.brandingPreviewDetail}
+                  />
+
+                  <div className="mt-5 rounded-[1.2rem] border border-zinc-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                      {copy.brandingPreview}
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-zinc-950">
+                      {settings.siteTitle}
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500">
+                      {settings.siteDescription}
+                    </p>
+                    <p className="mt-3 text-sm font-medium text-zinc-700">
+                      OG: {settings.openGraphTitle}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {settings.openGraphDescription}
+                    </p>
+                    <p className="mt-3 text-sm font-medium text-zinc-700">
+                      X/Twitter: {settings.twitterTitle}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {settings.twitterDescription}
+                    </p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.12em] text-zinc-400">
+                      {settings.siteDomain}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : view === "perfumes" ? (
             selectedPerfume ? (
               <div className={ui.card}>
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -2800,18 +3189,18 @@ export function AdminPanelClient({
                   <button
                     type="button"
                     className={ui.secondaryButton}
-                    onClick={() => void copyToClipboard(selectedNote.slug, "Slug")}
+                    onClick={() => void copyToClipboard(selectedNote.slug, copy.slug)}
                   >
                     <CopySimple size={16} weight="bold" />
-                    Copy slug
+                    {copy.copySlug}
                   </button>
                   <button
                     type="button"
                     className={ui.secondaryButton}
-                    onClick={() => void copyToClipboard(selectedNote.image, "Image URL")}
+                    onClick={() => void copyToClipboard(selectedNote.image, copy.imageUrl)}
                   >
                     <ImageSquare size={16} weight="bold" />
-                    Copy image URL
+                    {copy.copyImageUrl}
                   </button>
                 </div>
               </div>

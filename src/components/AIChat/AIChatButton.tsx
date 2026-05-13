@@ -1,15 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { AIChatModal } from "./AIChatModal";
 import { ChatCenteredDots } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { Locale } from "@/lib/i18n";
-
-const LazyAIChatModal = dynamic(
-  () => import("./AIChatModal").then((mod) => mod.AIChatModal),
-  { ssr: false },
-);
 
 type AIChatButtonProps = {
   locale: Locale;
@@ -23,17 +18,12 @@ const copyByLocale: Record<Locale, string> = {
 
 export function AIChatButton({ locale }: AIChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [shouldLoadModal, setShouldLoadModal] = useState(false);
   const [isUiOverlayOpen, setIsUiOverlayOpen] = useState(false);
   const [isSignupBannerOpen, setIsSignupBannerOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const copy = copyByLocale[locale];
 
-  const warmModal = useCallback(() => {
-    setShouldLoadModal(true);
-  }, []);
-
   const handleOpen = useCallback(() => {
-    setShouldLoadModal(true);
     setIsOpen(true);
   }, []);
 
@@ -67,35 +57,64 @@ export function AIChatButton({ locale }: AIChatButtonProps) {
 
   const shouldHideTrigger = isUiOverlayOpen || isSignupBannerOpen || isOpen;
 
+  // When modal is open, show only the modal (it will have its own trigger button inside)
+  if (isOpen) {
+    return (
+      <AIChatModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        isTriggerHidden={false}
+        locale={locale}
+        womanVideoUrl="/womanvideo.mp4"
+        contactVideoUrl="/contactvideo.mp4"
+        triggerLabel={copy}
+      />
+    );
+  }
+
+  // When closed, show the minimized button pill
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleOpen}
-        onPointerEnter={warmModal}
-        onFocus={warmModal}
-        aria-label={copy}
-        aria-expanded={isOpen}
+    <button
+      type="button"
+      onClick={() => {
+        handleOpen();
+        setIsExpanded(true);
+      }}
+      onPointerEnter={() => {
+        setIsExpanded(true);
+      }}
+      onPointerLeave={() => {
+        if (!isOpen) setIsExpanded(false);
+      }}
+      onFocus={() => {
+        setIsExpanded(true);
+      }}
+      onBlur={() => {
+        if (!isOpen) setIsExpanded(false);
+      }}
+      aria-label={copy}
+      aria-expanded={isExpanded}
+      className={[
+        "fixed right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-45 inline-flex items-center justify-center rounded-full bg-gradient-to-b from-zinc-950 via-black to-zinc-950 shadow-[0_8px_20px_rgba(0,0,0,0.3)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.4)] active:scale-95 sm:right-4 text-white",
+        isExpanded
+          ? "h-14 w-56 px-4 gap-2"
+          : "h-11 w-11 p-0 gap-0",
+        shouldHideTrigger ? "pointer-events-none opacity-60" : "pointer-events-auto opacity-100",
+      ].join(" ")}
+    >
+      <ChatCenteredDots 
+        size={isExpanded ? 18 : 22} 
+        weight="fill"
+        className="transition-all duration-300 flex-shrink-0 text-white"
+      />
+      <span 
         className={[
-          "fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 inline-flex h-14 w-[220px] items-center justify-center gap-2 rounded-full bg-gradient-to-b from-zinc-950 via-black to-zinc-950 px-5 text-sm font-medium text-white shadow-[0_22px_40px_rgba(0,0,0,0.3)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_26px_48px_rgba(0,0,0,0.34)] sm:right-5",
-          shouldHideTrigger ? "pointer-events-none translate-y-3 opacity-0" : "translate-y-0 opacity-100",
+          "font-medium text-white transition-all duration-300 overflow-hidden",
+          isExpanded ? "w-auto whitespace-nowrap text-xs sm:text-sm ml-1" : "w-0",
         ].join(" ")}
       >
-        <ChatCenteredDots size={18} weight="fill" />
-        <span>{copy}</span>
-      </button>
-
-      {shouldLoadModal ? (
-        <LazyAIChatModal
-          isOpen={isOpen}
-          onClose={handleClose}
-          isTriggerHidden
-          locale={locale}
-          womanVideoUrl="/womanvideo.mp4"
-          contactVideoUrl="/contactvideo.mp4"
-          triggerLabel={copy}
-        />
-      ) : null}
-    </>
+        {copy}
+      </span>
+    </button>
   );
 }

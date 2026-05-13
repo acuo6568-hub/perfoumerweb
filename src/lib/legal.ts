@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import type { Locale } from "@/lib/i18n";
+import { applySiteBranding, normalizeSiteSettings, type SiteSettings } from "@/lib/site-branding";
 import { SITE_NAME, absoluteUrl, absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
 export const LEGAL_CONTACT_EMAIL = "info@perfoumer.az";
@@ -940,13 +941,17 @@ const legalPages: Record<Locale, Record<LegalPageSlug, LegalPageContent>> = {
   },
 };
 
-export function getLegalPage(locale: Locale, slug: LegalPageSlug): LegalPageContent {
-  return legalPages[locale][slug];
+export function getLegalPage(
+  locale: Locale,
+  slug: LegalPageSlug,
+  settings?: SiteSettings,
+): LegalPageContent {
+  return applySiteBranding(legalPages[locale][slug], normalizeSiteSettings(settings));
 }
 
-export function getLegalPageLinks(locale: Locale) {
+export function getLegalPageLinks(locale: Locale, settings?: SiteSettings) {
   return LEGAL_PAGE_ORDER.map((slug) => {
-    const page = getLegalPage(locale, slug);
+    const page = getLegalPage(locale, slug, settings);
     return {
       href: `/${slug}`,
       label: page.navLabel,
@@ -955,8 +960,13 @@ export function getLegalPageLinks(locale: Locale) {
   });
 }
 
-export function getLegalMetadata(locale: Locale, slug: LegalPageSlug): Metadata {
-  const page = getLegalPage(locale, slug);
+export function getLegalMetadata(
+  locale: Locale,
+  slug: LegalPageSlug,
+  settings?: SiteSettings,
+): Metadata {
+  const normalizedSettings = normalizeSiteSettings(settings);
+  const page = getLegalPage(locale, slug, normalizedSettings);
   const path = `/${slug}`;
 
   return {
@@ -965,15 +975,15 @@ export function getLegalMetadata(locale: Locale, slug: LegalPageSlug): Metadata 
     keywords: page.metadataKeywords,
     alternates: buildLocaleAlternates(path, locale),
     openGraph: {
-      title: `${page.metadataTitle} | ${SITE_NAME}`,
+      title: `${page.metadataTitle} | ${normalizedSettings.siteName || SITE_NAME}`,
       description: page.metadataDescription,
       url: absoluteUrlForLocale(path, locale),
-      siteName: SITE_NAME,
+      siteName: normalizedSettings.siteName || SITE_NAME,
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${page.metadataTitle} | ${SITE_NAME}`,
+      title: `${page.metadataTitle} | ${normalizedSettings.siteName || SITE_NAME}`,
       description: page.metadataDescription,
     },
   };

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { humanizeNoteToken, localizeNoteLabel } from "@/lib/note-label";
 import type { Note, Perfume } from "@/types/catalog";
@@ -619,6 +620,7 @@ function getResultTags(dictionary: QuizDictionary, answers: QuizAnswers) {
 }
 
 export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume[]; notes: Note[]; locale: Locale }) {
+  const siteSettings = useSiteSettings();
   const NOTES_PER_PAGE = 24;
   const dictionary = QUIZ_DICTIONARY[locale];
   const [answers, setAnswers] = useState<QuizAnswers>(INITIAL_ANSWERS);
@@ -1128,7 +1130,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                                     className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                                   />
                                 ) : (
-                                  <div className="grid h-full w-full place-items-center text-[0.6rem] text-zinc-400">Perfoumer</div>
+                                  <div className="grid h-full w-full place-items-center text-[0.6rem] text-zinc-400">{siteSettings.siteName}</div>
                                 )}
                               </div>
 

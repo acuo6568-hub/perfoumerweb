@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
@@ -228,7 +230,8 @@ export function LoginClient({
   initialEmail,
   initialReason,
 }: LoginClientProps) {
-  const copy = copyByLocale[locale];
+  const siteSettings = useSiteSettings();
+  const copy = applySiteBranding(copyByLocale[locale], siteSettings);
   const router = useRouter();
   const supabase = getSupabaseBrowserClient(supabaseConfig ?? undefined);
   const pause = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));

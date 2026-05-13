@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Footer } from "@/components/Footer";
+import type { SiteSettings } from "@/lib/site-branding";
 import {
   LEGAL_CONTACT_EMAIL,
   getLegalPageLinks,
@@ -11,10 +12,11 @@ import type { Locale } from "@/lib/i18n";
 type LegalPageViewProps = {
   locale: Locale;
   page: LegalPageContent;
+  settings: SiteSettings;
 };
 
-export function LegalPageView({ locale, page }: LegalPageViewProps) {
-  const legalLinks = getLegalPageLinks(locale);
+export function LegalPageView({ locale, page, settings }: LegalPageViewProps) {
+  const legalLinks = getLegalPageLinks(locale, settings);
 
   return (
     <div className="bg-[#f5f5f4]">

@@ -6,7 +6,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import type { Locale } from "@/lib/i18n";
+import { applySiteBranding } from "@/lib/site-branding";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type FollowUpPrompt = {
@@ -1556,9 +1558,10 @@ export function AIChatModal({
   contactVideoUrl,
   triggerLabel,
 }: AIChatModalProps) {
+  const siteSettings = useSiteSettings();
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const copy = copyByLocale[locale];
+  const copy = applySiteBranding(copyByLocale[locale], siteSettings);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -2337,7 +2340,7 @@ export function AIChatModal({
     contain: "layout paint",
     transition: isExpanded
       ? "width 420ms cubic-bezier(0.22,1,0.36,1), height 420ms cubic-bezier(0.22,1,0.36,1) 180ms, border-radius 320ms ease 120ms, box-shadow 260ms ease"
-      : "height 380ms cubic-bezier(0.22,1,0.36,1), width 340ms cubic-bezier(0.22,1,0.36,1), border-radius 280ms ease 80ms, box-shadow 220ms ease",
+      : "width 360ms cubic-bezier(0.22,1,0.36,1) 40ms, height 360ms cubic-bezier(0.22,1,0.36,1) 100ms, border-radius 280ms ease 60ms, box-shadow 240ms ease",
     right: `calc(env(safe-area-inset-right, 0px) + ${frameInset}px)`,
     bottom: `calc(env(safe-area-inset-bottom, 0px) + ${frameInset}px)`,
   };
@@ -2360,7 +2363,7 @@ export function AIChatModal({
         onClick={shouldUseFocusedModal ? onClose : undefined}
         style={{
           opacity: isExpanded && shouldUseFocusedModal ? 1 : 0,
-          transition: isExpanded ? "opacity 220ms ease-out" : "opacity 220ms ease-in",
+          transition: isExpanded ? "opacity 240ms ease-out 180ms" : "opacity 280ms ease-in",
           pointerEvents: isExpanded && shouldUseFocusedModal ? "auto" : "none",
         }}
       />
@@ -2377,7 +2380,7 @@ export function AIChatModal({
           ...panelStyle,
           opacity: shouldHideTrigger ? 0 : 1,
           transform: shouldHideTrigger ? "translate3d(0, 14px, 0) scale(0.92)" : "translate3d(0, 0, 0) scale(1)",
-          transition: `${panelStyle.transition}, opacity 220ms ease, transform 320ms cubic-bezier(0.22,1,0.36,1)`,
+          transition: `${panelStyle.transition}, opacity 280ms ease, transform 360ms cubic-bezier(0.22,1,0.36,1)`,
           pointerEvents: shouldHideTrigger ? "none" : "auto",
         }}
       >

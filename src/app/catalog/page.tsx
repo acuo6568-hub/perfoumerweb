@@ -6,6 +6,8 @@ import { getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { getDictionary } from "@/lib/i18n";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
+import { applySiteBranding } from "@/lib/site-branding";
+import { getSiteSettings } from "@/lib/site-settings";
 import type { CatalogSpecialPreset } from "@/lib/special-items";
 
 const catalogMetadata = {
@@ -47,6 +49,7 @@ export async function generateMetadata({ searchParams }: CatalogPageProps): Prom
   const specialPreset = parseSpecialPreset(special);
   const hasFilters = Boolean(brand || gender || q || note || min || max || specialPreset);
   const locale = await getCurrentLocale();
+  const settings = await getSiteSettings();
 
   const specialTitle =
     specialPreset === "gift-ideas"
@@ -66,7 +69,10 @@ export async function generateMetadata({ searchParams }: CatalogPageProps): Prom
       : null;
 
   const metadataTitle = specialTitle ?? catalogMetadata.title;
-  const metadataDescription = specialDescription ?? catalogMetadata.description;
+  const metadataDescription = applySiteBranding(
+    specialDescription ?? catalogMetadata.description,
+    settings,
+  );
 
   return {
     title: metadataTitle,
@@ -99,7 +105,8 @@ function noteLabelFromSlug(slug: string): string {
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const locale = await getCurrentLocale();
-  const t = getDictionary(locale);
+  const settings = await getSiteSettings();
+  const t = getDictionary(locale, settings);
   const perfumes = await getPerfumes();
   const { brand, gender, q, note, min, max, special } = await searchParams;
   const specialPreset = parseSpecialPreset(special);

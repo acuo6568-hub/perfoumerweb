@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatCurrencyFromAzn, type SupportedCurrency } from "@/lib/currency";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 import type { Perfume } from "@/types/catalog";
@@ -554,7 +555,8 @@ function buildHeroModel(
 }
 
 export function Hero({ locale, spotlights }: HeroProps) {
-  const t = getDictionary(locale);
+  const siteSettings = useSiteSettings();
+  const t = getDictionary(locale, siteSettings);
   const copy = heroUiCopy[locale];
   const { selectedCurrency } = useCurrency();
   const models = spotlights
