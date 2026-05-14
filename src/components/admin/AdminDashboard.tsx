@@ -295,7 +295,8 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
         { event: "*", schema: "public", table: "website_live_sessions" },
         (payload) => {
           const record = payload.new as { user_id?: string | null; last_seen?: string | null };
-          if (!record?.user_id || !record.last_seen) {
+          const lastSeen = record?.last_seen;
+          if (!record?.user_id || !lastSeen) {
             return;
           }
 
@@ -304,8 +305,8 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
               user.id === record.user_id
                 ? {
                     ...user,
-                    last_seen_at: record.last_seen,
-                    is_online: Date.now() - new Date(record.last_seen).getTime() <= ONLINE_THRESHOLD_MS,
+                    last_seen_at: lastSeen,
+                    is_online: Date.now() - new Date(lastSeen).getTime() <= ONLINE_THRESHOLD_MS,
                   }
                 : user,
             ),
