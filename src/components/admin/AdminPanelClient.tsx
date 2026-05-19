@@ -1857,10 +1857,29 @@ export function AdminPanelClient({
         throw new Error(data.error || `HTTP ${response.status}`);
       }
 
-      const data = (await response.json()) as { newImageUrl?: string };
+      const data = (await response.json()) as { newImageUrl?: string; download?: { filename?: string; contentType?: string; base64?: string }; uploadedTo?: string; warning?: string };
       if (data.newImageUrl) {
         setPerfumeField("image", data.newImageUrl);
         setStatus({ tone: "success", message: copy.removeBgSuccess });
+      } else if (data.download && data.download.base64) {
+        // Trigger automatic download of the returned image
+        try {
+          const byteString = atob(data.download.base64);
+          const ia = new Uint8Array(byteString.length);
+          for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+          const blob = new Blob([ia], { type: data.download.contentType || "image/png" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = data.download.filename || "image-nobg.png";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          setStatus({ tone: "success", message: data.warning || copy.removeBgSuccess });
+        } catch (e) {
+          setStatus({ tone: "error", message: copy.removeBgError });
+        }
       } else {
         throw new Error("No image URL in response");
       }
@@ -1913,10 +1932,28 @@ export function AdminPanelClient({
         throw new Error(data.error || `HTTP ${response.status}`);
       }
 
-      const data = (await response.json()) as { newImageUrl?: string };
+      const data = (await response.json()) as { newImageUrl?: string; download?: { filename?: string; contentType?: string; base64?: string }; uploadedTo?: string; warning?: string };
       if (data.newImageUrl) {
         setNoteField("image", data.newImageUrl);
         setStatus({ tone: "success", message: copy.removeBgSuccess });
+      } else if (data.download && data.download.base64) {
+        try {
+          const byteString = atob(data.download.base64);
+          const ia = new Uint8Array(byteString.length);
+          for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+          const blob = new Blob([ia], { type: data.download.contentType || "image/png" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = data.download.filename || "image-nobg.png";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          setStatus({ tone: "success", message: data.warning || copy.removeBgSuccess });
+        } catch (e) {
+          setStatus({ tone: "error", message: copy.removeBgError });
+        }
       } else {
         throw new Error("No image URL in response");
       }

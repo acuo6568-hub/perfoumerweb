@@ -88,6 +88,31 @@ Then update your `.env.local`:
 REMBG_API_URL=http://localhost:5000
 ```
 
+### Writable CSV fallback
+If your host's filesystem is read-only (serverless), you can point CSV writes to a writable directory or temp mount by adding:
+
+```env
+# Directory where the app can write fallback CSVs (optional). Defaults to OS temp dir.
+WRITABLE_DATA_DIR=/path/to/writable/dir
+```
+
+When `WRITABLE_DATA_DIR` is set, the app will save `perfm77.csv` there if it cannot write to `data/perfm77.csv`.
+
+### Uploading processed images to S3
+If you want processed images uploaded automatically to S3 (instead of returning base64), set these environment variables:
+
+```env
+S3_BUCKET=your-bucket-name
+AWS_REGION=your-aws-region
+# AWS credentials can be provided via standard env vars:
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+# Optional custom public URL base (e.g. CloudFront)
+S3_PUBLIC_URL=https://cdn.example.com
+```
+
+If S3 is configured, the admin remove-bg API will upload processed images to `uploads/admin/<type>/...` and return a public `newImageUrl`.
+
 ---
 
 ## First Run

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 import {
   ADMIN_SESSION_COOKIE,
@@ -276,9 +277,38 @@ async function removeBackgroundLocally(
         renameMsg.includes("EACCES") || renameMsg.includes("EPERM") || renameMsg.includes("EROFS") || renameMsg.includes("read-only file system");
 
       if (isPermissionError) {
-        // Fallback: return the processed image as base64 so the admin UI can download it
+        // Attempt to upload to S3 if configured, otherwise return base64 for manual download
         try {
           const buffer = await fs.readFile(tempOutputPath);
+
+          const s3Bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET;
+          const s3Region = process.env.AWS_REGION || process.env.S3_REGION;
+
+          if (s3Bucket) {
+            try {
+              const s3Client = new S3Client({ region: s3Region });
+              const key = `uploads/admin/${itemType}/${finalFilename}`;
+
+              await s3Client.send(
+                new PutObjectCommand({
+                  Bucket: s3Bucket,
+                  Key: key,
+                  Body: buffer,
+                  ContentType: "image/png",
+                }),
+              );
+
+              // Construct a public URL (assumes public bucket). If a custom CDN/endpoint is used, set S3_PUBLIC_URL env var.
+              const publicBase = process.env.S3_PUBLIC_URL || `https://${s3Bucket}.s3.${s3Region}.amazonaws.com`;
+              const s3Url = `${publicBase}/${key}`;
+
+              return Response.json({ success: true, newImageUrl: s3Url, uploadedTo: "s3" }, { status: 200 });
+            } catch (s3Err) {
+              // If S3 upload fails, fall back to base64
+              console.warn("S3 upload failed:", s3Err);
+            }
+          }
+
           const base64 = buffer.toString("base64");
           const filename = finalFilename;
           return Response.json(
