@@ -1654,7 +1654,7 @@ export function AdminPanelClient({
     setStatus({ tone: "neutral", message: t("statusPerfumeDuplicated") });
   };
 
-  const deletePerfume = () => {
+  const deletePerfume = async () => {
     if (!selectedPerfume) {
       return;
     }
@@ -1665,6 +1665,13 @@ export function AdminPanelClient({
 
     setPerfumes((current) => current.filter((item) => item.id !== selectedPerfume.id));
     setStatus({ tone: "neutral", message: t("statusPerfumeRemoved") });
+
+    // Persist change immediately
+    try {
+      await onSave();
+    } catch {
+      // onSave handles setting status on error
+    }
   };
 
   const addNote = () => {
@@ -1699,7 +1706,7 @@ export function AdminPanelClient({
     setStatus({ tone: "neutral", message: t("statusNoteDuplicated") });
   };
 
-  const deleteNote = () => {
+  const deleteNote = async () => {
     if (!selectedNote) {
       return;
     }
@@ -1710,6 +1717,13 @@ export function AdminPanelClient({
 
     setNotes((current) => current.filter((item) => item.slug !== selectedNote.slug));
     setStatus({ tone: "neutral", message: t("statusNoteRemoved") });
+
+    // Persist change immediately
+    try {
+      await onSave();
+    } catch {
+      // onSave handles setting status on error
+    }
   };
 
   const cancelEditing = () => {
