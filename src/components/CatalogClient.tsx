@@ -23,6 +23,7 @@ import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider
 import { formatMessage, getDictionary, type Locale } from "@/lib/i18n";
 import { localizeNoteLabel } from "@/lib/note-label";
 import { filterPerfumesBySpecialPreset, type CatalogSpecialPreset } from "@/lib/special-items";
+import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 import { ProductCard } from "@/components/ProductCard";
 import type { Perfume } from "@/types/catalog";
 
@@ -78,36 +79,6 @@ type SmartSearchIntent = {
 const PAGE_SIZE = 8;
 const isNonNull = <T,>(value: T | null): value is T => value !== null;
 
-const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
-  ı: "i",
-  İ: "i",
-  ə: "e",
-  Ə: "e",
-  æ: "ae",
-  Æ: "ae",
-  œ: "oe",
-  Œ: "oe",
-  ø: "o",
-  Ø: "o",
-  đ: "d",
-  Đ: "d",
-  ł: "l",
-  Ł: "l",
-  þ: "th",
-  Þ: "th",
-  ð: "d",
-  Ð: "d",
-  ß: "ss",
-};
-
-function foldSearchCharacters(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[ıİəƏæÆœŒøØđĐłŁþÞðÐß]/g, (char) => SEARCH_CHAR_FOLD_MAP[char] ?? char)
-    .toLowerCase();
-}
-
 function getStartingPrice(perfume: Perfume) {
   return perfume.sizes[0]?.price ?? Number.POSITIVE_INFINITY;
 }
@@ -118,10 +89,7 @@ function toNoteLabel(slug: string, locale: Locale) {
 
 function parseSmartSearchIntent(rawQuery: string): SmartSearchIntent {
   const normalized = normalizeSearchText(rawQuery);
-  const tokens = normalized
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length >= 2);
+  const tokens = tokenizeSearch(normalized);
 
   const underMatch = normalized.match(/(?:under|below|less\s+than|sub)\s*(\d{2,4})/i);
   const overMatch = normalized.match(/(?:over|above|more\s+than)\s*(\d{2,4})/i);
@@ -212,13 +180,6 @@ function scoreSmartMatch(perfume: Perfume, intent: SmartSearchIntent): number {
   if (perfume.inStock) score += 4;
 
   return score;
-}
-
-function normalizeSearchText(value: string) {
-  return foldSearchCharacters(value)
-    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function resolveInitialGenderValue(initialGender: string | undefined, perfumes: Perfume[]) {

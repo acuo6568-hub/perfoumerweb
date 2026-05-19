@@ -174,16 +174,39 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
   const notes = input.notes.map(normalizeNote).filter((item): item is Note => item !== null);
   const settings: SiteSettings = normalizeSiteSettings(input.settings);
 
-  await mkdir(ADMIN_DATA_DIR, { recursive: true });
+  try {
+    await mkdir(ADMIN_DATA_DIR, { recursive: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create admin data directory";
+    throw new Error(`[Directory Creation Failed] ${message}. Check directory permissions on data/admin/`);
+  }
 
   const perfumesCsv = perfumesToCsv(perfumes);
 
-  await Promise.all([
-    writeFile(PERFUMES_CSV_PATH, `${perfumesCsv}\n`, "utf-8"),
-    writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8"),
-    writeFile(ADMIN_NOTES_PATH, `${JSON.stringify(notes, null, 2)}\n`, "utf-8"),
-    writeFile(SITE_SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`, "utf-8"),
-  ]);
+  const writeOperations = [
+    writeFile(PERFUMES_CSV_PATH, `${perfumesCsv}\n`, "utf-8").catch((error) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`[CSV Write Failed] ${message}. File: data/perfm77.csv. Check file permissions with: chmod 644 data/perfm77.csv`);
+    }),
+    writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8").catch((error) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`[JSON Write Failed] ${message}. File: data/admin/perfumes.json`);
+    }),
+    writeFile(ADMIN_NOTES_PATH, `${JSON.stringify(notes, null, 2)}\n`, "utf-8").catch((error) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`[Notes Write Failed] ${message}. File: data/admin/notes.json`);
+    }),
+    writeFile(SITE_SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`, "utf-8").catch((error) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`[Settings Write Failed] ${message}. File: data/admin/site-settings.json`);
+    }),
+  ];
+
+  try {
+    await Promise.all(writeOperations);
+  } catch (error) {
+    throw error; // Re-throw with detailed message
+  }
 
   return { perfumes, notes, settings };
 }

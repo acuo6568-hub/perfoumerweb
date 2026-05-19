@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { toLocaleHref, type Locale } from "@/lib/i18n";
+import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 
 type ProductOption = {
   slug: string;
@@ -37,44 +38,12 @@ const searchCopyByLocale: Record<
   },
 };
 
-const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
-  ı: "i",
-  İ: "i",
-  ə: "e",
-  Ə: "e",
-  æ: "ae",
-  Æ: "ae",
-  œ: "oe",
-  Œ: "oe",
-  ø: "o",
-  Ø: "o",
-  đ: "d",
-  Đ: "d",
-  ł: "l",
-  Ł: "l",
-  þ: "th",
-  Þ: "th",
-  ð: "d",
-  Ð: "d",
-  ß: "ss",
-};
-
-function normalizeSearchText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[ıİəƏæÆœŒøØđĐłŁþÞðÐß]/g, (char) => SEARCH_CHAR_FOLD_MAP[char] ?? char)
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function suggestionScore(product: ProductOption, query: string): number {
   const normalizedQuery = normalizeSearchText(query);
   const normalizedName = normalizeSearchText(product.name);
   const normalizedBrand = normalizeSearchText(product.brand);
   const haystack = `${normalizedName} ${normalizedBrand}`;
-  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  const tokens = tokenizeSearch(normalizedQuery);
 
   if (!tokens.length) return 0;
 

@@ -250,6 +250,14 @@ export const translations = {
       description: "Link köhnə və ya səhv ola bilər.",
       back: "Ana səhifəyə qayıt",
     },
+    admin: {
+      removeBg: "Fonu Sil",
+      removeBgTooltip: "Şəkillərdən (adətən çəhrayı) fonu qaldırın",
+      removeBgProcessing: "Fon silinir...",
+      removeBgSuccess: "Fon uğurla silindi",
+      removeBgError: "Fon silmə xətası",
+      removeBgUnavailable: "Fon silmə xidməti konfiqurasiya edilməyib",
+    },
   },
   en: {
     languages: {
@@ -433,6 +441,14 @@ export const translations = {
       description: "The link may be outdated or incorrect.",
       back: "Back to home",
     },
+    admin: {
+      removeBg: "Remove Background",
+      removeBgTooltip: "Remove background from images (typically pink backgrounds)",
+      removeBgProcessing: "Removing background...",
+      removeBgSuccess: "Background removed successfully",
+      removeBgError: "Error removing background",
+      removeBgUnavailable: "Background removal service is not configured",
+    },
   },
   ru: {
     languages: {
@@ -615,6 +631,14 @@ export const translations = {
       title: "Товар не найден",
       description: "Ссылка может быть устаревшей или неверной.",
       back: "Вернуться на главную",
+    },
+    admin: {
+      removeBg: "Удалить фон",
+      removeBgTooltip: "Удалить фон изображения (обычно розовый фон)",
+      removeBgProcessing: "Удаление фона...",
+      removeBgSuccess: "Фон успешно удален",
+      removeBgError: "Ошибка при удалении фона",
+      removeBgUnavailable: "Сервис удаления фона не настроен",
     },
   },
 } as const;

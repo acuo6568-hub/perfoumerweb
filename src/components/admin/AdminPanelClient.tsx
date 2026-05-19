@@ -51,6 +51,7 @@ import {
 } from "@/lib/seo";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 
 type AdminPanelClientProps = {
   configured: boolean;
@@ -90,12 +91,18 @@ const ui = {
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   secondaryButton:
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-zinc-400 hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+  compactButton:
+    "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-zinc-400 hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+  compactPrimaryButton:
+    "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold text-white transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   dangerButton:
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition duration-200 hover:-translate-y-[1px] hover:border-rose-300 hover:bg-rose-100 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   tab:
     "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition duration-200",
   chip:
     "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
+  compactChip:
+    "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none",
 };
 
 function cx(...values: Array<string | false | null | undefined>) {
@@ -131,9 +138,8 @@ const adminCopy = {
     uploadDirect: "Şəkilləri birbaşa paneldən yüklə",
     csvImport: "CSV import",
     moveDataFast: "Məlumatları sürətli içəri və çölə daşı",
-    heroTitle: "Stok, məhsul kartları və not məlumatlarını bir paneldən idarə edin.",
-    heroDescription:
-      "Axtarın, yerində düzəliş edin, şəkil yükləyin, CSV ilə yeniləyin və dəyişiklikləri dərhal saxlayın.",
+    heroTitle: "Stok və notları bir yerdən idarə edin.",
+    heroDescription: "Axtar, düzəlt, yüklə və saxla.",
     unsavedChanges: "Saxlanmamış dəyişikliklər",
     everythingSaved: "Bütün dəyişikliklər saxlanıb",
     refresh: "Yenilə",
@@ -318,6 +324,12 @@ const adminCopy = {
     usedByPerfumes: "{count} ətirdə istifadə olunur",
     noteLinksCount: "{count} not bağlantısı",
     sizeCount: "{count} ölçü",
+    removeBg: "Fonu Sil",
+    removeBgTooltip: "Şəkillərdən (adətən çəhrayı) fonu qaldırın",
+    removeBgProcessing: "Fon silinir...",
+    removeBgSuccess: "Fon uğurla silindi",
+    removeBgError: "Fon silmə xətası",
+    removeBgUnavailable: "Fon silmə xidməti konfiqurasiya edilməyib",
   },
   en: {
     localeLabel: "Language",
@@ -532,6 +544,12 @@ const adminCopy = {
     usedByPerfumes: "Used by {count} perfumes",
     noteLinksCount: "{count} note links",
     sizeCount: "{count} sizes",
+    removeBg: "Remove Background",
+    removeBgTooltip: "Remove background from images (typically pink backgrounds)",
+    removeBgProcessing: "Removing background...",
+    removeBgSuccess: "Background removed successfully",
+    removeBgError: "Error removing background",
+    removeBgUnavailable: "Background removal service is not configured",
   },
 } satisfies Record<AdminLocale, Record<string, string>>;
 
@@ -550,20 +568,6 @@ function normalizeString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function normalizeSearchText(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function searchTokens(value: string) {
-  return normalizeSearchText(value)
-    .split(" ")
-    .filter(Boolean);
-}
-
 function matchesSearchPool(pool: string, query: string) {
   if (!query) {
     return true;
@@ -573,7 +577,7 @@ function matchesSearchPool(pool: string, query: string) {
     return true;
   }
 
-  const tokens = searchTokens(query);
+  const tokens = tokenizeSearch(query);
   if (!tokens.length) {
     return true;
   }
@@ -613,7 +617,7 @@ function scorePerfumeSearch(item: PerfumeDraft, normalizedQuery: string) {
   else if (normalizedBrand.includes(normalizedQuery)) score += 180;
   else if (pool.includes(normalizedQuery)) score += 120;
 
-  const tokens = searchTokens(normalizedQuery);
+  const tokens = tokenizeSearch(normalizedQuery);
   if (tokens.length && tokens.every((token) => pool.includes(token))) {
     score += 100;
   }
@@ -637,7 +641,7 @@ function scoreNoteSearch(item: NoteDraft, normalizedQuery: string) {
   else if (normalizedSlug.includes(normalizedQuery)) score += 210;
   else if (pool.includes(normalizedQuery)) score += 120;
 
-  const tokens = searchTokens(normalizedQuery);
+  const tokens = tokenizeSearch(normalizedQuery);
   if (tokens.length && tokens.every((token) => pool.includes(token))) {
     score += 80;
   }
@@ -1185,6 +1189,7 @@ export function AdminPanelClient({
   const [status, setStatus] = useState<StatusState | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
   const [importing, setImporting] = useState<"perfumes" | "notes" | null>(null);
   const [tokenInput, setTokenInput] = useState({ top: "", heart: "", base: "" });
 
@@ -1811,6 +1816,118 @@ export function AdminPanelClient({
     }
   };
 
+  const onRemoveBackgroundPerfume = async () => {
+    if (!selectedPerfume?.image) {
+      return;
+    }
+
+    setRemovingBg(true);
+    setStatus({ tone: "neutral", message: copy.removeBgProcessing });
+
+    try {
+      const response = await fetch("/api/admin/remove-bg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: selectedPerfume.image,
+          itemSlug: selectedPerfume.slug,
+          itemType: "perfume",
+        }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json()) as {
+          error?: string;
+          setup?: string;
+          details?: string;
+        };
+
+        // Check if it's a setup error
+        if (response.status === 503 && data.setup) {
+          const setupMsg = data.setup
+            .split("\n")
+            .filter((line) => line.trim())
+            .slice(0, 5)
+            .join("\n");
+          throw new Error(
+            `Setup needed: ${data.error}\n\n${setupMsg}\n\nSee BACKGROUND_REMOVAL_SETUP.md for full instructions.`,
+          );
+        }
+
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as { newImageUrl?: string };
+      if (data.newImageUrl) {
+        setPerfumeField("image", data.newImageUrl);
+        setStatus({ tone: "success", message: copy.removeBgSuccess });
+      } else {
+        throw new Error("No image URL in response");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : copy.removeBgError;
+      setStatus({ tone: "error", message });
+    } finally {
+      setRemovingBg(false);
+    }
+  };
+
+  const onRemoveBackgroundNote = async () => {
+    if (!selectedNote?.image) {
+      return;
+    }
+
+    setRemovingBg(true);
+    setStatus({ tone: "neutral", message: copy.removeBgProcessing });
+
+    try {
+      const response = await fetch("/api/admin/remove-bg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: selectedNote.image,
+          itemSlug: selectedNote.slug,
+          itemType: "note",
+        }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json()) as {
+          error?: string;
+          setup?: string;
+          details?: string;
+        };
+
+        // Check if it's a setup error
+        if (response.status === 503 && data.setup) {
+          const setupMsg = data.setup
+            .split("\n")
+            .filter((line) => line.trim())
+            .slice(0, 5)
+            .join("\n");
+          throw new Error(
+            `Setup needed: ${data.error}\n\n${setupMsg}\n\nSee BACKGROUND_REMOVAL_SETUP.md for full instructions.`,
+          );
+        }
+
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as { newImageUrl?: string };
+      if (data.newImageUrl) {
+        setNoteField("image", data.newImageUrl);
+        setStatus({ tone: "success", message: copy.removeBgSuccess });
+      } else {
+        throw new Error("No image URL in response");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : copy.removeBgError;
+      setStatus({ tone: "error", message });
+    } finally {
+      setRemovingBg(false);
+    }
+  };
+
   const onLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
@@ -2167,86 +2284,79 @@ export function AdminPanelClient({
   return (
     <section className="space-y-6">
       <div className={ui.shell}>
-        <div className="relative overflow-hidden px-5 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(226,232,240,0.72),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(244,244,245,0.98),transparent_40%)]" />
+        <div className="relative overflow-hidden px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.98),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,246,242,0.95)_100%)]" />
 
-          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="relative space-y-3">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 shadow-sm">
                 <Database size={14} weight="bold" />
                 {copy.professionalWorkspace}
               </div>
-              <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.06em] text-zinc-950 sm:text-[2.6rem]">
+              <h1 className="mt-2 max-w-2xl text-[1.55rem] font-semibold leading-[1.03] tracking-[-0.06em] text-zinc-950 sm:text-[1.85rem] lg:text-[2rem]">
                 {copy.heroTitle}
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
+              <p className="mt-2 max-w-2xl text-[0.9rem] leading-6 text-zinc-600 sm:text-[0.93rem]">
                 {copy.heroDescription}
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                {copy.localeLabel}
-              </span>
-              {(["az", "en"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
+            <div className="flex flex-wrap items-center gap-2 border-t border-zinc-200/70 pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1">
+                  <span className="px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                    {copy.localeLabel}
+                  </span>
+                  {(["az", "en"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={cx(
+                        "h-8 rounded-full px-3 text-[11px] font-semibold uppercase tracking-[0.1em] transition",
+                        locale === option
+                          ? "bg-zinc-900 text-white shadow-sm"
+                          : "text-zinc-500 hover:bg-white hover:text-zinc-900",
+                      )}
+                      onClick={() => setLocale(option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+
+                <span
                   className={cx(
-                    "rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] transition",
-                    locale === option
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                    ui.compactChip,
+                    dirty
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700",
                   )}
-                  onClick={() => setLocale(option)}
                 >
-                  {option}
+                  {dirty ? <WarningCircle size={13} weight="fill" /> : <CheckCircle size={13} weight="fill" />}
+                  {dirty ? copy.unsavedChanges : copy.everythingSaved}
+                </span>
+
+                <button type="button" className={ui.compactButton} onClick={onReload} disabled={isWorking}>
+                  <ArrowsClockwise size={15} weight="bold" />
+                  {copy.refresh}
                 </button>
-              ))}
-              <span className={cx(ui.chip, dirty ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
-                {dirty ? <WarningCircle size={14} weight="fill" /> : <CheckCircle size={14} weight="fill" />}
-                {dirty ? copy.unsavedChanges : copy.everythingSaved}
-              </span>
-              <button
-                type="button"
-                className={ui.secondaryButton}
-                onClick={onReload}
-                disabled={isWorking}
-              >
-                <ArrowsClockwise size={16} weight="bold" />
-                {copy.refresh}
-              </button>
-              <button
-                type="button"
-                className={ui.secondaryButton}
-                onClick={cancelEditing}
-                disabled={!dirty || isWorking}
-              >
-                <ClockCounterClockwise size={16} weight="bold" />
-                {copy.reset}
-              </button>
-              <button
-                type="button"
-                className={ui.primaryButton}
-                onClick={onSave}
-                disabled={!dirty || isWorking}
-              >
-                <FloppyDisk size={16} weight="bold" />
-                {busy ? copy.saving : copy.saveChanges}
-              </button>
-              <button
-                type="button"
-                className={ui.secondaryButton}
-                onClick={onLogout}
-                disabled={busy}
-              >
-                <SignOut size={16} weight="bold" />
-                {copy.logout}
-              </button>
+                <button type="button" className={ui.compactButton} onClick={cancelEditing} disabled={!dirty || isWorking}>
+                  <ClockCounterClockwise size={15} weight="bold" />
+                  {copy.reset}
+                </button>
+                <button type="button" className={ui.compactPrimaryButton} onClick={onSave} disabled={!dirty || isWorking}>
+                  <FloppyDisk size={15} weight="bold" />
+                  {busy ? copy.saving : copy.saveChanges}
+                </button>
+                <button type="button" className={ui.compactButton} onClick={onLogout} disabled={busy}>
+                  <SignOut size={15} weight="bold" />
+                  {copy.logout}
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="relative mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="relative mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <WorkspaceStat
               icon={<Package size={18} weight="bold" />}
               label={copy.perfumes}
@@ -2368,7 +2478,7 @@ export function AdminPanelClient({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className={cx(ui.card, "xl:sticky xl:top-28 xl:h-[calc(100dvh-9rem)] xl:min-h-[44rem]")}>
+        <aside className={cx(ui.card, "xl:sticky xl:top-6 xl:h-[calc(100dvh-3rem)] xl:min-h-[40rem]")}> 
           <div className="flex h-full min-h-0 flex-col">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -2558,7 +2668,7 @@ export function AdminPanelClient({
                   <span>{view === "perfumes" ? filteredPerfumes.length : filteredNotes.length}</span>
                 </div>
 
-                <div className="h-[min(56vh,38rem)] space-y-2 overflow-y-auto pr-1 xl:h-[calc(100dvh-25rem)]">
+                <div className="h-[min(56vh,38rem)] space-y-2 overflow-y-auto pr-1 xl:h-[calc(100dvh-17rem)]">
                   {view === "perfumes" ? (
                     filteredPerfumes.length ? (
                       filteredPerfumes.map((item) => (
@@ -3144,6 +3254,16 @@ export function AdminPanelClient({
                             <CopySimple size={16} weight="bold" />
                             {copy.copyImageUrl}
                           </button>
+                          <button
+                            type="button"
+                            className={ui.secondaryButton}
+                            onClick={() => void onRemoveBackgroundPerfume()}
+                            disabled={!selectedPerfume.image || removingBg}
+                            title={copy.removeBgTooltip}
+                          >
+                            <Sparkle size={16} weight="bold" />
+                            {removingBg ? copy.removeBgProcessing : copy.removeBg}
+                          </button>
                         </div>
                         <input
                           ref={perfumeImageInputRef}
@@ -3368,6 +3488,16 @@ export function AdminPanelClient({
                         >
                           <CopySimple size={16} weight="bold" />
                           {copy.copyImageUrl}
+                        </button>
+                        <button
+                          type="button"
+                          className={ui.secondaryButton}
+                          onClick={() => void onRemoveBackgroundNote()}
+                          disabled={!selectedNote.image || removingBg}
+                          title={copy.removeBgTooltip}
+                        >
+                          <Sparkle size={16} weight="bold" />
+                          {removingBg ? copy.removeBgProcessing : copy.removeBg}
                         </button>
                       </div>
                       <input
