@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 
     return Response.json({
       ok: true,
-      url: `/uploads/admin/${folder}/${fileName}`,
+      url: `/api/uploads/admin/${folder}/${fileName}`,
       storage: "local",
     });
   } catch (error) {
@@ -136,8 +136,9 @@ export async function POST(request: Request) {
         const publicBase = process.env.S3_PUBLIC_URL || `https://${bucket}.s3.${region}.amazonaws.com`;
         return Response.json({
           ok: true,
-          url: `${publicBase}/${key}`,
+          url: `/api/uploads/admin/${folder}/${fileName}`,
           storage: "s3",
+          storageUrl: `${publicBase}/${key}`,
         });
       } catch (s3Error) {
         const s3Message = s3Error instanceof Error ? s3Error.message : String(s3Error);

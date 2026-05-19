@@ -302,7 +302,7 @@ async function removeBackgroundLocally(
               const publicBase = process.env.S3_PUBLIC_URL || `https://${s3Bucket}.s3.${s3Region}.amazonaws.com`;
               const s3Url = `${publicBase}/${key}`;
 
-              return Response.json({ success: true, newImageUrl: s3Url, uploadedTo: "s3" }, { status: 200 });
+              return Response.json({ success: true, newImageUrl: `/api/uploads/admin/${itemType}/${finalFilename}`, uploadedTo: "s3", storageUrl: s3Url }, { status: 200 });
             } catch (s3Err) {
               // If S3 upload fails, fall back to base64
               console.warn("S3 upload failed:", s3Err);
@@ -351,7 +351,7 @@ async function removeBackgroundLocally(
       // Continue even if we can't get file size
     }
 
-    const imageUrlResponse = `/uploads/admin/${itemType}/${finalFilename}`;
+    const imageUrlResponse = `/api/uploads/admin/${itemType}/${finalFilename}`;
 
     return Response.json({
       success: true,
