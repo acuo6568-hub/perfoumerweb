@@ -249,6 +249,7 @@ const adminCopy = {
     uploadImage: "Şəkil yüklə",
     replaceImage: "Şəkli yenilə",
     uploading: "Yüklənir...",
+    uploadImageGuidance: "Accepted: PNG, JPG, JPEG, WebP. Max size: 8 MB.",
     imageMetadata: "Şəkil məlumatı",
     imageMetadataDescription:
       "Yüklənmiş şəkilin keçidini və alt mətnini idarə edin.",
@@ -469,6 +470,7 @@ const adminCopy = {
     uploadImage: "Upload image",
     replaceImage: "Replace image",
     uploading: "Uploading...",
+    uploadImageGuidance: "Accepted: PNG, JPG, JPEG, WebP. Max size: 8 MB.",
     imageMetadata: "Image metadata",
     imageMetadataDescription:
       "Control the uploaded image reference and alt text.",
@@ -3316,6 +3318,7 @@ export function AdminPanelClient({
                             {removingBg ? copy.removeBgProcessing : copy.removeBg}
                           </button>
                         </div>
+                        <p className="mt-3 text-xs leading-5 text-zinc-500">{copy.uploadImageGuidance}</p>
                         <input
                           ref={perfumeImageInputRef}
                           type="file"
@@ -3551,6 +3554,7 @@ export function AdminPanelClient({
                           {removingBg ? copy.removeBgProcessing : copy.removeBg}
                         </button>
                       </div>
+                      <p className="mt-3 text-xs leading-5 text-zinc-500">{copy.uploadImageGuidance}</p>
                       <input
                         ref={noteImageInputRef}
                         type="file"
