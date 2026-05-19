@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { perfumesToCsv } from "@/lib/admin-csv";
@@ -183,11 +184,29 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
 
   const perfumesCsv = perfumesToCsv(perfumes);
 
-  const writeOperations = [
-    writeFile(PERFUMES_CSV_PATH, `${perfumesCsv}\n`, "utf-8").catch((error) => {
-      const message = error instanceof Error ? error.message : "Unknown error";
+  // Write perfumes CSV, with fallback to a writable directory (e.g., /tmp) if filesystem is read-only
+  try {
+    await writeFile(PERFUMES_CSV_PATH, `${perfumesCsv}\n`, "utf-8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const isReadOnly = message.includes("read-only file system") || (error as any)?.code === "EROFS";
+    if (isReadOnly) {
+      const altDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+      const altPath = path.join(altDir, "perfm77.csv");
+      try {
+        await writeFile(altPath, `${perfumesCsv}\n`, "utf-8");
+        console.warn(`[CSV Write Fallback] original path not writable, saved to ${altPath}`);
+      } catch (altErr) {
+        const altMsg = altErr instanceof Error ? altErr.message : "Unknown error";
+        throw new Error(`[CSV Write Failed] ${message}. Also failed to write fallback file: ${altMsg}`);
+      }
+    } else {
       throw new Error(`[CSV Write Failed] ${message}. File: data/perfm77.csv. Check file permissions with: chmod 644 data/perfm77.csv`);
-    }),
+    }
+  }
+
+  // Write other admin files (these may also fail on read-only filesystems)
+  const writeOperations = [
     writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8").catch((error) => {
       const message = error instanceof Error ? error.message : "Unknown error";
       throw new Error(`[JSON Write Failed] ${message}. File: data/admin/perfumes.json`);

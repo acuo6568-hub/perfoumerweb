@@ -174,26 +174,16 @@ async function removeBackgroundLocally(
   itemType: "perfume" | "note",
 ): Promise<Response> {
   try {
-    // First, check if Python and rembg are available
+    // First, check if rembg is available locally or via REMBG_API_URL
     const setup = await checkPythonSetup();
-    if (!setup.pythonAvailable) {
+    // If a remote API is configured, allow proceeding (we'll use it)
+    const canUseRemote = Boolean(setup.apiUrl);
+    if (!setup.rembgAvailable && !canUseRemote) {
       return Response.json(
         {
-          error: "Python is not installed or not in PATH",
+          error: "rembg is not available locally or via REMBG_API_URL",
           setup: getSetupInstructions(),
           details: setup.errorMessage,
-        },
-        { status: 503 },
-      );
-    }
-
-    if (!setup.rembgAvailable) {
-      return Response.json(
-        {
-          error: "Python is available but rembg library is not installed",
-          setup: getSetupInstructions(),
-          details:
-            "Install with: pip install rembg\nThen restart your server.",
         },
         { status: 503 },
       );
@@ -283,14 +273,40 @@ async function removeBackgroundLocally(
     } catch (renameError) {
       const renameMsg = renameError instanceof Error ? renameError.message : "Unknown error";
       const isPermissionError =
-        renameMsg.includes("EACCES") || renameMsg.includes("EPERM");
+        renameMsg.includes("EACCES") || renameMsg.includes("EPERM") || renameMsg.includes("EROFS") || renameMsg.includes("read-only file system");
+
+      if (isPermissionError) {
+        // Fallback: return the processed image as base64 so the admin UI can download it
+        try {
+          const buffer = await fs.readFile(tempOutputPath);
+          const base64 = buffer.toString("base64");
+          const filename = finalFilename;
+          return Response.json(
+            {
+              success: false,
+              warning: `Cannot write to uploads directory (permission/read-only). Returning image as base64.`,
+              download: {
+                filename,
+                contentType: "image/png",
+                base64,
+              },
+            },
+            { status: 200 },
+          );
+        } catch (readErr) {
+          const readMsg = readErr instanceof Error ? readErr.message : "Unknown error";
+          return Response.json(
+            {
+              error: `Failed to move processed image and failed to read temp output: ${readMsg}`,
+            },
+            { status: 500 },
+          );
+        }
+      }
 
       return Response.json(
         {
-          error: isPermissionError
-            ? `Write permission denied: ${renameMsg}`
-            : `Failed to move processed image: ${renameMsg}`,
-          hint: isPermissionError ? `Check permissions: chmod 755 ${uploadsDir}` : undefined,
+          error: `Failed to move processed image: ${renameMsg}`,
         },
         { status: 500 },
       );
