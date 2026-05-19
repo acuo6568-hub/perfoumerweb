@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createClient } from "@supabase/supabase-js";
 
 function contentTypeFromPath(filePath: string) {
   const ext = path.extname(filePath).toLowerCase();
@@ -50,29 +50,34 @@ export async function GET(_: Request, context: { params: Promise<{ path: string[
       },
     });
   } catch {
-    // Fall through to S3
+    // Fall through to Supabase Storage
   }
 
-  const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET;
-  const region = process.env.AWS_REGION || process.env.S3_REGION;
-  if (!bucket) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const bucket = (process.env.SUPABASE_STORAGE_BUCKET || "admin-images").trim();
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
     return new Response("Not found", { status: 404 });
   }
 
   try {
-    const s3Client = new S3Client({ region });
-    const key = path.posix.join("uploads", relativePath.replace(/^\/+/, ""));
-    const result = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: bucket,
-        Key: key,
-      }),
-    );
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
+      const key = path.posix.join("uploads", relativePath.replace(/^\/+/, ""));
+      const result = await supabase.storage.from(bucket).download(key);
 
-    const body = await streamToBuffer(result.Body as any);
+      if (result.error) {
+        throw result.error;
+      }
+
+      const body = await result.data.arrayBuffer();
     return new Response(body, {
       headers: {
-        "Content-Type": result.ContentType || contentTypeFromPath(key),
+          "Content-Type": contentTypeFromPath(key),
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

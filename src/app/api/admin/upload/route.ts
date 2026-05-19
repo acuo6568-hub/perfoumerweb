@@ -2,7 +2,7 @@ import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 
 import { cookies } from "next/headers";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createClient } from "@supabase/supabase-js";
 
 import {
   ADMIN_SESSION_COOKIE,
@@ -13,6 +13,7 @@ import {
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const ALLOWED_FOLDERS = new Set(["perfumes", "notes"]);
 const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
+const SUPABASE_STORAGE_BUCKET = (process.env.SUPABASE_STORAGE_BUCKET || "admin-images").trim();
 
 function safeBaseName(fileName: string) {
   const base = fileName
@@ -116,36 +117,41 @@ export async function POST(request: Request) {
       message.includes("EACCES") ||
       message.includes("EPERM");
 
-    const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET;
-    const region = process.env.AWS_REGION || process.env.S3_REGION;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (bucket) {
+    if (supabaseUrl && supabaseServiceRoleKey) {
       try {
-        const s3Client = new S3Client({ region });
+        const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        });
         const key = `uploads/admin/${folder}/${fileName}`;
 
-        await s3Client.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            Body: buffer,
-            ContentType: file.type || "image/png",
-          }),
-        );
+        const uploadResult = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).upload(key, buffer, {
+          contentType: file.type || "image/png",
+          upsert: false,
+        });
 
-        const publicBase = process.env.S3_PUBLIC_URL || `https://${bucket}.s3.${region}.amazonaws.com`;
+        if (uploadResult.error) {
+          throw uploadResult.error;
+        }
+
         return Response.json({
           ok: true,
           url: `/api/uploads/admin/${folder}/${fileName}`,
-          storage: "s3",
-          storageUrl: `${publicBase}/${key}`,
+          storage: "supabase",
+          storageKey: key,
+          bucket: SUPABASE_STORAGE_BUCKET,
         });
-      } catch (s3Error) {
-        const s3Message = s3Error instanceof Error ? s3Error.message : String(s3Error);
+      } catch (supabaseError) {
+        const supabaseMessage = supabaseError instanceof Error ? supabaseError.message : String(supabaseError);
         return Response.json(
           {
-            error: `Upload failed: ${s3Message}`,
-            hint: `Local storage failed${isReadOnly ? " because the filesystem is read-only" : ""}. Configure S3_BUCKET/AWS_REGION/AWS credentials or mount a writable volume for public/uploads.`,
+            error: `Upload failed: ${supabaseMessage}`,
+            hint: `Local storage failed${isReadOnly ? " because the filesystem is read-only" : ""}. Set SUPABASE_STORAGE_BUCKET and make sure SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL are configured.`,
           },
           { status: 500 },
         );
@@ -156,7 +162,7 @@ export async function POST(request: Request) {
       {
         error: `Upload failed: ${message}`,
         hint:
-          "This runtime cannot write to public/uploads. Set S3_BUCKET/AWS_REGION and AWS credentials, or run the app on a host with a writable uploads directory.",
+          "This runtime cannot write to public/uploads. Configure Supabase Storage (SUPABASE_STORAGE_BUCKET + SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL) or run the app on a host with a writable uploads directory.",
       },
       { status: 500 },
     );
