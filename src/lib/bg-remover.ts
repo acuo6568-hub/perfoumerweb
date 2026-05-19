@@ -24,7 +24,18 @@ export async function checkPythonSetup(): Promise<{
   rembgAvailable: boolean;
   pythonPath?: string;
   errorMessage?: string;
+  apiUrl?: string;
 }> {
+  // If a remote rembg HTTP service is configured, report it as available
+  const apiUrl = process.env.REMBG_API_URL;
+  if (apiUrl) {
+    return Promise.resolve({
+      pythonAvailable: false,
+      rembgAvailable: true,
+      apiUrl,
+    });
+  }
+
   return new Promise((resolve) => {
     const pythonProcess = spawn("python3", ["-c", "import rembg; print('OK')"]);
 
@@ -100,6 +111,44 @@ export async function removeBackground(options: RemoveBackgroundOptions): Promis
   // Ensure output directory exists
   const outputDir = path.dirname(outputPath);
   await fs.mkdir(outputDir, { recursive: true });
+
+  const apiUrl = process.env.REMBG_API_URL;
+  if (apiUrl) {
+    // Use remote rembg HTTP service (e.g., docker danielgatis/rembg)
+    const inputData = await fs.readFile(inputPath);
+
+    // Attempt to POST raw bytes to the remote service and write response
+    try {
+      const endpoint = apiUrl.replace(/\/$/, "") + "/v1/remove";
+      const headers: Record<string, string> = {
+        "Content-Type": "application/octet-stream",
+      };
+
+      // Support an optional API key header for external services (e.g., Hugging Face)
+      const apiKey = process.env.REMBG_API_KEY;
+      const apiKeyHeader = process.env.REMBG_API_KEY_HEADER || "Authorization";
+      if (apiKey) {
+        headers[apiKeyHeader] = apiKey;
+      }
+
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: inputData,
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        throw new Error(`Remote rembg service returned ${resp.status}: ${text}`);
+      }
+
+      const outBuf = Buffer.from(await resp.arrayBuffer());
+      await fs.writeFile(outputPath, outBuf);
+      return;
+    } catch (err: any) {
+      throw new Error(`Background removal via REMBG_API_URL failed: ${err.message}`);
+    }
+  }
 
   return new Promise((resolve, reject) => {
     // Build Python script to run rembg
@@ -200,6 +249,30 @@ If you prefer isolation, use Docker:
 \`\`\`bash
 docker pull danielgatis/rembg:latest
 \`\`\`
+If you run the Docker image as a service (recommended for serverless hosts), expose its port and set `REMBG_API_URL` in your environment, for example:
+
+```bash
+# run container
+docker run -d -p 5000:5000 danielgatis/rembg:latest
+
+# then in your .env.local or hosting env:
+REMBG_API_URL=http://localhost:5000
+```
+
+### Option 4: Use an external inference API (Hugging Face / other)
+If you prefer not to host the model yourself you can use an external inference API. Many providers require an API key and may have rate limits.
+
+1. Obtain an API endpoint URL that accepts raw image bytes and returns the processed image (PNG) — e.g., a Hugging Face inference endpoint or another compatible service.
+2. Set the endpoint and optional API key in your environment:
+
+```env
+REMBG_API_URL=https://api.your-provider.example/endpoint
+REMBG_API_KEY=<your_api_key>
+# Optionally override which header to send the key in (default: Authorization)
+REMBG_API_KEY_HEADER=Authorization
+```
+
+The code will attach the API key header automatically when present.
 
 ### After Installation
 Restart your Next.js server and try removing backgrounds again.
