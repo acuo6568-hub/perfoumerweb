@@ -98,6 +98,20 @@ WRITABLE_DATA_DIR=/path/to/writable/dir
 
 When `WRITABLE_DATA_DIR` is set, the app will save `perfm77.csv` there if it cannot write to `data/perfm77.csv`.
 
+### Admin image uploads on read-only hosts
+The admin upload endpoint writes to `public/uploads/admin/...` by default. If your host is read-only, configure S3 so uploads still work:
+
+```env
+S3_BUCKET=your-bucket-name
+AWS_REGION=your-aws-region
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+# Optional public URL base for the bucket/CDN
+S3_PUBLIC_URL=https://cdn.example.com
+```
+
+If S3 is set, the admin image upload API will store files there automatically and return a public URL that the admin panel can save.
+
 ### Uploading processed images to S3
 If you want processed images uploaded automatically to S3 (instead of returning base64), set these environment variables:
 

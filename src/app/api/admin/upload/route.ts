@@ -2,6 +2,7 @@ import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 
 import { cookies } from "next/headers";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import {
   ADMIN_SESSION_COOKIE,
@@ -98,11 +99,65 @@ export async function POST(request: Request) {
   const publicDir = path.join(process.cwd(), "public", "uploads", "admin", folder);
   const absolutePath = path.join(publicDir, fileName);
 
-  await mkdir(publicDir, { recursive: true });
-  await writeFile(absolutePath, buffer);
+  try {
+    await mkdir(publicDir, { recursive: true });
+    await writeFile(absolutePath, buffer);
 
-  return Response.json({
-    ok: true,
-    url: `/uploads/admin/${folder}/${fileName}`,
-  });
+    return Response.json({
+      ok: true,
+      url: `/uploads/admin/${folder}/${fileName}`,
+      storage: "local",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const isReadOnly =
+      message.includes("EROFS") ||
+      message.includes("read-only file system") ||
+      message.includes("EACCES") ||
+      message.includes("EPERM");
+
+    const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET;
+    const region = process.env.AWS_REGION || process.env.S3_REGION;
+
+    if (bucket) {
+      try {
+        const s3Client = new S3Client({ region });
+        const key = `uploads/admin/${folder}/${fileName}`;
+
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: buffer,
+            ContentType: file.type || "image/png",
+          }),
+        );
+
+        const publicBase = process.env.S3_PUBLIC_URL || `https://${bucket}.s3.${region}.amazonaws.com`;
+        return Response.json({
+          ok: true,
+          url: `${publicBase}/${key}`,
+          storage: "s3",
+        });
+      } catch (s3Error) {
+        const s3Message = s3Error instanceof Error ? s3Error.message : String(s3Error);
+        return Response.json(
+          {
+            error: `Upload failed: ${s3Message}`,
+            hint: `Local storage failed${isReadOnly ? " because the filesystem is read-only" : ""}. Configure S3_BUCKET/AWS_REGION/AWS credentials or mount a writable volume for public/uploads.`,
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    return Response.json(
+      {
+        error: `Upload failed: ${message}`,
+        hint:
+          "This runtime cannot write to public/uploads. Set S3_BUCKET/AWS_REGION and AWS credentials, or run the app on a host with a writable uploads directory.",
+      },
+      { status: 500 },
+    );
+  }
 }
