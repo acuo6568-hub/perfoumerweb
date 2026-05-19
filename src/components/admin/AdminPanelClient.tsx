@@ -255,6 +255,8 @@ const adminCopy = {
       "Yüklənmiş şəkilin keçidini və alt mətnini idarə edin.",
     imageUrl: "Şəkil URL",
     imageAlt: "Şəkil alt mətni",
+    openProductPage: "Məhsul səhifəsini aç",
+    productPageHint: "Bu ətrin canlı məhsul səhifəsinə tam keçid.",
     uploadPerfumePreview: "Ətir şəkli yükləyin, önizləmə burada görünəcək.",
     uploadNotePreview: "Not şəkli yükləyin, önizləmə burada görünəcək.",
     noteContent: "Not məzmunu",
@@ -476,6 +478,8 @@ const adminCopy = {
       "Control the uploaded image reference and alt text.",
     imageUrl: "Image URL",
     imageAlt: "Image alt text",
+    openProductPage: "Open product page",
+    productPageHint: "Full link to the live product page for this perfume.",
     uploadPerfumePreview: "Upload a perfume image to preview it here.",
     uploadNotePreview: "Upload a note image to preview it here.",
     noteContent: "Note content",
@@ -1220,6 +1224,9 @@ export function AdminPanelClient({
       null,
     [perfumes, selectedPerfumeId],
   );
+  const selectedPerfumeProductUrl = selectedPerfume
+    ? `https://perfoumer.az/perfumes/${selectedPerfume.slug}`
+    : "";
   const selectedNote = useMemo(
     () => notes.find((item) => item.slug === selectedNoteSlug) || notes[0] || null,
     [notes, selectedNoteSlug],
@@ -3123,6 +3130,20 @@ export function AdminPanelClient({
                             placeholder="https://..."
                           />
                         </Field>
+                        <div className="mt-3">
+                          <a
+                            className={ui.secondaryButton}
+                            href={selectedPerfumeProductUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Link size={16} weight="bold" />
+                            {copy.openProductPage}
+                          </a>
+                          <p className="mt-2 text-xs leading-5 text-zinc-500">
+                            {copy.productPageHint}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
