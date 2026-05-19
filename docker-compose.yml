@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  rembg:
+    image: danielgatis/rembg:latest
+    container_name: perfoumer_rembg
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./rembg-cache:/root/.cache/rembg
+    environment:
+      - MODEL_NAME=${REMBG_MODEL:-u2net}
