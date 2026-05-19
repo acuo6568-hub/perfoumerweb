@@ -249,15 +249,15 @@ If you prefer isolation, use Docker:
 \`\`\`bash
 docker pull danielgatis/rembg:latest
 \`\`\`
-If you run the Docker image as a service (recommended for serverless hosts), expose its port and set `REMBG_API_URL` in your environment, for example:
+If you run the Docker image as a service (recommended for serverless hosts), expose its port and set \`REMBG_API_URL\` in your environment, for example:
 
-```bash
+\`\`\`bash
 # run container
 docker run -d -p 5000:5000 danielgatis/rembg:latest
 
 # then in your .env.local or hosting env:
 REMBG_API_URL=http://localhost:5000
-```
+\`\`\`
 
 ### Option 4: Use an external inference API (Hugging Face / other)
 If you prefer not to host the model yourself you can use an external inference API. Many providers require an API key and may have rate limits.
@@ -265,12 +265,12 @@ If you prefer not to host the model yourself you can use an external inference A
 1. Obtain an API endpoint URL that accepts raw image bytes and returns the processed image (PNG) — e.g., a Hugging Face inference endpoint or another compatible service.
 2. Set the endpoint and optional API key in your environment:
 
-```env
+\`\`\`env
 REMBG_API_URL=https://api.your-provider.example/endpoint
 REMBG_API_KEY=<your_api_key>
 # Optionally override which header to send the key in (default: Authorization)
 REMBG_API_KEY_HEADER=Authorization
-```
+\`\`\`
 
 The code will attach the API key header automatically when present.
 

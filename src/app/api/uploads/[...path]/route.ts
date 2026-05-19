@@ -31,8 +31,8 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array> | NodeJS.Readab
   return Buffer.concat(chunks);
 }
 
-export async function GET(_: Request, context: { params: { path: string[] } }) {
-  const { path: segments } = context.params;
+export async function GET(_: Request, context: { params: Promise<{ path: string[] }> }) {
+  const { path: segments } = await context.params;
   const relativePath = segments.join("/");
 
   if (!relativePath) {
