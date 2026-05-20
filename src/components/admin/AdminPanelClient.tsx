@@ -51,6 +51,8 @@ import {
 } from "@/lib/seo";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { BrandSelector } from "@/components/admin/BrandSelector";
+import { SaveStatusPill } from "@/components/admin/SaveStatusPill";
 import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 
 type AdminPanelClientProps = {
@@ -64,7 +66,7 @@ type AdminPanelClientProps = {
 type PerfumeDraft = Perfume;
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
-type AdminView = "dashboard" | "perfumes" | "notes" | "branding";
+type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
@@ -1207,13 +1209,17 @@ export function AdminPanelClient({
     initialPerfumes[0]?.id || initialPerfumes[0]?.slug || "",
   );
   const [selectedNoteSlug, setSelectedNoteSlug] = useState(initialNotes[0]?.slug || "");
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
+  const [brandSearch, setBrandSearch] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusState | null>(null);
+  const [statusTimerId, setStatusTimerId] = useState<NodeJS.Timeout | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [importing, setImporting] = useState<"perfumes" | "notes" | null>(null);
   const [tokenInput, setTokenInput] = useState({ top: "", heart: "", base: "" });
+  const [brandDropdownSearch, setBrandDropdownSearch] = useState("");
 
   const perfumeImportRef = useRef<HTMLInputElement | null>(null);
   const noteImportRef = useRef<HTMLInputElement | null>(null);
@@ -1515,6 +1521,39 @@ export function AdminPanelClient({
         price: sizeMap.get(s.ml) ?? 0,
       })),
     };
+  };
+
+  const getBrandStats = useMemo(() => {
+    const stats = new Map<string, number>();
+    for (const perfume of perfumes) {
+      if (perfume.brand?.trim()) {
+        stats.set(perfume.brand.trim(), (stats.get(perfume.brand.trim()) || 0) + 1);
+      }
+    }
+    return stats;
+  }, [perfumes]);
+
+  const brandsWithStats = useMemo(() => {
+    return getAllBrands().map((brand) => ({
+      name: brand,
+      count: getBrandStats.get(brand) || 0,
+    }));
+  }, [getBrandStats]);
+
+  const renameBrand = (oldBrand: string, newBrand: string) => {
+    if (!newBrand.trim() || oldBrand === newBrand) {
+      return;
+    }
+
+    setPerfumes((current) =>
+      current.map((perfume) =>
+        perfume.brand === oldBrand
+          ? { ...perfume, brand: newBrand.trim() }
+          : perfume,
+      ),
+    );
+    setSelectedBrand(newBrand.trim());
+    setStatus({ tone: "success", message: `Brand renamed to "${newBrand.trim()}"` });
   };
 
   const setPerfumeField = <K extends keyof PerfumeDraft>(key: K, value: PerfumeDraft[K]) => {
@@ -2647,6 +2686,15 @@ export function AdminPanelClient({
               {copy.notes}
             </TabButton>
             <TabButton
+              active={view === "brands"}
+              icon={<Package size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("brands"));
+              }}
+            >
+              Brands
+            </TabButton>
+            <TabButton
               active={view === "branding"}
               icon={<TextT size={15} weight="bold" />}
               onClick={() => {
@@ -2866,6 +2914,116 @@ export function AdminPanelClient({
               <Suspense fallback={<div className="text-center text-sm text-zinc-500">Loading dashboard...</div>}>
                 <AdminDashboard locale={locale} />
               </Suspense>
+            </div>
+          ) : view === "brands" ? (
+            <div className={ui.card}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    <Package size={14} weight="bold" />
+                    Brands manager
+                  </div>
+                  <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                    All brands
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+                    Manage your fragrance brands, view usage statistics, and maintain consistency across your catalog.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-5">
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900">Brand list ({brandsWithStats.length})</p>
+                      <p className="mt-1 text-xs text-zinc-500">Click on a brand to edit or rename it</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {brandsWithStats.length ? (
+                      brandsWithStats.map((brand) => (
+                        <button
+                          key={brand.name}
+                          type="button"
+                          onClick={() => setSelectedBrand(brand.name)}
+                          className={cx(
+                            "w-full rounded-[1.2rem] border p-4 text-left transition",
+                            selectedBrand === brand.name
+                              ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
+                              : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50",
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{brand.name}</span>
+                            <span
+                              className={cx(
+                                "rounded-full px-3 py-1 text-xs font-semibold",
+                                selectedBrand === brand.name
+                                  ? "bg-white/20 text-white"
+                                  : "bg-zinc-100 text-zinc-600",
+                              )}
+                            >
+                              {brand.count} perfume{brand.count === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="rounded-[1.2rem] border border-dashed border-zinc-300 bg-zinc-50/80 px-4 py-8 text-center">
+                        <p className="text-sm text-zinc-500">No brands yet. Create a perfume and assign a brand to get started.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedBrand ? (
+                  <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                    <SectionLabel
+                      icon={<TextT size={16} weight="bold" />}
+                      title={`Edit brand: ${selectedBrand}`}
+                      detail={`Used by ${getBrandStats.get(selectedBrand) || 0} perfume${(getBrandStats.get(selectedBrand) || 0) === 1 ? "" : "s"}`}
+                    />
+
+                    <div className="mt-5 grid gap-4">
+                      <Field label="Brand name">
+                        <input
+                          className={ui.input}
+                          type="text"
+                          defaultValue={selectedBrand}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const newBrand = (e.target as HTMLInputElement).value.trim();
+                              if (newBrand) {
+                                renameBrand(selectedBrand, newBrand);
+                                setSelectedBrand("");
+                              }
+                            }
+                          }}
+                          placeholder="Brand name"
+                        />
+                      </Field>
+                      <button
+                        type="button"
+                        className={ui.primaryButton}
+                        onClick={(e) => {
+                          const input = (e.target as HTMLElement).parentElement?.querySelector(
+                            'input[type="text"]',
+                          ) as HTMLInputElement;
+                          if (input && input.value.trim()) {
+                            renameBrand(selectedBrand, input.value.trim());
+                            setSelectedBrand("");
+                          }
+                        }}
+                      >
+                        <FloppyDisk size={16} weight="bold" />
+                        Save brand name
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : view === "branding" ? (
             <div className={ui.card}>
@@ -3159,34 +3317,12 @@ export function AdminPanelClient({
                           />
                         </Field>
                         <Field label="Brand">
-                          <div className="space-y-2">
-                            <select
-                              className={cx(ui.input, "h-10")}
-                              value={selectedPerfume.brand}
-                              onChange={(event) => setPerfumeField("brand", event.target.value)}
-                            >
-                              <option value="">— Select or create brand —</option>
-                              {getAllBrands().map((brand) => (
-                                <option key={brand} value={brand}>
-                                  {brand}
-                                </option>
-                              ))}
-                            </select>
-                            {selectedPerfume.brand && !getAllBrands().includes(selectedPerfume.brand) ? (
-                              <p className="text-xs text-blue-600">
-                                ✓ New brand "{selectedPerfume.brand}" will be created
-                              </p>
-                            ) : null}
-                            {!getAllBrands().includes(selectedPerfume.brand) && selectedPerfume.brand ? null : (
-                              <input
-                                type="text"
-                                className={ui.input}
-                                placeholder="Or type to create new brand"
-                                value={selectedPerfume.brand}
-                                onChange={(event) => setPerfumeField("brand", event.target.value)}
-                              />
-                            )}
-                          </div>
+                          <BrandSelector
+                            value={selectedPerfume.brand}
+                            onChange={(brand) => setPerfumeField("brand", brand)}
+                            brands={getAllBrands()}
+                            placeholder="Select or type brand name"
+                          />
                         </Field>
                         <Field label="Slug" hint="Lowercase URL key used across the site">
                           <input
@@ -3686,6 +3822,22 @@ export function AdminPanelClient({
           )}
         </div>
       </div>
+
+      <SaveStatusPill
+        status={
+          busy
+            ? "saving"
+            : status?.tone === "success"
+              ? "success"
+              : status?.tone === "error"
+                ? "error"
+                : "idle"
+        }
+        message={status?.message || ""}
+        onSave={onSave}
+        isDirty={dirty}
+        isSaving={busy}
+      />
     </section>
   );
 }
