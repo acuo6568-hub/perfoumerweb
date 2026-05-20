@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MagnifyingGlass, X } from "@phosphor-icons/react";
 
 interface BrandSelectorProps {
@@ -8,6 +8,10 @@ interface BrandSelectorProps {
   onChange: (brand: string) => void;
   brands: string[];
   placeholder?: string;
+  searchPlaceholder?: string;
+  noResultsLabel?: string;
+  createLabel?: (brand: string) => string;
+  newTagLabel?: string;
 }
 
 export function BrandSelector({
@@ -15,25 +19,28 @@ export function BrandSelector({
   onChange,
   brands,
   placeholder = "Select or create brand",
+  searchPlaceholder = "Search brands...",
+  noResultsLabel = "No brands found",
+  createLabel = (brand) => `+ Create "${brand}"`,
+  newTagLabel = "NEW",
 }: BrandSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [localValue, setLocalValue] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = brands.filter((brand) =>
-    brand.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = brands.filter((brand) => brand.toLowerCase().includes(search.toLowerCase()));
+  const isNewBrand = localValue && !brands.includes(localValue);
 
-  const isNewBrand = value && !brands.includes(value);
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
@@ -42,30 +49,33 @@ export function BrandSelector({
       document.addEventListener("mousedown", handleClickOutside);
       inputRef.current?.focus();
     }
+
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
   const handleSelect = (brand: string) => {
-    onChange(brand);
+    const nextBrand = brand.trim();
+    setLocalValue(nextBrand);
+    onChange(nextBrand);
     setIsOpen(false);
     setSearch("");
     setHighlightedIndex(-1);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    switch (e.key) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    switch (event.key) {
       case "ArrowDown":
-        e.preventDefault();
-        setHighlightedIndex((prev) => (prev + 1) % filtered.length);
+        event.preventDefault();
+        if (filtered.length === 0) return;
+        setHighlightedIndex((current) => (current + 1) % filtered.length);
         break;
       case "ArrowUp":
-        e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev <= 0 ? filtered.length - 1 : prev - 1,
-        );
+        event.preventDefault();
+        if (filtered.length === 0) return;
+        setHighlightedIndex((current) => (current <= 0 ? filtered.length - 1 : current - 1));
         break;
       case "Enter":
-        e.preventDefault();
+        event.preventDefault();
         if (highlightedIndex >= 0 && filtered[highlightedIndex]) {
           handleSelect(filtered[highlightedIndex]);
         } else if (search.trim()) {
@@ -80,44 +90,46 @@ export function BrandSelector({
 
   return (
     <div ref={containerRef} className="relative">
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        className="h-12 w-full rounded-2xl border border-zinc-300 bg-[#f7f7f5] px-4 flex items-center gap-2 cursor-pointer transition duration-200 hover:border-zinc-400"
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex h-12 w-full items-center gap-2 rounded-2xl border border-zinc-300 bg-[#f7f7f5] px-4 text-left transition duration-200 hover:border-zinc-400"
       >
-        {value ? (
+        {localValue ? (
           <>
-            <span className="flex-1 text-sm text-zinc-900">{value}</span>
-            {isNewBrand && (
-              <span className="text-xs font-semibold text-blue-600">NEW</span>
-            )}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange("");
+            <span className="flex-1 text-sm text-zinc-900">{localValue}</span>
+            {isNewBrand ? <span className="text-xs font-semibold text-blue-600">{newTagLabel}</span> : null}
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(event) => {
+                event.stopPropagation();
+                setLocalValue("");
                 setSearch("");
+                setHighlightedIndex(-1);
+                onChange("");
               }}
               className="text-zinc-400 hover:text-zinc-600"
             >
               <X size={16} weight="bold" />
-            </button>
+            </span>
           </>
         ) : (
           <span className="text-sm text-zinc-400">{placeholder}</span>
         )}
-      </div>
+      </button>
 
-      {isOpen && (
-        <div className="absolute top-full z-50 mt-2 w-full rounded-2xl border border-zinc-300 bg-white shadow-lg">
+      {isOpen ? (
+        <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-lg">
           <div className="flex items-center gap-2 border-b border-zinc-200 px-4 py-3">
             <MagnifyingGlass size={18} weight="bold" className="text-zinc-400" />
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search brands..."
+              placeholder={searchPlaceholder}
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
+              onChange={(event) => {
+                setSearch(event.target.value);
                 setHighlightedIndex(-1);
               }}
               onKeyDown={handleKeyDown}
@@ -146,18 +158,16 @@ export function BrandSelector({
               <button
                 type="button"
                 onClick={() => handleSelect(search.trim())}
-                className="w-full px-4 py-3 text-left text-sm text-blue-600 font-semibold hover:bg-blue-50"
+                className="w-full px-4 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50"
               >
-                + Create "{search.trim()}"
+                {createLabel(search.trim())}
               </button>
             ) : (
-              <div className="px-4 py-6 text-center text-xs text-zinc-400">
-                No brands found
-              </div>
+              <div className="px-4 py-6 text-center text-xs text-zinc-400">{noResultsLabel}</div>
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
