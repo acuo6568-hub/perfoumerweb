@@ -724,6 +724,18 @@ function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
         .sort((left, right) => left.ml - right.ml)
     : [];
 
+  // Ensure default sizes with updated prices if provided
+  const defaultSizes = [
+    { ml: 15, label: "15ML", price: 0 },
+    { ml: 30, label: "30ML", price: 0 },
+    { ml: 50, label: "50ML", price: 0 },
+  ];
+  const sizeMap = new Map(sizes.map((s) => [s.ml, s.price]));
+  const ensuredSizes = defaultSizes.map((s) => ({
+    ...s,
+    price: sizeMap.get(s.ml) ?? 0,
+  }));
+
   return {
     id: normalizeString(perfume.id) || slug,
     slug,
@@ -735,7 +747,7 @@ function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
     stockStatus: normalizeString(perfume.stockStatus) || "Available",
     inStock: Boolean(perfume.inStock),
     externalLink: normalizeString(perfume.externalLink),
-    sizes: sizes.length ? sizes : [{ label: "50ML", ml: 50, price: 0 }],
+    sizes: ensuredSizes,
     noteSlugs: {
       top: normalizeStringArray(perfume.noteSlugs?.top),
       heart: normalizeStringArray(perfume.noteSlugs?.heart),
@@ -876,7 +888,11 @@ function createEmptyPerfume(): PerfumeDraft {
     stockStatus: "Available",
     inStock: true,
     externalLink: "",
-    sizes: [{ label: "50ML", ml: 50, price: 0 }],
+    sizes: [
+      { label: "15ML", ml: 15, price: 0 },
+      { label: "30ML", ml: 30, price: 0 },
+      { label: "50ML", ml: 50, price: 0 },
+    ],
     noteSlugs: {
       top: [],
       heart: [],
@@ -1464,6 +1480,43 @@ export function AdminPanelClient({
     });
   };
 
+  // Brand and size utilities
+  const DEFAULT_SIZES = [
+    { ml: 15, label: "15ML", price: 0 },
+    { ml: 30, label: "30ML", price: 0 },
+    { ml: 50, label: "50ML", price: 0 },
+  ];
+
+  const getAllBrands = (): string[] => {
+    const brands = new Set<string>();
+    for (const perfume of perfumes) {
+      if (perfume.brand?.trim()) {
+        brands.add(perfume.brand.trim());
+      }
+    }
+    return Array.from(brands).sort();
+  };
+
+  const ensureDefaultSizes = (perfume: PerfumeDraft): PerfumeDraft => {
+    // Ensure perfume always has the 3 default sizes
+    const sizeMap = new Map(DEFAULT_SIZES.map((s) => [s.ml, s.price]));
+
+    // Update prices from existing sizes
+    for (const size of perfume.sizes) {
+      if (sizeMap.has(size.ml)) {
+        sizeMap.set(size.ml, size.price);
+      }
+    }
+
+    return {
+      ...perfume,
+      sizes: DEFAULT_SIZES.map((s) => ({
+        ...s,
+        price: sizeMap.get(s.ml) ?? 0,
+      })),
+    };
+  };
+
   const setPerfumeField = <K extends keyof PerfumeDraft>(key: K, value: PerfumeDraft[K]) => {
     if (!selectedPerfume) {
       return;
@@ -1472,10 +1525,10 @@ export function AdminPanelClient({
     setPerfumes((current) =>
       current.map((item) =>
         item.id === selectedPerfume.id
-          ? {
+          ? ensureDefaultSizes({
               ...item,
               [key]: value,
-            }
+            })
           : item,
       ),
     );
@@ -3106,12 +3159,34 @@ export function AdminPanelClient({
                           />
                         </Field>
                         <Field label="Brand">
-                          <input
-                            className={ui.input}
-                            value={selectedPerfume.brand}
-                            onChange={(event) => setPerfumeField("brand", event.target.value)}
-                            placeholder="Maison Francis Kurkdjian"
-                          />
+                          <div className="space-y-2">
+                            <select
+                              className={cx(ui.input, "h-10")}
+                              value={selectedPerfume.brand}
+                              onChange={(event) => setPerfumeField("brand", event.target.value)}
+                            >
+                              <option value="">— Select or create brand —</option>
+                              {getAllBrands().map((brand) => (
+                                <option key={brand} value={brand}>
+                                  {brand}
+                                </option>
+                              ))}
+                            </select>
+                            {selectedPerfume.brand && !getAllBrands().includes(selectedPerfume.brand) ? (
+                              <p className="text-xs text-blue-600">
+                                ✓ New brand "{selectedPerfume.brand}" will be created
+                              </p>
+                            ) : null}
+                            {!getAllBrands().includes(selectedPerfume.brand) && selectedPerfume.brand ? null : (
+                              <input
+                                type="text"
+                                className={ui.input}
+                                placeholder="Or type to create new brand"
+                                value={selectedPerfume.brand}
+                                onChange={(event) => setPerfumeField("brand", event.target.value)}
+                              />
+                            )}
+                          </div>
                         </Field>
                         <Field label="Slug" hint="Lowercase URL key used across the site">
                           <input
@@ -3165,45 +3240,19 @@ export function AdminPanelClient({
                       <SectionLabel
                         icon={<Rows size={16} weight="bold" />}
                         title="Size matrix"
-                        detail="Maintain sale sizes and prices in a single structured list."
-                        action={
-                          <button
-                            type="button"
-                            className={ui.secondaryButton}
-                            onClick={addPerfumeSize}
-                          >
-                            <Plus size={16} weight="bold" />
-                            Add size
-                          </button>
-                        }
+                        detail="Standard sizes: 15ML, 30ML, 50ML. Edit prices only."
                       />
 
                       <div className="mt-5 space-y-3">
                         {selectedPerfume.sizes.map((size, index) => (
                           <div
                             key={`${size.label}-${index}`}
-                            className="grid gap-3 rounded-[1.2rem] border border-zinc-200 bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
+                            className="grid gap-3 rounded-[1.2rem] border border-zinc-200 bg-white p-4 md:grid-cols-[auto_1fr]"
                           >
-                            <Field label="Label">
-                              <input
-                                className={ui.input}
-                                value={size.label}
-                                onChange={(event) =>
-                                  setPerfumeSizeField(index, "label", event.target.value)
-                                }
-                                placeholder="50ML"
-                              />
-                            </Field>
-                            <Field label="ML">
-                              <input
-                                type="number"
-                                className={ui.input}
-                                value={size.ml}
-                                onChange={(event) =>
-                                  setPerfumeSizeField(index, "ml", event.target.value)
-                                }
-                                min="0"
-                              />
+                            <Field label="Size">
+                              <div className="flex items-center rounded-lg bg-zinc-100 px-3 py-2 font-mono text-sm font-semibold text-zinc-700">
+                                {size.label}
+                              </div>
                             </Field>
                             <Field label="Price">
                               <input
@@ -3214,19 +3263,9 @@ export function AdminPanelClient({
                                   setPerfumeSizeField(index, "price", event.target.value)
                                 }
                                 min="0"
+                                step="0.01"
                               />
                             </Field>
-                            <div className="flex items-end">
-                              <button
-                                type="button"
-                                className={ui.dangerButton}
-                                onClick={() => removePerfumeSize(index)}
-                                disabled={selectedPerfume.sizes.length <= 1}
-                              >
-                                <Trash size={16} weight="bold" />
-                                Remove
-                              </button>
-                            </div>
                           </div>
                         ))}
                       </div>
