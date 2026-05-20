@@ -1,8 +1,10 @@
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { unstable_cache } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
 
 import { parseCsv } from "@/lib/csv";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import type { Note, Perfume, PerfumeSize, PerfumeWithNotes } from "@/types/catalog";
 
 type NoteCsvRow = {
@@ -272,7 +274,60 @@ function normalizePerfume(value: unknown): Perfume | null {
   };
 }
 
+async function getSupabaseAdminData(): Promise<{
+  perfumes?: unknown;
+  notes?: unknown;
+  settings?: unknown;
+} | null> {
+  try {
+    const config = getSupabaseServiceConfigFromServer();
+    if (!config) {
+      return null;
+    }
+
+    const { url, serviceRoleKey } = config;
+    const supabase = createClient(url, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const { data, error } = await supabase
+      .from("admin_data")
+      .select("data")
+      .eq("id", "admin_data")
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return (data as { data: unknown }).data as {
+      perfumes?: unknown;
+      notes?: unknown;
+      settings?: unknown;
+    } | null;
+  } catch {
+    return null;
+  }
+}
+
 async function getNotesSource(): Promise<Note[]> {
+  // Try Supabase first (production)
+  const supabaseData = await getSupabaseAdminData();
+  if (supabaseData && Array.isArray(supabaseData.notes)) {
+    const parsed = (supabaseData.notes as unknown[])
+      .map(normalizeNote)
+      .filter((item): item is Note => item !== null);
+
+    if (parsed.length) {
+      console.log("[Catalog] Using", parsed.length, "notes from Supabase");
+      return parsed;
+    }
+  }
+
+  // Fallback to local files
   const adminNotes = await readJsonSafely<unknown[]>(ADMIN_NOTES_JSON_PATH);
   if (Array.isArray(adminNotes)) {
     const parsed = adminNotes
@@ -280,6 +335,7 @@ async function getNotesSource(): Promise<Note[]> {
       .filter((item): item is Note => item !== null);
 
     if (parsed.length) {
+      console.log("[Catalog] Using", parsed.length, "notes from local files");
       return parsed;
     }
   }
@@ -406,7 +462,22 @@ async function getCsvPerfumesSource(referencePerfumes: Perfume[] = []): Promise<
 }
 
 async function getPerfumesSource(): Promise<Perfume[]> {
+  // Try Supabase first (production)
+  const supabaseData = await getSupabaseAdminData();
+  if (supabaseData && Array.isArray(supabaseData.perfumes)) {
+    const parsed = (supabaseData.perfumes as unknown[])
+      .map((perfume: unknown) => normalizePerfume(perfume))
+      .filter((item): item is Perfume => item !== null);
+
+    if (parsed.length) {
+      console.log("[Catalog] Using", parsed.length, "perfumes from Supabase");
+      return parsed;
+    }
+  }
+
+  // Fallback to CSV
   const csvPerfumes = await getCsvPerfumesSource();
+  console.log("[Catalog] Using", csvPerfumes.length, "perfumes from CSV");
   return ensureUniquePerfumeIds(csvPerfumes);
 }
 
