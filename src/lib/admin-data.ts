@@ -154,12 +154,16 @@ export async function readAdminNotes() {
 
 async function getSupabaseAdminData() {
   try {
+    console.log("[Supabase Read] Checking Supabase configuration...");
     const config = getSupabaseServiceConfigFromServer();
     if (!config) {
+      console.log("[Supabase Read] ❌ No Supabase config found - returning null");
       return null;
     }
 
     const { url, serviceRoleKey } = config;
+    console.log("[Supabase Read] ✓ Config found. URL:", url.substring(0, 30) + "...");
+    console.log("[Supabase Read] ✓ Service role key exists:", !!serviceRoleKey);
 
     const supabase = createClient(url, serviceRoleKey, {
       auth: {
@@ -168,30 +172,49 @@ async function getSupabaseAdminData() {
       },
     });
 
+    console.log("[Supabase Read] 📡 Querying admin_data table for id='admin_data'...");
     const { data, error } = await supabase
       .from("admin_data")
       .select("data")
       .eq("id", "admin_data")
       .single();
 
-    if (error || !data) {
+    if (error) {
+      console.log("[Supabase Read] ❌ Query error:", error.code, error.message);
+      console.log("[Supabase Read] Error details:", JSON.stringify(error));
       return null;
     }
 
-    return (data as { data: unknown }).data;
-  } catch {
+    if (!data) {
+      console.log("[Supabase Read] ⚠️  No data found in admin_data table (empty result)");
+      return null;
+    }
+
+    console.log("[Supabase Read] ✓ Data retrieved successfully");
+    console.log("[Supabase Read] Data structure keys:", Object.keys(data));
+    const result = (data as { data: unknown }).data;
+    console.log("[Supabase Read] ✓ Extracted 'data' field. Type:", typeof result, "Has perfumes?", result && typeof result === "object" && "perfumes" in result);
+    return result;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log("[Supabase Read] ❌ Exception caught:", message);
+    console.log("[Supabase Read] Stack:", err instanceof Error ? err.stack : "no stack");
     return null;
   }
 }
 
 async function saveSupabaseAdminData(data: unknown) {
   try {
+    console.log("[Supabase Write] Checking Supabase configuration...");
     const config = getSupabaseServiceConfigFromServer();
     if (!config) {
+      console.log("[Supabase Write] ❌ No Supabase config found - cannot save");
       return false;
     }
 
     const { url, serviceRoleKey } = config;
+    console.log("[Supabase Write] ✓ Config found. URL:", url.substring(0, 30) + "...");
+    console.log("[Supabase Write] ✓ Service role key exists:", !!serviceRoleKey);
 
     const supabase = createClient(url, serviceRoleKey, {
       auth: {
@@ -200,27 +223,50 @@ async function saveSupabaseAdminData(data: unknown) {
       },
     });
 
+    const payload = {
+      id: "admin_data",
+      data,
+      updated_at: new Date().toISOString(),
+    };
+
+    console.log("[Supabase Write] 📦 Payload to save:");
+    console.log("[Supabase Write]   - id:", payload.id);
+    console.log("[Supabase Write]   - updated_at:", payload.updated_at);
+    console.log("[Supabase Write]   - data type:", typeof data);
+    if (typeof data === "object" && data !== null) {
+      console.log("[Supabase Write]   - data keys:", Object.keys(data));
+    }
+
+    console.log("[Supabase Write] 📡 Upserting into admin_data table...");
     const { error } = await supabase
       .from("admin_data")
-      .upsert(
-        {
-          id: "admin_data",
-          data,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" },
-      );
+      .upsert(payload, { onConflict: "id" });
 
-    return !error;
-  } catch {
+    if (error) {
+      console.log("[Supabase Write] ❌ Upsert error:", error.code, error.message);
+      console.log("[Supabase Write] Full error:", JSON.stringify(error));
+      return false;
+    }
+
+    console.log("[Supabase Write] ✓ Successfully upserted admin_data to Supabase");
+    return true;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log("[Supabase Write] ❌ Exception caught:", message);
+    console.log("[Supabase Write] Stack:", err instanceof Error ? err.stack : "no stack");
     return false;
   }
 }
 
 export async function getAdminData() {
+  console.log("[Admin Data] Loading admin data...");
+  
   // Try to load from Supabase first (on production)
+  console.log("[Admin Data] Attempting to load from Supabase...");
   const supabaseData = await getSupabaseAdminData();
+  
   if (supabaseData && typeof supabaseData === "object") {
+    console.log("[Admin Data] ✓ Using Supabase data");
     const supabaseObj = supabaseData as {
       perfumes?: unknown;
       notes?: unknown;
@@ -233,6 +279,10 @@ export async function getAdminData() {
 
     const [catalogPerfumes] = await Promise.all([getPerfumes()]);
 
+    console.log("[Admin Data] Loaded", supabaseObj.perfumes ? Array.isArray(supabaseObj.perfumes) ? (supabaseObj.perfumes as unknown[]).length : "?" : "0", "perfumes from Supabase");
+    console.log("[Admin Data] Loaded", notes ? notes.length : "0", "notes from Supabase");
+    console.log("[Admin Data] Loaded settings:", !!settings, "from Supabase");
+
     return {
       perfumes: catalogPerfumes,
       notes: notes ?? (await getNotes()),
@@ -241,12 +291,15 @@ export async function getAdminData() {
   }
 
   // Fallback to local files (for development or if Supabase is not configured)
+  console.log("[Admin Data] ⚠️  Supabase data not available, falling back to local files");
   const [notes, catalogPerfumes, settings] = await Promise.all([
     readAdminNotes(),
     getPerfumes(),
     readSiteSettings(),
   ]);
 
+  console.log("[Admin Data] Loaded from local files - perfumes:", catalogPerfumes.length, "notes:", notes?.length ?? 0);
+  
   return {
     perfumes: catalogPerfumes,
     notes: notes ?? (await getNotes()),
@@ -390,12 +443,19 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
 
   // Also save to Supabase for persistence on production (read-only filesystems)
   const adminData = { perfumes, notes, settings };
+  console.log("[Admin Data Save] Attempting Supabase save with:", {
+    perfumesCount: perfumes.length,
+    notesCount: notes.length,
+    hasSettings: !!settings,
+  });
+  
   const saved = await saveSupabaseAdminData(adminData);
+  
   if (saved) {
-    console.log("[Admin Data Saved to Supabase]");
+    console.log("[Admin Data Save] ✓ Data successfully saved to Supabase");
   } else {
     console.warn(
-      "[Admin Data Supabase Save Failed] changes saved locally but not persisted on production",
+      "[Admin Data Save] ⚠️  Supabase save failed - changes saved locally but NOT persisted on production",
     );
   }
 

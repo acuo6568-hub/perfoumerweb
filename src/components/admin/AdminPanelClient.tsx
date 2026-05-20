@@ -2092,6 +2092,7 @@ export function AdminPanelClient({
       return;
     }
 
+    console.log("[AdminClient] Starting save...");
     setBusy(true);
     setStatus({ tone: "neutral", message: t("statusSaving") });
 
@@ -2105,7 +2106,14 @@ export function AdminPanelClient({
       slug: normalizeSlug(item.slug) || normalizeSlug(item.name),
     }));
 
+    console.log("[AdminClient] Payload prepared:", {
+      perfumesCount: perfumesPayload.length,
+      notesCount: notesPayload.length,
+      hasSettings: !!settings,
+    });
+
     try {
+      console.log("[AdminClient] Sending PUT request to /api/admin/data...");
       const response = await fetch("/api/admin/data", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -2116,22 +2124,28 @@ export function AdminPanelClient({
         }),
       });
 
+      console.log("[AdminClient] Response received. Status:", response.status, response.statusText);
       const body = await parseResponse(response);
+      console.log("[AdminClient] Response body:", body);
 
       if (!response.ok) {
+        console.log("[AdminClient] Response not OK. Error:", body.error);
         setStatus({ tone: "error", message: String(body.error || t("saveFailed")) });
         return;
       }
 
+      console.log("[AdminClient] Save successful. Applying server data...");
       const nextPerfumes = safeParsePerfumes(JSON.stringify(body.perfumes ?? [], null, 2));
       const nextNotes = safeParseNotes(JSON.stringify(body.notes ?? [], null, 2));
       const nextSettings = normalizeSiteSettings(body.settings);
       applyServerData(nextPerfumes, nextNotes, nextSettings);
+      console.log("[AdminClient] Server data applied. Setting success status");
       setStatus({
         tone: "success",
         message: t("statusSaved"),
       });
-    } catch {
+    } catch (err) {
+      console.log("[AdminClient] Exception during save:", err);
       setStatus({
         tone: "error",
         message: t("statusSaveFailed"),

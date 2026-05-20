@@ -33,18 +33,24 @@ async function ensureAuthorized() {
 }
 
 export async function GET() {
+  console.log("[API] GET /api/admin/data - Loading admin data");
   const authError = await ensureAuthorized();
   if (authError) {
+    console.log("[API] GET - Authorization failed");
     return authError;
   }
 
+  console.log("[API] GET - Authorization passed, retrieving data");
   const data = await getAdminData();
+  console.log("[API] GET - Returning data with", (data.perfumes as unknown[]).length, "perfumes and", (data.notes as unknown[]).length, "notes");
   return Response.json(data);
 }
 
 export async function PUT(request: Request) {
+  console.log("[API] PUT /api/admin/data - Saving admin data");
   const authError = await ensureAuthorized();
   if (authError) {
+    console.log("[API] PUT - Authorization failed");
     return authError;
   }
 
@@ -52,22 +58,35 @@ export async function PUT(request: Request) {
 
   try {
     payload = (await request.json()) as SavePayload;
+    console.log("[API] PUT - Received payload with:", {
+      perfumesCount: Array.isArray(payload.perfumes) ? (payload.perfumes as unknown[]).length : "not array",
+      notesCount: Array.isArray(payload.notes) ? (payload.notes as unknown[]).length : "not array",
+      hasSettings: !!payload.settings,
+    });
   } catch {
+    console.log("[API] PUT - Failed to parse JSON");
     return Response.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
 
   try {
+    console.log("[API] PUT - Calling saveAdminData...");
     const data = await saveAdminData({
       perfumes: payload.perfumes,
       notes: payload.notes,
       settings: payload.settings,
     });
 
+    console.log("[API] PUT - saveAdminData completed successfully");
+    console.log("[API] PUT - Revalidating cache at path '/'...");
     revalidatePath("/", "layout");
+    console.log("[API] PUT - Cache revalidated");
 
+    console.log("[API] PUT - Returning success response");
     return Response.json({ ok: true, ...data });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save admin data.";
+    console.log("[API] PUT - Error:", message);
+    console.log("[API] PUT - Full error:", error);
     return Response.json({ error: message }, { status: 400 });
   }
 }
