@@ -152,6 +152,7 @@ export const translations = {
     productCard: {
       starting: "Başlayan",
       quote: "Qiymət sorğu ilə",
+      variantBadge: "{count} versiya",
     },
     catalogPage: {
       title: "Hər Zaman Sevilən Məhsullar",
@@ -174,6 +175,7 @@ export const translations = {
       searchSuggestionsTitle: "Ağıllı təkliflər",
       searchSuggestionBrand: "Brend",
       searchSuggestionPerfume: "Ətir",
+      variantCountLabel: "{count} versiya",
       brand: "Brend",
       allBrands: "Bütün Brendlər",
       sort: "Sıralama",
@@ -216,6 +218,9 @@ export const translations = {
       choose: "Seçiminizi müəyyən edin",
       premiumSize: "Premium ölçü",
       readyPrice: "Hazır qiymət",
+      variants: "Versiyalar",
+      variantsAvailable: "{count} versiya mövcuddur",
+      currentVariant: "Cari",
       topNotes: "Üst notları",
       heartNotes: "Ürək notları",
       baseNotes: "Baza notları",
@@ -344,6 +349,7 @@ export const translations = {
     productCard: {
       starting: "Starting",
       quote: "Price on request",
+      variantBadge: "{count} variants",
     },
     catalogPage: {
       title: "Always Loved Products",
@@ -365,6 +371,7 @@ export const translations = {
       searchSuggestionsTitle: "Smart suggestions",
       searchSuggestionBrand: "Brand",
       searchSuggestionPerfume: "Perfume",
+      variantCountLabel: "{count} variants",
       brand: "Brand",
       allBrands: "All Brands",
       sort: "Sort",
@@ -407,6 +414,9 @@ export const translations = {
       choose: "Choose your format",
       premiumSize: "Premium size",
       readyPrice: "Current price",
+      variants: "Variants",
+      variantsAvailable: "{count} variants available",
+      currentVariant: "Current",
       topNotes: "Top notes",
       heartNotes: "Heart notes",
       baseNotes: "Base notes",
@@ -535,6 +545,7 @@ export const translations = {
     productCard: {
       starting: "от",
       quote: "Цена по запросу",
+      variantBadge: "{count} вариантов",
     },
     catalogPage: {
       title: "Всегда любимые товары",
@@ -556,6 +567,7 @@ export const translations = {
       searchSuggestionsTitle: "Умные подсказки",
       searchSuggestionBrand: "Бренд",
       searchSuggestionPerfume: "Аромат",
+      variantCountLabel: "{count} вариантов",
       brand: "Бренд",
       allBrands: "Все бренды",
       sort: "Сортировка",
@@ -598,6 +610,9 @@ export const translations = {
       choose: "Выберите формат",
       premiumSize: "Премиум объем",
       readyPrice: "Текущая цена",
+      variants: "Варианты",
+      variantsAvailable: "Доступно {count} вариантов",
+      currentVariant: "Текущий",
       topNotes: "Верхние ноты",
       heartNotes: "Ноты сердца",
       baseNotes: "Базовые ноты",

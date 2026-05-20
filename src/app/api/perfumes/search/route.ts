@@ -6,6 +6,7 @@ import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 type SearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
 
 type SearchProduct = {
+  id: string;
   slug: string;
   name: string;
   brand: string;
@@ -13,6 +14,7 @@ type SearchProduct = {
   price: number | null;
   gender: string;
   inStock: boolean;
+  variantCount: number;
 };
 
 type SearchBrand = {
@@ -111,6 +113,10 @@ export async function GET(request: Request) {
   const limit = parseLimit(url.searchParams.get("limit"));
 
   const perfumes = await getPerfumes();
+  const variantCountBySlug = perfumes.reduce((map, perfume) => {
+    map.set(perfume.slug, (map.get(perfume.slug) ?? 0) + 1);
+    return map;
+  }, new Map<string, number>());
 
   const ranked = perfumes
     .filter((perfume) => matchesTabGender(perfume.gender, tab))
@@ -142,34 +148,8 @@ export async function GET(request: Request) {
       return left.perfume.name.localeCompare(right.perfume.name);
     });
 
-  const dedupedBySlug = Array.from(
-    ranked
-      .reduce((map, entry) => {
-        const existing = map.get(entry.perfume.slug);
-        if (!existing) {
-          map.set(entry.perfume.slug, entry);
-          return map;
-        }
-
-        if (entry.score > existing.score) {
-          map.set(entry.perfume.slug, entry);
-          return map;
-        }
-
-        if (entry.score === existing.score) {
-          const existingPrice = getStartingPrice(existing.perfume.sizes) ?? Number.POSITIVE_INFINITY;
-          const nextPrice = getStartingPrice(entry.perfume.sizes) ?? Number.POSITIVE_INFINITY;
-          if (nextPrice < existingPrice) {
-            map.set(entry.perfume.slug, entry);
-          }
-        }
-
-        return map;
-      }, new Map<string, (typeof ranked)[number]>())
-      .values(),
-  );
-
-  const items: SearchProduct[] = dedupedBySlug.slice(0, limit).map(({ perfume }) => ({
+  const items: SearchProduct[] = ranked.slice(0, limit).map(({ perfume }) => ({
+    id: perfume.id,
     slug: perfume.slug,
     name: perfume.name,
     brand: perfume.brand,
@@ -177,6 +157,7 @@ export async function GET(request: Request) {
     price: getStartingPrice(perfume.sizes),
     gender: perfume.gender,
     inStock: perfume.inStock,
+    variantCount: variantCountBySlug.get(perfume.slug) ?? 1,
   }));
 
   const brandCountMap = new Map<string, number>();

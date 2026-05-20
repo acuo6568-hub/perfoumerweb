@@ -20,6 +20,7 @@ import { PerfumeHeroCover } from "@/components/perfume/PerfumeHeroCover";
 import { PerfumePurchasePanel } from "@/components/perfume/PerfumePurchasePanel";
 import { PerfumeShareButton } from "@/components/perfume/PerfumeShareButton";
 import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes, getSimilarPerfumes } from "@/lib/catalog";
+import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/i18n";
@@ -51,6 +52,10 @@ export const dynamic = "force-dynamic";
 
 const getVariantId = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
+
+function getVariantStartingPrice(perfume: { sizes: { price: number }[] }) {
+  return perfume.sizes[0]?.price ?? Number.POSITIVE_INFINITY;
+}
 
 function toAbsoluteImageUrl(input: string) {
   if (!input) return absoluteUrl("/perfoumerlogo.png");
@@ -176,6 +181,7 @@ export default async function PerfumeDetailPage({
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const variantId = getVariantId(resolvedSearchParams?.v);
+  const allPerfumes = await getPerfumes();
   const [perfume, similarPerfumes] = await Promise.all([
     getPerfumeBySlug(slug, variantId),
     getSimilarPerfumes(slug, variantId, 3),
@@ -205,6 +211,17 @@ export default async function PerfumeDetailPage({
   const lowestPrice = perfume.sizes.length ? Math.min(...perfume.sizes.map((size) => size.price)) : undefined;
   const highestPrice = perfume.sizes.length ? Math.max(...perfume.sizes.map((size) => size.price)) : undefined;
   const primaryImage = toAbsoluteImageUrl(perfume.image);
+  const variants = allPerfumes
+    .filter((item) => item.slug === perfume.slug)
+    .sort((left, right) => {
+      const priceDiff = getVariantStartingPrice(left) - getVariantStartingPrice(right);
+      if (priceDiff !== 0) {
+        return priceDiff;
+      }
+
+      return left.id.localeCompare(right.id);
+    });
+  const variantCount = variants.length;
   const noteSummary = [
     perfume.notes.top.map((note) => note.name).join(", "),
     perfume.notes.heart.map((note) => note.name).join(", "),
@@ -383,9 +400,53 @@ export default async function PerfumeDetailPage({
             </p>
 
             <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-              <h1 className="max-w-3xl text-[3.8rem] leading-[0.94] tracking-[-0.04em] text-zinc-800 md:text-[5.15rem]">
-                {perfume.name}
-              </h1>
+              <div className="max-w-3xl space-y-3">
+                <h1 className="text-[3.8rem] leading-[0.94] tracking-[-0.04em] text-zinc-800 md:text-[5.15rem]">
+                  {perfume.name}
+                </h1>
+                {variantCount > 1 ? (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-[0.62rem] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+                        {t.detail.variants}
+                      </span>
+                      <span className="text-sm text-zinc-500">
+                        {t.detail.variantsAvailable.replace("{count}", String(variantCount))}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {variants.map((variant) => {
+                        const isActive = variant.id === perfume.id;
+                        const variantPrice = getVariantStartingPrice(variant);
+
+                        return (
+                          <Link
+                            key={variant.id}
+                            href={{
+                              pathname: `/perfumes/${variant.slug}`,
+                              query: { v: variant.id },
+                            }}
+                            aria-current={isActive ? "page" : undefined}
+                            className={[
+                              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-300",
+                              isActive
+                                ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_10px_22px_rgba(24,24,24,0.14)]"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900",
+                            ].join(" ")}
+                          >
+                            <span>{formatCurrencyFromAzn(variantPrice, "AZN", locale, { maximumFractionDigits: 0 })}</span>
+                            {isActive ? (
+                              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.12em] uppercase">
+                                {t.detail.currentVariant}
+                              </span>
+                            ) : null}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
 
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start">
                 <PerfumeWishlistButton

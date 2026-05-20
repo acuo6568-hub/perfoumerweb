@@ -48,6 +48,7 @@ type HeaderProps = {
 type HeaderSearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
 
 type HeaderSearchResult = {
+  id: string;
   slug: string;
   name: string;
   brand: string;
@@ -55,6 +56,7 @@ type HeaderSearchResult = {
   price: number | null;
   gender: string;
   inStock: boolean;
+  variantCount?: number;
 };
 
 type HeaderSearchBrandResult = {
@@ -149,6 +151,8 @@ export function Header({ floating = false, locale }: HeaderProps) {
       searchBrandsTitle: "Brendlər",
       searchCategoriesTitle: "Kateqoriyalar",
       searchEmpty: "Axtarışa uyğun nəticə tapılmadı.",
+      searchVariantCount: "{count} вариантов",
+      searchVariantCount: "{count} versiya",
       searchStartHint: "Ətir və ya kateqoriya tapmaq üçün axtarışa yazın.",
       searchTabs: {
         all: "Hamısı",
@@ -208,6 +212,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       searchBrandsTitle: "Brands",
       searchCategoriesTitle: "Categories",
       searchEmpty: "No matching results found.",
+      searchVariantCount: "{count} variants",
       searchStartHint: "Type to find perfumes or categories.",
       searchTabs: {
         all: "All",
@@ -839,8 +844,9 @@ export function Header({ floating = false, locale }: HeaderProps) {
   }, []);
 
   const openSearchProduct = useCallback(
-    (slug: string) => {
-      router.push(toLocalePath(`/perfumes/${slug}`, locale));
+    (slug: string, variantId?: string) => {
+      const variantQuery = variantId ? `?v=${encodeURIComponent(variantId)}` : "";
+      router.push(toLocalePath(`/perfumes/${slug}${variantQuery}`, locale));
       closeSearchDrawer();
     },
     [closeSearchDrawer, locale, router],
@@ -1697,11 +1703,11 @@ export function Header({ floating = false, locale }: HeaderProps) {
                   {copy[locale].searchProductsTitle}
                 </p>
                 <div className="space-y-0">
-                  {searchResults.map((item, index) => (
+                  {searchResults.map((item) => (
                     <button
-                      key={`${item.slug}-${index}`}
+                      key={item.id}
                       type="button"
-                      onClick={() => openSearchProduct(item.slug)}
+                      onClick={() => openSearchProduct(item.slug, item.id)}
                       className="flex w-full items-center gap-3 border-b border-zinc-200/80 py-3 text-left transition-colors duration-200 lg:rounded-md lg:px-2 lg:hover:border-zinc-300/80 lg:hover:bg-zinc-200/70"
                     >
                       {item.image.trim() && !brokenSearchImages[item.slug] ? (
@@ -1731,6 +1737,11 @@ export function Header({ floating = false, locale }: HeaderProps) {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-base font-medium text-zinc-900">{item.name}</span>
                         <span className="mt-0.5 block truncate text-[0.95rem] text-zinc-600">{item.brand}</span>
+                        {item.variantCount && item.variantCount > 1 ? (
+                          <span className="mt-1 inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.14em] text-zinc-500 uppercase">
+                            {copy[locale].searchVariantCount.replace("{count}", String(item.variantCount))}
+                          </span>
+                        ) : null}
                         <span className="mt-1.5 block text-[0.95rem] font-semibold text-zinc-900">
                           {item.price !== null ? formatCurrencyFromAzn(item.price, selectedCurrency, locale) : "-"}
                         </span>

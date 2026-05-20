@@ -15,6 +15,7 @@ type ProductCardProps = {
   perfume: Perfume;
   locale?: Locale;
   sourceUrlOverride?: string;
+  variantCount?: number;
 };
 
 type ShadowProfile = {
@@ -47,7 +48,7 @@ function getShadowProfile(slug: string): ShadowProfile {
   };
 }
 
-export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: ProductCardProps) {
+export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variantCount }: ProductCardProps) {
   const siteSettings = useSiteSettings();
   const startingPrice = perfume.sizes[0]?.price;
   const { selectedCurrency } = useCurrency();
@@ -109,6 +110,11 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride }: Produ
       className="product-card group relative block rounded-[1.65rem] bg-white p-2.5 shadow-sm ring-1 ring-zinc-200 sm:rounded-3xl sm:p-4"
     >
       <div className="product-media relative overflow-hidden rounded-[1.2rem] sm:rounded-2xl">
+        {variantCount && variantCount > 1 ? (
+          <div className="absolute left-2 top-2 z-20 rounded-full bg-white/92 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.14em] text-zinc-700 uppercase shadow-sm backdrop-blur">
+            {t.productCard.variantBadge.replace("{count}", String(variantCount))}
+          </div>
+        ) : null}
         <div className="product-stage-gradient pointer-events-none absolute inset-x-0 bottom-0 h-16 sm:h-20" />
         <div
           className={[

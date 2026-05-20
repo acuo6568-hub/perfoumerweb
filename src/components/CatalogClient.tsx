@@ -66,6 +66,7 @@ type SearchSuggestion = {
   value: string;
   subLabel?: string;
   score: number;
+  variantCount?: number;
 };
 
 type SmartSearchIntent = {
@@ -561,6 +562,14 @@ export function CatalogClient({
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
   }, [sourcePerfumes]);
 
+  const variantCountBySlug = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const perfume of sourcePerfumes) {
+      counts.set(perfume.slug, (counts.get(perfume.slug) ?? 0) + 1);
+    }
+    return counts;
+  }, [sourcePerfumes]);
+
   const searchSuggestions = useMemo(() => {
     const normalizedQuery = normalizeSearchText(suggestionQuery);
     if (!normalizedQuery || normalizedQuery.length < 2) {
@@ -617,14 +626,16 @@ export function CatalogClient({
         if (brandStartsWith) score += 110;
         else if (brandIncludes) score += 70;
         if (perfume.inStock) score += 10;
+        const variantCount = variantCountBySlug.get(perfume.slug) ?? 1;
 
         return {
           id: `perfume-${perfume.id}`,
           label: perfume.name,
           type: "perfume" as const,
           value: perfume.name,
-          subLabel: perfume.brand,
+          subLabel: variantCount > 1 ? `${perfume.brand} · ${formatMessage(t.catalog.variantCountLabel, { count: variantCount })}` : perfume.brand,
           score,
+          variantCount,
         };
       })
       .filter(isNonNull)
@@ -1315,7 +1326,12 @@ export function CatalogClient({
             className="catalog-card-reveal"
             style={{ animationDelay: `${Math.min(index, 12) * 42}ms` }}
           >
-            <ProductCard perfume={perfume} locale={locale} sourceUrlOverride={sourceCatalogUrl} />
+            <ProductCard
+              perfume={perfume}
+              locale={locale}
+              sourceUrlOverride={sourceCatalogUrl}
+              variantCount={variantCountBySlug.get(perfume.slug) ?? 1}
+            />
           </div>
         ))}
       </section>
