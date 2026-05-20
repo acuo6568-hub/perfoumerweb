@@ -834,6 +834,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   const openSearchDrawer = useCallback(() => {
     setIsMenuOpen(false);
     setIsCartDrawerOpen(false);
+    setSearchTab("all");
     setIsSearchDrawerOpen(true);
   }, []);
 

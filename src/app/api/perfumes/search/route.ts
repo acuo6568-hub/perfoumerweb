@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getPerfumes } from "@/lib/catalog";
+import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 
 type SearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
 
@@ -18,16 +19,6 @@ type SearchBrand = {
   brand: string;
   count: number;
 };
-
-function normalize(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function parseTab(value: string | null): SearchTab {
   if (value === "women" || value === "men" || value === "unisex" || value === "brands" || value === "home") {
@@ -69,17 +60,40 @@ function matchesTabGender(genderRaw: string, tab: SearchTab): boolean {
   return /unisex/iu.test(gender);
 }
 
-function scoreMatch(query: string, pool: string, inStock: boolean): number {
+function toSearchPool(perfume: {
+  brand: string;
+  name: string;
+  slug: string;
+  noteSlugs?: { top?: string[]; heart?: string[]; base?: string[] };
+}) {
+  return normalizeSearchText(
+    [
+      perfume.brand,
+      perfume.name,
+      perfume.slug,
+      ...(perfume.noteSlugs?.top ?? []),
+      ...(perfume.noteSlugs?.heart ?? []),
+      ...(perfume.noteSlugs?.base ?? []),
+    ].join(" "),
+  );
+}
+
+function scoreMatch(query: string, pool: string, name: string, brand: string, inStock: boolean): number {
   if (!query) {
     return inStock ? 12 : 4;
   }
 
   let score = 0;
-  if (pool === query) score += 800;
-  if (pool.startsWith(query)) score += 520;
-  if (pool.includes(query)) score += 260;
+  const normalizedName = normalizeSearchText(name);
+  const normalizedBrand = normalizeSearchText(brand);
+  const brandThenName = `${normalizedBrand} ${normalizedName}`.trim();
+  const nameThenBrand = `${normalizedName} ${normalizedBrand}`.trim();
 
-  const tokens = query.split(" ").filter(Boolean);
+  if (pool === query || normalizedName === query || brandThenName === query || nameThenBrand === query) score += 800;
+  else if (pool.startsWith(query) || normalizedName.startsWith(query) || normalizedBrand.startsWith(query)) score += 520;
+  else if (pool.includes(query) || normalizedName.includes(query) || normalizedBrand.includes(query)) score += 260;
+
+  const tokens = tokenizeSearch(query);
   const tokenScore = tokens.reduce((sum, token) => (pool.includes(token) ? sum + 90 : sum), 0);
   score += tokenScore;
 
@@ -92,7 +106,7 @@ function scoreMatch(query: string, pool: string, inStock: boolean): number {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const q = normalize(url.searchParams.get("q") || "");
+  const q = normalizeSearchText(url.searchParams.get("q") || "");
   const tab = parseTab(url.searchParams.get("tab"));
   const limit = parseLimit(url.searchParams.get("limit"));
 
@@ -101,14 +115,21 @@ export async function GET(request: Request) {
   const ranked = perfumes
     .filter((perfume) => matchesTabGender(perfume.gender, tab))
     .map((perfume) => {
-      const pool = normalize(`${perfume.brand} ${perfume.name} ${perfume.slug}`);
+      const pool = toSearchPool(perfume);
       return {
         perfume,
         pool,
-        score: scoreMatch(q, pool, perfume.inStock),
+        score: scoreMatch(q, pool, perfume.name, perfume.brand, perfume.inStock),
       };
     })
-    .filter((item) => (q ? item.score >= 180 : true))
+    .filter((item) => {
+      if (!q) {
+        return true;
+      }
+
+      const tokens = tokenizeSearch(q);
+      return item.pool.includes(q) || tokens.every((token) => item.pool.includes(token));
+    })
     .sort((left, right) => {
       if (left.score !== right.score) {
         return right.score - left.score;
