@@ -8,11 +8,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { resolveDiscountedSizePrice } from "@/lib/discounts";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
-import type { PerfumeSize } from "@/types/catalog";
+import type { PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 
 type PerfumePurchasePanelProps = {
   locale: Locale;
@@ -20,6 +21,7 @@ type PerfumePurchasePanelProps = {
   perfumeName: string;
   variantId?: string | null;
   sizes: PerfumeSize[];
+  discount?: PerfumeDiscount | null;
   supabase: SupabasePublicConfig | null;
 };
 
@@ -89,6 +91,7 @@ export function PerfumePurchasePanel({
   perfumeName,
   variantId,
   sizes,
+  discount,
   supabase: supabaseConfig,
 }: PerfumePurchasePanelProps) {
   const siteSettings = useSiteSettings();
@@ -150,6 +153,10 @@ export function PerfumePurchasePanel({
     () => sizes.find((size) => size.ml === normalizedSelectedMl) ?? null,
     [normalizedSelectedMl, sizes],
   );
+  const selectedSizePricing = useMemo(
+    () => (selectedSize ? resolveDiscountedSizePrice(selectedSize, discount) : null),
+    [discount, selectedSize],
+  );
   const maxMl = useMemo(
     () => Math.max(...sizes.map((size) => size.ml), 1),
     [sizes],
@@ -177,10 +184,12 @@ export function PerfumePurchasePanel({
       return null;
     }
 
-    return sizes.reduce((best, candidate) =>
-      candidate.price / candidate.ml < best.price / best.ml ? candidate : best,
-    ).ml;
-  }, [sizes]);
+    return sizes.reduce((best, candidate) => {
+      const bestPrice = resolveDiscountedSizePrice(best, discount).finalPrice / best.ml;
+      const candidatePrice = resolveDiscountedSizePrice(candidate, discount).finalPrice / candidate.ml;
+      return candidatePrice < bestPrice ? candidate : best;
+    }).ml;
+  }, [discount, sizes]);
 
   useEffect(() => {
     if (!message) {
@@ -249,7 +258,7 @@ export function PerfumePurchasePanel({
             .from("cart_items")
             .update({
               quantity: nextQuantity,
-              unit_price: selectedSize.price,
+              unit_price: selectedSizePricing?.finalPrice ?? selectedSize.price,
             })
             .eq("id", primaryRow.id)
             .eq("user_id", session.user.id)
@@ -258,7 +267,7 @@ export function PerfumePurchasePanel({
             perfume_slug: perfumeSlug,
             size_ml: selectedSize.ml,
             quantity: 1,
-            unit_price: selectedSize.price,
+            unit_price: selectedSizePricing?.finalPrice ?? selectedSize.price,
           });
 
       if (result.error) {
@@ -392,7 +401,24 @@ export function PerfumePurchasePanel({
 
                   <div className="relative mt-1.5 md:mt-2.5">
                     <p className="text-[1.18rem] leading-none tracking-[-0.05em] font-[family-name:var(--font-playfair)] md:text-[1.74rem]">
-                      {formatCurrencyFromAzn(size.price, selectedCurrency, locale)}
+                      {(() => {
+                        const pricing = resolveDiscountedSizePrice(size, discount);
+
+                        if (pricing.finalPrice < pricing.originalPrice) {
+                          return (
+                            <span className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
+                              <span className={isSelected ? "text-zinc-300 line-through" : "text-zinc-400 line-through"}>
+                                {formatCurrencyFromAzn(pricing.originalPrice, selectedCurrency, locale)}
+                              </span>
+                              <span className={isSelected ? "text-zinc-100" : "text-zinc-900"}>
+                                {formatCurrencyFromAzn(pricing.finalPrice, selectedCurrency, locale)}
+                              </span>
+                            </span>
+                          );
+                        }
+
+                        return formatCurrencyFromAzn(size.price, selectedCurrency, locale);
+                      })()}
                     </p>
                     <p className={["mt-1 hidden text-[0.68rem] md:block", isSelected ? "text-zinc-400" : "text-zinc-500"].join(" ")}>
                       {copy.perMl}: {formatCurrencyFromAzn(perMlPrice, selectedCurrency, locale)}
@@ -432,7 +458,14 @@ export function PerfumePurchasePanel({
             disabled={isSubmitting}
             className="inline-flex min-h-13 items-center justify-center rounded-full border border-zinc-300 bg-white px-6 text-lg font-semibold text-zinc-900 shadow-[0_8px_22px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-50 hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)] active:translate-y-0 active:bg-zinc-100 active:shadow-[0_7px_16px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:border-zinc-300 disabled:hover:bg-white disabled:hover:text-zinc-900 disabled:hover:shadow-[0_8px_22px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)]"
           >
-            {isSubmitting ? copy.adding : copy.addToCart}
+            <span className="inline-flex items-center gap-2">
+              <span>{isSubmitting ? copy.adding : copy.addToCart}</span>
+              {selectedSizePricing && selectedSizePricing.finalPrice < selectedSizePricing.originalPrice ? (
+                <span className="discount-badge discount-badge--soft inline-flex rounded-full bg-rose-500/12 px-2 py-0.5 text-[0.58rem] font-semibold tracking-[0.12em] text-rose-600 uppercase">
+                  -{Math.round(selectedSizePricing.savingsPercent)}%
+                </span>
+              ) : null}
+            </span>
           </button>
 
           <a

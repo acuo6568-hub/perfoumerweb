@@ -24,6 +24,11 @@ import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes, getSimilarPerfumes }
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/i18n";
+import {
+  formatDiscountDeadlineLabel,
+  resolveDiscountedSizePrice,
+  resolvePerfumeCardPrice,
+} from "@/lib/discounts";
 import { BLOG_ARTICLES, CORE_CLUSTER_PAGES, TRUST_PAGES } from "@/lib/seo-growth";
 import {
   SITE_URL,
@@ -208,8 +213,14 @@ export default async function PerfumeDetailPage({
     locale,
   );
   const canonicalUrl = absoluteUrlForLocale(`/perfumes/${perfume.slug}`, locale);
-  const lowestPrice = perfume.sizes.length ? Math.min(...perfume.sizes.map((size) => size.price)) : undefined;
-  const highestPrice = perfume.sizes.length ? Math.max(...perfume.sizes.map((size) => size.price)) : undefined;
+  const discountedPrices = perfume.sizes.map((size) => resolveDiscountedSizePrice(size, perfume.discount).finalPrice);
+  const lowestPrice = discountedPrices.length ? Math.min(...discountedPrices) : undefined;
+  const highestPrice = discountedPrices.length ? Math.max(...discountedPrices) : undefined;
+  const perfumeOfferPricing = resolvePerfumeCardPrice(perfume);
+  const detailDiscountPercent = perfumeOfferPricing.bestSavingsPercent !== null
+    ? Math.round(perfumeOfferPricing.bestSavingsPercent)
+    : null;
+  const detailDiscountDeadlineLabel = formatDiscountDeadlineLabel(perfume.discount, locale);
   const primaryImage = toAbsoluteImageUrl(perfume.image);
   const variants = allPerfumes
     .filter((item) => item.slug === perfume.slug)
@@ -404,12 +415,24 @@ export default async function PerfumeDetailPage({
                 <h1 className="text-[3.8rem] leading-[0.94] tracking-[-0.04em] text-zinc-800 md:text-[5.15rem]">
                   {perfume.name}
                 </h1>
+                {detailDiscountPercent ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="discount-badge inline-flex items-center rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-white uppercase shadow-[0_14px_30px_rgba(225,29,72,0.28)]">
+                      {t.productCard.discountBadge.replace("{percent}", String(detailDiscountPercent))}
+                    </div>
+                    {detailDiscountDeadlineLabel ? (
+                      <div className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
+                        {detailDiscountDeadlineLabel}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <PerfumeVariantStrip
                   locale={locale}
                   variants={variants.map((variant) => ({
                     id: variant.id,
                     slug: variant.slug,
-                    price: getVariantStartingPrice(variant),
+                    price: resolvePerfumeCardPrice(variant).finalPrice ?? getVariantStartingPrice(variant),
                   }))}
                   currentVariantId={perfume.id}
                   variantsLabel={t.detail.variants}
@@ -445,6 +468,7 @@ export default async function PerfumeDetailPage({
               perfumeName={`${perfume.brand} ${perfume.name}`}
               variantId={variantId}
               sizes={perfume.sizes}
+              discount={perfume.discount}
               supabase={supabaseConfig}
             />
 

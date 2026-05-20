@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolvePerfumeCardPrice } from "@/lib/discounts";
 import { getPerfumes } from "@/lib/catalog";
 import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 
@@ -12,6 +13,9 @@ type SearchProduct = {
   brand: string;
   image: string;
   price: number | null;
+  originalPrice: number | null;
+  discountedPrice: number | null;
+  discountPercent: number | null;
   gender: string;
   inStock: boolean;
   variantCount: number;
@@ -148,17 +152,24 @@ export async function GET(request: Request) {
       return left.perfume.name.localeCompare(right.perfume.name);
     });
 
-  const items: SearchProduct[] = ranked.slice(0, limit).map(({ perfume }) => ({
-    id: perfume.id,
-    slug: perfume.slug,
-    name: perfume.name,
-    brand: perfume.brand,
-    image: perfume.image,
-    price: getStartingPrice(perfume.sizes),
-    gender: perfume.gender,
-    inStock: perfume.inStock,
-    variantCount: variantCountBySlug.get(perfume.slug) ?? 1,
-  }));
+  const items: SearchProduct[] = ranked.slice(0, limit).map(({ perfume }) => {
+    const resolved = resolvePerfumeCardPrice(perfume);
+
+    return {
+      id: perfume.id,
+      slug: perfume.slug,
+      name: perfume.name,
+      brand: perfume.brand,
+      image: perfume.image,
+      price: getStartingPrice(perfume.sizes),
+      originalPrice: resolved.originalPrice,
+      discountedPrice: resolved.hasVisibleSavings ? resolved.finalPrice : null,
+      discountPercent: resolved.hasActiveDiscount ? resolved.bestSavingsPercent : null,
+      gender: perfume.gender,
+      inStock: perfume.inStock,
+      variantCount: variantCountBySlug.get(perfume.slug) ?? 1,
+    };
+  });
 
   const brandCountMap = new Map<string, number>();
   for (const { perfume } of ranked.slice(0, 120)) {

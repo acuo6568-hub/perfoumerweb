@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import {
   ADMIN_SESSION_COOKIE,
@@ -77,7 +77,10 @@ export async function PUT(request: Request) {
     });
 
     console.log("[API] PUT - saveAdminData completed successfully");
-    console.log("[API] PUT - Revalidating cache at path '/'...");
+    console.log("[API] PUT - Revalidating catalog cache...");
+    revalidateTag("catalog", { expire: 0 });
+    revalidateTag("perfumes", { expire: 0 });
+    revalidateTag("notes", { expire: 0 });
     revalidatePath("/", "layout");
     console.log("[API] PUT - Cache revalidated");
 

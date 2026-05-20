@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import {
   ADMIN_SESSION_COOKIE,
@@ -25,6 +25,13 @@ async function ensureAuthorized() {
   }
 
   return null;
+}
+
+function revalidateCatalog() {
+  revalidateTag("catalog", { expire: 0 });
+  revalidateTag("perfumes", { expire: 0 });
+  revalidateTag("notes", { expire: 0 });
+  revalidatePath("/", "layout");
 }
 
 export async function POST(request: Request) {
@@ -61,7 +68,7 @@ export async function POST(request: Request) {
         settings: current.settings,
       });
 
-      revalidatePath("/", "layout");
+      revalidateCatalog();
       return Response.json({ ok: true, ...saved });
     }
 
@@ -73,7 +80,7 @@ export async function POST(request: Request) {
       settings: current.settings,
     });
 
-    revalidatePath("/", "layout");
+    revalidateCatalog();
     return Response.json({ ok: true, ...saved });
   } catch (error) {
     const message = error instanceof Error ? error.message : "CSV import failed.";

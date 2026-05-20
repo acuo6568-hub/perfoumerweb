@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { parseCsv } from "@/lib/csv";
 import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
+import { normalizePerfumeDiscount } from "@/lib/discounts";
 import type { Note, Perfume, PerfumeSize, PerfumeWithNotes } from "@/types/catalog";
 
 type NoteCsvRow = {
@@ -203,6 +204,7 @@ function normalizePerfume(value: unknown): Perfume | null {
     inStock?: unknown;
     externalLink?: unknown;
     sizes?: unknown;
+    discount?: unknown;
     noteSlugs?: {
       top?: unknown;
       heart?: unknown;
@@ -266,6 +268,7 @@ function normalizePerfume(value: unknown): Perfume | null {
     inStock: Boolean(perfume.inStock),
     externalLink: typeof perfume.externalLink === "string" ? perfume.externalLink.trim() : "",
     sizes,
+    discount: normalizePerfumeDiscount(perfume.discount) ?? undefined,
     noteSlugs: {
       top: normalizeSlugArray(perfume.noteSlugs?.top),
       heart: normalizeSlugArray(perfume.noteSlugs?.heart),
@@ -481,7 +484,7 @@ async function getPerfumesSource(): Promise<Perfume[]> {
   return ensureUniquePerfumeIds(csvPerfumes);
 }
 
-const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v4"], {
+const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v5"], {
   revalidate: 30,
   tags: ["catalog", "perfumes"],
 });

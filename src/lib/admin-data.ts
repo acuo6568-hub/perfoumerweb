@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { perfumesToCsv } from "@/lib/admin-csv";
 import { getNotes, getPerfumes } from "@/lib/catalog";
+import { normalizePerfumeDiscount } from "@/lib/discounts";
 import { normalizeSiteSettings, readSiteSettings, SITE_SETTINGS_PATH, type SiteSettings } from "@/lib/site-settings";
 import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
@@ -78,6 +79,7 @@ function normalizePerfume(value: unknown): Perfume | null {
     inStock?: unknown;
     externalLink?: unknown;
     sizes?: unknown;
+    discount?: unknown;
     noteSlugs?: {
       top?: unknown;
       heart?: unknown;
@@ -106,6 +108,7 @@ function normalizePerfume(value: unknown): Perfume | null {
     inStock: Boolean(perfume.inStock),
     externalLink: normalizeString(perfume.externalLink),
     sizes: sizes.sort((a, b) => a.ml - b.ml),
+    discount: normalizePerfumeDiscount(perfume.discount) ?? undefined,
     noteSlugs: {
       top: normalizeStringArray(perfume.noteSlugs?.top),
       heart: normalizeStringArray(perfume.noteSlugs?.heart),
@@ -356,7 +359,7 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
   const writeOperations = [
     (async () => {
       try {
-        await writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8");
+        await writeFile(ADMIN_PERFUMES_PATH, `${JSON.stringify(perfumes, null, 2)}\n`, "utf-8");
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         const isReadOnly =
@@ -365,7 +368,7 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
           const altDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
           const altPath = path.join(altDir, "perfumes.json");
           try {
-            await writeFile(altPath, "[]\n", "utf-8");
+            await writeFile(altPath, `${JSON.stringify(perfumes, null, 2)}\n`, "utf-8");
             console.warn(
               `[Perfumes JSON Write Fallback] original path not writable, saved to ${altPath}`,
             );

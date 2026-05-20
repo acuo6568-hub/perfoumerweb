@@ -153,6 +153,13 @@ export const translations = {
       starting: "Başlayan",
       quote: "Qiymət sorğu ilə",
       variantBadge: "{count} versiya",
+      discountBadge: "{percent}% endirim",
+    },
+    offersPage: {
+      eyebrow: "Təkliflər",
+      title: "Endirimdə olan ətirlər",
+      description: "Aktiv endirimli bütün ətirləri bir yerdə görün və ən yaxşı təklifləri seçin.",
+      empty: "Hazırda aktiv endirim yoxdur.",
     },
     catalogPage: {
       title: "Hər Zaman Sevilən Məhsullar",
@@ -356,6 +363,13 @@ export const translations = {
       starting: "Starting",
       quote: "Price on request",
       variantBadge: "{count} variants",
+      discountBadge: "{percent}% off",
+    },
+    offersPage: {
+      eyebrow: "Offers",
+      title: "Discounted perfumes",
+      description: "See all perfumes with active discounts in one place and choose the best deal.",
+      empty: "There are no active offers right now.",
     },
     catalogPage: {
       title: "Always Loved Products",
@@ -558,6 +572,13 @@ export const translations = {
       starting: "от",
       quote: "Цена по запросу",
       variantBadge: "{count} вариантов",
+      discountBadge: "Скидка {percent}%",
+    },
+    offersPage: {
+      eyebrow: "Предложения",
+      title: "Ароматы со скидкой",
+      description: "Все активные скидки собраны на одной странице, чтобы было проще выбрать лучшее предложение.",
+      empty: "Сейчас нет активных скидок.",
     },
     catalogPage: {
       title: "Всегда любимые товары",

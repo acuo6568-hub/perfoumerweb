@@ -54,6 +54,9 @@ type HeaderSearchResult = {
   brand: string;
   image: string;
   price: number | null;
+  originalPrice: number | null;
+  discountedPrice: number | null;
+  discountPercent: number | null;
   gender: string;
   inStock: boolean;
   variantCount?: number;
@@ -139,6 +142,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       categoryClose: "Kateqoriyanı bağla",
       giftCard: "Hədiyyə Kartı",
       giftIdeas: "Hədiyyə ideaları",
+      offersTab: "Təkliflər",
       womenTab: "Qadın",
       menTab: "Kişi",
       unisexTab: "Uniseks",
@@ -199,6 +203,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       categoryClose: "Close category",
       giftCard: "Gift Card",
       giftIdeas: "Gift ideas",
+      offersTab: "Offers",
       womenTab: "Women",
       menTab: "Men",
       unisexTab: "Unisex",
@@ -259,6 +264,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       categoryClose: "Закрыть категорию",
       giftCard: "Подарочная карта",
       giftIdeas: "Идеи подарков",
+      offersTab: "Предложения",
       womenTab: "Женщины",
       menTab: "Мужчины",
       unisexTab: "Унисекс",
@@ -316,6 +322,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
   ];
   const desktopMenuItems = [
     { href: "/catalog", label: t.header.products },
+    { href: "/offers", label: copy[locale].offersTab },
     { href: "/compare", label: t.header.compare },
     { href: "/qoxunu", label: t.header.scentQuiz },
     { href: "/brands", label: t.header.brands },
@@ -341,6 +348,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
         { href: `${toLocalePath("/catalog", locale)}?gender=male`, label: copy[locale].menCategory },
         { href: `${toLocalePath("/catalog", locale)}?gender=female`, label: copy[locale].womenCategory },
         { href: `${toLocalePath("/catalog", locale)}?gender=unisex`, label: copy[locale].unisexCategory },
+        { href: toLocalePath("/offers", locale), label: copy[locale].offersTab },
         { href: toLocalePath("/brands", locale), label: t.header.brands },
       ],
     },
@@ -861,6 +869,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       { key: "brands", label: copy[locale].searchTabs.brands, href: toLocalePath("/brands", locale), tab: "brands" as const },
       { key: "home", label: copy[locale].searchTabs.home, href: toLocalePath("/", locale), tab: "home" as const },
       { key: "gift-ideas", label: copy[locale].giftIdeas, href: `${toLocalePath("/catalog", locale)}?special=gift-ideas`, tab: "all" as const },
+      { key: "offers", label: copy[locale].offersTab, href: toLocalePath("/offers", locale), tab: "all" as const },
       { key: "compare", label: copy[locale].compareTab, href: toLocalePath("/compare", locale), tab: "all" as const },
       { key: "quiz", label: t.header.scentQuiz, href: toLocalePath("/qoxunu", locale), tab: "all" as const },
     ],
@@ -1742,9 +1751,30 @@ export function Header({ floating = false, locale }: HeaderProps) {
                             {copy[locale].searchVariantCount.replace("{count}", String(item.variantCount))}
                           </span>
                         ) : null}
-                        <span className="mt-1.5 block text-[0.95rem] font-semibold text-zinc-900">
-                          {item.price !== null ? formatCurrencyFromAzn(item.price, selectedCurrency, locale) : "-"}
-                        </span>
+                        {item.discountedPrice !== null && item.originalPrice !== null && item.discountedPrice < item.originalPrice ? (
+                          <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            <span className="text-[0.82rem] text-zinc-400 line-through">
+                              {formatCurrencyFromAzn(item.originalPrice, selectedCurrency, locale)}
+                            </span>
+                            <span className="text-[0.95rem] font-semibold text-zinc-900">
+                              {formatCurrencyFromAzn(item.discountedPrice, selectedCurrency, locale)}
+                            </span>
+                            {item.discountPercent !== null ? (
+                              <span className="discount-badge inline-flex items-center rounded-full bg-rose-500 px-2 py-0.5 text-[0.58rem] font-semibold tracking-[0.12em] text-white uppercase shadow-[0_10px_24px_rgba(225,29,72,0.24)]">
+                                {item.discountPercent}%
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className="mt-1.5 flex flex-wrap items-center gap-2 text-[0.95rem] font-semibold text-zinc-900">
+                            <span>{item.price !== null ? formatCurrencyFromAzn(item.price, selectedCurrency, locale) : "-"}</span>
+                            {item.discountPercent !== null ? (
+                              <span className="discount-badge inline-flex items-center rounded-full bg-rose-500 px-2 py-0.5 text-[0.58rem] font-semibold tracking-[0.12em] text-white uppercase shadow-[0_10px_24px_rgba(225,29,72,0.24)]">
+                                {item.discountPercent}%
+                              </span>
+                            ) : null}
+                          </span>
+                        )}
                       </span>
                     </button>
                   ))}

@@ -7,6 +7,7 @@ import type { CSSProperties } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { formatDiscountBadgePercent, resolvePerfumeCardPrice } from "@/lib/discounts";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import type { Perfume } from "@/types/catalog";
@@ -50,7 +51,6 @@ function getShadowProfile(slug: string): ShadowProfile {
 
 export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variantCount }: ProductCardProps) {
   const siteSettings = useSiteSettings();
-  const startingPrice = perfume.sizes[0]?.price;
   const { selectedCurrency } = useCurrency();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const imageCandidates = useMemo(() => {
@@ -69,6 +69,8 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
   const t = getDictionary(locale, siteSettings);
   const shadowProfile = getShadowProfile(perfume.slug);
   const imageSrc = imageCandidates[imageCandidateIndex] || "/perfoumerlogo.png";
+  const pricing = useMemo(() => resolvePerfumeCardPrice(perfume), [perfume]);
+  const discountBadge = pricing.bestSavingsPercent !== null ? formatDiscountBadgePercent(pricing.bestSavingsPercent) : null;
 
   useEffect(() => {
     setImageCandidateIndex(0);
@@ -110,11 +112,18 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
       className="product-card group relative block rounded-[1.65rem] bg-white p-2.5 shadow-sm ring-1 ring-zinc-200 sm:rounded-3xl sm:p-4"
     >
       <div className="product-media relative overflow-hidden rounded-[1.2rem] sm:rounded-2xl">
-        {variantCount && variantCount > 1 ? (
-          <div className="absolute left-2 top-2 z-20 rounded-full bg-white/92 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.14em] text-zinc-700 uppercase shadow-sm backdrop-blur">
-            {t.productCard.variantBadge.replace("{count}", String(variantCount))}
-          </div>
-        ) : null}
+        <div className="absolute left-2 top-2 z-20 flex flex-col gap-1.5">
+          {variantCount && variantCount > 1 ? (
+            <div className="w-fit rounded-full bg-white/92 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.14em] text-zinc-700 uppercase shadow-sm backdrop-blur">
+              {t.productCard.variantBadge.replace("{count}", String(variantCount))}
+            </div>
+          ) : null}
+          {discountBadge ? (
+            <div className="discount-badge w-fit rounded-full bg-rose-500 px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.14em] text-white uppercase shadow-[0_10px_24px_rgba(225,29,72,0.28)]">
+              {t.productCard.discountBadge.replace("{percent}", discountBadge.replace("-", ""))}
+            </div>
+          ) : null}
+        </div>
         <div className="product-stage-gradient pointer-events-none absolute inset-x-0 bottom-0 h-16 sm:h-20" />
         <div
           className={[
@@ -153,11 +162,25 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
         <h3 className="line-clamp-2 text-base leading-tight font-medium text-zinc-900 transition-colors duration-300 md:group-hover:text-zinc-800 sm:text-xl">
           {perfume.name}
         </h3>
-        <p className="mt-1 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
-          {startingPrice
-            ? `${formatCurrencyFromAzn(startingPrice, selectedCurrency, locale)} / ${t.productCard.starting}`
-            : t.productCard.quote}
-        </p>
+        {pricing.hasVisibleSavings && pricing.originalPrice !== null && pricing.finalPrice !== null ? (
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
+            <span className="text-zinc-400 line-through">
+              {formatCurrencyFromAzn(pricing.originalPrice, selectedCurrency, locale)}
+            </span>
+            <span className="font-semibold text-zinc-900">
+              {formatCurrencyFromAzn(pricing.finalPrice, selectedCurrency, locale)}
+            </span>
+            <span>/ {t.productCard.starting}</span>
+          </div>
+        ) : pricing.finalPrice !== null ? (
+          <p className="mt-1 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
+            {`${formatCurrencyFromAzn(pricing.finalPrice, selectedCurrency, locale)} / ${t.productCard.starting}`}
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
+            {t.productCard.quote}
+          </p>
+        )}
       </div>
     </Link>
   );

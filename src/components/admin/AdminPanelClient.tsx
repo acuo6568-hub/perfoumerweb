@@ -49,7 +49,13 @@ import {
   DEFAULT_SITE_META_KEYWORD_COUNT,
   resolveSiteMetaKeywords,
 } from "@/lib/seo";
-import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
+import {
+  addDiscountDuration,
+  normalizePerfumeDiscount,
+  resolveDiscountedSizePrice,
+  toDateInputValue,
+} from "@/lib/discounts";
+import type { Note, Perfume, PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { BrandSelector } from "@/components/admin/BrandSelector";
 import { SaveStatusPill } from "@/components/admin/SaveStatusPill";
@@ -68,7 +74,7 @@ type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
 type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding";
 type AdminLocale = "az" | "en";
-type PerfumeEditorTab = "basics" | "notes" | "media";
+type PerfumeEditorTab = "basics" | "discounts" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
 type PerfumeListFilter = "all" | "missingImage" | "missingNotes";
 type NoteListFilter = "all" | "linked" | "unlinked" | "missingImage";
@@ -117,6 +123,19 @@ function cx(...values: Array<string | false | null | undefined>) {
 }
 
 const ADMIN_LOCALE_STORAGE_KEY = "perfoumer-admin-locale";
+
+const DEFAULT_PERFUME_DISCOUNT: PerfumeDiscount = {
+  enabled: false,
+  mode: "percent",
+  value: 10,
+  scope: { kind: "all" },
+  deadline: { kind: "none" },
+  showDeadline: false,
+};
+
+function getDefaultDiscount(): PerfumeDiscount {
+  return cloneDeep(DEFAULT_PERFUME_DISCOUNT);
+}
 
 const adminCopy = {
   az: {
@@ -224,6 +243,44 @@ const adminCopy = {
     basics: "Əsas",
     perfumeNotes: "Notlar",
     media: "Media",
+    discounts: "Endirimlər",
+    discountControls: "Endirim idarəsi",
+    discountControlsDescription:
+      "Bütün ölçülərə, bir ölçüyə və ya seçilmiş ölçülərə endirim təyin edin. Vaxtı bitən endirimlər vitrində avtomatik dayanır.",
+    discountActive: "Endirim aktivdir",
+    discountActiveHint: "Təklifi aktiv edin və ya draft kimi saxlayın.",
+    discountType: "Endirim tipi",
+    discountPercentOption: "Faizlə endirim",
+    discountFixedOption: "Yeni aşağı qiymət",
+    discountNewSalePrice: "Yeni endirim qiyməti",
+    discountPercentage: "Faiz",
+    discountFixedHint: "Uyğun ölçülər üçün müştərinin görəcəyi final qiymət.",
+    discountPercentHint: "Məsələn: 20 yazsanız 20% endirim olacaq.",
+    discountAppliesTo: "Tətbiq olunur",
+    discountAllSizes: "Bütün ölçülər",
+    discountOneSize: "Bir ölçü",
+    discountCustomSizes: "Seçilmiş ölçülər",
+    discountedSize: "Endirimli ölçü",
+    discountDeadline: "Bitmə vaxtı",
+    discountNoDeadline: "Vaxt limiti yoxdur",
+    discountCustomDate: "Xüsusi tarix",
+    discountCustomDuration: "Gün / həftə / ay ilə",
+    discountEndOfMonth: "Bu ayın sonu",
+    discountEndsOn: "Bitir",
+    discountDurationAmount: "Müddət sayı",
+    discountDurationUnit: "Müddət vahidi",
+    discountDays: "Gün",
+    discountWeeks: "Həftə",
+    discountMonths: "Ay",
+    discountStartsOn: "Başlayır",
+    discountComputedEndDate: "Hesablanmış bitmə tarixi",
+    discountShowDeadline: "Bitmə vaxtını müştəriyə göstər",
+    discountShowDeadlineHint: "Məhsul səhifəsində endirimin nə vaxta qədər davam etdiyini göstərir.",
+    discountCustomSizePicker: "Seçilmiş endirim ölçüləri",
+    discountPreview: "Vitrin önizləməsi",
+    discountPreviewDescription:
+      "Əsas qiymətlər ölçü cədvəlində qalır. Endirim aktiv olduqda müştərilər bu qiymətləri görür.",
+    discountNoSavings: "Endirim yoxdur",
     coreDetails: "Əsas məlumatlar",
     coreDetailsDescription:
       "Kataloqda görünən əsas məlumatları vahid və səliqəli saxlayın.",
@@ -447,6 +504,44 @@ const adminCopy = {
     basics: "Basics",
     perfumeNotes: "Notes",
     media: "Media",
+    discounts: "Discounts",
+    discountControls: "Discount controls",
+    discountControlsDescription:
+      "Set a sale for all sizes, one bottle size, or a custom group. Expired deadlines stop automatically on the storefront.",
+    discountActive: "Discount active",
+    discountActiveHint: "Turn the offer on or keep it saved as a draft.",
+    discountType: "Discount type",
+    discountPercentOption: "Percentage off",
+    discountFixedOption: "Set lower price",
+    discountNewSalePrice: "New sale price",
+    discountPercentage: "Percentage",
+    discountFixedHint: "This becomes the final price for matching sizes.",
+    discountPercentHint: "Example: 20 means 20% off.",
+    discountAppliesTo: "Applies to",
+    discountAllSizes: "All sizes",
+    discountOneSize: "One size",
+    discountCustomSizes: "Custom sizes",
+    discountedSize: "Discounted size",
+    discountDeadline: "Deadline",
+    discountNoDeadline: "No deadline",
+    discountCustomDate: "Custom date",
+    discountCustomDuration: "Custom days / weeks / months",
+    discountEndOfMonth: "End of this month",
+    discountEndsOn: "Ends on",
+    discountDurationAmount: "Duration amount",
+    discountDurationUnit: "Duration unit",
+    discountDays: "Days",
+    discountWeeks: "Weeks",
+    discountMonths: "Months",
+    discountStartsOn: "Starts on",
+    discountComputedEndDate: "Computed end date",
+    discountShowDeadline: "Show deadline publicly",
+    discountShowDeadlineHint: "Display the sale end date on the product detail page.",
+    discountCustomSizePicker: "Custom discounted sizes",
+    discountPreview: "Storefront preview",
+    discountPreviewDescription:
+      "Base prices stay in the size matrix. These are the prices customers see while the discount is active.",
+    discountNoSavings: "No discount",
     coreDetails: "Core details",
     coreDetailsDescription:
       "Keep the core catalog identity clean and consistent.",
@@ -716,6 +811,7 @@ function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
     inStock?: unknown;
     externalLink?: unknown;
     sizes?: unknown;
+    discount?: unknown;
     noteSlugs?: { top?: unknown; heart?: unknown; base?: unknown };
   };
 
@@ -755,6 +851,7 @@ function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
     inStock: Boolean(perfume.inStock),
     externalLink: normalizeString(perfume.externalLink),
     sizes: ensuredSizes,
+    discount: normalizePerfumeDiscount(perfume.discount) ?? undefined,
     noteSlugs: {
       top: normalizeStringArray(perfume.noteSlugs?.top),
       heart: normalizeStringArray(perfume.noteSlugs?.heart),
@@ -900,6 +997,7 @@ function createEmptyPerfume(): PerfumeDraft {
       { label: "30ML", ml: 30, price: 0 },
       { label: "50ML", ml: 50, price: 0 },
     ],
+    discount: getDefaultDiscount(),
     noteSlugs: {
       top: [],
       heart: [],
@@ -1256,6 +1354,7 @@ export function AdminPanelClient({
   const selectedPerfumeProductUrl = selectedPerfume
     ? `https://perfoumer.az/perfumes/${selectedPerfume.slug}`
     : "";
+  const selectedPerfumeDiscount = selectedPerfume?.discount ?? DEFAULT_PERFUME_DISCOUNT;
   const selectedNote = useMemo(
     () => notes.find((item) => item.slug === selectedNoteSlug) || notes[0] || null,
     [notes, selectedNoteSlug],
@@ -1626,6 +1725,27 @@ export function AdminPanelClient({
         return {
           ...item,
           sizes: nextSizes.sort((left, right) => left.ml - right.ml),
+        };
+      }),
+    );
+  };
+
+  const updateSelectedPerfumeDiscount = (
+    updater: (discount: PerfumeDiscount) => PerfumeDiscount,
+  ) => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    setPerfumes((current) =>
+      current.map((item) => {
+        if (item.id !== selectedPerfume.id) {
+          return item;
+        }
+
+        return {
+          ...item,
+          discount: updater(item.discount ?? getDefaultDiscount()),
         };
       }),
     );
@@ -3359,6 +3479,13 @@ export function AdminPanelClient({
                     Notes
                   </TabButton>
                   <TabButton
+                    active={perfumeEditorTab === "discounts"}
+                    icon={<TrendUp size={15} weight="bold" />}
+                    onClick={() => startTransition(() => setPerfumeEditorTab("discounts"))}
+                  >
+                    {copy.discounts}
+                  </TabButton>
+                  <TabButton
                     active={perfumeEditorTab === "media"}
                     icon={<ImageSquare size={15} weight="bold" />}
                     onClick={() => startTransition(() => setPerfumeEditorTab("media"))}
@@ -3473,6 +3600,426 @@ export function AdminPanelClient({
                             </Field>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {perfumeEditorTab === "discounts" ? (
+                  <div className="mt-6 space-y-6">
+                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                      <SectionLabel
+                        icon={<TrendUp size={16} weight="bold" />}
+                        title={copy.discountControls}
+                        detail={copy.discountControlsDescription}
+                      />
+
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <label className="flex min-h-12 items-center justify-between gap-4 rounded-2xl border border-zinc-300 bg-white px-4 py-3">
+                          <span>
+                            <span className="block text-sm font-semibold text-zinc-800">{copy.discountActive}</span>
+                            <span className="mt-1 block text-xs text-zinc-500">{copy.discountActiveHint}</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            className="h-5 w-5 accent-zinc-900"
+                            checked={selectedPerfumeDiscount.enabled}
+                            onChange={(event) =>
+                              updateSelectedPerfumeDiscount((discount) => ({
+                                ...discount,
+                                enabled: event.target.checked,
+                              }))
+                            }
+                          />
+                        </label>
+
+                        <Field label={copy.discountType}>
+                          <select
+                            className={ui.input}
+                            value={selectedPerfumeDiscount.mode}
+                            onChange={(event) =>
+                              updateSelectedPerfumeDiscount((discount) => ({
+                                ...discount,
+                                mode: event.target.value === "fixed" ? "fixed" : "percent",
+                                value:
+                                  event.target.value === "fixed"
+                                    ? selectedPerfume.sizes[0]?.price ?? 0
+                                    : Math.min(discount.value || 10, 95),
+                              }))
+                            }
+                          >
+                            <option value="percent">{copy.discountPercentOption}</option>
+                            <option value="fixed">{copy.discountFixedOption}</option>
+                          </select>
+                        </Field>
+
+                        <Field
+                          label={selectedPerfumeDiscount.mode === "fixed" ? copy.discountNewSalePrice : copy.discountPercentage}
+                          hint={selectedPerfumeDiscount.mode === "fixed" ? copy.discountFixedHint : copy.discountPercentHint}
+                        >
+                          <input
+                            type="number"
+                            className={ui.input}
+                            value={selectedPerfumeDiscount.value}
+                            min="0"
+                            max={selectedPerfumeDiscount.mode === "percent" ? "95" : undefined}
+                            step="0.01"
+                            onChange={(event) => {
+                              const parsed = Number(event.target.value);
+                              updateSelectedPerfumeDiscount((discount) => ({
+                                ...discount,
+                                value: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+                              }));
+                            }}
+                          />
+                        </Field>
+
+                        <Field label={copy.discountAppliesTo}>
+                          <select
+                            className={ui.input}
+                            value={selectedPerfumeDiscount.scope.kind}
+                            onChange={(event) => {
+                              const kind = event.target.value;
+                              updateSelectedPerfumeDiscount((discount) => {
+                                if (kind === "size") {
+                                  return {
+                                    ...discount,
+                                    scope: { kind: "size", ml: selectedPerfume.sizes[0]?.ml ?? 15 },
+                                  };
+                                }
+
+                                if (kind === "custom") {
+                                  return {
+                                    ...discount,
+                                    scope: { kind: "custom", mls: selectedPerfume.sizes.map((size) => size.ml) },
+                                  };
+                                }
+
+                                return { ...discount, scope: { kind: "all" } };
+                              });
+                            }}
+                          >
+                            <option value="all">{copy.discountAllSizes}</option>
+                            <option value="size">{copy.discountOneSize}</option>
+                            <option value="custom">{copy.discountCustomSizes}</option>
+                          </select>
+                        </Field>
+
+                        {selectedPerfumeDiscount.scope.kind === "size" ? (
+                          <Field label={copy.discountedSize}>
+                            <select
+                              className={ui.input}
+                              value={selectedPerfumeDiscount.scope.ml}
+                              onChange={(event) => {
+                                const ml = Number(event.target.value);
+                                updateSelectedPerfumeDiscount((discount) => ({
+                                  ...discount,
+                                  scope: { kind: "size", ml: Number.isFinite(ml) ? ml : selectedPerfume.sizes[0]?.ml ?? 15 },
+                                }));
+                              }}
+                            >
+                              {selectedPerfume.sizes.map((size) => (
+                                <option key={size.ml} value={size.ml}>
+                                  {size.label}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        ) : null}
+
+                        <Field label={copy.discountDeadline}>
+                          <select
+                            className={ui.input}
+                            value={selectedPerfumeDiscount.deadline.kind}
+                            onChange={(event) => {
+                              const kind = event.target.value;
+                              updateSelectedPerfumeDiscount((discount) => {
+                                if (kind === "date") {
+                                  return {
+                                    ...discount,
+                                    showDeadline: true,
+                                    deadline: { kind: "date", endsOn: toDateInputValue() },
+                                  };
+                                }
+
+                                if (kind === "duration") {
+                                  const startsOn = toDateInputValue();
+                                  return {
+                                    ...discount,
+                                    showDeadline: true,
+                                    deadline: {
+                                      kind: "duration",
+                                      unit: "days",
+                                      amount: 7,
+                                      startsOn,
+                                      endsOn: addDiscountDuration(7, "days"),
+                                    },
+                                  };
+                                }
+
+                                if (kind === "endOfMonth") {
+                                  return { ...discount, showDeadline: true, deadline: { kind: "endOfMonth" } };
+                                }
+
+                                return { ...discount, showDeadline: false, deadline: { kind: "none" } };
+                              });
+                            }}
+                          >
+                            <option value="none">{copy.discountNoDeadline}</option>
+                            <option value="date">{copy.discountCustomDate}</option>
+                            <option value="duration">{copy.discountCustomDuration}</option>
+                            <option value="endOfMonth">{copy.discountEndOfMonth}</option>
+                          </select>
+                        </Field>
+
+                        {selectedPerfumeDiscount.deadline.kind === "date" ? (
+                          <Field label={copy.discountEndsOn}>
+                            <input
+                              type="date"
+                              className={ui.input}
+                              value={selectedPerfumeDiscount.deadline.endsOn}
+                              onChange={(event) =>
+                                updateSelectedPerfumeDiscount((discount) => ({
+                                  ...discount,
+                                  deadline: { kind: "date", endsOn: event.target.value },
+                                }))
+                              }
+                            />
+                          </Field>
+                        ) : null}
+
+                        {selectedPerfumeDiscount.deadline.kind === "duration" ? (
+                          <>
+                            <Field label={copy.discountDurationAmount}>
+                              <input
+                                type="number"
+                                className={ui.input}
+                                value={selectedPerfumeDiscount.deadline.amount}
+                                min="1"
+                                step="1"
+                                onChange={(event) => {
+                                  const amount = Math.max(1, Math.floor(Number(event.target.value) || 1));
+                                  updateSelectedPerfumeDiscount((discount) => {
+                                    const current =
+                                      discount.deadline.kind === "duration"
+                                        ? discount.deadline
+                                        : {
+                                            kind: "duration" as const,
+                                            unit: "days" as const,
+                                            amount: 7,
+                                            startsOn: toDateInputValue(),
+                                            endsOn: addDiscountDuration(7, "days"),
+                                          };
+
+                                    return {
+                                      ...discount,
+                                      deadline: {
+                                        ...current,
+                                        amount,
+                                        endsOn: addDiscountDuration(amount, current.unit, new Date(`${current.startsOn}T00:00:00`)),
+                                      },
+                                    };
+                                  });
+                                }}
+                              />
+                            </Field>
+
+                            <Field label={copy.discountDurationUnit}>
+                              <select
+                                className={ui.input}
+                                value={selectedPerfumeDiscount.deadline.unit}
+                                onChange={(event) => {
+                                  const unit =
+                                    event.target.value === "weeks" || event.target.value === "months"
+                                      ? event.target.value
+                                      : "days";
+                                  updateSelectedPerfumeDiscount((discount) => {
+                                    const current =
+                                      discount.deadline.kind === "duration"
+                                        ? discount.deadline
+                                        : {
+                                            kind: "duration" as const,
+                                            unit: "days" as const,
+                                            amount: 7,
+                                            startsOn: toDateInputValue(),
+                                            endsOn: addDiscountDuration(7, "days"),
+                                          };
+
+                                    return {
+                                      ...discount,
+                                      deadline: {
+                                        ...current,
+                                        unit,
+                                        endsOn: addDiscountDuration(current.amount, unit, new Date(`${current.startsOn}T00:00:00`)),
+                                      },
+                                    };
+                                  });
+                                }}
+                              >
+                                <option value="days">{copy.discountDays}</option>
+                                <option value="weeks">{copy.discountWeeks}</option>
+                                <option value="months">{copy.discountMonths}</option>
+                              </select>
+                            </Field>
+
+                            <Field label={copy.discountStartsOn}>
+                              <input
+                                type="date"
+                                className={ui.input}
+                                value={selectedPerfumeDiscount.deadline.startsOn}
+                                onChange={(event) =>
+                                  updateSelectedPerfumeDiscount((discount) => {
+                                    const current =
+                                      discount.deadline.kind === "duration"
+                                        ? discount.deadline
+                                        : {
+                                            kind: "duration" as const,
+                                            unit: "days" as const,
+                                            amount: 7,
+                                            startsOn: toDateInputValue(),
+                                            endsOn: addDiscountDuration(7, "days"),
+                                          };
+                                    const startsOn = event.target.value || toDateInputValue();
+
+                                    return {
+                                      ...discount,
+                                      deadline: {
+                                        ...current,
+                                        startsOn,
+                                        endsOn: addDiscountDuration(current.amount, current.unit, new Date(`${startsOn}T00:00:00`)),
+                                      },
+                                    };
+                                  })
+                                }
+                              />
+                            </Field>
+
+                            <Field label={copy.discountComputedEndDate}>
+                              <input
+                                type="date"
+                                className={ui.input}
+                                value={selectedPerfumeDiscount.deadline.endsOn}
+                                onChange={(event) =>
+                                  updateSelectedPerfumeDiscount((discount) => ({
+                                    ...discount,
+                                    deadline:
+                                      discount.deadline.kind === "duration"
+                                        ? { ...discount.deadline, endsOn: event.target.value }
+                                        : discount.deadline,
+                                  }))
+                                }
+                              />
+                            </Field>
+                          </>
+                        ) : null}
+                      </div>
+
+                      {selectedPerfumeDiscount.deadline.kind !== "none" ? (
+                        <label className="mt-5 flex min-h-12 items-center justify-between gap-4 rounded-2xl border border-zinc-300 bg-white px-4 py-3">
+                          <span>
+                            <span className="block text-sm font-semibold text-zinc-800">{copy.discountShowDeadline}</span>
+                            <span className="mt-1 block text-xs text-zinc-500">
+                              {copy.discountShowDeadlineHint}
+                            </span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            className="h-5 w-5 accent-zinc-900"
+                            checked={Boolean(selectedPerfumeDiscount.showDeadline)}
+                            onChange={(event) =>
+                              updateSelectedPerfumeDiscount((discount) => ({
+                                ...discount,
+                                showDeadline: event.target.checked,
+                              }))
+                            }
+                          />
+                        </label>
+                      ) : null}
+
+                      {selectedPerfumeDiscount.scope.kind === "custom" ? (
+                        <div className="mt-5">
+                          <p className="mb-2 text-sm font-medium text-zinc-700">{copy.discountCustomSizePicker}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedPerfume.sizes.map((size) => {
+                              const checked = selectedPerfumeDiscount.scope.kind === "custom" && selectedPerfumeDiscount.scope.mls.includes(size.ml);
+
+                              return (
+                                <label
+                                  key={size.ml}
+                                  className={cx(
+                                    ui.chip,
+                                    checked
+                                      ? "border-zinc-900 bg-zinc-900 text-white"
+                                      : "border-zinc-300 bg-white text-zinc-700",
+                                  )}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="sr-only"
+                                    checked={checked}
+                                    onChange={(event) =>
+                                      updateSelectedPerfumeDiscount((discount) => {
+                                        const currentMls = discount.scope.kind === "custom" ? discount.scope.mls : [];
+                                        const nextMls = event.target.checked
+                                          ? Array.from(new Set([...currentMls, size.ml]))
+                                          : currentMls.filter((ml) => ml !== size.ml);
+
+                                        return {
+                                          ...discount,
+                                          scope: { kind: "custom", mls: nextMls.length ? nextMls.sort((a, b) => a - b) : [size.ml] },
+                                        };
+                                      })
+                                    }
+                                  />
+                                  {size.label}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                      <SectionLabel
+                        icon={<Rows size={16} weight="bold" />}
+                        title={copy.discountPreview}
+                        detail={copy.discountPreviewDescription}
+                      />
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                        {selectedPerfume.sizes.map((size) => {
+                          const pricing = resolveDiscountedSizePrice(size, selectedPerfumeDiscount);
+                          const hasSavings = pricing.finalPrice < pricing.originalPrice;
+
+                          return (
+                            <div
+                              key={size.ml}
+                              className="rounded-[1.2rem] border border-zinc-200 bg-white p-4"
+                            >
+                              <p className="text-sm font-semibold text-zinc-900">{size.label}</p>
+                              <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                                {hasSavings ? (
+                                  <span className="text-sm text-zinc-400 line-through">
+                                    {pricing.originalPrice} AZN
+                                  </span>
+                                ) : null}
+                                <span className="text-2xl font-semibold tracking-[-0.04em] text-zinc-900">
+                                  {pricing.finalPrice} AZN
+                                </span>
+                              </div>
+                              {hasSavings ? (
+                                <span className="mt-3 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600">
+                                  -{Math.round(pricing.savingsPercent)}%
+                                </span>
+                              ) : (
+                                <span className="mt-3 inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-500">
+                                  {copy.discountNoSavings}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
