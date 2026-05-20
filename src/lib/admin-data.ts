@@ -207,18 +207,89 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
 
   // Write other admin files (these may also fail on read-only filesystems)
   const writeOperations = [
-    writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8").catch((error) => {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`[JSON Write Failed] ${message}. File: data/admin/perfumes.json`);
-    }),
-    writeFile(ADMIN_NOTES_PATH, `${JSON.stringify(notes, null, 2)}\n`, "utf-8").catch((error) => {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`[Notes Write Failed] ${message}. File: data/admin/notes.json`);
-    }),
-    writeFile(SITE_SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`, "utf-8").catch((error) => {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`[Settings Write Failed] ${message}. File: data/admin/site-settings.json`);
-    }),
+    (async () => {
+      try {
+        await writeFile(ADMIN_PERFUMES_PATH, "[]\n", "utf-8");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        const isReadOnly =
+          message.includes("read-only file system") || (error as any)?.code === "EROFS";
+        if (isReadOnly) {
+          const altDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+          const altPath = path.join(altDir, "perfumes.json");
+          try {
+            await writeFile(altPath, "[]\n", "utf-8");
+            console.warn(
+              `[Perfumes JSON Write Fallback] original path not writable, saved to ${altPath}`,
+            );
+          } catch (altErr) {
+            console.warn(`[Perfumes JSON Write Failed] ${message} and fallback failed too`);
+          }
+        } else {
+          throw new Error(
+            `[JSON Write Failed] ${message}. File: data/admin/perfumes.json`,
+          );
+        }
+      }
+    })(),
+    (async () => {
+      try {
+        await writeFile(ADMIN_NOTES_PATH, `${JSON.stringify(notes, null, 2)}\n`, "utf-8");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        const isReadOnly =
+          message.includes("read-only file system") || (error as any)?.code === "EROFS";
+        if (isReadOnly) {
+          const altDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+          const altPath = path.join(altDir, "notes.json");
+          try {
+            await writeFile(altPath, `${JSON.stringify(notes, null, 2)}\n`, "utf-8");
+            console.warn(
+              `[Notes JSON Write Fallback] original path not writable, saved to ${altPath}`,
+            );
+          } catch (altErr) {
+            console.warn(`[Notes JSON Write Failed] ${message} and fallback failed too`);
+          }
+        } else {
+          throw new Error(`[Notes Write Failed] ${message}. File: data/admin/notes.json`);
+        }
+      }
+    })(),
+    (async () => {
+      try {
+        await writeFile(
+          SITE_SETTINGS_PATH,
+          `${JSON.stringify(settings, null, 2)}\n`,
+          "utf-8",
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        const isReadOnly =
+          message.includes("read-only file system") || (error as any)?.code === "EROFS";
+        if (isReadOnly) {
+          const altDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+          const altPath = path.join(altDir, "site-settings.json");
+          try {
+            await writeFile(
+              altPath,
+              `${JSON.stringify(settings, null, 2)}\n`,
+              "utf-8",
+            );
+            console.warn(
+              `[Settings JSON Write Fallback] original path not writable, saved to ${altPath}`,
+            );
+          } catch (altErr) {
+            console.warn(
+              `[Settings JSON Write Failed] ${message} and fallback failed too`,
+            );
+          }
+        } else {
+          throw new Error(
+            `[Settings Write Failed] ${message}. File: data/admin/site-settings.json`,
+          );
+        }
+      }
+    })(),
   ];
 
   try {
