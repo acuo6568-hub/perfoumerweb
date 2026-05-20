@@ -272,19 +272,23 @@ export async function getAdminData() {
       notes?: unknown;
       settings?: unknown;
     };
+    
+    // Normalize perfumes FROM SUPABASE (not from catalog!)
+    const perfumes = Array.isArray(supabaseObj.perfumes)
+      ? supabaseObj.perfumes.map(normalizePerfume).filter((item): item is Perfume => item !== null)
+      : null;
+    
     const notes = Array.isArray(supabaseObj.notes)
       ? supabaseObj.notes.map(normalizeNote).filter((item): item is Note => item !== null)
       : null;
     const settings = supabaseObj.settings ? normalizeSiteSettings(supabaseObj.settings) : null;
 
-    const [catalogPerfumes] = await Promise.all([getPerfumes()]);
-
-    console.log("[Admin Data] Loaded", supabaseObj.perfumes ? Array.isArray(supabaseObj.perfumes) ? (supabaseObj.perfumes as unknown[]).length : "?" : "0", "perfumes from Supabase");
+    console.log("[Admin Data] Loaded", perfumes ? perfumes.length : "0", "perfumes from Supabase");
     console.log("[Admin Data] Loaded", notes ? notes.length : "0", "notes from Supabase");
     console.log("[Admin Data] Loaded settings:", !!settings, "from Supabase");
 
     return {
-      perfumes: catalogPerfumes,
+      perfumes: perfumes ?? (await getPerfumes()),
       notes: notes ?? (await getNotes()),
       settings: settings ?? (await readSiteSettings()) ?? normalizeSiteSettings(null),
     };
