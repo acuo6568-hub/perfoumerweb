@@ -271,6 +271,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
       searchBrandsTitle: "Бренды",
       searchCategoriesTitle: "Категории",
       searchEmpty: "Ничего не найдено по вашему запросу.",
+      searchVariantCount: "{count} вариантов",
       searchStartHint: "Введите запрос, чтобы найти ароматы или категории.",
       searchTabs: {
         all: "Все",
