@@ -118,7 +118,7 @@ export function PerfumeVariantStrip({
               ].join(" ")}
             >
               <span className="whitespace-nowrap">
-                {formatCurrencyFromAzn(variant.price, selectedCurrency, locale, { maximumFractionDigits: 0 })}
+                {formatCurrencyFromAzn(variant.price, selectedCurrency, locale)}
               </span>
               {isActive ? (
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.12em] uppercase">
