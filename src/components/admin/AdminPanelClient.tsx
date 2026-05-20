@@ -2908,7 +2908,7 @@ export function AdminPanelClient({
           </div>
         </aside>
 
-        <div className="space-y-6">
+        <div className="space-y-6 pb-32">
           {view === "dashboard" ? (
             <div className={ui.card}>
               <Suspense fallback={<div className="text-center text-sm text-zinc-500">Loading dashboard...</div>}>
@@ -2917,112 +2917,147 @@ export function AdminPanelClient({
             </div>
           ) : view === "brands" ? (
             <div className={ui.card}>
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                    <Package size={14} weight="bold" />
-                    Brands manager
-                  </div>
-                  <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
-                    All brands
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-                    Manage your fragrance brands, view usage statistics, and maintain consistency across your catalog.
-                  </p>
+                  <h2 className="text-3xl font-bold text-zinc-950">Brands</h2>
+                  <p className="mt-1 text-sm text-zinc-500">Manage {brandsWithStats.length} brand{brandsWithStats.length === 1 ? "" : "s"} across your catalog</p>
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-5">
-                <div className={cx(ui.soft, "p-4 sm:p-5")}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-900">Brand list ({brandsWithStats.length})</p>
-                      <p className="mt-1 text-xs text-zinc-500">Click on a brand to edit or rename it</p>
-                    </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Brands List */}
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-semibold text-zinc-900">All Brands</h3>
+                    <span className="text-xs font-medium text-zinc-500">{brandsWithStats.length} total</span>
                   </div>
 
-                  <div className="mt-4 space-y-2">
-                    {brandsWithStats.length ? (
-                      brandsWithStats.map((brand) => (
+                  {brandsWithStats.length ? (
+                    <div className="space-y-2">
+                      {brandsWithStats.map((brand) => (
                         <button
                           key={brand.name}
                           type="button"
                           onClick={() => setSelectedBrand(brand.name)}
                           className={cx(
-                            "w-full rounded-[1.2rem] border p-4 text-left transition",
+                            "group w-full rounded-xl border-2 px-4 py-3 text-left transition-all duration-150",
                             selectedBrand === brand.name
-                              ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
-                              : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50",
+                              ? "border-zinc-900 bg-zinc-900 text-white shadow-md"
+                              : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 hover:shadow-sm active:scale-[0.98]",
                           )}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold">{brand.name}</span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className={cx(
+                                "truncate font-semibold transition-colors",
+                                selectedBrand === brand.name ? "text-white" : "text-zinc-900"
+                              )}>
+                                {brand.name}
+                              </p>
+                            </div>
                             <span
                               className={cx(
-                                "rounded-full px-3 py-1 text-xs font-semibold",
+                                "flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap",
                                 selectedBrand === brand.name
                                   ? "bg-white/20 text-white"
                                   : "bg-zinc-100 text-zinc-600",
                               )}
                             >
-                              {brand.count} perfume{brand.count === 1 ? "" : "s"}
+                              {brand.count} {brand.count === 1 ? "item" : "items"}
                             </span>
                           </div>
                         </button>
-                      ))
-                    ) : (
-                      <div className="rounded-[1.2rem] border border-dashed border-zinc-300 bg-zinc-50/80 px-4 py-8 text-center">
-                        <p className="text-sm text-zinc-500">No brands yet. Create a perfume and assign a brand to get started.</p>
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50/50 px-4 py-8 text-center">
+                      <Package size={24} weight="bold" className="mx-auto mb-2 text-zinc-400" />
+                      <p className="text-sm text-zinc-500">No brands yet</p>
+                    </div>
+                  )}
                 </div>
 
-                {selectedBrand ? (
-                  <div className={cx(ui.soft, "p-4 sm:p-5")}>
-                    <SectionLabel
-                      icon={<TextT size={16} weight="bold" />}
-                      title={`Edit brand: ${selectedBrand}`}
-                      detail={`Used by ${getBrandStats.get(selectedBrand) || 0} perfume${(getBrandStats.get(selectedBrand) || 0) === 1 ? "" : "s"}`}
-                    />
+                {/* Edit Panel */}
+                <div>
+                  {selectedBrand ? (
+                    <div className="rounded-xl border-2 border-zinc-200 bg-gradient-to-br from-white to-zinc-50/50 p-5 shadow-sm">
+                      <div className="mb-5 flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate font-semibold text-zinc-900">Edit: {selectedBrand}</h3>
+                          <p className="mt-1 text-sm text-zinc-500">
+                            {getBrandStats.get(selectedBrand) || 0} perfume{(getBrandStats.get(selectedBrand) || 0) === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedBrand("")}
+                          className="text-zinc-400 hover:text-zinc-600 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
 
-                    <div className="mt-5 grid gap-4">
-                      <Field label="Brand name">
-                        <input
-                          className={ui.input}
-                          type="text"
-                          defaultValue={selectedBrand}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const newBrand = (e.target as HTMLInputElement).value.trim();
-                              if (newBrand) {
-                                renameBrand(selectedBrand, newBrand);
-                                setSelectedBrand("");
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-[0.5px] text-zinc-600 mb-2">
+                            Brand Name
+                          </label>
+                          <input
+                            className={cx(
+                              "w-full rounded-lg border-2 border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition-all",
+                              "focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10",
+                              "placeholder:text-zinc-400"
+                            )}
+                            type="text"
+                            id="brand-name-input"
+                            defaultValue={selectedBrand}
+                            placeholder="Enter brand name"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const newBrand = (e.target as HTMLInputElement).value.trim();
+                                if (newBrand && newBrand !== selectedBrand) {
+                                  renameBrand(selectedBrand, newBrand);
+                                  setSelectedBrand("");
+                                }
                               }
+                            }}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          className={cx(
+                            "w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.98]",
+                            "bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm hover:shadow-md"
+                          )}
+                          onClick={(e) => {
+                            const input = document.getElementById("brand-name-input") as HTMLInputElement;
+                            if (input && input.value.trim() && input.value.trim() !== selectedBrand) {
+                              renameBrand(selectedBrand, input.value.trim());
+                              setSelectedBrand("");
                             }
                           }}
-                          placeholder="Brand name"
-                        />
-                      </Field>
-                      <button
-                        type="button"
-                        className={ui.primaryButton}
-                        onClick={(e) => {
-                          const input = (e.target as HTMLElement).parentElement?.querySelector(
-                            'input[type="text"]',
-                          ) as HTMLInputElement;
-                          if (input && input.value.trim()) {
-                            renameBrand(selectedBrand, input.value.trim());
-                            setSelectedBrand("");
-                          }
-                        }}
-                      >
-                        <FloppyDisk size={16} weight="bold" />
-                        Save brand name
-                      </button>
+                        >
+                          <FloppyDisk size={16} weight="bold" className="mr-1.5 inline" />
+                          Save Changes
+                        </button>
+
+                        <button
+                          type="button"
+                          className="w-full rounded-lg border-2 border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-600 transition-all duration-150 hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98]"
+                          onClick={() => setSelectedBrand("")}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : (
+                    <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50/50 px-4 py-12 text-center">
+                      <Package size={32} weight="bold" className="mx-auto mb-3 text-zinc-300" />
+                      <p className="text-sm font-medium text-zinc-600">Select a brand to edit</p>
+                      <p className="mt-1 text-xs text-zinc-500">Click any brand from the list</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : view === "branding" ? (

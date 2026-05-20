@@ -1,5 +1,6 @@
 import { CheckCircle, FloppyDisk, Spinner } from "@phosphor-icons/react";
 import cx from "classnames";
+import { useEffect, useState } from "react";
 
 interface SaveStatusPillProps {
   status: "idle" | "saving" | "success" | "error";
@@ -16,62 +17,73 @@ export function SaveStatusPill({
   isDirty,
   isSaving,
 }: SaveStatusPillProps) {
-  if (status === "idle" && !isDirty) {
+  const [showPill, setShowPill] = useState(false);
+
+  useEffect(() => {
+    if (isDirty || status !== "idle") {
+      setShowPill(true);
+    } else {
+      const timer = setTimeout(() => setShowPill(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDirty, status]);
+
+  if (!showPill && status === "idle" && !isDirty) {
     return null;
   }
+
+  const isVisible = isDirty || status !== "idle";
 
   return (
     <div
       className={cx(
-        "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-out",
-        (isDirty || status !== "idle") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none",
+        "fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none flex justify-center items-end pb-6 px-4 transition-all duration-300",
       )}
     >
       <div
         className={cx(
-          "rounded-full px-6 py-3 shadow-lg backdrop-blur-md border transition-all duration-300",
+          "pointer-events-auto rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border transition-all duration-300 transform",
+          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95",
           status === "success"
-            ? "bg-emerald-50/95 border-emerald-200/50 text-emerald-900"
+            ? "bg-gradient-to-r from-emerald-50 to-green-50/80 border-emerald-200/60 text-emerald-900"
             : status === "error"
-              ? "bg-red-50/95 border-red-200/50 text-red-900"
+              ? "bg-gradient-to-r from-red-50 to-rose-50/80 border-red-200/60 text-red-900"
               : status === "saving"
-                ? "bg-blue-50/95 border-blue-200/50 text-blue-900"
-                : "bg-zinc-50/95 border-zinc-200/50 text-zinc-900",
+                ? "bg-gradient-to-r from-blue-50 to-cyan-50/80 border-blue-200/60 text-blue-900"
+                : "bg-gradient-to-r from-zinc-50 to-neutral-50/80 border-zinc-200/60 text-zinc-900",
         )}
       >
-        <div className="flex items-center gap-3">
-          <div
-            className={cx(
-              "transition-opacity duration-300",
-              status === "saving" ? "opacity-100" : "opacity-0",
+        <div className="flex items-center justify-between gap-4 min-w-max sm:min-w-0">
+          <div className="flex items-center gap-3">
+            {status === "saving" && (
+              <div className="flex-shrink-0">
+                <Spinner size={18} weight="bold" className="animate-spin" />
+              </div>
             )}
-          >
-            <Spinner size={16} weight="bold" className="animate-spin" />
-          </div>
 
-          <div
-            className={cx(
-              "transition-opacity duration-300",
-              status === "success" ? "opacity-100" : "opacity-0",
+            {status === "success" && (
+              <div className="flex-shrink-0">
+                <CheckCircle size={18} weight="bold" />
+              </div>
             )}
-          >
-            <CheckCircle size={16} weight="bold" />
-          </div>
 
-          <span className="text-sm font-medium whitespace-nowrap max-w-xs truncate">
-            {message || (isDirty ? "Unsaved changes" : "")}
-          </span>
+            <span className="text-sm font-medium">
+              {message || (isDirty ? "Unsaved changes" : "")}
+            </span>
+          </div>
 
           {isDirty && status === "idle" ? (
             <button
               onClick={onSave}
               disabled={isSaving}
               className={cx(
-                "ml-2 flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-1.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
-                "whitespace-nowrap",
+                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0",
+                isSaving
+                  ? "bg-zinc-200 text-zinc-500 cursor-not-allowed"
+                  : "bg-zinc-900 text-white hover:bg-zinc-800 active:scale-95",
               )}
             >
-              <FloppyDisk size={14} weight="bold" />
+              <FloppyDisk size={16} weight="bold" />
               Save
             </button>
           ) : null}
