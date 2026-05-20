@@ -1,10 +1,12 @@
 import path from "node:path";
 import os from "node:os";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
 
 import { perfumesToCsv } from "@/lib/admin-csv";
 import { getNotes, getPerfumes } from "@/lib/catalog";
 import { normalizeSiteSettings, readSiteSettings, SITE_SETTINGS_PATH, type SiteSettings } from "@/lib/site-settings";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import type { Note, Perfume, PerfumeSize } from "@/types/catalog";
 
 const ADMIN_DATA_DIR = path.join(process.cwd(), "data", "admin");
@@ -150,7 +152,95 @@ export async function readAdminNotes() {
     .filter((item): item is Note => item !== null);
 }
 
+async function getSupabaseAdminData() {
+  try {
+    const config = getSupabaseServiceConfigFromServer();
+    if (!config) {
+      return null;
+    }
+
+    const { url, serviceRoleKey } = config;
+
+    const supabase = createClient(url, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const { data, error } = await supabase
+      .from("admin_data")
+      .select("data")
+      .eq("id", "admin_data")
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return (data as { data: unknown }).data;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSupabaseAdminData(data: unknown) {
+  try {
+    const config = getSupabaseServiceConfigFromServer();
+    if (!config) {
+      return false;
+    }
+
+    const { url, serviceRoleKey } = config;
+
+    const supabase = createClient(url, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const { error } = await supabase
+      .from("admin_data")
+      .upsert(
+        {
+          id: "admin_data",
+          data,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" },
+      );
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export async function getAdminData() {
+  // Try to load from Supabase first (on production)
+  const supabaseData = await getSupabaseAdminData();
+  if (supabaseData && typeof supabaseData === "object") {
+    const supabaseObj = supabaseData as {
+      perfumes?: unknown;
+      notes?: unknown;
+      settings?: unknown;
+    };
+    const notes = Array.isArray(supabaseObj.notes)
+      ? supabaseObj.notes.map(normalizeNote).filter((item): item is Note => item !== null)
+      : null;
+    const settings = supabaseObj.settings ? normalizeSiteSettings(supabaseObj.settings) : null;
+
+    const [catalogPerfumes] = await Promise.all([getPerfumes()]);
+
+    return {
+      perfumes: catalogPerfumes,
+      notes: notes ?? (await getNotes()),
+      settings: settings ?? (await readSiteSettings()) ?? normalizeSiteSettings(null),
+    };
+  }
+
+  // Fallback to local files (for development or if Supabase is not configured)
   const [notes, catalogPerfumes, settings] = await Promise.all([
     readAdminNotes(),
     getPerfumes(),
@@ -298,5 +388,16 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
     throw error; // Re-throw with detailed message
   }
 
-  return { perfumes, notes, settings };
+  // Also save to Supabase for persistence on production (read-only filesystems)
+  const adminData = { perfumes, notes, settings };
+  const saved = await saveSupabaseAdminData(adminData);
+  if (saved) {
+    console.log("[Admin Data Saved to Supabase]");
+  } else {
+    console.warn(
+      "[Admin Data Supabase Save Failed] changes saved locally but not persisted on production",
+    );
+  }
+
+  return adminData;
 }
