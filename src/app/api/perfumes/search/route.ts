@@ -48,7 +48,7 @@ function matchesTabGender(genderRaw: string, tab: SearchTab): boolean {
     return true;
   }
 
-  const gender = normalize(genderRaw);
+  const gender = normalizeSearchText(genderRaw);
   if (tab === "women") {
     return /(women|female|qadin|qadın|lady|жен)/iu.test(gender);
   }
