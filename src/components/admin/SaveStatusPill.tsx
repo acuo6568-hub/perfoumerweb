@@ -36,14 +36,15 @@ export function SaveStatusPill({
 
   return (
     <div
-      className={cx(
-        "fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none flex justify-center items-end pb-6 px-4 transition-all duration-300",
-      )}
+      className="fixed bottom-0 left-0 right-0 top-0 z-[9999] pointer-events-none flex justify-center items-end px-4 py-6"
+      style={{
+        transform: isVisible ? "translateY(0)" : "translateY(200px)",
+        transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
     >
       <div
         className={cx(
-          "pointer-events-auto rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border transition-all duration-300 transform",
-          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95",
+          "pointer-events-auto rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border",
           status === "success"
             ? "bg-gradient-to-r from-emerald-50 to-green-50/80 border-emerald-200/60 text-emerald-900"
             : status === "error"
