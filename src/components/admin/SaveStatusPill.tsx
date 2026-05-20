@@ -18,18 +18,21 @@ export function SaveStatusPill({
   isDirty,
   isSaving,
 }: SaveStatusPillProps) {
-  const [showPill, setShowPill] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showPill, setShowPill] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
 
+  useEffect(() => {
     if (isDirty || status !== "idle") {
       setShowPill(true);
-    } else {
-      const timer = setTimeout(() => setShowPill(false), 500);
-      return () => clearTimeout(timer);
+      return;
     }
+
+    const timer = setTimeout(() => setShowPill(false), 180);
+    return () => clearTimeout(timer);
   }, [isDirty, status]);
 
   if (!mounted || (!showPill && status === "idle" && !isDirty)) {
@@ -42,8 +45,8 @@ export function SaveStatusPill({
     <div className="fixed inset-x-0 bottom-0 z-[9999] pointer-events-none flex justify-center px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <div
         className={cx(
-          "pointer-events-auto max-w-[calc(100vw-2rem)] rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border transition-all duration-300 transform",
-          isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4",
+          "pointer-events-auto max-w-[calc(100vw-2rem)] rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform will-change-transform",
+          isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-5",
           status === "success"
             ? "bg-gradient-to-r from-emerald-50 to-green-50/80 border-emerald-200/60 text-emerald-900"
             : status === "error"

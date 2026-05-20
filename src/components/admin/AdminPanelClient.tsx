@@ -77,6 +77,11 @@ type StatusState = {
   tone: StatusTone;
   message: string;
 };
+type SaveStatusTone = "idle" | "saving" | "success" | "error";
+type SaveStatusState = {
+  tone: SaveStatusTone;
+  message: string;
+};
 
 const ui = {
   shell:
@@ -1214,6 +1219,8 @@ export function AdminPanelClient({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusState | null>(null);
   const [statusTimerId, setStatusTimerId] = useState<NodeJS.Timeout | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatusState>({ tone: "idle", message: "" });
+  const [saveStatusTimerId, setSaveStatusTimerId] = useState<NodeJS.Timeout | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
@@ -1380,6 +1387,17 @@ export function AdminPanelClient({
       JSON.stringify(settings) !== JSON.stringify(savedSettings)
     );
   }, [notes, perfumes, savedNotes, savedPerfumes, savedSettings, settings]);
+
+  useEffect(() => {
+    if (dirty && saveStatus.tone === "success") {
+      if (saveStatusTimerId) {
+        clearTimeout(saveStatusTimerId);
+      }
+
+      setSaveStatus({ tone: "idle", message: "" });
+      setSaveStatusTimerId(null);
+    }
+  }, [dirty, saveStatus.tone, saveStatusTimerId]);
 
   const stats = useMemo(() => {
     const linkedNotes = new Set<string>();
@@ -2180,12 +2198,18 @@ export function AdminPanelClient({
 
   const onSave = async () => {
     if (!dirty) {
+      setSaveStatus({ tone: "idle", message: "" });
       setStatus({ tone: "neutral", message: t("statusAlreadySaved") });
       return;
     }
 
     console.log("[AdminClient] Starting save...");
     setBusy(true);
+    if (saveStatusTimerId) {
+      clearTimeout(saveStatusTimerId);
+      setSaveStatusTimerId(null);
+    }
+    setSaveStatus({ tone: "saving", message: t("statusSaving") });
     setStatus({ tone: "neutral", message: t("statusSaving") });
 
     const perfumesPayload = perfumes.map((item) => ({
@@ -2222,6 +2246,7 @@ export function AdminPanelClient({
 
       if (!response.ok) {
         console.log("[AdminClient] Response not OK. Error:", body.error);
+        setSaveStatus({ tone: "error", message: String(body.error || t("saveFailed")) });
         setStatus({ tone: "error", message: String(body.error || t("saveFailed")) });
         return;
       }
@@ -2232,12 +2257,21 @@ export function AdminPanelClient({
       const nextSettings = normalizeSiteSettings(body.settings);
       applyServerData(nextPerfumes, nextNotes, nextSettings);
       console.log("[AdminClient] Server data applied. Setting success status");
+      const successTimer = setTimeout(() => {
+        setSaveStatus((current) =>
+          current.tone === "success" ? { tone: "idle", message: "" } : current,
+        );
+        setSaveStatusTimerId(null);
+      }, 2200);
+      setSaveStatusTimerId(successTimer);
+      setSaveStatus({ tone: "success", message: t("statusSaved") });
       setStatus({
         tone: "success",
         message: t("statusSaved"),
       });
     } catch (err) {
       console.log("[AdminClient] Exception during save:", err);
+      setSaveStatus({ tone: "error", message: t("statusSaveFailed") });
       setStatus({
         tone: "error",
         message: t("statusSaveFailed"),
@@ -3859,16 +3893,8 @@ export function AdminPanelClient({
       </div>
 
       <SaveStatusPill
-        status={
-          busy
-            ? "saving"
-            : status?.tone === "success"
-              ? "success"
-              : status?.tone === "error"
-                ? "error"
-                : "idle"
-        }
-        message={status?.message || ""}
+        status={saveStatus.tone}
+        message={saveStatus.message}
         onSave={onSave}
         isDirty={dirty}
         isSaving={busy}
