@@ -299,7 +299,7 @@ async function getNotesSource(): Promise<Note[]> {
 }
 
 const getNotesCached = unstable_cache(getNotesSource, ["catalog-notes-v1"], {
-  revalidate: 300,
+  revalidate: 30,
   tags: ["catalog", "notes"],
 });
 
@@ -411,7 +411,7 @@ async function getPerfumesSource(): Promise<Perfume[]> {
 }
 
 const getPerfumesCached = unstable_cache(getPerfumesSource, ["catalog-perfumes-v4"], {
-  revalidate: 300,
+  revalidate: 30,
   tags: ["catalog", "perfumes"],
 });
 
