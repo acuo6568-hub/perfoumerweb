@@ -151,7 +151,6 @@ export function Header({ floating = false, locale }: HeaderProps) {
       searchBrandsTitle: "Brendlər",
       searchCategoriesTitle: "Kateqoriyalar",
       searchEmpty: "Axtarışa uyğun nəticə tapılmadı.",
-      searchVariantCount: "{count} вариантов",
       searchVariantCount: "{count} versiya",
       searchStartHint: "Ətir və ya kateqoriya tapmaq üçün axtarışa yazın.",
       searchTabs: {
