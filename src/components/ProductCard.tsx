@@ -120,7 +120,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
           ) : null}
           {discountBadge ? (
             <div className="discount-badge w-fit rounded-full bg-rose-500 px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.14em] text-white uppercase shadow-[0_10px_24px_rgba(225,29,72,0.28)]">
-              {t.productCard.discountBadge.replace("{percent}", discountBadge.replace("-", ""))}
+              {t.productCard.discountBadge.replace("{percent}", discountBadge)}
             </div>
           ) : null}
         </div>

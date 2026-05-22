@@ -258,8 +258,10 @@ export function formatDiscountBadgePercent(savingsPercent: number) {
     return null;
   }
 
+  // Return a plain rounded percent number (no sign or percent symbol).
+  // Consumers (UI/translation) will render the percent symbol or prefix.
   const rounded = Math.round(savingsPercent);
-  return `-${rounded}%`;
+  return String(rounded);
 }
 
 export function formatDiscountDeadlineLabel(
