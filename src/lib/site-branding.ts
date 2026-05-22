@@ -10,10 +10,20 @@ export type SitePromotionSettings = {
   linkHref: string;
   linkLabel: string;
   linkLabelByLocale: SitePromotionTextMap;
+  backgroundMode: "solid" | "gradient";
   backgroundColor: string;
+  gradientFrom: string;
+  gradientTo: string;
+  gradientAngle: number;
   textColor: string;
   speed: number;
   closable: boolean;
+  countdownEnabled: boolean;
+  scheduleStartAt: string;
+  scheduleEndAt: string;
+  mobileHeight: number;
+  mobileTextScale: number;
+  mobilePaddingX: number;
   sourcePerfumeSlug: string;
   sourcePerfumeSlugs: string[];
 };
@@ -36,10 +46,20 @@ const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
     en: "View offer",
     ru: "View offer",
   },
+  backgroundMode: "solid",
   backgroundColor: "#111111",
+  gradientFrom: "#111111",
+  gradientTo: "#2d2d2d",
+  gradientAngle: 110,
   textColor: "#ffffff",
   speed: 28,
   closable: true,
+  countdownEnabled: false,
+  scheduleStartAt: "",
+  scheduleEndAt: "",
+  mobileHeight: 52,
+  mobileTextScale: 0.94,
+  mobilePaddingX: 16,
   sourcePerfumeSlug: "",
   sourcePerfumeSlugs: [],
 };
@@ -111,10 +131,20 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     linkHref?: unknown;
     linkLabel?: unknown;
     linkLabelByLocale?: unknown;
+    backgroundMode?: unknown;
     backgroundColor?: unknown;
+    gradientFrom?: unknown;
+    gradientTo?: unknown;
+    gradientAngle?: unknown;
     textColor?: unknown;
     speed?: unknown;
     closable?: unknown;
+    countdownEnabled?: unknown;
+    scheduleStartAt?: unknown;
+    scheduleEndAt?: unknown;
+    mobileHeight?: unknown;
+    mobileTextScale?: unknown;
+    mobilePaddingX?: unknown;
     sourcePerfumeSlug?: unknown;
     sourcePerfumeSlugs?: unknown;
   };
@@ -134,16 +164,48 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     linkHref: normalizePromotionText(settings.linkHref),
     linkLabel: normalizePromotionText(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
     linkLabelByLocale,
+    backgroundMode: normalizePromotionText(settings.backgroundMode) === "gradient" ? "gradient" : "solid",
     backgroundColor: normalizePromotionHexColor(
       settings.backgroundColor,
       DEFAULT_PROMOTION_SETTINGS.backgroundColor,
     ),
+    gradientFrom: normalizePromotionHexColor(settings.gradientFrom, DEFAULT_PROMOTION_SETTINGS.gradientFrom),
+    gradientTo: normalizePromotionHexColor(settings.gradientTo, DEFAULT_PROMOTION_SETTINGS.gradientTo),
+    gradientAngle: Math.min(180, Math.max(0, Number(settings.gradientAngle) || DEFAULT_PROMOTION_SETTINGS.gradientAngle)),
     textColor: normalizePromotionHexColor(settings.textColor, DEFAULT_PROMOTION_SETTINGS.textColor),
     speed: normalizePromotionSpeed(settings.speed, DEFAULT_PROMOTION_SETTINGS.speed),
     closable: Boolean(settings.closable ?? DEFAULT_PROMOTION_SETTINGS.closable),
+    countdownEnabled: Boolean(settings.countdownEnabled ?? DEFAULT_PROMOTION_SETTINGS.countdownEnabled),
+    scheduleStartAt: normalizePromotionText(settings.scheduleStartAt),
+    scheduleEndAt: normalizePromotionText(settings.scheduleEndAt),
+    mobileHeight: Math.min(84, Math.max(40, Math.round(Number(settings.mobileHeight) || DEFAULT_PROMOTION_SETTINGS.mobileHeight))),
+    mobileTextScale: Math.min(1.25, Math.max(0.8, Number(settings.mobileTextScale) || DEFAULT_PROMOTION_SETTINGS.mobileTextScale)),
+    mobilePaddingX: Math.min(28, Math.max(8, Math.round(Number(settings.mobilePaddingX) || DEFAULT_PROMOTION_SETTINGS.mobilePaddingX))),
     sourcePerfumeSlug: sourcePerfumeSlugs[0] ?? "",
     sourcePerfumeSlugs,
   };
+}
+
+function parseDate(value: string) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+export function isPromotionActiveAt(promotion: SitePromotionSettings | null | undefined, at = new Date()) {
+  if (!promotion?.enabled) {
+    return false;
+  }
+
+  const start = parseDate(promotion.scheduleStartAt);
+  const end = parseDate(promotion.scheduleEndAt);
+  if (start && at < start) return false;
+  if (end && at > end) return false;
+  return true;
+}
+
+export function getPromotionCountdownTarget(promotion: SitePromotionSettings | null | undefined) {
+  return parseDate(promotion?.scheduleEndAt || "");
 }
 
 export function getPromotionTextForLocale(

@@ -729,6 +729,7 @@ create table if not exists public.website_analytics_events (
   session_id text not null,
   anonymous_id text not null,
   user_id uuid references auth.users(id) on delete set null,
+  event_type text not null default 'page_view',
   is_logged_in boolean not null default false,
   device_type text not null default 'unknown',
   os text not null default '',
@@ -744,6 +745,9 @@ create table if not exists public.website_analytics_events (
   traffic_reason text not null default '',
   path text not null default '/',
   referrer text not null default '',
+  promo_key text not null default '',
+  promo_label text not null default '',
+  promo_target text not null default '',
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -758,6 +762,7 @@ alter table public.website_live_sessions
   add column if not exists traffic_reason text not null default '';
 
 alter table public.website_analytics_events
+  add column if not exists event_type text not null default 'page_view',
   add column if not exists timezone text not null default '',
   add column if not exists country_code text not null default '',
   add column if not exists country text not null default '',
@@ -765,7 +770,10 @@ alter table public.website_analytics_events
   add column if not exists city text not null default '',
   add column if not exists user_agent text not null default '',
   add column if not exists is_suspected_bot boolean not null default false,
-  add column if not exists traffic_reason text not null default '';
+  add column if not exists traffic_reason text not null default '',
+  add column if not exists promo_key text not null default '',
+  add column if not exists promo_label text not null default '',
+  add column if not exists promo_target text not null default '';
 
 create index if not exists website_live_sessions_last_seen_idx
   on public.website_live_sessions (last_seen desc);
@@ -787,6 +795,12 @@ create index if not exists website_live_sessions_suspected_bot_idx
 
 create index if not exists website_analytics_events_created_idx
   on public.website_analytics_events (created_at desc);
+
+create index if not exists website_analytics_events_event_type_idx
+  on public.website_analytics_events (event_type);
+
+create index if not exists website_analytics_events_promo_key_idx
+  on public.website_analytics_events (promo_key);
 
 create index if not exists website_analytics_events_user_idx
   on public.website_analytics_events (user_id);

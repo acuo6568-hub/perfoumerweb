@@ -2,6 +2,7 @@
 
 import {
   startTransition,
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -95,6 +96,40 @@ type SaveStatusState = {
   message: string;
 };
 
+type PromoAnalyticsTopPromo = {
+  promoKey: string;
+  promoLabel: string;
+  promoTarget: string;
+  clicks: number;
+  uniqueUsers: number;
+  uniqueSessions: number;
+  lastClickedAt: string | null;
+};
+
+type PromoAnalyticsRecentClick = {
+  createdAt: string;
+  promoKey: string;
+  promoLabel: string;
+  promoTarget: string;
+  userId: string | null;
+  userEmail: string | null;
+  anonymousId: string;
+  sessionId: string;
+  country: string;
+  city: string;
+  deviceType: string;
+  browser: string;
+  os: string;
+  locale: string;
+};
+
+type PromoAnalyticsState = {
+  totalClicks: number;
+  uniqueClickers: number;
+  topPromos: PromoAnalyticsTopPromo[];
+  recentClicks: PromoAnalyticsRecentClick[];
+};
+
 const ui = {
   shell:
     "overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-white/92 shadow-[0_24px_60px_rgba(17,24,39,0.08)] backdrop-blur",
@@ -145,6 +180,25 @@ function getDefaultDiscount(): PerfumeDiscount {
 
 function getDefaultPromotionSettings(): SitePromotionSettings {
   return cloneDeep(DEFAULT_PROMOTION_SETTINGS);
+}
+
+function toDateTimeLocalInputValue(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function mapAdminLocaleToCopyLocale(locale: AdminLocale) {
@@ -1450,6 +1504,9 @@ export function AdminPanelClient({
   const [locale, setLocale] = useState<AdminLocale>("az");
   const [promotionEditorLocale, setPromotionEditorLocale] = useState<SitePromotionLocale>("az");
   const [isTranslatingPromotion, setIsTranslatingPromotion] = useState(false);
+  const [promoAnalytics, setPromoAnalytics] = useState<PromoAnalyticsState | null>(null);
+  const [isPromoAnalyticsLoading, setIsPromoAnalyticsLoading] = useState(false);
+  const [promoAnalyticsError, setPromoAnalyticsError] = useState<string | null>(null);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AdminView>("perfumes");
@@ -1540,6 +1597,39 @@ export function AdminPanelClient({
     () => notes.find((item) => item.slug === selectedNoteSlug) || notes[0] || null,
     [notes, selectedNoteSlug],
   );
+
+  const loadPromoAnalytics = useCallback(async () => {
+    setIsPromoAnalyticsLoading(true);
+    setPromoAnalyticsError(null);
+
+    try {
+      const response = await fetch("/api/admin/promotions/stats", { cache: "no-store" });
+      const data = (await response.json()) as PromoAnalyticsState & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load promo analytics");
+      }
+
+      setPromoAnalytics({
+        totalClicks: data.totalClicks || 0,
+        uniqueClickers: data.uniqueClickers || 0,
+        topPromos: data.topPromos || [],
+        recentClicks: data.recentClicks || [],
+      });
+    } catch (error) {
+      setPromoAnalyticsError(error instanceof Error ? error.message : "Failed to load promo analytics");
+    } finally {
+      setIsPromoAnalyticsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (view !== "promotions") {
+      return;
+    }
+
+    void loadPromoAnalytics();
+  }, [loadPromoAnalytics, view]);
 
   const updatePromotionSettings = (patch: Partial<SitePromotionSettings>) => {
     setSettings((current) => ({
@@ -3712,22 +3802,161 @@ export function AdminPanelClient({
                     </Field>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                      <Field label={copy.promotionsBackgroundColor}>
-                        <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
-                          <input
-                            type="color"
-                            className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
-                            value={settings.promotions.backgroundColor}
-                            onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
-                          />
-                          <input
-                            className={ui.input}
-                            value={settings.promotions.backgroundColor}
-                            onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
-                          />
-                        </div>
+                      <Field label={locale === "az" ? "Açılma vaxtı" : "Schedule start"} hint={locale === "az" ? "Banner bu vaxtdan sonra avtomatik görünür." : "The banner becomes active after this time."}>
+                        <input
+                          type="datetime-local"
+                          className={ui.input}
+                          value={toDateTimeLocalInputValue(settings.promotions.scheduleStartAt)}
+                          onChange={(event) => updatePromotionSettings({ scheduleStartAt: event.target.value })}
+                        />
                       </Field>
 
+                      <Field label={locale === "az" ? "Bitmə vaxtı" : "Schedule end"} hint={locale === "az" ? "Bu vaxtdan sonra banner bağlanır." : "The banner hides automatically after this time."}>
+                        <input
+                          type="datetime-local"
+                          className={ui.input}
+                          value={toDateTimeLocalInputValue(settings.promotions.scheduleEndAt)}
+                          onChange={(event) => updatePromotionSettings({ scheduleEndAt: event.target.value })}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label={locale === "az" ? "Sayım" : "Countdown"} hint={locale === "az" ? "Bitmə vaxtı görünəcək sayım kimi göstərilir." : "Show a timer until the end time."}>
+                        <button
+                          type="button"
+                          onClick={() => updatePromotionSettings({ countdownEnabled: !settings.promotions.countdownEnabled })}
+                          className={cx(
+                            "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
+                            settings.promotions.countdownEnabled
+                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                          )}
+                        >
+                          {settings.promotions.countdownEnabled ? (locale === "az" ? "Aktiv" : "On") : (locale === "az" ? "Söndürülüb" : "Off")}
+                        </button>
+                      </Field>
+
+                      <Field label={locale === "az" ? "Mobil görünüş" : "Mobile styling"} hint={locale === "az" ? "Kiçik ekranlar üçün daha sıx ölçülər." : "Tighter spacing for small screens."}>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updatePromotionSettings({ backgroundMode: "solid" })}
+                            className={cx(
+                              "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
+                              settings.promotions.backgroundMode === "solid"
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                            )}
+                          >
+                            {locale === "az" ? "Sadə" : "Solid"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updatePromotionSettings({ backgroundMode: "gradient" })}
+                            className={cx(
+                              "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
+                              settings.promotions.backgroundMode === "gradient"
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                            )}
+                          >
+                            {locale === "az" ? "Qradient" : "Gradient"}
+                          </button>
+                        </div>
+                      </Field>
+                    </div>
+
+                    {settings.promotions.backgroundMode === "gradient" ? (
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <Field label={locale === "az" ? "Başlanğıc rəng" : "Gradient from"}>
+                          <input
+                            type="color"
+                            className="h-12 w-full rounded-2xl border border-zinc-300 bg-white p-1"
+                            value={settings.promotions.gradientFrom}
+                            onChange={(event) => updatePromotionSettings({ gradientFrom: event.target.value })}
+                          />
+                        </Field>
+                        <Field label={locale === "az" ? "Son rəng" : "Gradient to"}>
+                          <input
+                            type="color"
+                            className="h-12 w-full rounded-2xl border border-zinc-300 bg-white p-1"
+                            value={settings.promotions.gradientTo}
+                            onChange={(event) => updatePromotionSettings({ gradientTo: event.target.value })}
+                          />
+                        </Field>
+                        <Field label={locale === "az" ? "Bucaq" : "Angle"}>
+                          <input
+                            type="range"
+                            min={0}
+                            max={180}
+                            className="w-full accent-zinc-900"
+                            value={settings.promotions.gradientAngle}
+                            onChange={(event) => updatePromotionSettings({ gradientAngle: Number(event.target.value) || 110 })}
+                          />
+                          <div className="mt-1 text-xs text-zinc-500">{settings.promotions.gradientAngle}°</div>
+                        </Field>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <Field label={locale === "az" ? "Arxa fon rəngi" : "Background color"}>
+                          <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
+                            <input
+                              type="color"
+                              className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
+                              value={settings.promotions.backgroundColor}
+                              onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
+                            />
+                            <input
+                              className={ui.input}
+                              value={settings.promotions.backgroundColor}
+                              onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
+                            />
+                          </div>
+                        </Field>
+
+                        <Field label={locale === "az" ? "Mobil hündürlük" : "Mobile height"}>
+                          <input
+                            type="range"
+                            min={40}
+                            max={84}
+                            className="w-full accent-zinc-900"
+                            value={settings.promotions.mobileHeight}
+                            onChange={(event) => updatePromotionSettings({ mobileHeight: Number(event.target.value) || 52 })}
+                          />
+                          <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileHeight}px</div>
+                        </Field>
+                      </div>
+                    )}
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label={locale === "az" ? "Mobil mətn ölçüsü" : "Mobile text scale"}>
+                        <input
+                          type="range"
+                          min={0.8}
+                          max={1.25}
+                          step={0.01}
+                          className="w-full accent-zinc-900"
+                          value={settings.promotions.mobileTextScale}
+                          onChange={(event) => updatePromotionSettings({ mobileTextScale: Number(event.target.value) || 0.94 })}
+                        />
+                        <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileTextScale.toFixed(2)}x</div>
+                      </Field>
+
+                      <Field label={locale === "az" ? "Mobil yan boşluq" : "Mobile side padding"}>
+                        <input
+                          type="range"
+                          min={8}
+                          max={28}
+                          className="w-full accent-zinc-900"
+                          value={settings.promotions.mobilePaddingX}
+                          onChange={(event) => updatePromotionSettings({ mobilePaddingX: Number(event.target.value) || 16 })}
+                        />
+                        <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobilePaddingX}px</div>
+                      </Field>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
                       <Field label={copy.promotionsTextColor}>
                         <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
                           <input
@@ -3805,17 +4034,21 @@ export function AdminPanelClient({
 
                   <div className="mt-5 overflow-hidden rounded-[1.2rem] border border-zinc-200 shadow-[0_16px_28px_rgba(0,0,0,0.06)]">
                     <div
-                      className="relative overflow-hidden"
-                      style={{
-                        backgroundColor: settings.promotions.backgroundColor,
-                        color: settings.promotions.textColor,
-                      }}
+                        className="promo-banner-shell relative overflow-hidden"
+                        style={{
+                          backgroundColor: settings.promotions.backgroundColor,
+                          backgroundImage: settings.promotions.backgroundMode === "gradient"
+                            ? `linear-gradient(${settings.promotions.gradientAngle}deg, ${settings.promotions.gradientFrom}, ${settings.promotions.gradientTo})`
+                            : undefined,
+                          color: settings.promotions.textColor,
+                          ["--promo-banner-mobile-height" as string]: `${settings.promotions.mobileHeight}px`,
+                          ["--promo-banner-mobile-text-scale" as string]: String(settings.promotions.mobileTextScale),
+                          ["--promo-banner-mobile-padding-x" as string]: `${settings.promotions.mobilePaddingX}px`,
+                        }}
                     >
-                      <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/16 to-transparent" />
-                      <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/16 to-transparent" />
-                      <div className="brand-marquee-mask">
+                      <div className="promo-banner-inner brand-marquee-mask">
                         <div
-                          className="brand-marquee-track"
+                          className="promo-banner-track brand-marquee-track"
                           style={{ animationDuration: `${settings.promotions.speed}s` }}
                         >
                           <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]">
@@ -3856,6 +4089,90 @@ export function AdminPanelClient({
                         {settings.promotions.linkHref || copy.promotionsNoLink}
                       </p>
                     </div>
+                  </div>
+
+                  <div className={cx(ui.soft, "mt-5 p-4 sm:p-5") }>
+                    <SectionLabel
+                      icon={<TrendUp size={16} weight="bold" />}
+                      title={locale === "az" ? "Promo analitikası" : "Promo analytics"}
+                      detail={locale === "az" ? "Hansı banner daha çox klik toplayır və kimlər klikləyir." : "See which promo gets clicked most and who is clicking it."}
+                    />
+
+                    {isPromoAnalyticsLoading ? (
+                      <div className="mt-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500">
+                        {locale === "az" ? "Analitika yüklənir..." : "Loading promo analytics..."}
+                      </div>
+                    ) : promoAnalyticsError ? (
+                      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        {promoAnalyticsError}
+                      </div>
+                    ) : promoAnalytics ? (
+                      <div className="mt-4 grid gap-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">{locale === "az" ? "Toplam klik" : "Total clicks"}</p>
+                            <p className="mt-1 text-2xl font-semibold text-zinc-950">{promoAnalytics.totalClicks}</p>
+                          </div>
+                          <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">{locale === "az" ? "Unikal klik edənlər" : "Unique clickers"}</p>
+                            <p className="mt-1 text-2xl font-semibold text-zinc-950">{promoAnalytics.uniqueClickers}</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{locale === "az" ? "Ən güclü bannerlər" : "Top promos"}</p>
+                          <div className="mt-3 grid gap-3">
+                            {promoAnalytics.topPromos.length ? promoAnalytics.topPromos.map((item) => (
+                              <div key={item.promoKey} className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-zinc-950">{item.promoLabel || item.promoKey}</p>
+                                    <p className="mt-1 truncate text-xs text-zinc-500">{item.promoTarget || "-"}</p>
+                                  </div>
+                                  <div className="shrink-0 text-right text-xs text-zinc-500">
+                                    <p>{item.clicks} clicks</p>
+                                    <p>{item.uniqueUsers} users</p>
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-zinc-500">
+                                  <span className="rounded-full border border-zinc-200 bg-white px-2 py-1">{locale === "az" ? "Sessiyalar" : "Sessions"}: {item.uniqueSessions}</span>
+                                  <span className="rounded-full border border-zinc-200 bg-white px-2 py-1">{locale === "az" ? "Son klik" : "Last click"}: {item.lastClickedAt ? new Date(item.lastClickedAt).toLocaleString() : "-"}</span>
+                                </div>
+                              </div>
+                            )) : (
+                              <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 text-sm text-zinc-500">
+                                {locale === "az" ? "Hələ klik yoxdur." : "No promo clicks yet."}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{locale === "az" ? "Son klik edənlər" : "Recent clickers"}</p>
+                          <div className="mt-3 grid gap-2">
+                            {promoAnalytics.recentClicks.length ? promoAnalytics.recentClicks.slice(0, 12).map((item) => (
+                              <div key={`${item.sessionId}-${item.createdAt}`} className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 text-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-zinc-950">{item.userEmail || item.userId || item.anonymousId}</p>
+                                    <p className="mt-1 truncate text-xs text-zinc-500">{item.promoLabel || item.promoKey}</p>
+                                  </div>
+                                  <div className="shrink-0 text-right text-xs text-zinc-500">
+                                    <p>{item.country || "-"}{item.city ? ` / ${item.city}` : ""}</p>
+                                    <p>{item.deviceType || "-"} · {item.browser || "-"}</p>
+                                  </div>
+                                </div>
+                                <p className="mt-2 text-xs text-zinc-400">{new Date(item.createdAt).toLocaleString()}</p>
+                              </div>
+                            )) : (
+                              <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 text-sm text-zinc-500">
+                                {locale === "az" ? "Son klik edən yoxdur." : "No recent clickers yet."}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>

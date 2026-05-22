@@ -9,10 +9,20 @@ export type SitePromotionSettings = {
   linkHref: string;
   linkLabel: string;
   linkLabelByLocale: Record<SitePromotionLocale, string>;
+  backgroundMode: "solid" | "gradient";
   backgroundColor: string;
+  gradientFrom: string;
+  gradientTo: string;
+  gradientAngle: number;
   textColor: string;
   speed: number;
   closable: boolean;
+  countdownEnabled: boolean;
+  scheduleStartAt: string;
+  scheduleEndAt: string;
+  mobileHeight: number;
+  mobileTextScale: number;
+  mobilePaddingX: number;
   sourcePerfumeSlug: string;
   sourcePerfumeSlugs: string[];
 };
@@ -51,10 +61,20 @@ export const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
     en: "View offer",
     ru: "View offer",
   },
+  backgroundMode: "solid",
   backgroundColor: "#111111",
+  gradientFrom: "#111111",
+  gradientTo: "#2d2d2d",
+  gradientAngle: 110,
   textColor: "#ffffff",
   speed: 28,
   closable: true,
+  countdownEnabled: false,
+  scheduleStartAt: "",
+  scheduleEndAt: "",
+  mobileHeight: 52,
+  mobileTextScale: 0.94,
+  mobilePaddingX: 16,
   sourcePerfumeSlug: "",
   sourcePerfumeSlugs: [],
 };
@@ -68,10 +88,20 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
     linkHref?: unknown;
     linkLabel?: unknown;
     linkLabelByLocale?: unknown;
+    backgroundMode?: unknown;
     backgroundColor?: unknown;
+    gradientFrom?: unknown;
+    gradientTo?: unknown;
+    gradientAngle?: unknown;
     textColor?: unknown;
     speed?: unknown;
     closable?: unknown;
+    countdownEnabled?: unknown;
+    scheduleStartAt?: unknown;
+    scheduleEndAt?: unknown;
+    mobileHeight?: unknown;
+    mobileTextScale?: unknown;
+    mobilePaddingX?: unknown;
     sourcePerfumeSlug?: unknown;
     sourcePerfumeSlugs?: unknown;
   };
@@ -114,13 +144,48 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
       en: normalizeString(linkLabelByLocaleSource.en) || normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
       ru: normalizeString(linkLabelByLocaleSource.ru) || normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
     },
+    backgroundMode: normalizeString(settings.backgroundMode) === "gradient" ? "gradient" : "solid",
     backgroundColor: normalizeHexColor(settings.backgroundColor, DEFAULT_PROMOTION_SETTINGS.backgroundColor),
+    gradientFrom: normalizeHexColor(settings.gradientFrom, DEFAULT_PROMOTION_SETTINGS.gradientFrom),
+    gradientTo: normalizeHexColor(settings.gradientTo, DEFAULT_PROMOTION_SETTINGS.gradientTo),
+    gradientAngle: Math.min(180, Math.max(0, Number(settings.gradientAngle) || DEFAULT_PROMOTION_SETTINGS.gradientAngle)),
     textColor: normalizeHexColor(settings.textColor, DEFAULT_PROMOTION_SETTINGS.textColor),
     speed: normalizeSpeed(settings.speed, DEFAULT_PROMOTION_SETTINGS.speed),
     closable: Boolean(settings.closable ?? DEFAULT_PROMOTION_SETTINGS.closable),
+    countdownEnabled: Boolean(settings.countdownEnabled ?? DEFAULT_PROMOTION_SETTINGS.countdownEnabled),
+    scheduleStartAt: normalizeString(settings.scheduleStartAt),
+    scheduleEndAt: normalizeString(settings.scheduleEndAt),
+    mobileHeight: Math.min(84, Math.max(40, Math.round(Number(settings.mobileHeight) || DEFAULT_PROMOTION_SETTINGS.mobileHeight))),
+    mobileTextScale: Math.min(1.25, Math.max(0.8, Number(settings.mobileTextScale) || DEFAULT_PROMOTION_SETTINGS.mobileTextScale)),
+    mobilePaddingX: Math.min(28, Math.max(8, Math.round(Number(settings.mobilePaddingX) || DEFAULT_PROMOTION_SETTINGS.mobilePaddingX))),
     sourcePerfumeSlug: sourcePerfumeSlugs[0] ?? "",
     sourcePerfumeSlugs,
   };
+}
+
+function parseTime(value: string) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+export function isPromotionActiveAt(
+  promotion: SitePromotionSettings | null | undefined,
+  at = new Date(),
+) {
+  if (!promotion?.enabled) {
+    return false;
+  }
+
+  const start = parseTime(promotion.scheduleStartAt);
+  const end = parseTime(promotion.scheduleEndAt);
+  if (start && at < start) return false;
+  if (end && at > end) return false;
+  return true;
+}
+
+export function getPromotionCountdownTarget(promotion: SitePromotionSettings | null | undefined) {
+  return parseTime(promotion?.scheduleEndAt || "");
 }
 
 export function buildPromotionStorageKey(settings: SitePromotionSettings) {
@@ -133,6 +198,16 @@ export function buildPromotionStorageKey(settings: SitePromotionSettings) {
     settings.linkLabelByLocale.az,
     settings.linkLabelByLocale.en,
     settings.linkLabelByLocale.ru,
+    settings.backgroundMode,
+    settings.backgroundColor,
+    settings.gradientFrom,
+    settings.gradientTo,
+    String(settings.gradientAngle),
+    settings.scheduleStartAt,
+    settings.scheduleEndAt,
+    String(settings.mobileHeight),
+    String(settings.mobileTextScale),
+    String(settings.mobilePaddingX),
     settings.sourcePerfumeSlug,
     settings.backgroundColor,
     settings.textColor,

@@ -1005,6 +1005,26 @@ h6 {
   will-change: transform;
 }
 
+.promo-banner-shell {
+  --promo-banner-mobile-height: 52px;
+  --promo-banner-mobile-text-scale: 0.94;
+  --promo-banner-mobile-padding-x: 16px;
+}
+
+@media (max-width: 640px) {
+  .promo-banner-shell {
+    min-height: var(--promo-banner-mobile-height);
+  }
+
+  .promo-banner-shell .promo-banner-inner {
+    padding-inline: var(--promo-banner-mobile-padding-x);
+  }
+
+  .promo-banner-shell .promo-banner-track {
+    font-size: calc(0.72rem * var(--promo-banner-mobile-text-scale));
+  }
+}
+
 .brand-logo-chip {
   display: inline-flex;
   min-width: 94px;
