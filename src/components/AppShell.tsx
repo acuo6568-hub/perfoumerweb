@@ -1,15 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { Header } from "@/components/Header";
+import { PromotionsBanner } from "@/components/PromotionsBanner";
 import { ScentFinderPrompt } from "@/components/ScentFinderPrompt";
 import { AIChatButton } from "@/components/AIChat/AIChatButton";
 import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigation";
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
 import { SiteSettingsProvider } from "@/components/site-settings/SiteSettingsProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
+import { buildPromotionStorageKey } from "@/lib/promotions";
 import type { SiteSettings } from "@/lib/site-branding";
 
 type AppShellProps = {
@@ -24,9 +26,16 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
   const pathname = usePathname() || "/";
   const { pathname: basePathname } = stripLocalePrefix(pathname);
   const [loadedPathname, setLoadedPathname] = useState(pathname);
+  const [isPromoBannerDismissed, setIsPromoBannerDismissed] = useState(false);
   const isRouteLoading = loadedPathname !== pathname;
   const hideNavigationChrome = basePathname.startsWith("/staff") || basePathname.startsWith("/admin");
   const shouldOffsetForHeader = !hideNavigationChrome && basePathname !== "/";
+  const promoBannerStorageKey = useMemo(() => buildPromotionStorageKey(settings.promotions), [settings.promotions]);
+  const hasPromoBanner = settings.promotions.enabled && Boolean(settings.promotions.text.trim());
+  const isPromoBannerVisible = hasPromoBanner && !isPromoBannerDismissed;
+  const bannerOffsetStyle = {
+    "--promo-banner-height": isPromoBannerVisible ? "3rem" : "0px",
+  } as CSSProperties;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -67,29 +76,64 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!hasPromoBanner) {
+      setIsPromoBannerDismissed(false);
+      return;
+    }
+
+    setIsPromoBannerDismissed(window.localStorage.getItem(promoBannerStorageKey) === "1");
+  }, [hasPromoBanner, promoBannerStorageKey]);
+
+  const handleDismissPromoBanner = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(promoBannerStorageKey, "1");
+    setIsPromoBannerDismissed(true);
+  };
+
   return (
     <SiteSettingsProvider settings={settings}>
       <CurrencyProvider>
-        <div
-          aria-hidden="true"
-          className="route-preloader"
-          data-visible={isRouteLoading ? "true" : "false"}
-        >
-          <div className="route-preloader-bar" />
+        <div style={bannerOffsetStyle}>
+          <div
+            aria-hidden="true"
+            className="route-preloader"
+            data-visible={isRouteLoading ? "true" : "false"}
+          >
+            <div className="route-preloader-bar" />
+          </div>
+          <ScrollRestoreOnNavigation />
+          {hideNavigationChrome ? null : (
+            <>
+              <PromotionsBanner
+                locale={_locale}
+                visible={isPromoBannerVisible}
+                onClose={handleDismissPromoBanner}
+              />
+              <Header floating locale={_locale} topOffsetStyle={{ top: "var(--promo-banner-height)" }} />
+            </>
+          )}
+          <div
+            key={pathname}
+            className={[
+              "route-page-enter",
+              shouldOffsetForHeader
+                ? "pt-[calc(5.5rem+var(--promo-banner-height))] sm:pt-[calc(6rem+var(--promo-banner-height))]"
+                : "",
+            ].join(" ")}
+          >
+            {children}
+          </div>
+          {hideNavigationChrome ? null : <ScentFinderPrompt locale={_locale} />}
+          <AIChatButton locale={_locale} />
         </div>
-        <ScrollRestoreOnNavigation />
-        {hideNavigationChrome ? null : <Header floating locale={_locale} />}
-        <div
-          key={pathname}
-          className={[
-            "route-page-enter",
-            shouldOffsetForHeader ? "pt-22 sm:pt-24" : "",
-          ].join(" ")}
-        >
-          {children}
-        </div>
-        {hideNavigationChrome ? null : <ScentFinderPrompt locale={_locale} />}
-        <AIChatButton locale={_locale} />
       </CurrencyProvider>
     </SiteSettingsProvider>
   );

@@ -1,3 +1,82 @@
+export type SitePromotionMode = "manual" | "discount";
+
+export type SitePromotionSettings = {
+  enabled: boolean;
+  mode: SitePromotionMode;
+  text: string;
+  linkHref: string;
+  linkLabel: string;
+  backgroundColor: string;
+  textColor: string;
+  speed: number;
+  closable: boolean;
+  sourcePerfumeSlug: string;
+};
+
+const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
+  enabled: false,
+  mode: "manual",
+  text: "Limited-time offers are live now.",
+  linkHref: "",
+  linkLabel: "View offer",
+  backgroundColor: "#111111",
+  textColor: "#ffffff",
+  speed: 28,
+  closable: true,
+  sourcePerfumeSlug: "",
+};
+
+function normalizePromotionText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizePromotionHexColor(value: unknown, fallback: string) {
+  const normalized = normalizePromotionText(value);
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized) ? normalized : fallback;
+}
+
+function normalizePromotionSpeed(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(120, Math.max(8, Math.round(parsed)));
+}
+
+function normalizePromotionSettings(value: unknown): SitePromotionSettings {
+  const settings = (value && typeof value === "object" ? value : {}) as {
+    enabled?: unknown;
+    mode?: unknown;
+    text?: unknown;
+    linkHref?: unknown;
+    linkLabel?: unknown;
+    backgroundColor?: unknown;
+    textColor?: unknown;
+    speed?: unknown;
+    closable?: unknown;
+    sourcePerfumeSlug?: unknown;
+  };
+
+  const mode = normalizePromotionText(settings.mode) === "discount" ? "discount" : "manual";
+
+  return {
+    enabled: Boolean(settings.enabled),
+    mode,
+    text: normalizePromotionText(settings.text) || DEFAULT_PROMOTION_SETTINGS.text,
+    linkHref: normalizePromotionText(settings.linkHref),
+    linkLabel: normalizePromotionText(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
+    backgroundColor: normalizePromotionHexColor(
+      settings.backgroundColor,
+      DEFAULT_PROMOTION_SETTINGS.backgroundColor,
+    ),
+    textColor: normalizePromotionHexColor(settings.textColor, DEFAULT_PROMOTION_SETTINGS.textColor),
+    speed: normalizePromotionSpeed(settings.speed, DEFAULT_PROMOTION_SETTINGS.speed),
+    closable: Boolean(settings.closable ?? DEFAULT_PROMOTION_SETTINGS.closable),
+    sourcePerfumeSlug: normalizePromotionText(settings.sourcePerfumeSlug).toLowerCase(),
+  };
+}
+
 export const DEFAULT_SITE_NAME = "Perfoumer";
 export const DEFAULT_SITE_DOMAIN = "perfoumer.az";
 
@@ -11,6 +90,7 @@ export type SiteSettings = {
   openGraphDescription: string;
   twitterTitle: string;
   twitterDescription: string;
+  promotions: SitePromotionSettings;
 };
 
 function normalizeString(value: unknown) {
@@ -63,6 +143,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     openGraphDescription?: unknown;
     twitterTitle?: unknown;
     twitterDescription?: unknown;
+    promotions?: unknown;
   };
   const siteName = normalizeSiteName(settings.siteName);
   const siteDomain = normalizeSiteDomain(settings.siteDomain);
@@ -81,6 +162,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     twitterTitle: normalizeString(settings.twitterTitle) || defaultTitle,
     twitterDescription:
       normalizeString(settings.twitterDescription) || defaultDescription,
+    promotions: normalizePromotionSettings(settings.promotions ?? DEFAULT_PROMOTION_SETTINGS),
   };
 }
 

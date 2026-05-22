@@ -263,6 +263,10 @@ export const translations = {
       title: "Şəkil tanıtım xarakteri daşıyır",
       body: "Ətir şəkli yalnız tanıtım məqsədi daşıyır. Məhsullarımız öz brendimizə məxsus yüksək keyfiyyətli qablaşdırmada göndərilir.",
     },
+    promoBanner: {
+      close: "Bağla",
+      viewOffer: "Təklifi gör",
+    },
     notFound: {
       title: "Məhsul tapılmadı",
       description: "Link köhnə və ya səhv ola bilər.",
@@ -472,6 +476,10 @@ export const translations = {
       title: "The image is for presentation purposes",
       body: "The image of the perfume is for illustrative purposes only. Our products come in our own branded high quality packages.",
     },
+    promoBanner: {
+      close: "Close",
+      viewOffer: "View offer",
+    },
     notFound: {
       title: "Product not found",
       description: "The link may be outdated or incorrect.",
@@ -680,6 +688,10 @@ export const translations = {
       info: "Информация",
       title: "Изображение носит ознакомительный характер",
       body: "Изображение аромата носит только иллюстративный характер. Наши товары отправляются в фирменной высококачественной упаковке.",
+    },
+    promoBanner: {
+      close: "Закрыть",
+      viewOffer: "Смотреть предложение",
     },
     notFound: {
       title: "Товар не найден",

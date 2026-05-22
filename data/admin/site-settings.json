@@ -7,5 +7,17 @@
   "openGraphTitle": "Perfoumer | Orijinal və Premium Ətirlər",
   "openGraphDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
   "twitterTitle": "Perfoumer | Orijinal və Premium Ətirlər",
-  "twitterDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında."
+  "twitterDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
+  "promotions": {
+    "enabled": true,
+    "mode": "manual",
+    "text": "Limited-time offers are live now.",
+    "linkHref": "",
+    "linkLabel": "View offer",
+    "backgroundColor": "#111111",
+    "textColor": "#ffffff",
+    "speed": 28,
+    "closable": true,
+    "sourcePerfumeSlug": ""
+  }
 }

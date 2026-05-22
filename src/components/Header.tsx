@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { CSSProperties } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -43,6 +44,7 @@ import type { CartItemRow } from "@/types/cart";
 type HeaderProps = {
   floating?: boolean;
   locale: Locale;
+  topOffsetStyle?: CSSProperties;
 };
 
 type HeaderSearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
@@ -80,7 +82,7 @@ function slugToName(slug: string): string {
     .join(" ");
 }
 
-export function Header({ floating = false, locale }: HeaderProps) {
+export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
   const siteSettings = useSiteSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -967,6 +969,7 @@ export function Header({ floating = false, locale }: HeaderProps) {
           "z-50 w-full opacity-100",
           floating ? "fixed inset-x-0 top-0" : "relative",
         ].join(" ")}
+        style={floating ? topOffsetStyle : undefined}
       >
         <div className="bg-[#f3f3f2] px-3 py-3 lg:hidden">
           <div className="relative mx-auto flex h-12 max-w-[1540px] items-center justify-between">

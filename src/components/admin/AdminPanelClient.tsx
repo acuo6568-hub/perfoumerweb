@@ -43,6 +43,7 @@ import {
   buildDefaultSiteTitle,
   normalizeKeywordList,
   normalizeSiteSettings,
+  type SitePromotionSettings,
   type SiteSettings,
 } from "@/lib/site-branding";
 import {
@@ -51,10 +52,12 @@ import {
 } from "@/lib/seo";
 import {
   addDiscountDuration,
+  formatDiscountDeadlineLabel,
   normalizePerfumeDiscount,
   resolveDiscountedSizePrice,
   toDateInputValue,
 } from "@/lib/discounts";
+import { DEFAULT_PROMOTION_SETTINGS } from "@/lib/promotions";
 import type { Note, Perfume, PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { BrandSelector } from "@/components/admin/BrandSelector";
@@ -72,7 +75,7 @@ type AdminPanelClientProps = {
 type PerfumeDraft = Perfume;
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
-type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding";
+type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding" | "promotions";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "discounts" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
@@ -137,6 +140,38 @@ function getDefaultDiscount(): PerfumeDiscount {
   return cloneDeep(DEFAULT_PERFUME_DISCOUNT);
 }
 
+function getDefaultPromotionSettings(): SitePromotionSettings {
+  return cloneDeep(DEFAULT_PROMOTION_SETTINGS);
+}
+
+function mapAdminLocaleToCopyLocale(locale: AdminLocale) {
+  return locale === "az" ? "az" : "en";
+}
+
+function buildPromotionDiscountCopy(perfume: Perfume, locale: AdminLocale) {
+  const copyLocale = mapAdminLocaleToCopyLocale(locale);
+  const perfumeName = `${perfume.brand} ${perfume.name}`.trim();
+  const deadlineLabel = formatDiscountDeadlineLabel(perfume.discount, copyLocale);
+
+  if (copyLocale === "az") {
+    return {
+      text: deadlineLabel
+        ? `${perfumeName} endirimdədir — ${deadlineLabel}`
+        : `${perfumeName} endirimdədir`,
+      linkHref: `/perfumes/${perfume.slug}`,
+      linkLabel: "Endirimi gör",
+    };
+  }
+
+  return {
+    text: deadlineLabel
+      ? `${perfumeName} is on discount — ${deadlineLabel}`
+      : `${perfumeName} is on discount now`,
+    linkHref: `/perfumes/${perfume.slug}`,
+    linkLabel: "View offer",
+  };
+}
+
 const adminCopy = {
   az: {
     localeLabel: "Dil seçimi",
@@ -186,6 +221,41 @@ const adminCopy = {
     branding: "Brendinq",
     brandingDescription:
       "Saytın başlığını və admin paneldə görünən əsas brend adını bir yerdən dəyişin.",
+    promotions: "Promosiyalar",
+    promotionsDescription:
+      "Yuxarıda axan, rənglənən və bağlana bilən promo banneri buradan idarə edin.",
+    promotionsPreview: "Banner önizləməsi",
+    promotionsPreviewDetail:
+      "Müştərilərin saytın yuxarısında görəcəyi promosyon mesajını, sürəti və rəngini seçin.",
+    promotionsEnable: "Promo banneri aktiv et",
+    promotionsEnableHint: "Söndürüləndə banner saytın heç bir yerində görünməyəcək.",
+    promotionsEnabled: "Aktiv",
+    promotionsDisabled: "Söndürülüb",
+    promotionsYes: "Bəli",
+    promotionsNo: "Xeyr",
+    promotionsMode: "Banner növü",
+    promotionsManual: "Manual mətn",
+    promotionsDiscount: "Endirim seçimi",
+    promotionsText: "Banner mətni",
+    promotionsTextHint: "Qısa və aydın mətn daha yaxşı oxunur.",
+    promotionsLinkHref: "Banner linki",
+    promotionsLinkHrefHint: "Bannerin və ya onun mətninin yönələcəyi keçid.",
+    promotionsLinkLabel: "Link etiketi",
+    promotionsLinkLabelHint: "Sağ tərəfdə görünəcək düymə yazısı.",
+    promotionsSelectPerfume: "Ətir seçin",
+    promotionsNoLink: "Hələ link seçilməyib",
+    promotionsBackgroundColor: "Arxa fon rəngi",
+    promotionsTextColor: "Mətn rəngi",
+    promotionsSpeed: "Yazı sürəti",
+    promotionsSpeedHint: "Kiçik dəyər daha sürətli hərəkət deməkdir.",
+    promotionsClosable: "İstifadəçi bağlaya bilər",
+    promotionsClosableHint: "Söndürüləndə banneri bağlama düyməsi gizlənir.",
+    promotionsSourcePerfume: "Endirim mənbəyi",
+    promotionsSourcePerfumeHint:
+      "Endirim rejimində olan ətri seçin və mətn avtomatik təklif olunsun.",
+    promotionsGenerate: "Təklif mətni yarat",
+    promotionsReset: "Defaulta qaytar",
+    promotionsOpenLink: "Banner keçidi",
     siteName: "Sayt adı",
     siteNameHint:
       "Bu ad sayt başlığında və admin paneldə əsas brend adı kimi istifadə olunur.",
@@ -447,6 +517,41 @@ const adminCopy = {
     branding: "Branding",
     brandingDescription:
       "Change the website title and the main brand name shown across the admin from one place.",
+    promotions: "Promotions",
+    promotionsDescription:
+      "Control the scrolling promo banner at the very top of the site from one place.",
+    promotionsPreview: "Banner preview",
+    promotionsPreviewDetail:
+      "Choose the message, speed, colors, and dismiss behavior your visitors will see.",
+    promotionsEnable: "Enable promo banner",
+    promotionsEnableHint: "When off, the banner is hidden everywhere on the site.",
+    promotionsEnabled: "Active",
+    promotionsDisabled: "Disabled",
+    promotionsYes: "Yes",
+    promotionsNo: "No",
+    promotionsMode: "Banner mode",
+    promotionsManual: "Manual text",
+    promotionsDiscount: "Discount selection",
+    promotionsText: "Banner text",
+    promotionsTextHint: "Short, clear copy works best in the moving banner.",
+    promotionsLinkHref: "Banner link",
+    promotionsLinkHrefHint: "Where the banner or its message should send users.",
+    promotionsLinkLabel: "Link label",
+    promotionsLinkLabelHint: "Label shown as the right-side button.",
+    promotionsSelectPerfume: "Select a perfume",
+    promotionsNoLink: "No link selected yet",
+    promotionsBackgroundColor: "Background color",
+    promotionsTextColor: "Text color",
+    promotionsSpeed: "Text speed",
+    promotionsSpeedHint: "Lower values make the text move faster.",
+    promotionsClosable: "Allow users to close it",
+    promotionsClosableHint: "Turn off if the banner should stay visible for everyone.",
+    promotionsSourcePerfume: "Discount source",
+    promotionsSourcePerfumeHint:
+      "Pick a perfume on discount and let the banner copy be suggested automatically.",
+    promotionsGenerate: "Generate promo copy",
+    promotionsReset: "Reset to default",
+    promotionsOpenLink: "Banner link",
     siteName: "Site title",
     siteNameHint:
       "This name is used for the browser title and as the primary brand label in admin.",
@@ -1355,10 +1460,35 @@ export function AdminPanelClient({
     ? `https://perfoumer.az/perfumes/${selectedPerfume.slug}`
     : "";
   const selectedPerfumeDiscount = selectedPerfume?.discount ?? DEFAULT_PERFUME_DISCOUNT;
+  const promotionSourcePerfume = useMemo(
+    () =>
+      perfumes.find(
+        (item) => item.slug === settings.promotions.sourcePerfumeSlug || item.id === settings.promotions.sourcePerfumeSlug,
+      ) || null,
+    [perfumes, settings.promotions.sourcePerfumeSlug],
+  );
+  const promotionSuggestion = promotionSourcePerfume
+    ? buildPromotionDiscountCopy(promotionSourcePerfume, locale)
+    : null;
+  const promotionDiscountPerfumes = useMemo(
+    () => perfumes.filter((item) => Boolean(item.discount?.enabled)),
+    [perfumes],
+  );
+  const promotionTargetPerfumes = promotionDiscountPerfumes.length ? promotionDiscountPerfumes : perfumes;
   const selectedNote = useMemo(
     () => notes.find((item) => item.slug === selectedNoteSlug) || notes[0] || null,
     [notes, selectedNoteSlug],
   );
+
+  const updatePromotionSettings = (patch: Partial<SitePromotionSettings>) => {
+    setSettings((current) => ({
+      ...current,
+      promotions: {
+        ...current.promotions,
+        ...patch,
+      },
+    }));
+  };
 
   const filteredPerfumes = useMemo(() => {
     const searchMatched = perfumes.filter((item) => {
@@ -2857,9 +2987,23 @@ export function AdminPanelClient({
             >
               {copy.branding}
             </TabButton>
+            <TabButton
+              active={view === "promotions"}
+              icon={<Sparkle size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("promotions"));
+              }}
+            >
+              {copy.promotions}
+            </TabButton>
           </div>
 
-          {view === "dashboard" ? null : view === "branding" ? (
+          {view === "dashboard" ? null : view === "promotions" ? (
+            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+              <p className="text-sm font-semibold text-zinc-900">{copy.promotions}</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.promotionsDescription}</p>
+            </div>
+          ) : view === "branding" ? (
             <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
               <p className="text-sm font-semibold text-zinc-900">{copy.branding}</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.brandingDescription}</p>
@@ -3211,6 +3355,304 @@ export function AdminPanelClient({
                       <p className="mt-1 text-xs text-zinc-500">Click any brand from the list</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          ) : view === "promotions" ? (
+            <div className={ui.card}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    <Sparkle size={14} weight="bold" />
+                    {copy.promotions}
+                  </div>
+                  <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                    {copy.promotions}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+                    {copy.promotionsDescription}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className={cx(ui.soft, "p-4 sm:p-5") }>
+                  <SectionLabel
+                    icon={<Sparkle size={16} weight="bold" />}
+                    title={copy.promotionsPreview}
+                    detail={copy.promotionsPreviewDetail}
+                  />
+
+                  <div className="mt-5 grid gap-4">
+                    <Field label={copy.promotionsEnable} hint={copy.promotionsEnableHint}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updatePromotionSettings({ enabled: !settings.promotions.enabled })
+                        }
+                        className={cx(
+                          "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
+                          settings.promotions.enabled
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                        )}
+                      >
+                        {settings.promotions.enabled ? copy.promotionsEnabled : copy.promotionsDisabled}
+                      </button>
+                    </Field>
+
+                    <Field label={copy.promotionsMode}>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(["manual", "discount"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => updatePromotionSettings({ mode })}
+                            className={cx(
+                              "rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition",
+                              settings.promotions.mode === mode
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                            )}
+                          >
+                            {mode === "manual" ? copy.promotionsManual : copy.promotionsDiscount}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    {settings.promotions.mode === "discount" ? (
+                      <Field label={copy.promotionsSourcePerfume} hint={copy.promotionsSourcePerfumeHint}>
+                        <div className="flex gap-3">
+                          <select
+                            className={ui.input}
+                            value={settings.promotions.sourcePerfumeSlug}
+                            onChange={(event) =>
+                              updatePromotionSettings({ sourcePerfumeSlug: event.target.value })
+                            }
+                          >
+                            <option value="">{copy.promotionsSelectPerfume}</option>
+                            {promotionTargetPerfumes.map((perfume) => (
+                              <option key={perfume.id} value={perfume.slug}>
+                                {perfume.brand} {perfume.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className={ui.secondaryButton}
+                            onClick={() => {
+                              if (!promotionSourcePerfume || !promotionSuggestion) {
+                                return;
+                              }
+
+                              updatePromotionSettings({
+                                text: promotionSuggestion.text,
+                                linkHref: promotionSuggestion.linkHref,
+                                linkLabel: promotionSuggestion.linkLabel,
+                              });
+                            }}
+                          >
+                            {copy.promotionsGenerate}
+                          </button>
+                        </div>
+                      </Field>
+                    ) : null}
+
+                    <Field label={copy.promotionsText} hint={copy.promotionsTextHint}>
+                      <textarea
+                        className={ui.textarea}
+                        value={settings.promotions.text}
+                        onChange={(event) => updatePromotionSettings({ text: event.target.value })}
+                        rows={3}
+                        placeholder={promotionSuggestion?.text || copy.promotionsText}
+                      />
+                    </Field>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label={copy.promotionsLinkHref} hint={copy.promotionsLinkHrefHint}>
+                        <input
+                          className={ui.input}
+                          value={settings.promotions.linkHref}
+                          onChange={(event) => updatePromotionSettings({ linkHref: event.target.value })}
+                          placeholder="/offers"
+                        />
+                      </Field>
+
+                      <Field label={copy.promotionsLinkLabel} hint={copy.promotionsLinkLabelHint}>
+                        <input
+                          className={ui.input}
+                          value={settings.promotions.linkLabel}
+                          onChange={(event) => updatePromotionSettings({ linkLabel: event.target.value })}
+                          placeholder={copy.promotionsOpenLink}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label={copy.promotionsBackgroundColor}>
+                        <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
+                          <input
+                            type="color"
+                            className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
+                            value={settings.promotions.backgroundColor}
+                            onChange={(event) =>
+                              updatePromotionSettings({ backgroundColor: event.target.value })
+                            }
+                          />
+                          <input
+                            className={ui.input}
+                            value={settings.promotions.backgroundColor}
+                            onChange={(event) =>
+                              updatePromotionSettings({ backgroundColor: event.target.value })
+                            }
+                          />
+                        </div>
+                      </Field>
+
+                      <Field label={copy.promotionsTextColor}>
+                        <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
+                          <input
+                            type="color"
+                            className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
+                            value={settings.promotions.textColor}
+                            onChange={(event) => updatePromotionSettings({ textColor: event.target.value })}
+                          />
+                          <input
+                            className={ui.input}
+                            value={settings.promotions.textColor}
+                            onChange={(event) => updatePromotionSettings({ textColor: event.target.value })}
+                          />
+                        </div>
+                      </Field>
+                    </div>
+
+                    <Field label={copy.promotionsSpeed} hint={copy.promotionsSpeedHint}>
+                      <input
+                        type="range"
+                        min={8}
+                        max={120}
+                        className="w-full accent-zinc-900"
+                        value={settings.promotions.speed}
+                        onChange={(event) =>
+                          updatePromotionSettings({ speed: Number(event.target.value) || 28 })
+                        }
+                      />
+                      <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
+                        <span>8s</span>
+                        <span>{settings.promotions.speed}s / loop</span>
+                        <span>120s</span>
+                      </div>
+                    </Field>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label={copy.promotionsClosable} hint={copy.promotionsClosableHint}>
+                        <button
+                          type="button"
+                          onClick={() => updatePromotionSettings({ closable: !settings.promotions.closable })}
+                          className={cx(
+                            "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
+                            settings.promotions.closable
+                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                          )}
+                        >
+                          {settings.promotions.closable ? copy.promotionsYes : copy.promotionsNo}
+                        </button>
+                      </Field>
+
+                      <Field label={copy.promotionsOpenLink}>
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
+                          {settings.promotions.linkHref ? settings.promotions.linkHref : copy.promotionsNoLink}
+                        </div>
+                      </Field>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={ui.secondaryButton}
+                        onClick={() => updatePromotionSettings(getDefaultPromotionSettings())}
+                      >
+                        {copy.promotionsReset}
+                      </button>
+                      {promotionSuggestion ? (
+                        <button
+                          type="button"
+                          className={ui.primaryButton}
+                          onClick={() =>
+                            updatePromotionSettings({
+                              text: promotionSuggestion.text,
+                              linkHref: promotionSuggestion.linkHref,
+                              linkLabel: promotionSuggestion.linkLabel,
+                              mode: "discount",
+                              sourcePerfumeSlug: promotionSourcePerfume?.slug || settings.promotions.sourcePerfumeSlug,
+                            })
+                          }
+                        >
+                          {copy.promotionsGenerate}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={cx(ui.soft, "p-4 sm:p-5") }>
+                  <SectionLabel
+                    icon={<Sparkle size={16} weight="bold" />}
+                    title={copy.promotionsPreview}
+                    detail={copy.promotionsPreviewDetail}
+                  />
+
+                  <div className="mt-5 overflow-hidden rounded-[1.2rem] border border-zinc-200 shadow-[0_16px_28px_rgba(0,0,0,0.06)]">
+                    <div
+                      className="relative overflow-hidden"
+                      style={{
+                        backgroundColor: settings.promotions.backgroundColor,
+                        color: settings.promotions.textColor,
+                      }}
+                    >
+                      <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/16 to-transparent" />
+                      <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/16 to-transparent" />
+                      <div className="brand-marquee-mask">
+                        <div
+                          className="brand-marquee-track"
+                          style={{ animationDuration: `${settings.promotions.speed}s` }}
+                        >
+                          <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]">
+                            <span>{settings.promotions.text || copy.promotionsPreview}</span>
+                            {settings.promotions.linkLabel ? (
+                              <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[0.62rem]">
+                                {settings.promotions.linkLabel}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]" aria-hidden="true">
+                            <span>{settings.promotions.text || copy.promotionsPreview}</span>
+                            {settings.promotions.linkLabel ? (
+                              <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[0.62rem]">
+                                {settings.promotions.linkLabel}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-zinc-200 bg-white p-4 text-sm text-zinc-600">
+                      <p className="font-semibold text-zinc-900">
+                        {settings.promotions.enabled ? copy.promotions : copy.promotionsReset}
+                      </p>
+                      <p className="mt-2 leading-6">
+                        {settings.promotions.mode === "discount" && promotionSuggestion
+                          ? promotionSuggestion.text
+                          : settings.promotions.text || copy.promotionsPreviewDetail}
+                      </p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.12em] text-zinc-400">
+                        {settings.promotions.linkHref || copy.promotionsNoLink}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
