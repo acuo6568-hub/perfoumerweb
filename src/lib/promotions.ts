@@ -8,6 +8,7 @@ export type SitePromotionSettings = {
   textByLocale: Record<SitePromotionLocale, string>;
   linkHref: string;
   linkLabel: string;
+  linkLabelByLocale: Record<SitePromotionLocale, string>;
   backgroundColor: string;
   textColor: string;
   speed: number;
@@ -45,6 +46,11 @@ export const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   },
   linkHref: "",
   linkLabel: "View offer",
+  linkLabelByLocale: {
+    az: "View offer",
+    en: "View offer",
+    ru: "View offer",
+  },
   backgroundColor: "#111111",
   textColor: "#ffffff",
   speed: 28,
@@ -61,6 +67,7 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
     textByLocale?: unknown;
     linkHref?: unknown;
     linkLabel?: unknown;
+    linkLabelByLocale?: unknown;
     backgroundColor?: unknown;
     textColor?: unknown;
     speed?: unknown;
@@ -74,6 +81,10 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
   const textByLocaleSource =
     settings.textByLocale && typeof settings.textByLocale === "object"
       ? (settings.textByLocale as Partial<Record<SitePromotionLocale, unknown>>)
+      : {};
+  const linkLabelByLocaleSource =
+    settings.linkLabelByLocale && typeof settings.linkLabelByLocale === "object"
+      ? (settings.linkLabelByLocale as Partial<Record<SitePromotionLocale, unknown>>)
       : {};
   const sourcePerfumeSlugs = Array.isArray(settings.sourcePerfumeSlugs)
     ? Array.from(
@@ -98,6 +109,11 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
     },
     linkHref: normalizeString(settings.linkHref),
     linkLabel: normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
+    linkLabelByLocale: {
+      az: normalizeString(linkLabelByLocaleSource.az) || normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
+      en: normalizeString(linkLabelByLocaleSource.en) || normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
+      ru: normalizeString(linkLabelByLocaleSource.ru) || normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
+    },
     backgroundColor: normalizeHexColor(settings.backgroundColor, DEFAULT_PROMOTION_SETTINGS.backgroundColor),
     textColor: normalizeHexColor(settings.textColor, DEFAULT_PROMOTION_SETTINGS.textColor),
     speed: normalizeSpeed(settings.speed, DEFAULT_PROMOTION_SETTINGS.speed),
@@ -114,6 +130,9 @@ export function buildPromotionStorageKey(settings: SitePromotionSettings) {
     settings.text,
     settings.linkHref,
     settings.linkLabel,
+    settings.linkLabelByLocale.az,
+    settings.linkLabelByLocale.en,
+    settings.linkLabelByLocale.ru,
     settings.sourcePerfumeSlug,
     settings.backgroundColor,
     settings.textColor,

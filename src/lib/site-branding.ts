@@ -9,6 +9,7 @@ export type SitePromotionSettings = {
   textByLocale: SitePromotionTextMap;
   linkHref: string;
   linkLabel: string;
+  linkLabelByLocale: SitePromotionTextMap;
   backgroundColor: string;
   textColor: string;
   speed: number;
@@ -30,6 +31,11 @@ const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   },
   linkHref: "",
   linkLabel: "View offer",
+  linkLabelByLocale: {
+    az: "View offer",
+    en: "View offer",
+    ru: "View offer",
+  },
   backgroundColor: "#111111",
   textColor: "#ffffff",
   speed: 28,
@@ -104,6 +110,7 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     textByLocale?: unknown;
     linkHref?: unknown;
     linkLabel?: unknown;
+    linkLabelByLocale?: unknown;
     backgroundColor?: unknown;
     textColor?: unknown;
     speed?: unknown;
@@ -114,6 +121,7 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
 
   const mode = normalizePromotionText(settings.mode) === "discount" ? "discount" : "manual";
   const textByLocale = normalizePromotionTextMap(settings.textByLocale ?? settings.text);
+  const linkLabelByLocale = normalizePromotionTextMap(settings.linkLabelByLocale ?? settings.linkLabel);
   const sourcePerfumeSlugs = normalizePromotionSlugList(
     settings.sourcePerfumeSlugs ?? settings.sourcePerfumeSlug,
   );
@@ -125,6 +133,7 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     textByLocale,
     linkHref: normalizePromotionText(settings.linkHref),
     linkLabel: normalizePromotionText(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
+    linkLabelByLocale,
     backgroundColor: normalizePromotionHexColor(
       settings.backgroundColor,
       DEFAULT_PROMOTION_SETTINGS.backgroundColor,
@@ -151,6 +160,23 @@ export function getPromotionTextForLocale(
     normalizePromotionText(promotion.textByLocale?.en) ||
     normalizePromotionText(promotion.textByLocale?.ru) ||
     normalizePromotionText(promotion.text)
+  );
+}
+
+export function getPromotionLinkLabelForLocale(
+  promotion: SitePromotionSettings | null | undefined,
+  locale: SitePromotionLocale,
+) {
+  if (!promotion) {
+    return "";
+  }
+
+  return (
+    normalizePromotionText(promotion.linkLabelByLocale?.[locale]) ||
+    normalizePromotionText(promotion.linkLabelByLocale?.az) ||
+    normalizePromotionText(promotion.linkLabelByLocale?.en) ||
+    normalizePromotionText(promotion.linkLabelByLocale?.ru) ||
+    normalizePromotionText(promotion.linkLabel)
   );
 }
 

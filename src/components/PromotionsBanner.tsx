@@ -6,7 +6,7 @@ import { useMemo } from "react";
 
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
-import { getPromotionTextForLocale } from "@/lib/site-branding";
+import { getPromotionLinkLabelForLocale, getPromotionTextForLocale } from "@/lib/site-branding";
 
 type PromotionsBannerProps = {
   locale: Locale;
@@ -36,7 +36,7 @@ export function PromotionsBanner({ locale, visible, onClose }: PromotionsBannerP
 
   const bannerHref = promotion.linkHref.trim() ? toLocalePath(promotion.linkHref, locale) : "";
   const content = getPromotionTextForLocale(promotion, locale).trim();
-  const linkLabel = promotion.linkLabel.trim() || t.promoBanner.viewOffer;
+  const linkLabel = getPromotionLinkLabelForLocale(promotion, locale).trim() || t.promoBanner.viewOffer;
   const trackItems = useMemo(() => getTrackItems(content, bannerHref ? linkLabel : ""), [bannerHref, content, linkLabel]);
 
   if (!visible || !promotion.enabled || !content) {
@@ -51,9 +51,6 @@ export function PromotionsBanner({ locale, visible, onClose }: PromotionsBannerP
         color: promotion.textColor,
       }}
     >
-      <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-black/16 to-transparent" aria-hidden="true" />
-      <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-black/16 to-transparent" aria-hidden="true" />
-
       {bannerHref ? (
         <Link
           href={bannerHref}

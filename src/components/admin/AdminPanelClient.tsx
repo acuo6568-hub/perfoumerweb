@@ -43,6 +43,7 @@ import {
   buildDefaultSiteTitle,
   normalizeKeywordList,
   normalizeSiteSettings,
+  getPromotionLinkLabelForLocale,
   getPromotionTextForLocale,
   type SitePromotionLocale,
   type SitePromotionSettings,
@@ -201,6 +202,11 @@ function buildPromotionDiscountCopy(perfumes: Perfume[], locale: SitePromotionLo
     textByLocale,
     linkHref: perfumes.length > 1 ? "/offers" : primaryPerfume ? `/perfumes/${primaryPerfume.slug}` : "/offers",
     linkLabel: locale === "az" ? "Endirimi gör" : locale === "ru" ? "Смотреть предложение" : "View offer",
+    linkLabelByLocale: {
+      az: "Endirimi gör",
+      en: "View offer",
+      ru: "Смотреть предложение",
+    },
     sourcePerfumeSlugs: perfumes.map((item) => item.slug),
   };
 }
@@ -287,6 +293,12 @@ const adminCopy = {
     promotionsSourcePerfumeHint:
       "Endirim rejimində olan ətri seçin və mətn avtomatik təklif olunsun.",
     promotionsGenerate: "Təklif mətni yarat",
+    promotionsTranslate: "AI tərcümə",
+    promotionsTranslateHint: "Hazır mətni bütün dillərə səliqəli şəkildə çevir.",
+    promotionsTranslateWorking: "Tərcümə hazırlanır...",
+    promotionsTranslateDone: "Promo mətnləri yeniləndi.",
+    promotionsTranslateFailed: "Tərcümə alınmadı.",
+    promotionsTranslateNeedText: "Əvvəlcə promo mətni və ya link etiketi əlavə edin.",
     promotionsReset: "Defaulta qaytar",
     promotionsOpenLink: "Banner keçidi",
     siteName: "Sayt adı",
@@ -583,6 +595,12 @@ const adminCopy = {
     promotionsSourcePerfumeHint:
       "Pick a perfume on discount and let the banner copy be suggested automatically.",
     promotionsGenerate: "Generate promo copy",
+    promotionsTranslate: "AI translate",
+    promotionsTranslateHint: "Translate the current copy neatly into all languages.",
+    promotionsTranslateWorking: "Translating...",
+    promotionsTranslateDone: "Promotion copy updated.",
+    promotionsTranslateFailed: "Translation failed.",
+    promotionsTranslateNeedText: "Add promo text or a link label first.",
     promotionsReset: "Reset to default",
     promotionsOpenLink: "Banner link",
     siteName: "Site title",
@@ -1431,6 +1449,7 @@ export function AdminPanelClient({
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [locale, setLocale] = useState<AdminLocale>("az");
   const [promotionEditorLocale, setPromotionEditorLocale] = useState<SitePromotionLocale>("az");
+  const [isTranslatingPromotion, setIsTranslatingPromotion] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AdminView>("perfumes");
@@ -1510,6 +1529,8 @@ export function AdminPanelClient({
     : null;
   const promotionPreviewText = getPromotionTextForLocale(settings.promotions, promotionEditorLocale);
   const promotionTextValue = settings.promotions.textByLocale[promotionEditorLocale] || settings.promotions.text;
+  const promotionLinkLabelValue =
+    getPromotionLinkLabelForLocale(settings.promotions, promotionEditorLocale) || settings.promotions.linkLabel;
   const promotionDiscountPerfumes = useMemo(
     () => perfumes.filter((item) => Boolean(item.discount?.enabled)),
     [perfumes],
@@ -1538,6 +1559,78 @@ export function AdminPanelClient({
         [promotionEditorLocale]: text,
       },
     });
+  };
+
+  const updatePromotionLinkLabelForLocale = (linkLabel: string) => {
+    updatePromotionSettings({
+      linkLabel,
+      linkLabelByLocale: {
+        ...settings.promotions.linkLabelByLocale,
+        [promotionEditorLocale]: linkLabel,
+      },
+    });
+  };
+
+  const translatePromotionCopy = async () => {
+    const sourceText = promotionTextValue.trim();
+    const sourceLabel = promotionLinkLabelValue.trim();
+
+    if (!sourceText && !sourceLabel) {
+      setStatus({ tone: "error", message: copy.promotionsTranslateNeedText });
+      return;
+    }
+
+    setIsTranslatingPromotion(true);
+    setStatus({ tone: "neutral", message: copy.promotionsTranslateWorking });
+
+    try {
+      const response = await fetch("/api/admin/promotions/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLocale: promotionEditorLocale,
+          text: sourceText,
+          linkLabel: sourceLabel,
+          mode: settings.promotions.mode,
+          perfumeNames: promotionSourcePerfumes.map((item) => `${item.brand} ${item.name}`.trim()),
+          sourcePerfumes: promotionSourcePerfumes.map((item) => item.slug),
+        }),
+      });
+
+      const body = (await response.json()) as {
+        error?: string;
+        textByLocale?: Record<SitePromotionLocale, string>;
+        linkLabelByLocale?: Record<SitePromotionLocale, string>;
+        text?: string;
+        linkLabel?: string;
+      };
+
+      if (!response.ok || !body.textByLocale || !body.linkLabelByLocale) {
+        throw new Error(body.error || copy.promotionsTranslateFailed);
+      }
+
+      const nextTextByLocale = {
+        ...settings.promotions.textByLocale,
+        ...body.textByLocale,
+      };
+      const nextLinkLabelByLocale = {
+        ...settings.promotions.linkLabelByLocale,
+        ...body.linkLabelByLocale,
+      };
+
+      updatePromotionSettings({
+        text: body.text || nextTextByLocale.az || nextTextByLocale.en || nextTextByLocale.ru || sourceText,
+        textByLocale: nextTextByLocale,
+        linkLabel: body.linkLabel || nextLinkLabelByLocale.az || nextLinkLabelByLocale.en || nextLinkLabelByLocale.ru || sourceLabel,
+        linkLabelByLocale: nextLinkLabelByLocale,
+      });
+      setStatus({ tone: "success", message: copy.promotionsTranslateDone });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : copy.promotionsTranslateFailed;
+      setStatus({ tone: "error", message });
+    } finally {
+      setIsTranslatingPromotion(false);
+    }
   };
 
   const updatePromotionLocale = (nextLocale: SitePromotionLocale) => {
@@ -3569,8 +3662,8 @@ export function AdminPanelClient({
                       <Field label={copy.promotionsLinkLabel} hint={copy.promotionsLinkLabelHint}>
                         <input
                           className={ui.input}
-                          value={settings.promotions.linkLabel}
-                          onChange={(event) => updatePromotionSettings({ linkLabel: event.target.value })}
+                          value={promotionLinkLabelValue}
+                          onChange={(event) => updatePromotionLinkLabelForLocale(event.target.value)}
                           placeholder={copy.promotionsOpenLink}
                         />
                       </Field>
@@ -3593,6 +3686,18 @@ export function AdminPanelClient({
                             {promoLocale}
                           </button>
                         ))}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={translatePromotionCopy}
+                          disabled={isTranslatingPromotion || (!promotionTextValue.trim() && !promotionLinkLabelValue.trim())}
+                          className={ui.secondaryButton}
+                        >
+                          <Sparkle size={16} weight="fill" />
+                          <span>{isTranslatingPromotion ? copy.promotionsTranslateWorking : copy.promotionsTranslate}</span>
+                        </button>
+                        <span className="text-xs text-zinc-500">{copy.promotionsTranslateHint}</span>
                       </div>
                       <textarea
                         className={ui.textarea}

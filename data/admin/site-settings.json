@@ -10,20 +10,29 @@
   "twitterDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
   "promotions": {
     "enabled": true,
-    "mode": "manual",
-    "text": "Limited-time offers are live now.",
+    "mode": "discount",
+    "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille endirimdədir",
     "textByLocale": {
-      "az": "Limited-time offers are live now.",
-      "en": "Limited-time offers are live now.",
-      "ru": "Limited-time offers are live now."
+      "az": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille endirimdədir",
+      "en": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille are on discount",
+      "ru": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille со скидкой"
     },
     "linkHref": "/offers",
-    "linkLabel": "View offer",
+    "linkLabel": "Endirimi gör",
+    "linkLabelByLocale": {
+      "az": "Endirimi gör",
+      "en": "View offer",
+      "ru": "Смотреть предложение"
+    },
     "backgroundColor": "#111111",
     "textColor": "#ffffff",
     "speed": 28,
     "closable": true,
-    "sourcePerfumeSlug": "",
-    "sourcePerfumeSlugs": []
+    "sourcePerfumeSlug": "baccarat-rouge-540",
+    "sourcePerfumeSlugs": [
+      "baccarat-rouge-540",
+      "lost-cherry",
+      "tobacco-vanille"
+    ]
   }
 }

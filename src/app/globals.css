@@ -994,30 +994,6 @@ h6 {
   position: relative;
   overflow: hidden;
   padding-block: 0.2rem;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 1) 10%, rgba(0, 0, 0, 1) 90%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 1) 10%, rgba(0, 0, 0, 1) 90%, transparent 100%);
-}
-
-.brand-marquee-mask::before,
-.brand-marquee-mask::after {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  bottom: 0;
-  width: clamp(44px, 7vw, 110px);
-  pointer-events: none;
-  filter: none;
-}
-
-.brand-marquee-mask::before {
-  left: 0;
-  background: linear-gradient(to right, rgba(243, 243, 242, 0.96) 0%, rgba(243, 243, 242, 0.58) 46%, rgba(243, 243, 242, 0) 100%);
-}
-
-.brand-marquee-mask::after {
-  right: 0;
-  background: linear-gradient(to left, rgba(243, 243, 242, 0.96) 0%, rgba(243, 243, 242, 0.58) 46%, rgba(243, 243, 242, 0) 100%);
 }
 
 .brand-marquee-track {
