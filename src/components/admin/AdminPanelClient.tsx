@@ -43,6 +43,8 @@ import {
   buildDefaultSiteTitle,
   normalizeKeywordList,
   normalizeSiteSettings,
+  getPromotionTextForLocale,
+  type SitePromotionLocale,
   type SitePromotionSettings,
   type SiteSettings,
 } from "@/lib/site-branding";
@@ -148,27 +150,58 @@ function mapAdminLocaleToCopyLocale(locale: AdminLocale) {
   return locale === "az" ? "az" : "en";
 }
 
-function buildPromotionDiscountCopy(perfume: Perfume, locale: AdminLocale) {
-  const copyLocale = mapAdminLocaleToCopyLocale(locale);
-  const perfumeName = `${perfume.brand} ${perfume.name}`.trim();
-  const deadlineLabel = formatDiscountDeadlineLabel(perfume.discount, copyLocale);
+const PROMOTION_LOCALES: SitePromotionLocale[] = ["az", "en", "ru"];
 
-  if (copyLocale === "az") {
-    return {
-      text: deadlineLabel
-        ? `${perfumeName} endirimdədir — ${deadlineLabel}`
-        : `${perfumeName} endirimdədir`,
-      linkHref: `/perfumes/${perfume.slug}`,
-      linkLabel: "Endirimi gör",
-    };
+function formatPromotionPerfumeNames(perfumes: Perfume[], locale: SitePromotionLocale) {
+  if (!perfumes.length) {
+    return "";
   }
 
+  const localizedNames = perfumes.slice(0, 3).map((item) => `${item.brand} ${item.name}`.trim());
+  const remainingCount = Math.max(0, perfumes.length - localizedNames.length);
+  if (remainingCount > 0) {
+    if (locale === "az") {
+      localizedNames.push(`və daha ${remainingCount} ətir`);
+    } else if (locale === "ru") {
+      localizedNames.push(`и еще ${remainingCount} аромат`);
+    } else {
+      localizedNames.push(`and ${remainingCount} more perfumes`);
+    }
+  }
+
+  const listFormatter = new Intl.ListFormat(locale === "az" ? "az-AZ" : locale === "ru" ? "ru-RU" : "en-US", {
+    style: "long",
+    type: "conjunction",
+  });
+
+  return listFormatter.format(localizedNames);
+}
+
+function buildPromotionDiscountCopy(perfumes: Perfume[], locale: SitePromotionLocale) {
+  const primaryPerfume = perfumes[0] ?? null;
+  const copyLocale = locale;
+  const deadlineLabel = primaryPerfume
+    ? formatDiscountDeadlineLabel(primaryPerfume.discount, copyLocale)
+    : null;
+  const perfumeNames = formatPromotionPerfumeNames(perfumes, copyLocale);
+
+  const textByLocale = {
+    az: perfumes.length > 1
+      ? `${perfumeNames} endirimdədir${deadlineLabel ? ` — ${deadlineLabel}` : ""}`
+      : `${perfumeNames} endirimdədir${deadlineLabel ? ` — ${deadlineLabel}` : ""}`,
+    en: perfumes.length > 1
+      ? `${perfumeNames} are on discount${deadlineLabel ? ` — ${deadlineLabel}` : ""}`
+      : `${perfumeNames} is on discount${deadlineLabel ? ` — ${deadlineLabel}` : ""}`,
+    ru: perfumes.length > 1
+      ? `${perfumeNames} со скидкой${deadlineLabel ? ` — ${deadlineLabel}` : ""}`
+      : `${perfumeNames} со скидкой${deadlineLabel ? ` — ${deadlineLabel}` : ""}`,
+  };
+
   return {
-    text: deadlineLabel
-      ? `${perfumeName} is on discount — ${deadlineLabel}`
-      : `${perfumeName} is on discount now`,
-    linkHref: `/perfumes/${perfume.slug}`,
-    linkLabel: "View offer",
+    textByLocale,
+    linkHref: perfumes.length > 1 ? "/offers" : primaryPerfume ? `/perfumes/${primaryPerfume.slug}` : "/offers",
+    linkLabel: locale === "az" ? "Endirimi gör" : locale === "ru" ? "Смотреть предложение" : "View offer",
+    sourcePerfumeSlugs: perfumes.map((item) => item.slug),
   };
 }
 
@@ -1397,6 +1430,7 @@ export function AdminPanelClient({
 
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [locale, setLocale] = useState<AdminLocale>("az");
+  const [promotionEditorLocale, setPromotionEditorLocale] = useState<SitePromotionLocale>("az");
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AdminView>("perfumes");
@@ -1460,16 +1494,22 @@ export function AdminPanelClient({
     ? `https://perfoumer.az/perfumes/${selectedPerfume.slug}`
     : "";
   const selectedPerfumeDiscount = selectedPerfume?.discount ?? DEFAULT_PERFUME_DISCOUNT;
-  const promotionSourcePerfume = useMemo(
+  const promotionSourcePerfumes = useMemo(
     () =>
-      perfumes.find(
-        (item) => item.slug === settings.promotions.sourcePerfumeSlug || item.id === settings.promotions.sourcePerfumeSlug,
-      ) || null,
-    [perfumes, settings.promotions.sourcePerfumeSlug],
+      (settings.promotions.sourcePerfumeSlugs.length
+        ? settings.promotions.sourcePerfumeSlugs
+        : settings.promotions.sourcePerfumeSlug
+          ? [settings.promotions.sourcePerfumeSlug]
+          : [])
+        .map((slug) => perfumes.find((item) => item.slug === slug || item.id === slug) || null)
+        .filter((item): item is Perfume => item !== null),
+    [perfumes, settings.promotions.sourcePerfumeSlug, settings.promotions.sourcePerfumeSlugs],
   );
-  const promotionSuggestion = promotionSourcePerfume
-    ? buildPromotionDiscountCopy(promotionSourcePerfume, locale)
+  const promotionSuggestion = promotionSourcePerfumes.length
+    ? buildPromotionDiscountCopy(promotionSourcePerfumes, promotionEditorLocale)
     : null;
+  const promotionPreviewText = getPromotionTextForLocale(settings.promotions, promotionEditorLocale);
+  const promotionTextValue = settings.promotions.textByLocale[promotionEditorLocale] || settings.promotions.text;
   const promotionDiscountPerfumes = useMemo(
     () => perfumes.filter((item) => Boolean(item.discount?.enabled)),
     [perfumes],
@@ -1488,6 +1528,20 @@ export function AdminPanelClient({
         ...patch,
       },
     }));
+  };
+
+  const updatePromotionTextForLocale = (text: string) => {
+    updatePromotionSettings({
+      text,
+      textByLocale: {
+        ...settings.promotions.textByLocale,
+        [promotionEditorLocale]: text,
+      },
+    });
+  };
+
+  const updatePromotionLocale = (nextLocale: SitePromotionLocale) => {
+    setPromotionEditorLocale(nextLocale);
   };
 
   const filteredPerfumes = useMemo(() => {
@@ -3375,8 +3429,8 @@ export function AdminPanelClient({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className={cx(ui.soft, "p-4 sm:p-5") }>
+              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
                   <SectionLabel
                     icon={<Sparkle size={16} weight="bold" />}
                     title={copy.promotionsPreview}
@@ -3387,9 +3441,7 @@ export function AdminPanelClient({
                     <Field label={copy.promotionsEnable} hint={copy.promotionsEnableHint}>
                       <button
                         type="button"
-                        onClick={() =>
-                          updatePromotionSettings({ enabled: !settings.promotions.enabled })
-                        }
+                        onClick={() => updatePromotionSettings({ enabled: !settings.promotions.enabled })}
                         className={cx(
                           "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
                           settings.promotions.enabled
@@ -3421,52 +3473,87 @@ export function AdminPanelClient({
                       </div>
                     </Field>
 
-                    {settings.promotions.mode === "discount" ? (
-                      <Field label={copy.promotionsSourcePerfume} hint={copy.promotionsSourcePerfumeHint}>
-                        <div className="flex gap-3">
-                          <select
-                            className={ui.input}
-                            value={settings.promotions.sourcePerfumeSlug}
-                            onChange={(event) =>
-                              updatePromotionSettings({ sourcePerfumeSlug: event.target.value })
-                            }
-                          >
-                            <option value="">{copy.promotionsSelectPerfume}</option>
-                            {promotionTargetPerfumes.map((perfume) => (
-                              <option key={perfume.id} value={perfume.slug}>
-                                {perfume.brand} {perfume.name}
-                              </option>
-                            ))}
-                          </select>
+                    <Field label={copy.promotionsSourcePerfume} hint={copy.promotionsSourcePerfumeHint}>
+                      <div className="rounded-[1.2rem] border border-zinc-200 bg-white p-3">
+                        <select
+                          multiple
+                          size={8}
+                          className="h-44 w-full rounded-[1rem] border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none"
+                          value={settings.promotions.sourcePerfumeSlugs}
+                          onChange={(event) => {
+                            const selectedSlugs = Array.from(event.target.selectedOptions).map((option) => option.value);
+                            updatePromotionSettings({
+                              sourcePerfumeSlugs: selectedSlugs,
+                              sourcePerfumeSlug: selectedSlugs[0] || "",
+                            });
+                          }}
+                        >
+                          {promotionTargetPerfumes.map((perfume) => (
+                            <option key={perfume.id} value={perfume.slug}>
+                              {perfume.brand} {perfume.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
                             className={ui.secondaryButton}
+                            onClick={() =>
+                              updatePromotionSettings({
+                                sourcePerfumeSlugs: promotionTargetPerfumes.map((item) => item.slug),
+                                sourcePerfumeSlug: promotionTargetPerfumes[0]?.slug || "",
+                              })
+                            }
+                          >
+                            {locale === "az" ? "Hamısını seç" : "Select all"}
+                          </button>
+                          <button
+                            type="button"
+                            className={ui.secondaryButton}
+                            onClick={() =>
+                              updatePromotionSettings({ sourcePerfumeSlugs: [], sourcePerfumeSlug: "" })
+                            }
+                          >
+                            {locale === "az" ? "Təmizlə" : "Clear"}
+                          </button>
+                          <button
+                            type="button"
+                            className={ui.primaryButton}
                             onClick={() => {
-                              if (!promotionSourcePerfume || !promotionSuggestion) {
+                              if (!promotionSuggestion) {
                                 return;
                               }
 
                               updatePromotionSettings({
-                                text: promotionSuggestion.text,
+                                mode: "discount",
+                                textByLocale: promotionSuggestion.textByLocale,
+                                text: promotionSuggestion.textByLocale.az,
                                 linkHref: promotionSuggestion.linkHref,
                                 linkLabel: promotionSuggestion.linkLabel,
+                                sourcePerfumeSlugs: promotionSuggestion.sourcePerfumeSlugs,
+                                sourcePerfumeSlug: promotionSuggestion.sourcePerfumeSlugs[0] || "",
                               });
                             }}
+                            disabled={!promotionSuggestion}
                           >
                             {copy.promotionsGenerate}
                           </button>
                         </div>
-                      </Field>
-                    ) : null}
 
-                    <Field label={copy.promotionsText} hint={copy.promotionsTextHint}>
-                      <textarea
-                        className={ui.textarea}
-                        value={settings.promotions.text}
-                        onChange={(event) => updatePromotionSettings({ text: event.target.value })}
-                        rows={3}
-                        placeholder={promotionSuggestion?.text || copy.promotionsText}
-                      />
+                        {settings.promotions.sourcePerfumeSlugs.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {settings.promotions.sourcePerfumeSlugs.map((slug) => {
+                              const perfume = perfumes.find((item) => item.slug === slug || item.id === slug);
+                              return perfume ? (
+                                <span key={slug} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
+                                  {perfume.brand} {perfume.name}
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     </Field>
 
                     <div className="grid gap-4 md:grid-cols-2">
@@ -3489,6 +3576,36 @@ export function AdminPanelClient({
                       </Field>
                     </div>
 
+                    <Field label={copy.promotionsText} hint={copy.promotionsTextHint}>
+                      <div className="flex flex-wrap gap-2">
+                        {PROMOTION_LOCALES.map((promoLocale) => (
+                          <button
+                            key={promoLocale}
+                            type="button"
+                            onClick={() => updatePromotionLocale(promoLocale)}
+                            className={cx(
+                              "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
+                              promotionEditorLocale === promoLocale
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                            )}
+                          >
+                            {promoLocale}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        className={ui.textarea}
+                        value={promotionTextValue}
+                        onChange={(event) => updatePromotionTextForLocale(event.target.value)}
+                        rows={3}
+                        placeholder={promotionSuggestion?.textByLocale[promotionEditorLocale] || copy.promotionsText}
+                      />
+                      <p className="mt-2 text-xs text-zinc-500">
+                        {copy.promotionsPreview}: {getPromotionTextForLocale(settings.promotions, promotionEditorLocale) || copy.promotionsPreviewDetail}
+                      </p>
+                    </Field>
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <Field label={copy.promotionsBackgroundColor}>
                         <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
@@ -3496,16 +3613,12 @@ export function AdminPanelClient({
                             type="color"
                             className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
                             value={settings.promotions.backgroundColor}
-                            onChange={(event) =>
-                              updatePromotionSettings({ backgroundColor: event.target.value })
-                            }
+                            onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
                           />
                           <input
                             className={ui.input}
                             value={settings.promotions.backgroundColor}
-                            onChange={(event) =>
-                              updatePromotionSettings({ backgroundColor: event.target.value })
-                            }
+                            onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
                           />
                         </div>
                       </Field>
@@ -3534,9 +3647,7 @@ export function AdminPanelClient({
                         max={120}
                         className="w-full accent-zinc-900"
                         value={settings.promotions.speed}
-                        onChange={(event) =>
-                          updatePromotionSettings({ speed: Number(event.target.value) || 28 })
-                        }
+                        onChange={(event) => updatePromotionSettings({ speed: Number(event.target.value) || 28 })}
                       />
                       <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
                         <span>8s</span>
@@ -3576,28 +3687,11 @@ export function AdminPanelClient({
                       >
                         {copy.promotionsReset}
                       </button>
-                      {promotionSuggestion ? (
-                        <button
-                          type="button"
-                          className={ui.primaryButton}
-                          onClick={() =>
-                            updatePromotionSettings({
-                              text: promotionSuggestion.text,
-                              linkHref: promotionSuggestion.linkHref,
-                              linkLabel: promotionSuggestion.linkLabel,
-                              mode: "discount",
-                              sourcePerfumeSlug: promotionSourcePerfume?.slug || settings.promotions.sourcePerfumeSlug,
-                            })
-                          }
-                        >
-                          {copy.promotionsGenerate}
-                        </button>
-                      ) : null}
                     </div>
                   </div>
                 </div>
 
-                <div className={cx(ui.soft, "p-4 sm:p-5") }>
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
                   <SectionLabel
                     icon={<Sparkle size={16} weight="bold" />}
                     title={copy.promotionsPreview}
@@ -3620,7 +3714,7 @@ export function AdminPanelClient({
                           style={{ animationDuration: `${settings.promotions.speed}s` }}
                         >
                           <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]">
-                            <span>{settings.promotions.text || copy.promotionsPreview}</span>
+                            <span>{promotionPreviewText || copy.promotionsPreview}</span>
                             {settings.promotions.linkLabel ? (
                               <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[0.62rem]">
                                 {settings.promotions.linkLabel}
@@ -3628,7 +3722,7 @@ export function AdminPanelClient({
                             ) : null}
                           </div>
                           <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]" aria-hidden="true">
-                            <span>{settings.promotions.text || copy.promotionsPreview}</span>
+                            <span>{promotionPreviewText || copy.promotionsPreview}</span>
                             {settings.promotions.linkLabel ? (
                               <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[0.62rem]">
                                 {settings.promotions.linkLabel}
@@ -3644,10 +3738,15 @@ export function AdminPanelClient({
                         {settings.promotions.enabled ? copy.promotions : copy.promotionsReset}
                       </p>
                       <p className="mt-2 leading-6">
-                        {settings.promotions.mode === "discount" && promotionSuggestion
-                          ? promotionSuggestion.text
-                          : settings.promotions.text || copy.promotionsPreviewDetail}
+                        {promotionPreviewText || copy.promotionsPreviewDetail}
                       </p>
+                      <div className="mt-3 grid gap-2 text-xs uppercase tracking-[0.12em] text-zinc-400">
+                        {PROMOTION_LOCALES.map((promoLocale) => (
+                          <div key={promoLocale} className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-zinc-500">
+                            {promoLocale.toUpperCase()}: {getPromotionTextForLocale(settings.promotions, promoLocale) || copy.promotionsPreviewDetail}
+                          </div>
+                        ))}
+                      </div>
                       <p className="mt-3 text-xs uppercase tracking-[0.12em] text-zinc-400">
                         {settings.promotions.linkHref || copy.promotionsNoLink}
                       </p>

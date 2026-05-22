@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
 
 import { Header } from "@/components/Header";
 import { PromotionsBanner } from "@/components/PromotionsBanner";
@@ -11,7 +11,7 @@ import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigatio
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
 import { SiteSettingsProvider } from "@/components/site-settings/SiteSettingsProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
-import { buildPromotionStorageKey } from "@/lib/promotions";
+import { getPromotionTextForLocale } from "@/lib/site-branding";
 import type { SiteSettings } from "@/lib/site-branding";
 
 type AppShellProps = {
@@ -30,8 +30,8 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
   const isRouteLoading = loadedPathname !== pathname;
   const hideNavigationChrome = basePathname.startsWith("/staff") || basePathname.startsWith("/admin");
   const shouldOffsetForHeader = !hideNavigationChrome && basePathname !== "/";
-  const promoBannerStorageKey = useMemo(() => buildPromotionStorageKey(settings.promotions), [settings.promotions]);
-  const hasPromoBanner = settings.promotions.enabled && Boolean(settings.promotions.text.trim());
+  const promoBannerText = getPromotionTextForLocale(settings.promotions, _locale);
+  const hasPromoBanner = settings.promotions.enabled && Boolean(promoBannerText.trim());
   const isPromoBannerVisible = hasPromoBanner && !isPromoBannerDismissed;
   const bannerOffsetStyle = {
     "--promo-banner-height": isPromoBannerVisible ? "3rem" : "0px",
@@ -62,7 +62,8 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
         };
 
         const isValidSource = parsed?.source === "detail-back";
-        const isFresh = typeof parsed?.timestamp === "number" && Date.now() - parsed.timestamp <= MAX_SCROLL_RESTORE_AGE_MS;
+        const isFresh =
+          typeof parsed?.timestamp === "number" && Date.now() - parsed.timestamp <= MAX_SCROLL_RESTORE_AGE_MS;
         if (!isValidSource || !isFresh) {
           sessionStorage.removeItem("perfoumer:restore-scroll");
         } else if (parsed?.targetUrl?.startsWith(pathname)) {
@@ -76,25 +77,7 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!hasPromoBanner) {
-      setIsPromoBannerDismissed(false);
-      return;
-    }
-
-    setIsPromoBannerDismissed(window.localStorage.getItem(promoBannerStorageKey) === "1");
-  }, [hasPromoBanner, promoBannerStorageKey]);
-
   const handleDismissPromoBanner = () => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(promoBannerStorageKey, "1");
     setIsPromoBannerDismissed(true);
   };
 

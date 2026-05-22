@@ -6,7 +6,7 @@ import { useMemo } from "react";
 
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
-import { buildPromotionStorageKey } from "@/lib/promotions";
+import { getPromotionTextForLocale } from "@/lib/site-branding";
 
 type PromotionsBannerProps = {
   locale: Locale;
@@ -34,9 +34,8 @@ export function PromotionsBanner({ locale, visible, onClose }: PromotionsBannerP
   const t = getDictionary(locale, siteSettings);
   const promotion = siteSettings.promotions;
 
-  const bannerKey = useMemo(() => buildPromotionStorageKey(promotion), [promotion]);
   const bannerHref = promotion.linkHref.trim() ? toLocalePath(promotion.linkHref, locale) : "";
-  const content = promotion.text.trim();
+  const content = getPromotionTextForLocale(promotion, locale).trim();
   const linkLabel = promotion.linkLabel.trim() || t.promoBanner.viewOffer;
   const trackItems = useMemo(() => getTrackItems(content, bannerHref ? linkLabel : ""), [bannerHref, content, linkLabel]);
 
@@ -46,8 +45,7 @@ export function PromotionsBanner({ locale, visible, onClose }: PromotionsBannerP
 
   return (
     <div
-      className="relative z-[75] overflow-hidden border-b border-black/15 shadow-[0_10px_28px_rgba(0,0,0,0.12)]"
-      data-promo-key={bannerKey}
+      className="fixed inset-x-0 top-0 z-[75] overflow-hidden border-b border-black/15 shadow-[0_10px_28px_rgba(0,0,0,0.12)]"
       style={{
         backgroundColor: promotion.backgroundColor,
         color: promotion.textColor,

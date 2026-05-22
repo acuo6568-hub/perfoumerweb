@@ -12,12 +12,18 @@
     "enabled": true,
     "mode": "manual",
     "text": "Limited-time offers are live now.",
-    "linkHref": "",
+    "textByLocale": {
+      "az": "Limited-time offers are live now.",
+      "en": "Limited-time offers are live now.",
+      "ru": "Limited-time offers are live now."
+    },
+    "linkHref": "/offers",
     "linkLabel": "View offer",
     "backgroundColor": "#111111",
     "textColor": "#ffffff",
     "speed": 28,
     "closable": true,
-    "sourcePerfumeSlug": ""
+    "sourcePerfumeSlug": "",
+    "sourcePerfumeSlugs": []
   }
 }

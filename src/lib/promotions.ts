@@ -1,9 +1,11 @@
 export type SitePromotionMode = "manual" | "discount";
+export type SitePromotionLocale = "az" | "en" | "ru";
 
 export type SitePromotionSettings = {
   enabled: boolean;
   mode: SitePromotionMode;
   text: string;
+  textByLocale: Record<SitePromotionLocale, string>;
   linkHref: string;
   linkLabel: string;
   backgroundColor: string;
@@ -11,6 +13,7 @@ export type SitePromotionSettings = {
   speed: number;
   closable: boolean;
   sourcePerfumeSlug: string;
+  sourcePerfumeSlugs: string[];
 };
 
 function normalizeString(value: unknown) {
@@ -35,6 +38,11 @@ export const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   enabled: false,
   mode: "manual",
   text: "Limited-time offers are live now.",
+  textByLocale: {
+    az: "Limited-time offers are live now.",
+    en: "Limited-time offers are live now.",
+    ru: "Limited-time offers are live now.",
+  },
   linkHref: "",
   linkLabel: "View offer",
   backgroundColor: "#111111",
@@ -42,6 +50,7 @@ export const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   speed: 28,
   closable: true,
   sourcePerfumeSlug: "",
+  sourcePerfumeSlugs: [],
 };
 
 export function normalizePromotionSettings(value: unknown): SitePromotionSettings {
@@ -49,6 +58,7 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
     enabled?: unknown;
     mode?: unknown;
     text?: unknown;
+    textByLocale?: unknown;
     linkHref?: unknown;
     linkLabel?: unknown;
     backgroundColor?: unknown;
@@ -56,21 +66,44 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
     speed?: unknown;
     closable?: unknown;
     sourcePerfumeSlug?: unknown;
+    sourcePerfumeSlugs?: unknown;
   };
 
   const mode = normalizeString(settings.mode) === "discount" ? "discount" : "manual";
+  const text = normalizeString(settings.text) || DEFAULT_PROMOTION_SETTINGS.text;
+  const textByLocaleSource =
+    settings.textByLocale && typeof settings.textByLocale === "object"
+      ? (settings.textByLocale as Partial<Record<SitePromotionLocale, unknown>>)
+      : {};
+  const sourcePerfumeSlugs = Array.isArray(settings.sourcePerfumeSlugs)
+    ? Array.from(
+        new Set(
+          settings.sourcePerfumeSlugs
+            .map((item) => normalizeString(item).toLowerCase())
+            .filter(Boolean),
+        ),
+      )
+    : typeof settings.sourcePerfumeSlug === "string" && settings.sourcePerfumeSlug.trim()
+      ? [settings.sourcePerfumeSlug.trim().toLowerCase()]
+      : [];
 
   return {
     enabled: Boolean(settings.enabled),
     mode,
-    text: normalizeString(settings.text) || DEFAULT_PROMOTION_SETTINGS.text,
+    text,
+    textByLocale: {
+      az: normalizeString(textByLocaleSource.az) || text,
+      en: normalizeString(textByLocaleSource.en) || text,
+      ru: normalizeString(textByLocaleSource.ru) || text,
+    },
     linkHref: normalizeString(settings.linkHref),
     linkLabel: normalizeString(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
     backgroundColor: normalizeHexColor(settings.backgroundColor, DEFAULT_PROMOTION_SETTINGS.backgroundColor),
     textColor: normalizeHexColor(settings.textColor, DEFAULT_PROMOTION_SETTINGS.textColor),
     speed: normalizeSpeed(settings.speed, DEFAULT_PROMOTION_SETTINGS.speed),
     closable: Boolean(settings.closable ?? DEFAULT_PROMOTION_SETTINGS.closable),
-    sourcePerfumeSlug: normalizeString(settings.sourcePerfumeSlug).toLowerCase(),
+    sourcePerfumeSlug: sourcePerfumeSlugs[0] ?? "",
+    sourcePerfumeSlugs,
   };
 }
 

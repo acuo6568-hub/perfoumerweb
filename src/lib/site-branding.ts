@@ -1,9 +1,12 @@
 export type SitePromotionMode = "manual" | "discount";
+export type SitePromotionLocale = "az" | "en" | "ru";
+export type SitePromotionTextMap = Record<SitePromotionLocale, string>;
 
 export type SitePromotionSettings = {
   enabled: boolean;
   mode: SitePromotionMode;
   text: string;
+  textByLocale: SitePromotionTextMap;
   linkHref: string;
   linkLabel: string;
   backgroundColor: string;
@@ -11,12 +14,20 @@ export type SitePromotionSettings = {
   speed: number;
   closable: boolean;
   sourcePerfumeSlug: string;
+  sourcePerfumeSlugs: string[];
 };
+
+const DEFAULT_PROMOTION_TEXT = "Limited-time offers are live now.";
 
 const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   enabled: false,
   mode: "manual",
-  text: "Limited-time offers are live now.",
+  text: DEFAULT_PROMOTION_TEXT,
+  textByLocale: {
+    az: DEFAULT_PROMOTION_TEXT,
+    en: DEFAULT_PROMOTION_TEXT,
+    ru: DEFAULT_PROMOTION_TEXT,
+  },
   linkHref: "",
   linkLabel: "View offer",
   backgroundColor: "#111111",
@@ -24,6 +35,7 @@ const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   speed: 28,
   closable: true,
   sourcePerfumeSlug: "",
+  sourcePerfumeSlugs: [],
 };
 
 function normalizePromotionText(value: unknown) {
@@ -44,11 +56,52 @@ function normalizePromotionSpeed(value: unknown, fallback: number) {
   return Math.min(120, Math.max(8, Math.round(parsed)));
 }
 
+function normalizePromotionTextMap(value: unknown): SitePromotionTextMap {
+  const settings = (value && typeof value === "object" ? value : {}) as {
+    az?: unknown;
+    en?: unknown;
+    ru?: unknown;
+  };
+
+  const fallback = normalizePromotionText(value);
+  const az = normalizePromotionText(settings.az) || fallback || DEFAULT_PROMOTION_SETTINGS.text;
+  const en = normalizePromotionText(settings.en) || fallback || DEFAULT_PROMOTION_SETTINGS.text;
+  const ru = normalizePromotionText(settings.ru) || fallback || DEFAULT_PROMOTION_SETTINGS.text;
+
+  return { az, en, ru };
+}
+
+function normalizePromotionSlugList(value: unknown) {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => normalizePromotionText(item).toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(",")
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  return [] as string[];
+}
+
 function normalizePromotionSettings(value: unknown): SitePromotionSettings {
   const settings = (value && typeof value === "object" ? value : {}) as {
     enabled?: unknown;
     mode?: unknown;
     text?: unknown;
+    textByLocale?: unknown;
     linkHref?: unknown;
     linkLabel?: unknown;
     backgroundColor?: unknown;
@@ -56,14 +109,20 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     speed?: unknown;
     closable?: unknown;
     sourcePerfumeSlug?: unknown;
+    sourcePerfumeSlugs?: unknown;
   };
 
   const mode = normalizePromotionText(settings.mode) === "discount" ? "discount" : "manual";
+  const textByLocale = normalizePromotionTextMap(settings.textByLocale ?? settings.text);
+  const sourcePerfumeSlugs = normalizePromotionSlugList(
+    settings.sourcePerfumeSlugs ?? settings.sourcePerfumeSlug,
+  );
 
   return {
     enabled: Boolean(settings.enabled),
     mode,
-    text: normalizePromotionText(settings.text) || DEFAULT_PROMOTION_SETTINGS.text,
+    text: textByLocale.az || textByLocale.en || textByLocale.ru || DEFAULT_PROMOTION_SETTINGS.text,
+    textByLocale,
     linkHref: normalizePromotionText(settings.linkHref),
     linkLabel: normalizePromotionText(settings.linkLabel) || DEFAULT_PROMOTION_SETTINGS.linkLabel,
     backgroundColor: normalizePromotionHexColor(
@@ -73,8 +132,26 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     textColor: normalizePromotionHexColor(settings.textColor, DEFAULT_PROMOTION_SETTINGS.textColor),
     speed: normalizePromotionSpeed(settings.speed, DEFAULT_PROMOTION_SETTINGS.speed),
     closable: Boolean(settings.closable ?? DEFAULT_PROMOTION_SETTINGS.closable),
-    sourcePerfumeSlug: normalizePromotionText(settings.sourcePerfumeSlug).toLowerCase(),
+    sourcePerfumeSlug: sourcePerfumeSlugs[0] ?? "",
+    sourcePerfumeSlugs,
   };
+}
+
+export function getPromotionTextForLocale(
+  promotion: SitePromotionSettings | null | undefined,
+  locale: SitePromotionLocale,
+) {
+  if (!promotion) {
+    return "";
+  }
+
+  return (
+    normalizePromotionText(promotion.textByLocale?.[locale]) ||
+    normalizePromotionText(promotion.textByLocale?.az) ||
+    normalizePromotionText(promotion.textByLocale?.en) ||
+    normalizePromotionText(promotion.textByLocale?.ru) ||
+    normalizePromotionText(promotion.text)
+  );
 }
 
 export const DEFAULT_SITE_NAME = "Perfoumer";
