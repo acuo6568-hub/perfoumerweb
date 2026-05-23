@@ -73,6 +73,8 @@ export type Perfume = {
     heart: string[];
     base: string[];
   };
+  mediaScale?: number;
+  mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number };
 };
 
 export type PerfumeWithNotes = Perfume & {

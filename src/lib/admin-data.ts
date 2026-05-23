@@ -114,6 +114,21 @@ function normalizePerfume(value: unknown): Perfume | null {
       heart: normalizeStringArray(perfume.noteSlugs?.heart),
       base: normalizeStringArray(perfume.noteSlugs?.base),
     },
+    mediaScale: typeof (perfume as any).mediaScale === "number" && Number.isFinite((perfume as any).mediaScale)
+      ? Number((perfume as any).mediaScale)
+      : undefined,
+    mediaScaleByDevice: ((): { mobile?: number; laptop?: number; monitor?: number } | undefined => {
+      const obj = (perfume as any).mediaScaleByDevice;
+      if (!obj || typeof obj !== "object") return undefined;
+      const mobile = Number(obj.mobile);
+      const laptop = Number(obj.laptop);
+      const monitor = Number(obj.monitor);
+      const out: { mobile?: number; laptop?: number; monitor?: number } = {};
+      if (Number.isFinite(mobile)) out.mobile = mobile;
+      if (Number.isFinite(laptop)) out.laptop = laptop;
+      if (Number.isFinite(monitor)) out.monitor = monitor;
+      return Object.keys(out).length ? out : undefined;
+    })(),
   };
 }
 
