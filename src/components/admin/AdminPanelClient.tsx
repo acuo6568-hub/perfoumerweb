@@ -12,6 +12,7 @@ import {
   type ReactNode,
   Suspense,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   TrendUp,
   ArrowsClockwise,
@@ -76,7 +77,7 @@ type AdminPanelClientProps = {
   initialSettingsJson: string;
 };
 
-type PerfumeDraft = Perfume;
+type PerfumeDraft = Perfume & { mediaScale?: number };
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
 type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding" | "promotions";
@@ -5634,52 +5635,62 @@ export function AdminPanelClient({
         isDirty={dirty}
         isSaving={busy}
       />
-      {resizeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setResizeModalOpen(false)}>
-          <div className="w-full max-w-[1200px] p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-lg">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="text-lg font-semibold">Resize perfume preview</h3>
-                <div className="flex items-center gap-2">
-                  <button type="button" className={ui.compactButton} onClick={() => setResizeModalOpen(false)}>
-                    Close
-                  </button>
+      {resizeModalOpen && (() => {
+        const modal = (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setResizeModalOpen(false)}>
+            <div className="w-full max-w-[1200px] p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-lg">
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-lg font-semibold">Resize perfume preview</h3>
+                  <div className="flex items-center gap-2">
+                    <button type="button" className={ui.compactButton} onClick={() => setResizeModalOpen(false)}>
+                      Close
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
-                <div className="mx-auto flex w-full items-center justify-center">
-                  <div ref={modalContainerRef} className="relative max-h-[70vh] h-auto w-full max-w-[680px] overflow-hidden rounded-xl bg-zinc-50 p-6 md:p-8 flex items-center justify-center">
-                    <div className="product-card-clip w-full max-w-[520px] overflow-hidden rounded-[1.2rem] bg-white p-6 shadow-sm">
-                      <div className="relative mx-auto h-72 md:h-80 w-full flex items-center justify-center">
-                        <img ref={previewCardRef} src={selectedPerfume?.image || "/perfoumerlogo.png"} alt={selectedPerfume?.imageAlt || selectedPerfume?.name} className="mx-auto h-full w-full object-contain transition-transform duration-150" style={{ transform: 'scale(' + resizeScale + ')', transformOrigin: "center center" }} />
-                      </div>
-                      <div className="px-1 pt-3">
-                        <h4 className="text-sm font-medium text-zinc-900">{selectedPerfume?.name}</h4>
-                        <p className="mt-1 text-xs text-zinc-500">{selectedPerfume?.brand}</p>
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
+                  <div className="mx-auto flex w-full items-center justify-center">
+                    <div ref={modalContainerRef} className="relative max-h-[70vh] h-auto w-full max-w-[680px] overflow-hidden rounded-xl bg-zinc-50 p-6 md:p-8 flex items-center justify-center">
+                      <div className="product-card-clip w-full max-w-[520px] overflow-hidden rounded-[1.2rem] bg-white p-6 shadow-sm">
+                        <div className="relative mx-auto h-72 md:h-80 w-full flex items-center justify-center">
+                          <img ref={previewCardRef} src={selectedPerfume?.image || "/perfoumerlogo.png"} alt={selectedPerfume?.imageAlt || selectedPerfume?.name} className="mx-auto h-full w-full object-contain transition-transform duration-150" style={{ transform: 'scale(' + resizeScale + ')', transformOrigin: "center center" }} />
+                        </div>
+                        <div className="px-1 pt-3">
+                          <h4 className="text-sm font-medium text-zinc-900">{selectedPerfume?.name}</h4>
+                          <p className="mt-1 text-xs text-zinc-500">{selectedPerfume?.brand}</p>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="hidden md:block" />
                   </div>
 
-                  <div className="hidden md:block" />
-                </div>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-full">
+                      <label className="block text-sm font-medium text-zinc-700">Scale</label>
+                      <input type="range" min={resizeMin} max={resizeMax} step={0.01} value={resizeScale} onChange={(e) => setResizeScale(Number((e.target as HTMLInputElement).value))} className="mt-2 w-full" />
+                      <div className="mt-2 text-sm text-zinc-500">{Math.round(resizeScale * 100)}%</div>
+                    </div>
 
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-full">
-                    <label className="block text-sm font-medium text-zinc-700">Scale</label>
-                    <input type="range" min={resizeMin} max={resizeMax} step={0.01} value={resizeScale} onChange={(e) => setResizeScale(Number((e.target as HTMLInputElement).value))} className="mt-2 w-full" />
-                    <div className="mt-2 text-sm text-zinc-500">{Math.round(resizeScale * 100)}%</div>
-                  </div>
-
-                  <div className="flex w-full justify-end">
-                    <button type="button" className={ui.primaryButton} onClick={() => setResizeModalOpen(false)}>Done</button>
+                    <div className="flex w-full justify-end">
+                      <button type="button" className={ui.primaryButton} onClick={() => {
+                        // Persist the selected scale to the perfume
+                        if (selectedPerfume) {
+                          setPerfumeField("mediaScale", resizeScale as any);
+                        }
+                        setResizeModalOpen(false);
+                      }}>Done</button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+
+        return typeof document !== "undefined" ? createPortal(modal, document.body) : modal;
+      })()}
     </section>
   );
 }

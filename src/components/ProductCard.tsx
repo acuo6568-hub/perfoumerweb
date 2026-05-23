@@ -84,6 +84,11 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
     "--shadow-opacity": `${shadowProfile.opacity}`,
   } as CSSProperties;
 
+  const imageTransformStyle: CSSProperties = {
+    transform: `scale(${(perfume as any).mediaScale ?? 1})`,
+    transformOrigin: "center bottom",
+  };
+
   const handleCardClick = () => {
     if (typeof window === "undefined") {
       return;
@@ -146,6 +151,7 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
               "product-image object-contain object-bottom transition-opacity duration-500",
               isImageLoaded ? "opacity-100" : "opacity-0",
             ].join(" ")}
+            style={imageTransformStyle}
             onLoad={() => setIsImageLoaded(true)}
             onError={() => {
               if (imageCandidateIndex < imageCandidates.length - 1) {
