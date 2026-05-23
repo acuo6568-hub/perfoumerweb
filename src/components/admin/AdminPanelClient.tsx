@@ -3884,7 +3884,7 @@ export function AdminPanelClient({
                         placeholder={promotionSuggestion?.textByLocale[promotionEditorLocale] || copy.promotionsText}
                       />
                       <div className="mt-2 flex items-center justify-between gap-3">
-                        <p className="text-xs text-zinc-500">
+                          <p className="text-xs text-zinc-500 max-w-full break-words whitespace-normal">
                           {copy.promotionsPreview}: {getPromotionTextForLocale(settings.promotions, promotionEditorLocale) || copy.promotionsPreviewDetail}
                         </p>
                         <div className="flex items-center gap-2">
@@ -3910,10 +3910,10 @@ export function AdminPanelClient({
                       </div>
 
                       {settings.promotions.messages && settings.promotions.messages.length ? (
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div className="mt-3 max-h-40 overflow-auto flex flex-col gap-2">
                           {settings.promotions.messages.map((msg, idx) => (
-                            <div key={idx} className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
-                              <div className="truncate">{msg}</div>
+                            <div key={idx} className="min-w-0 flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+                              <div className="break-words whitespace-normal">{msg}</div>
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
@@ -4183,16 +4183,16 @@ export function AdminPanelClient({
                           className="promo-banner-track brand-marquee-track"
                           style={{ animationDuration: `${settings.promotions.speed}s` }}
                         >
-                          <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]">
-                            <span>{promotionPreviewText || copy.promotionsPreview}</span>
+                          <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em] min-w-0">
+                            <span className="whitespace-normal break-words max-w-[60ch]">{promotionPreviewText || copy.promotionsPreview}</span>
                             {settings.promotions.linkLabel ? (
                               <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[0.62rem]">
                                 {settings.promotions.linkLabel}
                               </span>
                             ) : null}
                           </div>
-                          <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em]" aria-hidden="true">
-                            <span>{promotionPreviewText || copy.promotionsPreview}</span>
+                          <div className="flex items-center gap-5 pr-5 text-[0.72rem] font-semibold uppercase tracking-[0.22em] min-w-0" aria-hidden="true">
+                            <span className="whitespace-normal break-words max-w-[60ch]">{promotionPreviewText || copy.promotionsPreview}</span>
                             {settings.promotions.linkLabel ? (
                               <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[0.62rem]">
                                 {settings.promotions.linkLabel}
