@@ -5636,8 +5636,8 @@ export function AdminPanelClient({
       />
       {resizeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setResizeModalOpen(false)}>
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} className="w-full max-w-[920px] p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-lg">
+          <div className="w-full max-w-[1200px] p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-lg">
               <div className="flex items-start justify-between gap-4">
                 <h3 className="text-lg font-semibold">Resize perfume preview</h3>
                 <div className="flex items-center gap-2">
@@ -5649,12 +5649,12 @@ export function AdminPanelClient({
 
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
                 <div className="mx-auto flex w-full items-center justify-center">
-                  <div ref={modalContainerRef} className="relative h-[420px] w-[320px] overflow-hidden rounded-xl bg-zinc-50 p-4" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <div className="product-card-clip w-[260px] overflow-hidden rounded-[1.2rem] bg-white p-3 shadow-sm">
-                      <div className="relative mx-auto h-36 w-full flex items-center justify-center">
+                  <div ref={modalContainerRef} className="relative max-h-[70vh] h-auto w-full max-w-[680px] overflow-hidden rounded-xl bg-zinc-50 p-6 md:p-8 flex items-center justify-center">
+                    <div className="product-card-clip w-full max-w-[520px] overflow-hidden rounded-[1.2rem] bg-white p-6 shadow-sm">
+                      <div className="relative mx-auto h-72 md:h-80 w-full flex items-center justify-center">
                         <img ref={previewCardRef} src={selectedPerfume?.image || "/perfoumerlogo.png"} alt={selectedPerfume?.imageAlt || selectedPerfume?.name} className="mx-auto h-full w-full object-contain transition-transform duration-150" style={{ transform: 'scale(' + resizeScale + ')', transformOrigin: "center center" }} />
                       </div>
-                      <div className="px-1 pt-2.5">
+                      <div className="px-1 pt-3">
                         <h4 className="text-sm font-medium text-zinc-900">{selectedPerfume?.name}</h4>
                         <p className="mt-1 text-xs text-zinc-500">{selectedPerfume?.brand}</p>
                       </div>
