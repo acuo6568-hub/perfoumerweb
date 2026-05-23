@@ -479,6 +479,19 @@ async function getPerfumesSource(): Promise<Perfume[]> {
   }
 
   // Fallback to CSV
+  // Fallback to local admin JSON first (development), then CSV
+  const adminPerfumesRaw = await readJsonSafely<unknown[]>(ADMIN_PERFUMES_JSON_PATH);
+  if (Array.isArray(adminPerfumesRaw)) {
+    const parsed = adminPerfumesRaw
+      .map((perfume) => normalizePerfume(perfume))
+      .filter((item): item is Perfume => item !== null);
+
+    if (parsed.length) {
+      console.log("[Catalog] Using", parsed.length, "perfumes from local admin JSON");
+      return ensureUniquePerfumeIds(parsed);
+    }
+  }
+
   const csvPerfumes = await getCsvPerfumesSource();
   console.log("[Catalog] Using", csvPerfumes.length, "perfumes from CSV");
   return ensureUniquePerfumeIds(csvPerfumes);
