@@ -11,7 +11,8 @@ import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigatio
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
 import { SiteSettingsProvider } from "@/components/site-settings/SiteSettingsProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
-import { buildPromotionStorageKey, getPromotionTextForLocale } from "@/lib/site-branding";
+import { buildPromotionStorageKey } from "@/lib/promotions";
+import { getPromotionTextForLocale } from "@/lib/site-branding";
 import type { SiteSettings } from "@/lib/site-branding";
 
 type AppShellProps = {
