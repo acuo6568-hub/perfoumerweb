@@ -11,7 +11,7 @@ import { ScrollRestoreOnNavigation } from "@/components/ScrollRestoreOnNavigatio
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
 import { SiteSettingsProvider } from "@/components/site-settings/SiteSettingsProvider";
 import { stripLocalePrefix, type Locale } from "@/lib/i18n";
-import { getPromotionTextForLocale } from "@/lib/site-branding";
+import { buildPromotionStorageKey, getPromotionTextForLocale } from "@/lib/site-branding";
 import type { SiteSettings } from "@/lib/site-branding";
 
 type AppShellProps = {
@@ -33,9 +33,14 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
   const promoBannerText = getPromotionTextForLocale(settings.promotions, _locale);
   const hasPromoBanner = settings.promotions.enabled && Boolean(promoBannerText.trim());
   const isPromoBannerVisible = hasPromoBanner && !isPromoBannerDismissed;
+  const promoBannerKey = buildPromotionStorageKey(settings.promotions);
   const bannerOffsetStyle = {
     "--promo-banner-height": isPromoBannerVisible ? "3rem" : "0px",
   } as CSSProperties;
+
+  useEffect(() => {
+    setIsPromoBannerDismissed(false);
+  }, [promoBannerKey]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -96,6 +101,7 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
           {hideNavigationChrome ? null : (
             <>
               <PromotionsBanner
+                key={promoBannerKey}
                 locale={_locale}
                 visible={isPromoBannerVisible}
                 onClose={handleDismissPromoBanner}
@@ -108,7 +114,7 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
             className={[
               "route-page-enter",
               shouldOffsetForHeader
-                ? "pt-[calc(5.5rem+var(--promo-banner-height))] sm:pt-[calc(6rem+var(--promo-banner-height))]"
+                ? "pt-[calc(6.25rem+var(--promo-banner-height))] sm:pt-[calc(6.75rem+var(--promo-banner-height))]"
                 : "",
             ].join(" ")}
           >
