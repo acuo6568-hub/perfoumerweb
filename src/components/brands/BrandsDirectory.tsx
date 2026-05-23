@@ -83,27 +83,31 @@ export function BrandsDirectory({ groupedBrands, categoryOptions, dropdownAriaLa
   }, [filteredGroups]);
 
   useEffect(() => {
-    const el = asideRef.current;
-    if (!el) return;
-
     function onMove(e: MouseEvent) {
-      const rect = el.getBoundingClientRect();
+      const target = asideRef.current;
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
       const x = e.clientX - rect.left - rect.width / 2;
       const y = e.clientY - rect.top - rect.height / 2;
-      el.style.setProperty("--mx", `${x}px`);
-      el.style.setProperty("--my", `${y}px`);
+      target.style.setProperty("--mx", `${x}px`);
+      target.style.setProperty("--my", `${y}px`);
     }
 
     function onLeave() {
-      el.style.setProperty("--mx", `0px`);
-      el.style.setProperty("--my", `0px`);
+      const target = asideRef.current;
+      if (!target) return;
+      target.style.setProperty("--mx", `0px`);
+      target.style.setProperty("--my", `0px`);
     }
 
-    el.addEventListener("mousemove", onMove);
-    el.addEventListener("mouseleave", onLeave);
+    const node = asideRef.current;
+    if (!node) return;
+
+    node.addEventListener("mousemove", onMove);
+    node.addEventListener("mouseleave", onLeave);
     return () => {
-      el.removeEventListener("mousemove", onMove);
-      el.removeEventListener("mouseleave", onLeave);
+      node.removeEventListener("mousemove", onMove);
+      node.removeEventListener("mouseleave", onLeave);
     };
   }, []);
 

@@ -1578,6 +1578,31 @@ export function AdminPanelClient({
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AdminView>("perfumes");
   const [perfumeEditorTab, setPerfumeEditorTab] = useState<PerfumeEditorTab>("basics");
+  const [resizeModalOpen, setResizeModalOpen] = useState(false);
+  const [resizeScale, setResizeScale] = useState(1);
+  const [resizeMin] = useState(0.4);
+  const [resizeMax, setResizeMax] = useState(1.6);
+  const modalContainerRef = useRef<HTMLDivElement | null>(null);
+  const previewCardRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!resizeModalOpen) return;
+    const t = () => {
+      const container = modalContainerRef.current;
+      const card = previewCardRef.current;
+      if (!container || !card) return;
+      const containerRect = container.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      if (cardRect.width === 0 || cardRect.height === 0) return;
+      const maxByWidth = containerRect.width / cardRect.width;
+      const maxByHeight = containerRect.height / cardRect.height;
+      const computed = Math.max(1, Math.min(maxByWidth, maxByHeight));
+      setResizeMax(Math.max(1, computed));
+      setResizeScale((s) => Math.min(s, Math.max(1, computed)));
+    };
+
+    // measure after paint
+    requestAnimationFrame(t);
+  }, [resizeModalOpen]);
   const [noteEditorTab, setNoteEditorTab] = useState<NoteEditorTab>("content");
   const [perfumeListFilter, setPerfumeListFilter] = useState<PerfumeListFilter>("all");
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>("all");
@@ -5292,6 +5317,18 @@ export function AdminPanelClient({
                             <Sparkle size={16} weight="bold" />
                             {removingBg ? copy.removeBgProcessing : copy.removeBg}
                           </button>
+                          <button
+                            type="button"
+                            className={ui.secondaryButton}
+                            onClick={() => {
+                              setResizeScale(1);
+                              setResizeModalOpen(true);
+                            }}
+                            disabled={!selectedPerfume.image}
+                          >
+                            <MagnifyingGlass size={16} weight="bold" />
+                            Resize Preview
+                          </button>
                         </div>
                         <p className="mt-3 text-xs leading-5 text-zinc-500">{copy.uploadImageGuidance}</p>
                         <input
@@ -5335,6 +5372,8 @@ export function AdminPanelClient({
                       </div>
                     </div>
                   </div>
+
+                  
                 ) : null}
               </div>
             ) : (
@@ -5595,6 +5634,79 @@ export function AdminPanelClient({
         isDirty={dirty}
         isSaving={busy}
       />
+      {resizeModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setResizeModalOpen(false)}
+        >
+          <div className="w-full max-w-[920px] p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-lg">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-lg font-semibold">Resize perfume preview</h3>
+                <div className="flex items-center gap-2">
+                  <button type="button" className={ui.compactButton} onClick={() => setResizeModalOpen(false)}>
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
+                <div className="mx-auto flex w-full items-center justify-center">
+                  <div
+                    ref={modalContainerRef}
+                    className="relative h-[420px] w-[320px] overflow-hidden rounded-xl bg-zinc-50 p-4"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <div
+                      ref={previewCardRef}
+                      className="transform-gpu transition-transform duration-150"
+                      style={{ transform: `scale(${resizeScale})`, transformOrigin: "center center" }}
+                    >
+                      <div className="product-card-preview w-[260px] rounded-[1.2rem] bg-white p-3 shadow-sm">
+                        <div className="relative mx-auto h-36 w-full">
+                          <img
+                            src={selectedPerfume?.image || "/perfoumerlogo.png"}
+                            alt={selectedPerfume?.imageAlt || selectedPerfume?.name}
+                            className="mx-auto h-full w-full object-contain"
+                          />
+                        </div>
+                        <div className="px-1 pt-2.5">
+                          <h4 className="text-sm font-medium text-zinc-900">{selectedPerfume?.name}</h4>
+                          <p className="mt-1 text-xs text-zinc-500">{selectedPerfume?.brand}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:block" />
+                </div>
+
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-zinc-700">Scale</label>
+                    <input
+                      type="range"
+                      min={resizeMin}
+                      max={resizeMax}
+                      step={0.01}
+                      value={resizeScale}
+                      onChange={(e) => setResizeScale(Number((e.target as HTMLInputElement).value))}
+                      className="mt-2 w-full"
+                    />
+                    <div className="mt-2 text-sm text-zinc-500">{Math.round(resizeScale * 100)}%</div>
+                  </div>
+
+                  <div className="flex w-full justify-end">
+                    <button type="button" className={ui.primaryButton} onClick={() => setResizeModalOpen(false)}>
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

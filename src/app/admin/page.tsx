@@ -5,6 +5,8 @@ import { isAdminAuthenticated, isAdminConfigured } from "@/lib/admin-auth";
 import { getAdminData } from "@/lib/admin-data";
 import { normalizeSiteSettings } from "@/lib/site-branding";
 import { getSiteSettings } from "@/lib/site-settings";
+import type { Perfume, Note } from "@/types/catalog";
+import type { SiteSettings } from "@/lib/site-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = await getSiteSettings();
@@ -23,7 +25,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   let configured = false;
   let authenticated = false;
-  let data = { perfumes: [], notes: [], settings: normalizeSiteSettings(null) };
+  let data: { perfumes: Perfume[]; notes: Note[]; settings: SiteSettings } = {
+    perfumes: [],
+    notes: [],
+    settings: normalizeSiteSettings(null),
+  };
 
   try {
     configured = isAdminConfigured();
