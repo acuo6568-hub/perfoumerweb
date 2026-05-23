@@ -3883,9 +3883,54 @@ export function AdminPanelClient({
                         rows={3}
                         placeholder={promotionSuggestion?.textByLocale[promotionEditorLocale] || copy.promotionsText}
                       />
-                      <p className="mt-2 text-xs text-zinc-500">
-                        {copy.promotionsPreview}: {getPromotionTextForLocale(settings.promotions, promotionEditorLocale) || copy.promotionsPreviewDetail}
-                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-3">
+                        <p className="text-xs text-zinc-500">
+                          {copy.promotionsPreview}: {getPromotionTextForLocale(settings.promotions, promotionEditorLocale) || copy.promotionsPreviewDetail}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className={ui.compactButton}
+                            onClick={() => {
+                              const current = promotionTextValue.trim();
+                              if (!current) return;
+                              updatePromotionSettings({ messages: [...(settings.promotions.messages || []), current] });
+                            }}
+                          >
+                            Add message
+                          </button>
+                          <button
+                            type="button"
+                            className={ui.compactButton}
+                            onClick={() => updatePromotionSettings({ messages: [] })}
+                          >
+                            Clear messages
+                          </button>
+                        </div>
+                      </div>
+
+                      {settings.promotions.messages && settings.promotions.messages.length ? (
+                        <div className="mt-3 flex flex-col gap-2">
+                          {settings.promotions.messages.map((msg, idx) => (
+                            <div key={idx} className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+                              <div className="truncate">{msg}</div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="text-xs text-zinc-500"
+                                  onClick={() => {
+                                    const next = [...settings.promotions.messages!];
+                                    next.splice(idx, 1);
+                                    updatePromotionSettings({ messages: next });
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </Field>
 
                     <div className="grid gap-4 md:grid-cols-2">

@@ -26,6 +26,7 @@ export type SitePromotionSettings = {
   mobilePaddingX: number;
   sourcePerfumeSlug: string;
   sourcePerfumeSlugs: string[];
+  messages?: string[];
 };
 
 const DEFAULT_PROMOTION_TEXT = "Limited-time offers are live now.";
@@ -62,6 +63,7 @@ const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   mobilePaddingX: 16,
   sourcePerfumeSlug: "",
   sourcePerfumeSlugs: [],
+  messages: [],
 };
 
 function normalizePromotionText(value: unknown) {
@@ -156,6 +158,10 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     settings.sourcePerfumeSlugs ?? settings.sourcePerfumeSlug,
   );
 
+  const messages = Array.isArray((settings as any).messages)
+    ? (settings as any).messages.map((m: unknown) => normalizePromotionText(m)).filter(Boolean)
+    : [] as string[];
+
   return {
     enabled: Boolean(settings.enabled),
     mode,
@@ -183,6 +189,7 @@ function normalizePromotionSettings(value: unknown): SitePromotionSettings {
     mobilePaddingX: Math.min(28, Math.max(8, Math.round(Number(settings.mobilePaddingX) || DEFAULT_PROMOTION_SETTINGS.mobilePaddingX))),
     sourcePerfumeSlug: sourcePerfumeSlugs[0] ?? "",
     sourcePerfumeSlugs,
+    messages,
   };
 }
 
@@ -216,13 +223,19 @@ export function getPromotionTextForLocale(
     return "";
   }
 
-  return (
+  const localized =
     normalizePromotionText(promotion.textByLocale?.[locale]) ||
     normalizePromotionText(promotion.textByLocale?.az) ||
     normalizePromotionText(promotion.textByLocale?.en) ||
-    normalizePromotionText(promotion.textByLocale?.ru) ||
-    normalizePromotionText(promotion.text)
-  );
+    normalizePromotionText(promotion.textByLocale?.ru);
+
+  if (localized) return localized;
+
+  if (Array.isArray(promotion.messages) && promotion.messages.length) {
+    return normalizePromotionText(promotion.messages[0]);
+  }
+
+  return normalizePromotionText(promotion.text);
 }
 
 export function getPromotionLinkLabelForLocale(

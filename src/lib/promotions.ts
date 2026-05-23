@@ -25,6 +25,7 @@ export type SitePromotionSettings = {
   mobilePaddingX: number;
   sourcePerfumeSlug: string;
   sourcePerfumeSlugs: string[];
+  messages?: string[];
 };
 
 function normalizeString(value: unknown) {
@@ -77,6 +78,7 @@ export const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   mobilePaddingX: 16,
   sourcePerfumeSlug: "",
   sourcePerfumeSlugs: [],
+  messages: [],
 };
 
 export function normalizePromotionSettings(value: unknown): SitePromotionSettings {
@@ -128,6 +130,10 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
       ? [settings.sourcePerfumeSlug.trim().toLowerCase()]
       : [];
 
+  const messages = Array.isArray((settings as any).messages)
+    ? (settings as any).messages.map((m: unknown) => normalizeString(m)).filter(Boolean)
+    : [] as string[];
+
   return {
     enabled: Boolean(settings.enabled),
     mode,
@@ -160,6 +166,7 @@ export function normalizePromotionSettings(value: unknown): SitePromotionSetting
     mobilePaddingX: Math.min(28, Math.max(8, Math.round(Number(settings.mobilePaddingX) || DEFAULT_PROMOTION_SETTINGS.mobilePaddingX))),
     sourcePerfumeSlug: sourcePerfumeSlugs[0] ?? "",
     sourcePerfumeSlugs,
+    messages,
   };
 }
 
