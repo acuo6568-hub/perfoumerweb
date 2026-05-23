@@ -1568,6 +1568,8 @@ export function AdminPanelClient({
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [locale, setLocale] = useState<AdminLocale>("az");
   const [promotionEditorLocale, setPromotionEditorLocale] = useState<SitePromotionLocale>("az");
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editingMessageValue, setEditingMessageValue] = useState<string>("");
   const [isTranslatingPromotion, setIsTranslatingPromotion] = useState(false);
   const [promoAnalytics, setPromoAnalytics] = useState<PromoAnalyticsState | null>(null);
   const [isPromoAnalyticsLoading, setIsPromoAnalyticsLoading] = useState(false);
@@ -3913,20 +3915,72 @@ export function AdminPanelClient({
                         <div className="mt-3 max-h-40 overflow-auto flex flex-col gap-2">
                           {settings.promotions.messages.map((msg, idx) => (
                             <div key={idx} className="min-w-0 flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
-                              <div className="break-words whitespace-normal">{msg}</div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  className="text-xs text-zinc-500"
-                                  onClick={() => {
-                                    const next = [...settings.promotions.messages!];
-                                    next.splice(idx, 1);
-                                    updatePromotionSettings({ messages: next });
-                                  }}
-                                >
-                                  Remove
-                                </button>
-                              </div>
+                              {editingMessageIndex === idx ? (
+                                <div className="flex w-full items-start gap-2">
+                                  <textarea
+                                    className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                    value={editingMessageValue}
+                                    onChange={(e) => setEditingMessageValue(e.target.value)}
+                                    rows={2}
+                                  />
+                                  <div className="flex flex-col gap-2">
+                                    <button
+                                      type="button"
+                                      className={ui.compactPrimaryButton}
+                                      onClick={() => {
+                                        const next = [...settings.promotions.messages!];
+                                        next[idx] = editingMessageValue.trim() || next[idx];
+                                        updatePromotionSettings({ messages: next });
+                                        setEditingMessageIndex(null);
+                                        setEditingMessageValue("");
+                                      }}
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={ui.compactButton}
+                                      onClick={() => {
+                                        setEditingMessageIndex(null);
+                                        setEditingMessageValue("");
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="break-words whitespace-normal">{msg}</div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      className="text-xs text-zinc-500"
+                                      onClick={() => {
+                                        const next = [...settings.promotions.messages!];
+                                        next.splice(idx, 1);
+                                        updatePromotionSettings({ messages: next });
+                                        if (editingMessageIndex === idx) {
+                                          setEditingMessageIndex(null);
+                                          setEditingMessageValue("");
+                                        }
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="text-xs text-zinc-500"
+                                      onClick={() => {
+                                        setEditingMessageIndex(idx);
+                                        setEditingMessageValue(msg);
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           ))}
                         </div>

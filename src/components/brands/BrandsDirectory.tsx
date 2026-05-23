@@ -34,6 +34,7 @@ export function BrandsDirectory({ groupedBrands, categoryOptions, dropdownAriaLa
   const [activeCategory, setActiveCategory] = useState(categoryOptions[0]?.id ?? "all");
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const asideRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -81,6 +82,31 @@ export function BrandsDirectory({ groupedBrands, categoryOptions, dropdownAriaLa
     return () => window.cancelAnimationFrame(frame);
   }, [filteredGroups]);
 
+  useEffect(() => {
+    const el = asideRef.current;
+    if (!el) return;
+
+    function onMove(e: MouseEvent) {
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      el.style.setProperty("--mx", `${x}px`);
+      el.style.setProperty("--my", `${y}px`);
+    }
+
+    function onLeave() {
+      el.style.setProperty("--mx", `0px`);
+      el.style.setProperty("--my", `0px`);
+    }
+
+    el.addEventListener("mousemove", onMove);
+    el.addEventListener("mouseleave", onLeave);
+    return () => {
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
   return (
     <section className="pb-8 md:pb-12">
       <div className="relative max-w-[300px]" ref={dropdownRef}>
@@ -127,11 +153,18 @@ export function BrandsDirectory({ groupedBrands, categoryOptions, dropdownAriaLa
       </div>
 
       <div className="mt-8 flex items-start gap-4 sm:gap-7 md:gap-10">
-        <aside className="w-6 shrink-0 pt-1">
+        <aside ref={asideRef} style={{ "--mx": "0px", "--my": "0px" } as React.CSSProperties} className="w-6 shrink-0 pt-1">
           <ul className="space-y-3 text-[1.08rem] leading-none text-indigo-950/90 sm:text-[1.15rem]">
             {letters.map((letter) => (
               <li key={letter}>
-                <a href={`#${slugForLetter(letter)}`} className="block transition-opacity duration-200 hover:opacity-70">
+                <a
+                  href={`#${slugForLetter(letter)}`}
+                  className="block transition-all duration-300 hover:opacity-100 hover:-translate-y-1"
+                  style={{
+                    boxShadow: "calc(var(--mx) * 0.02) calc(var(--my) * 0.02) 18px rgba(17,24,39,0.06)",
+                    transform: "translateZ(0)",
+                  }}
+                >
                   {letter}
                 </a>
               </li>
