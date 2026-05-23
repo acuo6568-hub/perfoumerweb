@@ -1,17 +1,38 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 type PerfumeHeroCoverProps = {
   src: string;
   alt: string;
+  mediaScale?: number;
+  mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number };
 };
 
-export function PerfumeHeroCover({ src, alt }: PerfumeHeroCoverProps) {
+export function PerfumeHeroCover({ src, alt, mediaScale, mediaScaleByDevice }: PerfumeHeroCoverProps) {
   const fallbackSrc = "/perfoumerlogo.png";
   const initialSrc = useMemo(() => (src?.trim() ? src : fallbackSrc), [src]);
   const [imageSrc, setImageSrc] = useState(initialSrc);
+
+  const [deviceKey, setDeviceKey] = useState<"mobile" | "laptop" | "monitor">(() => {
+    if (typeof window === "undefined") return "laptop";
+    const w = window.innerWidth;
+    return w < 768 ? "mobile" : w < 1400 ? "laptop" : "monitor";
+  });
+
+  useEffect(() => {
+    const onResize = () => {
+      const w = window.innerWidth;
+      const key = w < 768 ? "mobile" : w < 1400 ? "laptop" : "monitor";
+      setDeviceKey(key);
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const effectiveScale = (mediaScaleByDevice ?? {})[deviceKey] ?? mediaScale ?? 1;
 
   return (
     <div className="relative overflow-hidden rounded-[2.15rem] p-8 shadow-[0_24px_70px_rgba(24,24,24,0.08)] ring-1 ring-white/70 md:p-12 xl:flex xl:h-[calc(100vh-10rem)] xl:items-center xl:justify-center">
@@ -32,20 +53,22 @@ export function PerfumeHeroCover({ src, alt }: PerfumeHeroCoverProps) {
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 bottom-6 h-8 w-[42%] -translate-x-[12%] rotate-[1.6deg] rounded-full bg-zinc-900/8 blur-2xl md:bottom-7 md:h-9"
       />
-      <Image
-        src={imageSrc}
-        alt={alt}
-        width={900}
-        height={1200}
-        priority
-        sizes="(max-width: 767px) 82vw, (max-width: 1279px) 72vw, 38vw"
-        className="relative z-[1] mx-auto h-[420px] w-auto max-w-full object-contain drop-shadow-[12px_26px_30px_rgba(0,0,0,0.22)] md:h-[560px] xl:h-[min(70vh,640px)] xl:max-w-[74%]"
-        onError={() => {
-          if (imageSrc !== fallbackSrc) {
-            setImageSrc(fallbackSrc);
-          }
-        }}
-      />
+      <div className="relative z-[1] mx-auto h-[420px] w-auto max-w-full xl:max-w-[74%] flex items-center justify-center" style={{ transform: `scale(${effectiveScale})`, transformOrigin: "center bottom" }}>
+        <Image
+          src={imageSrc}
+          alt={alt}
+          width={900}
+          height={1200}
+          priority
+          sizes="(max-width: 767px) 82vw, (max-width: 1279px) 72vw, 38vw"
+          className="h-full w-auto object-contain drop-shadow-[12px_26px_30px_rgba(0,0,0,0.22)] md:h-[560px] xl:h-[min(70vh,640px)]"
+          onError={() => {
+            if (imageSrc !== fallbackSrc) {
+              setImageSrc(fallbackSrc);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }
