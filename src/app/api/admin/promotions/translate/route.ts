@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     ? payload.sourcePerfumes.map((item) => normalizeText(item)).filter(Boolean)
     : [];
 
-  if (!text && !linkLabel) {
+  if (!text && !linkLabel && perfumeNames.length === 0) {
     return NextResponse.json({ error: "Missing promotion text." }, { status: 400 });
   }
 
@@ -95,6 +95,12 @@ export async function POST(request: Request) {
     targetLocales: ["az", "en", "ru"],
   };
 
+  // If source text is empty but perfume names are provided, ask the model to generate
+  // promotional copy (not only translate). Otherwise perform the translation flow.
+  const systemMessage = text
+    ? "You are a professional Azerbaijani, English, and Russian localization copywriter for a perfume e-commerce admin panel. Translate the given promotion text naturally and elegantly. Keep perfume names, slugs, colors, and button intent unchanged. Return strict JSON with keys textByLocale and linkLabelByLocale, each containing az, en, and ru strings. If the link label is generic, translate it to a concise CTA. Avoid literal machine-translation phrasing."
+    : "You are a professional Azerbaijani, English, and Russian copywriter specialized in short, high-conversion e-commerce banner copy for perfume stores. Given a list of perfume names and optional contextual info, generate concise promotional banner text and a short CTA label in Azerbaijani, English and Russian. Return strict JSON with keys textByLocale and linkLabelByLocale, each containing az, en, and ru strings. Preserve perfume names exactly as provided and provide short, punchy CTAs. ";
+
   const completionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -109,8 +115,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content:
-            "You are a professional Azerbaijani, English, and Russian localization copywriter for a perfume e-commerce admin panel. Translate the given promotion text naturally and elegantly. Keep perfume names, slugs, colors, and button intent unchanged. Return strict JSON with keys textByLocale and linkLabelByLocale, each containing az, en, and ru strings. If the link label is generic, translate it to a concise CTA. Avoid literal machine-translation phrasing.",
+          content: systemMessage,
         },
         {
           role: "user",

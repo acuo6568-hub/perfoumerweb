@@ -130,6 +130,12 @@ type PromoAnalyticsState = {
   recentClicks: PromoAnalyticsRecentClick[];
 };
 
+type PromotionCopyPreset = {
+  id: string;
+  label: Record<SitePromotionLocale, string>;
+  text: Record<SitePromotionLocale, string>;
+};
+
 const ui = {
   shell:
     "overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-white/92 shadow-[0_24px_60px_rgba(17,24,39,0.08)] backdrop-blur",
@@ -207,6 +213,48 @@ function mapAdminLocaleToCopyLocale(locale: AdminLocale) {
 
 const PROMOTION_LOCALES: SitePromotionLocale[] = ["az", "en", "ru"];
 
+const PROMOTION_COPY_PRESETS: PromotionCopyPreset[] = [
+  {
+    id: "spotlight",
+    label: {
+      az: "Spotlight",
+      en: "Spotlight",
+      ru: "Spotlight",
+    },
+    text: {
+      az: "{perfumes} indi endirimdədir. Sevdiyiniz ətri seçin və fürsəti qaçırmayın.",
+      en: "{perfumes} are on sale now. Pick your signature scent before the offer ends.",
+      ru: "{perfumes} сейчас со скидкой. Выберите свой аромат, пока действует предложение.",
+    },
+  },
+  {
+    id: "limited",
+    label: {
+      az: "Limited",
+      en: "Limited",
+      ru: "Limited",
+    },
+    text: {
+      az: "Məhdud vaxt üçün {count} seçilmiş ətir xüsusi qiymətlərlə təqdim olunur.",
+      en: "For a limited time, {count} selected perfumes are available at special prices.",
+      ru: "Только ограниченное время {count} выбранных ароматов доступны по специальной цене.",
+    },
+  },
+  {
+    id: "gift",
+    label: {
+      az: "Gift",
+      en: "Gift",
+      ru: "Gift",
+    },
+    text: {
+      az: "{perfumes} ilə yeni favoritini tap. Bu seçimlər indi daha sərfəlidir.",
+      en: "Find your next favorite with {perfumes}. These picks are now priced better.",
+      ru: "Найдите новый фаворит с {perfumes}. Эти варианты сейчас выгоднее.",
+    },
+  },
+];
+
 function formatPromotionPerfumeNames(perfumes: Perfume[], locale: SitePromotionLocale) {
   if (!perfumes.length) {
     return "";
@@ -230,6 +278,23 @@ function formatPromotionPerfumeNames(perfumes: Perfume[], locale: SitePromotionL
   });
 
   return listFormatter.format(localizedNames);
+}
+
+function formatPromotionPerfumeIds(perfumes: Perfume[]) {
+  return perfumes.map((item) => `#${item.id}`).join(", ");
+}
+
+function buildPromotionTemplateText(
+  template: string,
+  perfumes: Perfume[],
+  locale: SitePromotionLocale,
+) {
+  const perfumeNames = formatPromotionPerfumeNames(perfumes, locale);
+  const perfumeIds = formatPromotionPerfumeIds(perfumes);
+  return template
+    .replaceAll("{perfumes}", perfumeNames)
+    .replaceAll("{count}", String(perfumes.length))
+    .replaceAll("{ids}", perfumeIds);
 }
 
 function buildPromotionDiscountCopy(perfumes: Perfume[], locale: SitePromotionLocale) {
@@ -3729,9 +3794,10 @@ export function AdminPanelClient({
                             {settings.promotions.sourcePerfumeSlugs.map((slug) => {
                               const perfume = perfumes.find((item) => item.slug === slug || item.id === slug);
                               return perfume ? (
-                                <span key={slug} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                                  {perfume.brand} {perfume.name}
-                                </span>
+                                <div key={slug} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700 flex items-center gap-2">
+                                  <span className="truncate max-w-[12rem]">{perfume.brand} {perfume.name}</span>
+                                  <span className="ml-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-mono text-zinc-600">#{perfume.id}</span>
+                                </div>
                               ) : null;
                             })}
                           </div>
@@ -3778,15 +3844,36 @@ export function AdminPanelClient({
                         ))}
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          {PROMOTION_COPY_PRESETS.map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => {
+                                const text = buildPromotionTemplateText(
+                                  preset.text[promotionEditorLocale],
+                                  promotionSourcePerfumes,
+                                  promotionEditorLocale,
+                                );
+                                updatePromotionTextForLocale(text);
+                              }}
+                              className="rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] bg-white hover:bg-zinc-50"
+                            >
+                              {preset.label[promotionEditorLocale]}
+                            </button>
+                          ))}
+                        </div>
+
                         <button
                           type="button"
                           onClick={translatePromotionCopy}
-                          disabled={isTranslatingPromotion || (!promotionTextValue.trim() && !promotionLinkLabelValue.trim())}
+                          disabled={isTranslatingPromotion || (!promotionTextValue.trim() && !promotionLinkLabelValue.trim() && promotionSourcePerfumes.length === 0)}
                           className={ui.secondaryButton}
                         >
                           <Sparkle size={16} weight="fill" />
                           <span>{isTranslatingPromotion ? copy.promotionsTranslateWorking : copy.promotionsTranslate}</span>
                         </button>
+
                         <span className="text-xs text-zinc-500">{copy.promotionsTranslateHint}</span>
                       </div>
                       <textarea
@@ -4123,7 +4210,7 @@ export function AdminPanelClient({
                           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{locale === "az" ? "Ən güclü bannerlər" : "Top promos"}</p>
                           <div className="mt-3 grid gap-3">
                             {promoAnalytics.topPromos.length ? promoAnalytics.topPromos.map((item) => (
-                              <div key={item.promoKey} className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
+                              <div key={item.promoKey} className="min-w-0 rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
                                     <p className="truncate text-sm font-semibold text-zinc-950">{item.promoLabel || item.promoKey}</p>
@@ -4151,7 +4238,7 @@ export function AdminPanelClient({
                           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{locale === "az" ? "Son klik edənlər" : "Recent clickers"}</p>
                           <div className="mt-3 grid gap-2">
                             {promoAnalytics.recentClicks.length ? promoAnalytics.recentClicks.slice(0, 12).map((item) => (
-                              <div key={`${item.sessionId}-${item.createdAt}`} className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 text-sm">
+                              <div key={`${item.sessionId}-${item.createdAt}`} className="min-w-0 rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 text-sm">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
                                     <p className="truncate font-semibold text-zinc-950">{item.userEmail || item.userId || item.anonymousId}</p>
