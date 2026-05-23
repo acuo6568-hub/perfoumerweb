@@ -31,13 +31,19 @@ import type { Session } from "@supabase/supabase-js";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import {
+  getDictionary,
+  locales,
+  stripLocalePrefix,
+  toLocalePath,
+  type Locale,
+} from "@/lib/i18n";
+import {
   CURRENCY_META,
   SUPPORTED_CURRENCIES,
   formatCurrencyFromAzn,
   getCurrencyShortLabel,
   type SupportedCurrency,
 } from "@/lib/currency";
-import { getDictionary, locales, stripLocalePrefix, toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { CartItemRow } from "@/types/cart";
 
@@ -69,6 +75,8 @@ type HeaderSearchBrandResult = {
   count: number;
 };
 
+const BRAND_LETTERS = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
+
 function parsePrice(value: number | string): number {
   const parsed = typeof value === "number" ? value : parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -98,6 +106,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
   const [isMobileCurrencyMenuOpen, setIsMobileCurrencyMenuOpen] = useState(false);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
+  const [isBrandsMenuOpen, setIsBrandsMenuOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
@@ -112,6 +121,9 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const wishlistCountRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const currencyMenuRef = useRef<HTMLDivElement | null>(null);
+  const brandsMenuRef = useRef<HTMLDivElement | null>(null);
+  const brandsMenuPanelRef = useRef<HTMLDivElement | null>(null);
+  const brandsMenuCloseTimerRef = useRef<number | null>(null);
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
   const { pathname: basePathname } = stripLocalePrefix(pathname);
@@ -613,6 +625,44 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   }, [isCurrencyMenuOpen]);
 
   useEffect(() => {
+    if (!isBrandsMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const triggerElement = brandsMenuRef.current;
+      const panelElement = brandsMenuPanelRef.current;
+
+      if (!triggerElement && !panelElement) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        !triggerElement?.contains(target) &&
+        !panelElement?.contains(target)
+      ) {
+        setIsBrandsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isBrandsMenuOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (brandsMenuCloseTimerRef.current) {
+        window.clearTimeout(brandsMenuCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isCartDrawerOpen) return;
     if (!session?.user?.id) return;
     void loadCartRows();
@@ -796,6 +846,45 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     [basePathname],
   );
 
+  const getBrandLetterHref = useCallback(
+    (letter: string) => `${toLocalePath("/brands", locale)}#brands-letter-${letter.toLowerCase()}`,
+    [locale],
+  );
+
+  const openBrandsMenu = useCallback(() => {
+    if (brandsMenuCloseTimerRef.current) {
+      window.clearTimeout(brandsMenuCloseTimerRef.current);
+      brandsMenuCloseTimerRef.current = null;
+    }
+    setIsBrandsMenuOpen(true);
+  }, []);
+
+  const closeBrandsMenu = useCallback((delay = 0) => {
+    if (brandsMenuCloseTimerRef.current) {
+      window.clearTimeout(brandsMenuCloseTimerRef.current);
+      brandsMenuCloseTimerRef.current = null;
+    }
+
+    if (delay > 0) {
+      brandsMenuCloseTimerRef.current = window.setTimeout(() => {
+        setIsBrandsMenuOpen(false);
+        brandsMenuCloseTimerRef.current = null;
+      }, delay) as any;
+      return;
+    }
+
+    setIsBrandsMenuOpen(false);
+  }, []);
+
+  const toggleBrandsMenu = useCallback(() => {
+    if (isBrandsMenuOpen) {
+      closeBrandsMenu();
+      return;
+    }
+
+    openBrandsMenu();
+  }, [closeBrandsMenu, isBrandsMenuOpen, openBrandsMenu]);
+
   const getMobileItemIcon = useCallback((href: string) => {
     const [pathOnly] = href.split("#");
 
@@ -966,7 +1055,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     <>
       <header
         className={[
-          "z-50 w-full opacity-100",
+          "z-[90] w-full opacity-100",
           floating ? "fixed inset-x-0 top-0" : "relative",
         ].join(" ")}
         style={floating ? topOffsetStyle : undefined}
@@ -1089,6 +1178,39 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
             <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 lg:flex">
               {desktopMenuItems.map((item) => {
+                if (item.href === "/brands") {
+                  const isActive = isItemActive(item.href);
+
+                  return (
+                    <div
+                      key={item.href}
+                      ref={brandsMenuRef}
+                      className="relative"
+                    >
+                      <button
+                        type="button"
+                        aria-expanded={isBrandsMenuOpen}
+                        aria-controls="brands-menu-panel"
+                        onClick={toggleBrandsMenu}
+                        className={[
+                          "group relative inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.66rem] font-medium tracking-[0.28em] uppercase transition-colors duration-300 xl:px-5",
+                          isBrandsMenuOpen || isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
+                        ].join(" ")}
+                      >
+                        <span>{item.label}</span>
+                        <CaretDown
+                          size={12}
+                          weight="bold"
+                          className={[
+                            "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                            isBrandsMenuOpen ? "rotate-180" : "rotate-0",
+                          ].join(" ")}
+                        />
+                      </button>
+                    </div>
+                  );
+                }
+
                 const isActive = isItemActive(item.href);
                 const localizedHref = toLocalePath(item.href, locale);
 
@@ -1106,6 +1228,42 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 );
               })}
             </nav>
+
+            <div
+              id="brands-menu-panel"
+              ref={brandsMenuPanelRef}
+              className={[
+                "absolute inset-x-0 top-full z-[90] origin-top overflow-hidden border-y border-zinc-900/10 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] text-white shadow-[0_28px_70px_rgba(0,0,0,0.34)] transform-gpu transition-[transform,opacity,clip-path] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity,clip-path]",
+                isBrandsMenuOpen
+                  ? "pointer-events-auto translate-y-0 scale-y-100 opacity-100"
+                  : "pointer-events-none -translate-y-4 scale-y-[0.985] opacity-0",
+              ].join(" ")}
+              style={{
+                clipPath: isBrandsMenuOpen ? "inset(0 0 0 0)" : "inset(0 0 100% 0)",
+              }}
+              onMouseEnter={openBrandsMenu}
+              onMouseLeave={() => closeBrandsMenu(140)}
+            >
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-14 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_50%)]" />
+              <div className="mx-auto w-full max-w-[1540px] px-5 lg:px-8">
+                <div className="flex flex-nowrap items-center justify-between gap-1 overflow-x-auto whitespace-nowrap py-2.5 sm:gap-1.5 lg:gap-2 lg:py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  {BRAND_LETTERS.map((letter, index) => (
+                    <Link
+                      key={letter}
+                      href={getBrandLetterHref(letter)}
+                      style={{
+                        transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 2}ms`,
+                      }}
+                      className="group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74 transition-[transform,opacity,color,background-color] duration-250 hover:-translate-y-[1px] hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="absolute inset-x-1.5 bottom-1 h-px origin-left scale-x-0 bg-white/80 transition-transform duration-200 group-hover:scale-x-100" />
+                      {letter}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3">
               <div
