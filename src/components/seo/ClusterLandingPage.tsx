@@ -94,7 +94,7 @@ export async function ClusterLandingPage({ locale, cluster, perfumes, articles }
           <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-500 md:text-base">{cluster.intro}</p>
         </section>
 
-        <section className="mt-7 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+        <section className="mt-7 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
           {perfumes.map((perfume) => (
             <ProductCard key={perfume.id} perfume={perfume} locale={locale} sourceUrlOverride={cluster.href} />
           ))}

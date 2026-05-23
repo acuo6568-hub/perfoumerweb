@@ -68,7 +68,7 @@ export default async function OffersPage() {
         </section>
 
         {offers.length ? (
-          <section className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+          <section className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
             {offers.map(({ perfume }) => (
               <ProductCard
                 key={perfume.id}

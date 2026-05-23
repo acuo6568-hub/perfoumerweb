@@ -220,7 +220,7 @@ export function PersonalizedFeaturedGrid({
   }, [catalogBySlug, featured, supabaseConfig]);
 
   return (
-    <section className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+    <section className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
       {orderedFeatured.map((perfume) => (
         <ProductCard key={perfume.id} perfume={perfume} locale={locale} />
       ))}

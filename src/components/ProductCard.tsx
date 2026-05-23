@@ -109,31 +109,31 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
         query: { v: perfume.id },
       }}
       onClick={handleCardClick}
-      className="product-card group relative block rounded-[1.65rem] bg-white p-2.5 shadow-sm ring-1 ring-zinc-200 sm:rounded-3xl sm:p-4"
+      className="product-card group relative block rounded-[1.45rem] bg-white p-2 shadow-sm ring-1 ring-zinc-200 sm:rounded-[1.9rem] sm:p-3 md:p-3.5 xl:p-4"
     >
-      <div className="product-media relative overflow-hidden rounded-[1.2rem] sm:rounded-2xl">
+      <div className="product-media relative overflow-hidden rounded-[1.05rem] sm:rounded-[1.5rem]">
         <div className="absolute left-2 top-2 z-20 flex flex-col gap-1.5">
           {variantCount && variantCount > 1 ? (
-            <div className="w-fit rounded-full bg-white/92 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.14em] text-zinc-700 uppercase shadow-sm backdrop-blur">
+            <div className="w-fit rounded-full bg-white/92 px-2 py-0.5 text-[0.58rem] font-medium tracking-[0.14em] text-zinc-700 uppercase shadow-sm backdrop-blur">
               {t.productCard.variantBadge.replace("{count}", String(variantCount))}
             </div>
           ) : null}
           {discountBadge ? (
-            <div className="discount-badge w-fit rounded-full bg-rose-500 px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.14em] text-white uppercase shadow-[0_10px_24px_rgba(225,29,72,0.28)]">
+            <div className="discount-badge w-fit rounded-full bg-rose-500 px-2 py-0.5 text-[0.58rem] font-semibold tracking-[0.14em] text-white uppercase shadow-[0_10px_24px_rgba(225,29,72,0.28)]">
               {t.productCard.discountBadge.replace("{percent}", discountBadge)}
             </div>
           ) : null}
         </div>
-        <div className="product-stage-gradient pointer-events-none absolute inset-x-0 bottom-0 h-16 sm:h-20" />
+        <div className="product-stage-gradient pointer-events-none absolute inset-x-0 bottom-0 h-14 sm:h-16 md:h-18" />
         <div
           className={[
             "absolute inset-0 bg-[linear-gradient(100deg,rgba(255,255,255,0.15)_10%,rgba(255,255,255,0.6)_35%,rgba(255,255,255,0.15)_60%)] bg-[length:220%_100%] transition-opacity duration-500",
             isImageLoaded ? "pointer-events-none opacity-0" : "animate-[catalogImageShimmer_1.3s_ease-in-out_infinite] opacity-100",
           ].join(" ")}
         />
-        <div className="relative mx-auto h-40 w-full sm:h-56 lg:h-72">
+        <div className="relative mx-auto h-36 w-full sm:h-48 md:h-48 lg:h-72">
           <div
-            className="product-ground-shadow pointer-events-none absolute left-1/2 h-3 -translate-x-1/2 rounded-full sm:h-4"
+            className="product-ground-shadow pointer-events-none absolute left-1/2 h-3 -translate-x-1/2 rounded-full sm:h-3.5 md:h-4"
             style={shadowStyle}
           />
           <Image
@@ -158,12 +158,12 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
           />
         </div>
       </div>
-      <div className="px-1 pt-3 transition-transform duration-300 md:group-hover:-translate-y-0.5 sm:pt-4">
-        <h3 className="line-clamp-2 text-base leading-tight font-medium text-zinc-900 transition-colors duration-300 md:group-hover:text-zinc-800 sm:text-xl">
+      <div className="px-1 pt-2.5 transition-transform duration-300 md:group-hover:-translate-y-0.5 sm:pt-3 md:pt-3.5">
+        <h3 className="line-clamp-2 text-sm leading-tight font-medium text-zinc-900 transition-colors duration-300 md:group-hover:text-zinc-800 sm:text-lg md:text-[1.05rem] xl:text-xl">
           {perfume.name}
         </h3>
         {pricing.hasVisibleSavings && pricing.originalPrice !== null && pricing.finalPrice !== null ? (
-          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[0.72rem] text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm md:text-[0.78rem]">
             <span className="text-zinc-400 line-through">
               {formatCurrencyFromAzn(pricing.originalPrice, selectedCurrency, locale)}
             </span>
@@ -173,11 +173,11 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
             <span>/ {t.productCard.starting}</span>
           </div>
         ) : pricing.finalPrice !== null ? (
-          <p className="mt-1 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
+          <p className="mt-1 text-[0.72rem] text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm md:text-[0.78rem]">
             {`${formatCurrencyFromAzn(pricing.finalPrice, selectedCurrency, locale)} / ${t.productCard.starting}`}
           </p>
         ) : (
-          <p className="mt-1 text-xs text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm">
+          <p className="mt-1 text-[0.72rem] text-zinc-500 transition-colors duration-300 md:group-hover:text-zinc-500 sm:text-sm md:text-[0.78rem]">
             {t.productCard.quote}
           </p>
         )}

@@ -650,7 +650,7 @@ export function WishlistClient({ perfumes, locale, supabase: supabaseConfig }: W
       ) : null}
 
       {wishedPerfumes.length ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
           {wishedPerfumes.map((perfume) => (
             <div key={perfume.id} className="space-y-2">
               <ProductCard perfume={perfume} locale={locale} />

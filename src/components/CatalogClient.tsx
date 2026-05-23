@@ -1316,7 +1316,7 @@ export function CatalogClient({
 
       <section
         className={[
-          "relative z-10 mt-2 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:gap-5",
+          "relative z-10 mt-2 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5",
           isRefreshing ? "opacity-95" : "opacity-100",
         ].join(" ")}
       >

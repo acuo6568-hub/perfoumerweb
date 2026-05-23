@@ -513,7 +513,7 @@ export default async function PerfumeDetailPage({
               {t.detail.similarProductsHint}
             </p>
 
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
               {similarPerfumes.map((item) => (
                 <ProductCard key={item.id} perfume={item} locale={locale} />
               ))}
@@ -529,7 +529,7 @@ export default async function PerfumeDetailPage({
             {t.detail.moreProductsHint}
           </p>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
             {relatedPerfumes.map((item) => (
               <ProductCard key={item.id} perfume={item} locale={locale} />
             ))}
