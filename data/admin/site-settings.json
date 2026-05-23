@@ -11,23 +11,33 @@
   "promotions": {
     "enabled": true,
     "mode": "discount",
-    "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille endirimdədir",
+    "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille indi endirimdədir. Sevdiyiniz ətri seçin və fürsəti qaçırmayın.",
     "textByLocale": {
-      "az": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille endirimdədir",
-      "en": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille are on discount",
-      "ru": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille со скидкой"
+      "az": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille indi endirimdədir. Sevdiyiniz ətri seçin və fürsəti qaçırmayın.",
+      "en": "Limited-time offers are now available.",
+      "ru": "Акции с ограниченным сроком действия уже доступны."
     },
     "linkHref": "/offers",
-    "linkLabel": "Endirimi gör",
+    "linkLabel": "Təklifi gör",
     "linkLabelByLocale": {
-      "az": "Endirimi gör",
-      "en": "View offer",
-      "ru": "Смотреть предложение"
+      "az": "Təklifi gör",
+      "en": "See offer",
+      "ru": "Посмотреть предложение"
     },
+    "backgroundMode": "gradient",
     "backgroundColor": "#111111",
+    "gradientFrom": "#111111",
+    "gradientTo": "#2d2d2d",
+    "gradientAngle": 110,
     "textColor": "#ffffff",
     "speed": 28,
     "closable": true,
+    "countdownEnabled": false,
+    "scheduleStartAt": "",
+    "scheduleEndAt": "",
+    "mobileHeight": 52,
+    "mobileTextScale": 0.94,
+    "mobilePaddingX": 16,
     "sourcePerfumeSlug": "baccarat-rouge-540",
     "sourcePerfumeSlugs": [
       "baccarat-rouge-540",

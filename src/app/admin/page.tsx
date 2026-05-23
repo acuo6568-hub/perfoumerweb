@@ -21,12 +21,28 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const configured = isAdminConfigured();
-  const authenticated = configured ? await isAdminAuthenticated() : false;
+  let configured = false;
+  let authenticated = false;
+  let data = { perfumes: [], notes: [], settings: normalizeSiteSettings(null) };
 
-  const data = configured && authenticated
-    ? await getAdminData()
-    : { perfumes: [], notes: [], settings: normalizeSiteSettings(null) };
+  try {
+    configured = isAdminConfigured();
+    authenticated = configured ? await isAdminAuthenticated() : false;
+
+    if (configured && authenticated) {
+      data = await getAdminData();
+    } else {
+      data = { perfumes: [], notes: [], settings: normalizeSiteSettings(null) };
+    }
+  } catch (error) {
+    // Defensive: prevent server-side errors from crashing the admin page render.
+    // Log to server console for diagnosis and fall back to unauthenticated view.
+    // eslint-disable-next-line no-console
+    console.error("[AdminPage] Error initializing admin page:", error);
+    configured = false;
+    authenticated = false;
+    data = { perfumes: [], notes: [], settings: normalizeSiteSettings(null) };
+  }
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[1820px] px-3 pb-10 pt-24 sm:px-5 sm:pt-28 lg:px-7 xl:px-9">

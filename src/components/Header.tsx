@@ -1138,7 +1138,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           </div>
         </div>
 
-        <div className="hidden w-full px-0 pt-0 sm:px-0 sm:pt-0 md:px-0 lg:block">
+        <div className="hidden w-full px-0 pt-0 sm:px-0 sm:pt-0 md:px-0 xl:block">
           <div
             className="header-load-in relative isolate overflow-visible bg-[#f3f3f2] text-zinc-900 shadow-none ring-0 backdrop-blur-0 transition-[background-color,border-color] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
@@ -1151,7 +1151,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               className="hero-grain pointer-events-none absolute inset-0 opacity-0"
             />
 
-            <div className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 lg:gap-4 lg:px-8">
+            <div className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 xl:gap-4 xl:px-8">
 
             <Link
               href={toLocalePath("/", locale)}
@@ -1176,7 +1176,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               </span>
             </Link>
 
-            <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 lg:flex">
+            <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 xl:flex">
               {desktopMenuItems.map((item) => {
                 if (item.href === "/brands") {
                   const isActive = isItemActive(item.href);
@@ -1233,27 +1233,25 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               id="brands-menu-panel"
               ref={brandsMenuPanelRef}
               className={[
-                "absolute inset-x-0 top-full z-[90] origin-top overflow-hidden border-y border-zinc-900/10 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] text-white shadow-[0_28px_70px_rgba(0,0,0,0.34)] transform-gpu transition-[transform,opacity,clip-path] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity,clip-path]",
+                "absolute inset-x-0 top-full z-[90] origin-top overflow-hidden border-y border-zinc-900/10 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] text-white shadow-[0_28px_70px_rgba(0,0,0,0.34)] transform-gpu transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[transform,opacity]",
                 isBrandsMenuOpen
                   ? "pointer-events-auto translate-y-0 scale-y-100 opacity-100"
-                  : "pointer-events-none -translate-y-4 scale-y-[0.985] opacity-0",
+                  : "pointer-events-none translate-y-0 scale-y-[0.94] opacity-0",
               ].join(" ")}
               style={{
-                clipPath: isBrandsMenuOpen ? "inset(0 0 0 0)" : "inset(0 0 100% 0)",
+                transformOrigin: "top center",
               }}
-              onMouseEnter={openBrandsMenu}
-              onMouseLeave={() => closeBrandsMenu(140)}
             >
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
               <div className="absolute inset-x-0 top-0 h-14 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_50%)]" />
-              <div className="mx-auto w-full max-w-[1540px] px-5 lg:px-8">
-                <div className="flex flex-nowrap items-center justify-between gap-1 overflow-x-auto whitespace-nowrap py-2.5 sm:gap-1.5 lg:gap-2 lg:py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="mx-auto w-full max-w-[1540px] px-5 xl:px-8">
+                <div className="flex flex-nowrap items-center justify-between gap-1 overflow-x-auto whitespace-nowrap py-2.5 sm:gap-1.5 xl:gap-2 xl:py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   {BRAND_LETTERS.map((letter, index) => (
                     <Link
                       key={letter}
                       href={getBrandLetterHref(letter)}
                       style={{
-                        transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 2}ms`,
+                        transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 8}ms`,
                       }}
                       className="group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74 transition-[transform,opacity,color,background-color] duration-250 hover:-translate-y-[1px] hover:bg-white/10 hover:text-white"
                     >
@@ -1265,9 +1263,9 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               </div>
             </div>
 
-            <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3">
+            <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3 xl:gap-3.5">
               <div
-                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex"
+                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 xl:flex"
               >
                 {locales.map((item) => (
                   <button

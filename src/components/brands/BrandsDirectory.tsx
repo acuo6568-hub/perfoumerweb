@@ -67,6 +67,20 @@ export function BrandsDirectory({ groupedBrands, categoryOptions, dropdownAriaLa
   const letters = filteredGroups.map((group) => group.letter);
   const activeOption = categoryOptions.find((option) => option.id === activeCategory) ?? categoryOptions[0];
 
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    if (!hash) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(hash);
+      target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [filteredGroups]);
+
   return (
     <section className="pb-8 md:pb-12">
       <div className="relative max-w-[300px]" ref={dropdownRef}>

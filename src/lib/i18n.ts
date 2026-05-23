@@ -84,6 +84,10 @@ export const translations = {
       tagline: "Sənə aid olan qoxunu seç",
       openMenu: "Menyunu aç",
       closeMenu: "Menyunu bağla",
+      brandsMenuEyebrow: "Brendlər",
+      brandsMenuTitle: "Əlifba ilə ara",
+      brandsMenuHint: "Bir hərfə toxun və həmin brend bölməsinə keç.",
+      brandsMenuAction: "Brend səhifəsi",
     },
     hero: {
       eyebrow: "Perfoumer",
@@ -208,6 +212,7 @@ export const translations = {
       description:
         "İstədiyiniz brendi seçin və həmin brendə aid bütün ətirləri kataloqda hazır filtr ilə görün.",
       cardHint: "Bu brendin ətirlərini göstər",
+      jumpToLetter: "Bu hərfə keç",
     },
     notePage: {
       eyebrow: "Not Kataloqu",
@@ -299,6 +304,10 @@ export const translations = {
       tagline: "Choose the scent that defines you",
       openMenu: "Open menu",
       closeMenu: "Close menu",
+      brandsMenuEyebrow: "Brands",
+      brandsMenuTitle: "Browse alphabetically",
+      brandsMenuHint: "Hover a letter to jump to that brand section.",
+      brandsMenuAction: "Brand page",
     },
     hero: {
       eyebrow: "Perfoumer",
@@ -421,6 +430,7 @@ export const translations = {
       description:
         "Choose a brand and open the catalog with that brand already filtered.",
       cardHint: "View perfumes from this brand",
+      jumpToLetter: "Jump to this letter",
     },
     notePage: {
       eyebrow: "Note Catalog",
@@ -512,6 +522,10 @@ export const translations = {
       tagline: "Выбери аромат, который отражает тебя",
       openMenu: "Открыть меню",
       closeMenu: "Закрыть меню",
+      brandsMenuEyebrow: "Бренды",
+      brandsMenuTitle: "Просмотр по алфавиту",
+      brandsMenuHint: "Наведите на букву, чтобы перейти к нужному бренду.",
+      brandsMenuAction: "Страница брендов",
     },
     hero: {
       eyebrow: "Perfoumer",
@@ -634,6 +648,7 @@ export const translations = {
       description:
         "Выберите бренд и откройте каталог уже с включенным фильтром по нему.",
       cardHint: "Показать ароматы бренда",
+      jumpToLetter: "Перейти к этой букве",
     },
     notePage: {
       eyebrow: "Каталог нот",
