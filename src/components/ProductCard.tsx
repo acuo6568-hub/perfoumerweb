@@ -84,8 +84,18 @@ export function ProductCard({ perfume, locale = "az", sourceUrlOverride, variant
     "--shadow-opacity": `${shadowProfile.opacity}`,
   } as CSSProperties;
 
+  const getDeviceKey = () => {
+    if (typeof window === "undefined") return "laptop";
+    const w = window.innerWidth;
+    if (w < 768) return "mobile";
+    if (w < 1400) return "laptop";
+    return "monitor";
+  };
+
+  const deviceKey = getDeviceKey();
+  const imageScale = (perfume as any).mediaScaleByDevice?.[deviceKey] ?? (perfume as any).mediaScale ?? 1;
   const imageTransformStyle: CSSProperties = {
-    transform: `scale(${(perfume as any).mediaScale ?? 1})`,
+    transform: `scale(${imageScale})`,
     transformOrigin: "center bottom",
   };
 

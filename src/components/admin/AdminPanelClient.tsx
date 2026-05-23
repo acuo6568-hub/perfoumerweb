@@ -77,7 +77,7 @@ type AdminPanelClientProps = {
   initialSettingsJson: string;
 };
 
-type PerfumeDraft = Perfume & { mediaScale?: number };
+type PerfumeDraft = Perfume & { mediaScale?: number; mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number } };
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
 type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding" | "promotions";
@@ -1585,6 +1585,8 @@ export function AdminPanelClient({
   const [resizeMax, setResizeMax] = useState(1.6);
   const modalContainerRef = useRef<HTMLDivElement | null>(null);
   const previewCardRef = useRef<HTMLImageElement | null>(null);
+  const [deviceViewMode, setDeviceViewMode] = useState<"mobile" | "laptop" | "monitor">("laptop");
+  const [syncScaleAcrossDevices, setSyncScaleAcrossDevices] = useState(true);
   useEffect(() => {
     if (!resizeModalOpen) return;
     const t = () => {
@@ -5650,6 +5652,36 @@ export function AdminPanelClient({
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border px-2 py-1 bg-white">
+                      <button
+                        type="button"
+                        className={cx("px-3 py-1 rounded-full text-sm", deviceViewMode === "mobile" ? "bg-zinc-900 text-white" : "text-zinc-600")}
+                        onClick={() => setDeviceViewMode("mobile")}
+                      >
+                        Mobile
+                      </button>
+                      <button
+                        type="button"
+                        className={cx("px-3 py-1 rounded-full text-sm", deviceViewMode === "laptop" ? "bg-zinc-900 text-white" : "text-zinc-600")}
+                        onClick={() => setDeviceViewMode("laptop")}
+                      >
+                        Laptop
+                      </button>
+                      <button
+                        type="button"
+                        className={cx("px-3 py-1 rounded-full text-sm", deviceViewMode === "monitor" ? "bg-zinc-900 text-white" : "text-zinc-600")}
+                        onClick={() => setDeviceViewMode("monitor")}
+                      >
+                        Monitor
+                      </button>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 text-sm text-zinc-600">
+                      <input type="checkbox" checked={syncScaleAcrossDevices} onChange={(e) => setSyncScaleAcrossDevices(e.target.checked)} />
+                      <span>Apply to all devices</span>
+                    </label>
+                  </div>
                   <div className="mx-auto flex w-full items-center justify-center">
                     <div ref={modalContainerRef} className="relative max-h-[70vh] h-auto w-full max-w-[680px] overflow-hidden rounded-xl bg-zinc-50 p-6 md:p-8 flex items-center justify-center">
                       <div className="product-card-clip w-full max-w-[520px] overflow-hidden rounded-[1.2rem] bg-white p-6 shadow-sm">
@@ -5675,10 +5707,20 @@ export function AdminPanelClient({
 
                     <div className="flex w-full justify-end">
                       <button type="button" className={ui.primaryButton} onClick={() => {
-                        // Persist the selected scale to the perfume
-                        if (selectedPerfume) {
-                          setPerfumeField("mediaScale", resizeScale as any);
+                        if (!selectedPerfume) {
+                          setResizeModalOpen(false);
+                          return;
                         }
+
+                        if (syncScaleAcrossDevices) {
+                          setPerfumeField("mediaScale", resizeScale as any);
+                          setPerfumeField("mediaScaleByDevice", { mobile: resizeScale, laptop: resizeScale, monitor: resizeScale } as any);
+                        } else {
+                          const current = (selectedPerfume as any).mediaScaleByDevice || {};
+                          const next = { ...current, [deviceViewMode]: resizeScale };
+                          setPerfumeField("mediaScaleByDevice", next as any);
+                        }
+
                         setResizeModalOpen(false);
                       }}>Done</button>
                     </div>
