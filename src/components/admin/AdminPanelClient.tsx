@@ -1606,6 +1606,8 @@ export function AdminPanelClient({
     // measure after paint
     requestAnimationFrame(t);
   }, [resizeModalOpen]);
+
+  
   const [noteEditorTab, setNoteEditorTab] = useState<NoteEditorTab>("content");
   const [perfumeListFilter, setPerfumeListFilter] = useState<PerfumeListFilter>("all");
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>("all");
@@ -1661,6 +1663,34 @@ export function AdminPanelClient({
       null,
     [perfumes, selectedPerfumeId],
   );
+  useEffect(() => {
+    if (!resizeModalOpen) return;
+    // initialize slider from saved perfume values for current device
+    const init = () => {
+      const p = selectedPerfume as PerfumeDraft | null;
+      if (!p) return;
+      const byDevice = p.mediaScaleByDevice ?? {};
+      const initial = syncScaleAcrossDevices
+        ? p.mediaScale ?? 1
+        : (byDevice[deviceViewMode] ?? p.mediaScale ?? 1);
+      setResizeScale(initial);
+      // recompute max again after setting initial
+      requestAnimationFrame(() => {
+        const container = modalContainerRef.current;
+        const card = previewCardRef.current as HTMLElement | null;
+        if (!container || !card) return;
+        const containerRect = container.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        if (cardRect.width === 0) return;
+        const maxByWidth = containerRect.width / cardRect.width;
+        const maxByHeight = containerRect.height / cardRect.height;
+        const computed = Math.max(1, Math.min(maxByWidth, maxByHeight));
+        setResizeMax(Math.max(1, computed));
+      });
+    };
+
+    init();
+  }, [resizeModalOpen, deviceViewMode, syncScaleAcrossDevices, selectedPerfume]);
   const selectedPerfumeProductUrl = selectedPerfume
     ? `https://perfoumer.az/perfumes/${selectedPerfume.slug}`
     : "";
@@ -5684,8 +5714,14 @@ export function AdminPanelClient({
                   </div>
                   <div className="mx-auto flex w-full items-center justify-center">
                     <div ref={modalContainerRef} className="relative max-h-[70vh] h-auto w-full max-w-[680px] overflow-hidden rounded-xl bg-zinc-50 p-6 md:p-8 flex items-center justify-center">
-                      <div className="product-card-clip w-full max-w-[520px] overflow-hidden rounded-[1.2rem] bg-white p-6 shadow-sm">
-                        <div className="relative mx-auto h-72 md:h-80 w-full flex items-center justify-center">
+                      <div className={cx(
+                        "product-card-clip w-full overflow-hidden rounded-[1.2rem] bg-white p-6 shadow-sm",
+                        deviceViewMode === "mobile" ? "max-w-[320px]" : deviceViewMode === "laptop" ? "max-w-[520px]" : "max-w-[760px]",
+                      )}>
+                        <div className={cx(
+                          "relative mx-auto w-full flex items-center justify-center",
+                          deviceViewMode === "mobile" ? "h-60" : deviceViewMode === "laptop" ? "h-72 md:h-80" : "h-96 md:h-[28rem]",
+                        )}>
                           <img ref={previewCardRef} src={selectedPerfume?.image || "/perfoumerlogo.png"} alt={selectedPerfume?.imageAlt || selectedPerfume?.name} className="mx-auto h-full w-full object-contain transition-transform duration-150" style={{ transform: 'scale(' + resizeScale + ')', transformOrigin: "center center" }} />
                         </div>
                         <div className="px-1 pt-3">
@@ -5706,7 +5742,7 @@ export function AdminPanelClient({
                     </div>
 
                     <div className="flex w-full justify-end">
-                      <button type="button" className={ui.primaryButton} onClick={() => {
+                      <button type="button" className={ui.primaryButton} onClick={async () => {
                         if (!selectedPerfume) {
                           setResizeModalOpen(false);
                           return;
@@ -5722,6 +5758,13 @@ export function AdminPanelClient({
                         }
 
                         setResizeModalOpen(false);
+
+                        // Persist immediately so public views can pick up the change
+                        try {
+                          await onSave();
+                        } catch (err) {
+                          // onSave will set status; swallow here
+                        }
                       }}>Done</button>
                     </div>
                   </div>
