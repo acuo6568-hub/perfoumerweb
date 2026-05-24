@@ -107,7 +107,9 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const [isMobileCurrencyMenuOpen, setIsMobileCurrencyMenuOpen] = useState(false);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const [isBrandsMenuOpen, setIsBrandsMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
@@ -325,6 +327,18 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     { href: "/catalog", label: t.header.products },
     { href: "/compare", label: t.header.compare },
     { href: "/qoxunu", label: t.header.scentQuiz },
+  ];
+  const primaryNav = [
+    { href: "/catalog", label: t.header.products, icon: ShoppingBag },
+    { href: "/brands", label: t.header.brands, icon: Buildings },
+    { href: "/offers", label: copy[locale].offersTab, icon: Gift },
+    { href: "/qoxunu", label: t.header.scentQuiz, icon: Sparkle },
+  ];
+  const secondaryNav = [
+    { href: "/blog", label: copy[locale].blog, icon: NewspaperClipping },
+    { href: "/haqqimizda", label: copy[locale].aboutPage, icon: Info },
+    { href: "/compare", label: t.header.compare, icon: Scales },
+    { href: "/catalog?special=gift-ideas", label: copy[locale].giftIdeas, icon: Gift },
   ];
   const secondaryMenuItems = [
     { href: "/cart", label: t.header.cart },
@@ -623,6 +637,22 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       document.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [isCurrencyMenuOpen]);
+
+  useEffect(() => {
+    if (!isMoreOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!moreMenuRef.current) return;
+
+      const target = event.target;
+      if (target instanceof Node && !moreMenuRef.current.contains(target)) {
+        setIsMoreOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isMoreOpen]);
 
   useEffect(() => {
     if (!isBrandsMenuOpen) {
@@ -1177,56 +1207,98 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
             </Link>
 
             <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 xl:flex">
-              {desktopMenuItems.map((item) => {
+              {primaryNav.map((item) => {
                 if (item.href === "/brands") {
                   const isActive = isItemActive(item.href);
 
                   return (
-                    <div
-                      key={item.href}
-                      ref={brandsMenuRef}
-                      className="relative"
-                    >
+                    <div key={item.href} ref={brandsMenuRef} className="relative">
                       <button
                         type="button"
                         aria-expanded={isBrandsMenuOpen}
                         aria-controls="brands-menu-panel"
                         onClick={toggleBrandsMenu}
                         className={[
-                          "group relative inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.66rem] font-medium tracking-[0.28em] uppercase transition-colors duration-300 xl:px-5",
+                          "group relative inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm font-medium transition-colors duration-200",
                           isBrandsMenuOpen || isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
                         ].join(" ")}
                       >
-                        <span>{item.label}</span>
-                        <CaretDown
-                          size={12}
-                          weight="bold"
-                          className={[
-                            "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                            isBrandsMenuOpen ? "rotate-180" : "rotate-0",
-                          ].join(" ")}
-                        />
+                        <Buildings size={16} />
+                        <span className="hidden md:inline">{item.label}</span>
+                        {
+                          (() => {
+                            const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-1 transition-transform";
+                            return <CaretDown size={12} className={caretClass} />;
+                          })()
+                        }
                       </button>
                     </div>
                   );
                 }
 
-                const isActive = isItemActive(item.href);
+                const Icon = (item as any).icon as any;
                 const localizedHref = toLocalePath(item.href, locale);
 
                 return (
                   <Link
                     key={item.href}
                     href={localizedHref}
-                    className={[
-                      "group relative rounded-full px-4 py-2 text-[0.66rem] font-medium tracking-[0.28em] uppercase transition-colors duration-300 xl:px-5",
-                      isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
-                    ].join(" ")}
+                    className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
                   >
-                    <span>{item.label}</span>
+                    {Icon ? <Icon size={16} /> : null}
+                    <span className="hidden md:inline">{item.label}</span>
                   </Link>
                 );
               })}
+
+              {/* More dropdown */}
+              <div ref={moreMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsMoreOpen((c) => !c)}
+                  className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"
+                >
+                  <CaretDown size={14} />
+                  <span className="hidden md:inline">More</span>
+                </button>
+
+                <div
+                  className={[
+                    "absolute right-0 mt-2 w-44 overflow-hidden rounded-md bg-white shadow-lg z-40",
+                    isMoreOpen ? "block" : "hidden",
+                  ].join(" ")}
+                >
+                    <div className="py-1">
+                    {secondaryNav.map((s) => {
+                      const Icon = (s as any).icon as any;
+                      return (
+                        <Link key={s.href} href={toLocalePath(s.href, locale)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50">
+                          {Icon ? <Icon size={14} /> : null}
+                          <span>{s.label}</span>
+                        </Link>
+                      );
+                    })}
+
+                    <div className="border-t px-3 py-2">
+                      <div className="text-xs text-zinc-500 mb-1">Language</div>
+                      <div className="flex gap-1">
+                        {locales.map((it) => (
+                          <button key={it} onClick={() => { updateLocale(it); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{it.toUpperCase()}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t px-3 py-2">
+                      <div className="text-xs text-zinc-500 mb-1">Currency</div>
+                      <div className="flex gap-1">
+                        {SUPPORTED_CURRENCIES.map((c) => (
+                          <button key={c} onClick={() => { setSelectedCurrency(c); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{getCurrencyShortLabel(c)}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </nav>
 
             <div
