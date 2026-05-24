@@ -1265,32 +1265,55 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   </span>
                 </button>
 
-                <div className={isMoreOpen ? "absolute right-0 mt-2 w-56 rounded-2xl bg-white shadow-xl z-40" : "hidden"}>
-                  <div className="py-2">
-                    {secondaryNav.map((s) => {
-                      const Icon = (s as any).icon as any;
-                      return (
-                        <Link key={s.href} href={toLocalePath(s.href, locale)} className="flex items-center gap-3 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50">
-                          {Icon ? <Icon size={16} className="text-zinc-500" /> : null}
-                          <span className="truncate">{s.label}</span>
-                        </Link>
-                      );
-                    })}
+                <div
+                  className={
+                    isMoreOpen
+                      ? "absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.12)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right"
+                      : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.04)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right"
+                  }
+                >
+                  <div className="px-4 pt-4 pb-3">
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-zinc-900">{t.detail.more ?? "More"}</div>
+                        <div className="text-xs text-zinc-500">{copy[locale].quickActions}</div>
+                      </div>
+                      <button aria-label="Close" onClick={() => setIsMoreOpen(false)} className="text-zinc-400 hover:text-zinc-600 ml-2">
+                        <X size={18} />
+                      </button>
+                    </div>
 
-                    <div className="border-t px-4 py-2">
+                    <div className="mt-3 grid gap-2">
+                      {secondaryNav.map((s) => {
+                        const Icon = (s as any).icon as any;
+                        return (
+                          <Link
+                            key={s.href}
+                            href={toLocalePath(s.href, locale)}
+                            onClick={() => setIsMoreOpen(false)}
+                            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                          >
+                            {Icon ? <Icon size={18} className="text-zinc-500" /> : null}
+                            <span className="truncate">{s.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 border-t pt-3">
                       <div className="text-xs text-zinc-500 mb-2">{copy[locale].languageTag}</div>
                       <div className="flex flex-wrap gap-2">
                         {locales.map((it) => (
-                          <button key={it} onClick={() => { updateLocale(it); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{t.languages[it]}</button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="border-t px-4 py-2">
-                      <div className="text-xs text-zinc-500 mb-2">{copy[locale].currencyTag}</div>
-                      <div className="flex flex-wrap gap-2">
-                        {SUPPORTED_CURRENCIES.map((c) => (
-                          <button key={c} onClick={() => { setSelectedCurrency(c); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{getCurrencyShortLabel(c)}</button>
+                          <button
+                            key={it}
+                            onClick={() => {
+                              updateLocale(it);
+                              setIsMoreOpen(false);
+                            }}
+                            className="rounded-lg border border-zinc-100 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50"
+                          >
+                            {t.languages[it]}
+                          </button>
                         ))}
                       </div>
                     </div>
