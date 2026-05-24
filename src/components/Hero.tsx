@@ -3,17 +3,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatCurrencyFromAzn, type SupportedCurrency } from "@/lib/currency";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
+import type { SiteHomeHeaderSettings, SiteHomeHeaderSlide } from "@/lib/site-branding";
 import type { Perfume } from "@/types/catalog";
 
 type HeroProps = {
   locale: Locale;
   spotlights: Perfume[];
+  allPerfumes: Perfume[];
+  homeHeader: SiteHomeHeaderSettings;
 };
 
 type PerfumeMood = "fresh" | "bold" | "gourmand" | "floral" | "woody";
@@ -63,6 +66,8 @@ type HeroModel = {
 
 const HERO_ROTATION_MS = 5600;
 const HERO_MAX_SPOTLIGHTS = 6;
+const HERO_VIDEO_LOOP_START = 7;
+const HERO_VIDEO_LOOP_END = 15;
 
 const heroUiCopy = {
   az: {
@@ -436,6 +441,7 @@ function buildHeroModel(
   perfume: Perfume,
   locale: Locale,
   selectedCurrency: SupportedCurrency,
+  overrides?: Partial<Pick<HeroModel, "description" | "primaryCta" | "title" | "shortName" | "moodLabel" | "priceLabel" | "stockLabel">>,
 ): HeroModel {
   const mood = detectMood(perfume);
   const theme = buildHeroTheme(perfume, mood);
@@ -551,21 +557,79 @@ function buildHeroModel(
     notePills,
     theme,
     scene,
+    ...overrides,
   };
 }
 
-export function Hero({ locale, spotlights }: HeroProps) {
+function buildVideoCopy(homeHeader: SiteHomeHeaderSettings, locale: Locale) {
+  const defaults: Record<string, { title: string; description: string; ctaLabel: string; ctaHref: string }> = {
+    az: {
+      title: "KAY ALI",
+      description: "KAY ALI Perfumes — KAY ALI kolleksiyasını kəşf edin.",
+      ctaLabel: "Bütün qoxulara bax",
+      ctaHref: "/brands",
+    },
+    en: {
+      title: "KAY ALI",
+      description: "Discover the full KAY ALI collection.",
+      ctaLabel: "View all brands",
+      ctaHref: "/brands",
+    },
+    ru: {
+      title: "KAY ALI",
+      description: "Откройте всю коллекцию KAY ALI.",
+      ctaLabel: "Все бренды",
+      ctaHref: "/brands",
+    },
+  };
+
+  const pick = defaults[locale] ?? defaults.en;
+
+  return {
+    title: (homeHeader.videoTitleByLocale && (homeHeader.videoTitleByLocale as any)[locale]) || homeHeader.videoTitle || pick.title,
+    description:
+      (homeHeader.videoDescriptionByLocale && (homeHeader.videoDescriptionByLocale as any)[locale]) || homeHeader.videoDescription || pick.description,
+    ctaLabel:
+      (homeHeader.videoCtaLabelByLocale && (homeHeader.videoCtaLabelByLocale as any)[locale]) || homeHeader.videoCtaLabel || pick.ctaLabel,
+    ctaHref: homeHeader.videoCtaHref || pick.ctaHref,
+  } as any;
+}
+
+export function Hero({ locale, spotlights, allPerfumes, homeHeader }: HeroProps) {
   const siteSettings = useSiteSettings();
   const t = getDictionary(locale, siteSettings);
   const copy = heroUiCopy[locale];
   const { selectedCurrency } = useCurrency();
-  const models = spotlights
-    .slice(0, HERO_MAX_SPOTLIGHTS)
-    .map((perfume) => buildHeroModel(perfume, locale, selectedCurrency));
+  const selectedPerfumesMap = useMemo(() => new Map(allPerfumes.map((perfume) => [perfume.slug, perfume])), [allPerfumes]);
+  const curatedModels = useMemo(() => {
+    if (homeHeader.rotationMode !== "selected" || !homeHeader.slides.length) {
+      return [] as HeroModel[];
+    }
+
+    return homeHeader.slides
+      .map((slide) => {
+        const perfume = selectedPerfumesMap.get(slide.perfumeSlug);
+        if (!perfume) return null;
+
+        return buildHeroModel(perfume, locale, selectedCurrency, {
+          description: slide.description || undefined,
+          primaryCta: slide.buttonLabel || undefined,
+        });
+      })
+      .filter((item): item is HeroModel => item !== null)
+      .slice(0, HERO_MAX_SPOTLIGHTS);
+  }, [homeHeader.rotationMode, homeHeader.slides, locale, selectedCurrency, selectedPerfumesMap]);
+
+  const models = (homeHeader.mode === "rotating"
+    ? (homeHeader.rotationMode === "selected" && curatedModels.length ? curatedModels : spotlights.slice(0, HERO_MAX_SPOTLIGHTS).map((perfume) => buildHeroModel(perfume, locale, selectedCurrency)))
+    : []) as HeroModel[];
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [videoRevealPulse, setVideoRevealPulse] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const tiltResetRef = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const inLoopPhaseRef = useRef(false);
   const goPrevious = () => {
     setActiveIndex((current) => (models.length ? (current - 1 + models.length) % models.length : 0));
   };
@@ -599,6 +663,144 @@ export function Hero({ locale, spotlights }: HeroProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (homeHeader.mode !== "video") {
+      return;
+    }
+
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    let pulseTimer: number | null = null;
+    let scheduledRevealTimer: number | null = null;
+
+    const triggerRevealPulse = () => {
+      // debug
+      // eslint-disable-next-line no-console
+      console.debug("Hero: triggerRevealPulse -> set true");
+      setVideoRevealPulse(true);
+      if (pulseTimer !== null) {
+        // eslint-disable-next-line no-console
+        console.debug("Hero: clearing previous pulseTimer");
+        window.clearTimeout(pulseTimer);
+      }
+
+      // keep pulse class active for the full animation duration (10s) plus stagger buffer
+      pulseTimer = window.setTimeout(() => {
+        // eslint-disable-next-line no-console
+        console.debug("Hero: pulseTimer fired -> set false");
+        setVideoRevealPulse(false);
+        pulseTimer = null;
+      }, 11500);
+    };
+
+    const syncLoopWindow = () => {
+      if (video.currentTime < HERO_VIDEO_LOOP_START || video.currentTime >= HERO_VIDEO_LOOP_END) {
+        video.currentTime = HERO_VIDEO_LOOP_START;
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      // start from 0 on initial load; reveal pulse will trigger when we hit the loop start time
+      inLoopPhaseRef.current = false;
+      try {
+        if (Math.abs(video.currentTime) > 0.01) {
+          video.currentTime = 0;
+        }
+      } catch (e) {
+        // ignore seeking errors in some browsers
+      }
+
+      // eslint-disable-next-line no-console
+      console.debug("Hero: loadedmetadata currentTime=", video.currentTime);
+      // schedule a reveal at the loop start to ensure it fires even if timeupdate misses
+      try {
+        const remaining = (HERO_VIDEO_LOOP_START - video.currentTime) * 1000;
+        if (remaining > 150) {
+          scheduledRevealTimer = window.setTimeout(() => {
+            // eslint-disable-next-line no-console
+            console.debug("Hero: scheduled reveal firing (loadedmetadata)");
+            if (!inLoopPhaseRef.current) {
+              inLoopPhaseRef.current = true;
+              triggerRevealPulse();
+            }
+          }, remaining);
+        } else if (video.currentTime >= HERO_VIDEO_LOOP_START) {
+          if (!inLoopPhaseRef.current) {
+            inLoopPhaseRef.current = true;
+            triggerRevealPulse();
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      void video.play().catch(() => {});
+    };
+
+    const handleTimeUpdate = () => {
+      // debug
+      // eslint-disable-next-line no-console
+      console.debug("Hero: timeupdate", video.currentTime.toFixed(2), "inLoopPhase=", inLoopPhaseRef.current);
+
+      // When we pass the loop start for the first time, enter loop phase and trigger reveal
+      if (!inLoopPhaseRef.current && video.currentTime >= HERO_VIDEO_LOOP_START) {
+        inLoopPhaseRef.current = true;
+        // eslint-disable-next-line no-console
+        console.debug("Hero: entering loop phase at", video.currentTime);
+        triggerRevealPulse();
+      }
+
+      if (inLoopPhaseRef.current && video.currentTime >= HERO_VIDEO_LOOP_END) {
+        // loop the reveal segment
+        // eslint-disable-next-line no-console
+        console.debug("Hero: loop end reached at", video.currentTime, "seeking to", HERO_VIDEO_LOOP_START);
+        video.currentTime = HERO_VIDEO_LOOP_START;
+        void video.play().catch(() => {});
+        triggerRevealPulse();
+      }
+    };
+
+    const handlePlay = () => {
+      // no-op; let playback continue from 0 or loop segment
+    };
+
+    const handleSeeked = () => {
+      // If user seeks outside loop window, ensure next timeupdate handles entering loop
+      if (video.currentTime < HERO_VIDEO_LOOP_START) {
+        inLoopPhaseRef.current = false;
+      } else if (video.currentTime >= HERO_VIDEO_LOOP_START && video.currentTime < HERO_VIDEO_LOOP_END) {
+        inLoopPhaseRef.current = true;
+      }
+    };
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("seeked", handleSeeked);
+
+    if (video.readyState >= 1) {
+      handleLoadedMetadata();
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("seeked", handleSeeked);
+
+      if (pulseTimer !== null) {
+        window.clearTimeout(pulseTimer);
+      }
+
+      if (scheduledRevealTimer !== null) {
+        window.clearTimeout(scheduledRevealTimer);
+      }
+    };
+  }, [homeHeader.mode, homeHeader.videoUrl]);
+
   const pulseTilt = (side: "left" | "right") => {
     const node = stageRef.current;
     if (!node) {
@@ -619,6 +821,194 @@ export function Hero({ locale, spotlights }: HeroProps) {
       tiltResetRef.current = null;
     }, 520);
   };
+
+  if (homeHeader.mode === "video") {
+    const videoCopy = buildVideoCopy(homeHeader, locale);
+
+    return (
+      <section className={`hero-shell hero-shell--video ${videoRevealPulse ? "hero-shell--video-pulse" : ""} hero-shell--lift relative overflow-hidden rounded-[34px] xl:rounded-[42px] mt-3 sm:mt-4`}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(255,255,255,0.18),transparent_30%),linear-gradient(135deg,#0f0d12_0%,#18121a_36%,#28161f_100%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-95">
+          <div
+            className="hero-video-aura hero-aura-float absolute -left-24 top-[-8%] h-[34rem] w-[34rem] rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(255, 42, 154, 0.34) 0%, rgba(255, 42, 154, 0.16) 40%, rgba(255, 42, 154, 0) 72%)",
+            }}
+          />
+          <div
+            className="hero-video-aura hero-aura-float-delayed absolute right-[-10%] top-[-14%] h-[28rem] w-[28rem] rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(255, 120, 214, 0.28) 0%, rgba(255, 120, 214, 0.12) 44%, rgba(255, 120, 214, 0) 74%)",
+            }}
+          />
+          <div
+            className="hero-video-aura hero-aura-float absolute bottom-[-16%] left-[32%] h-[22rem] w-[22rem] rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.08) 42%, rgba(255, 255, 255, 0) 72%)",
+            }}
+          />
+        </div>
+        {
+          // pink bubble particles (rendered above the gradient)
+        }
+        <div className="pointer-events-none absolute inset-0 hero-video-particles z-[2]">
+          <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_82%_12%,rgba(250,196,231,0.24),transparent_28%),radial-gradient(circle_at_18%_84%,rgba(255,255,255,0.10),transparent_30%)]" />
+          {
+            // render bubbles
+          }
+          {/** bubbles generated once per mount */}
+          {(() => {
+            const count = 18;
+            const children = [] as JSX.Element[];
+            for (let i = 0; i < count; i += 1) {
+              const left = 6 + Math.round(Math.random() * 88);
+              const top = 6 + Math.round(Math.random() * 78);
+              const size = 10 + Math.round(Math.random() * 48);
+              const delay = Math.round((i / count) * 600);
+
+              // burst vector: random angle and distance
+              const angle = Math.random() * Math.PI * 2;
+              const distance = 120 + Math.round(Math.random() * 260); // px
+              const dx = Math.round(Math.cos(angle) * distance);
+              const dy = Math.round(Math.sin(angle) * -distance);
+
+              const style = {
+                left: `${left}%`,
+                top: `${top}%`,
+                width: `${size}px`,
+                height: `${size}px`,
+                ['--delay' as any]: `${delay}ms`,
+                ['--dx' as any]: `${dx}px`,
+                ['--dy' as any]: `${dy}px`,
+                ['--duration' as any]: `10000ms`,
+              } as any;
+
+              children.push(
+                <span key={`hero-bubble-${i}`} className="bubble pointer-events-none absolute" style={style}>
+                  <span className="bubble-circle absolute inset-0 rounded-full" aria-hidden />
+                  <span
+                    className="bubble-heart absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                    style={{ width: `64%`, height: `64%` }}
+                    aria-hidden
+                  />
+                </span>,
+              );
+            }
+
+            return children;
+          })()}
+        </div>
+        <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(180deg,rgba(14,10,14,0.18)_0%,rgba(14,10,14,0.32)_100%)]" />
+        <div className="relative z-[3] mx-auto flex h-full max-w-[1540px] items-start px-4 pb-7 pt-4 text-white sm:px-6 sm:py-6 md:px-10 xl:px-12 xl:py-12">
+          <div className="grid w-full gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-8">
+            <div className="hidden max-w-2xl lg:order-1 lg:block">
+              <p className="text-[0.72rem] font-semibold tracking-[0.24em] text-white/62 uppercase">KAY ALI</p>
+              <h1 className="mt-3 text-[clamp(2rem,7.8vw,4.9rem)] leading-[0.94] font-semibold tracking-[-0.06em] sm:text-[clamp(2.2rem,5.8vw,4.9rem)]">
+                {videoCopy.title}
+              </h1>
+              <p className="mt-4 max-w-xl text-[0.94rem] leading-7 text-white/80 md:text-[1.04rem]">
+                {videoCopy.description}
+              </p>
+
+              <div className="mt-6 hidden flex-wrap items-center gap-3 lg:flex">
+                <Link
+                  href={toLocalePath(videoCopy.ctaHref, locale)}
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100"
+                >
+                  {videoCopy.ctaLabel}
+                </Link>
+                <Link
+                  href={toLocalePath("/catalog", locale)}
+                  className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/20 bg-white/6 px-6 text-sm font-semibold text-white transition hover:bg-white/12"
+                >
+                  {copy.secondaryCta}
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative isolate order-1 w-full lg:order-2 lg:mx-auto lg:max-w-[330px] xl:max-w-[380px]">
+              <div className="hero-video-burst pointer-events-none absolute -inset-3 rounded-[2.3rem] bg-[radial-gradient(circle_at_50%_22%,rgba(255,68,169,0.34),transparent_56%),radial-gradient(circle_at_18%_82%,rgba(255,255,255,0.12),transparent_36%),radial-gradient(circle_at_82%_72%,rgba(255,123,219,0.24),transparent_34%)] blur-3xl hero-aura-float opacity-90" />
+              <div className="hero-video-intro relative aspect-[9/16] overflow-hidden rounded-[1.7rem] border border-white/12 bg-black shadow-[0_36px_90px_rgba(0,0,0,0.42)] backdrop-blur-md sm:rounded-[2rem]">
+                <div className="hero-video-surface absolute inset-0 overflow-hidden rounded-[inherit] bg-black">
+                  <div className="hero-video-corner hero-video-corner--left" />
+                  <div className="hero-video-corner hero-video-corner--right" />
+                  <video
+                    ref={videoRef}
+                    className="block h-full w-full rounded-[inherit] object-cover"
+                    src={homeHeader.videoUrl}
+                    autoPlay
+                    muted
+                    loop={false}
+                    playsInline
+                    controls={false}
+                    aria-label={homeHeader.videoTitle}
+                  />
+                  <div className="absolute inset-0 z-[2] flex items-end p-4 sm:hidden">
+                    <div className="w-full rounded-[1.2rem] border border-white/16 bg-black/46 p-3 backdrop-blur-md">
+                      <p className="text-[0.64rem] font-semibold tracking-[0.24em] text-white/62 uppercase">
+                        KAY ALI
+                      </p>
+                      <h2 className="mt-2 text-[1.55rem] leading-[0.95] font-semibold tracking-[-0.06em] text-white">
+                        {videoCopy.title}
+                      </h2>
+                      <p className="mt-2 text-[0.88rem] leading-6 text-white/82">
+                        {videoCopy.description}
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Link
+                          href={toLocalePath(videoCopy.ctaHref, locale)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-[0.82rem] font-semibold text-zinc-950"
+                        >
+                          {videoCopy.ctaLabel}
+                        </Link>
+                        <Link
+                          href={toLocalePath("/catalog", locale)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 bg-white/8 px-4 text-[0.82rem] font-semibold text-white"
+                        >
+                          {copy.secondaryCta}
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(180deg,transparent_0%,transparent_70%,rgba(0,0,0,0.52)_100%)]" />
+              </div>
+            </div>
+
+            <div className="hidden space-y-4 lg:hidden">
+              <div className="max-w-2xl">
+                <p className="text-[0.68rem] font-semibold tracking-[0.24em] text-white/60 uppercase">KAY ALI</p>
+                <h1 className="mt-2 text-[clamp(1.8rem,8.6vw,3.2rem)] leading-[0.95] font-semibold tracking-[-0.06em]">
+                  {videoCopy.title}
+                </h1>
+                <p className="mt-3 max-w-xl text-[0.92rem] leading-6 text-white/80">
+                  {videoCopy.description}
+                </p>
+              </div>
+
+              <div className="hidden flex-wrap gap-3">
+                <Link
+                  href={toLocalePath(videoCopy.ctaHref, locale)}
+                  className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-white px-5 text-[0.88rem] font-semibold text-zinc-950 transition hover:bg-zinc-100"
+                >
+                  {videoCopy.ctaLabel}
+                </Link>
+                <Link
+                  href={toLocalePath("/catalog", locale)}
+                  className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/20 bg-white/6 px-5 text-[0.88rem] font-semibold text-white transition hover:bg-white/12"
+                >
+                  {copy.secondaryCta}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (!models.length) {
     return (

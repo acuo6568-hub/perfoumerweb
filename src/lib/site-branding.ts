@@ -2,6 +2,29 @@ export type SitePromotionMode = "manual" | "discount";
 export type SitePromotionLocale = "az" | "en" | "ru";
 export type SitePromotionTextMap = Record<SitePromotionLocale, string>;
 
+export type SiteHomeHeaderMode = "video" | "rotating";
+export type SiteHomeHeaderRotationMode = "random" | "selected";
+
+export type SiteHomeHeaderSlide = {
+  perfumeSlug: string;
+  buttonLabel: string;
+  description: string;
+};
+
+export type SiteHomeHeaderSettings = {
+  mode: SiteHomeHeaderMode;
+  videoUrl: string;
+  videoTitle: string;
+  videoDescription: string;
+  videoCtaLabel: string;
+  videoTitleByLocale?: SitePromotionTextMap;
+  videoDescriptionByLocale?: SitePromotionTextMap;
+  videoCtaLabelByLocale?: SitePromotionTextMap;
+  videoCtaHref: string;
+  rotationMode: SiteHomeHeaderRotationMode;
+  slides: SiteHomeHeaderSlide[];
+};
+
 export type SitePromotionSettings = {
   enabled: boolean;
   mode: SitePromotionMode;
@@ -30,6 +53,32 @@ export type SitePromotionSettings = {
 };
 
 const DEFAULT_PROMOTION_TEXT = "Limited-time offers are live now.";
+
+export const DEFAULT_HOME_HEADER_SETTINGS: SiteHomeHeaderSettings = {
+  mode: "rotating",
+  videoUrl: "/perfumevid.MP4",
+  videoTitle: "KAY ALI Perfumes",
+  videoDescription: "Discover the full KAY ALI collection in a modern TikTok-style video header.",
+  videoCtaLabel: "View all brands",
+  videoTitleByLocale: {
+    az: "KAY ALI",
+    en: "KAY ALI Perfumes",
+    ru: "KAY ALI Perfumes",
+  },
+  videoDescriptionByLocale: {
+    az: "KAY ALI kolleksiyasını kəşf edin.",
+    en: "Discover the full KAY ALI collection.",
+    ru: "Откройте всю коллекцию KAY ALI.",
+  },
+  videoCtaLabelByLocale: {
+    az: "Bütün qoxulara bax",
+    en: "View all brands",
+    ru: "Все бренды",
+  },
+  videoCtaHref: "/brands",
+  rotationMode: "random",
+  slides: [],
+};
 
 const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   enabled: false,
@@ -122,6 +171,68 @@ function normalizePromotionSlugList(value: unknown) {
   }
 
   return [] as string[];
+}
+
+function normalizeHomeHeaderSlide(value: unknown): SiteHomeHeaderSlide | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const slide = value as {
+    perfumeSlug?: unknown;
+    buttonLabel?: unknown;
+    description?: unknown;
+  };
+
+  const perfumeSlug = normalizePromotionText(slide.perfumeSlug).toLowerCase();
+  if (!perfumeSlug) {
+    return null;
+  }
+
+  return {
+    perfumeSlug,
+    buttonLabel: normalizePromotionText(slide.buttonLabel) || "View perfume",
+    description: normalizePromotionText(slide.description),
+  };
+}
+
+function normalizeHomeHeaderSettings(value: unknown): SiteHomeHeaderSettings {
+  const settings = (value && typeof value === "object" ? value : {}) as {
+    mode?: unknown;
+    videoUrl?: unknown;
+    videoTitle?: unknown;
+    videoDescription?: unknown;
+    videoCtaLabel?: unknown;
+    videoTitleByLocale?: unknown;
+    videoDescriptionByLocale?: unknown;
+    videoCtaLabelByLocale?: unknown;
+    videoCtaHref?: unknown;
+    rotationMode?: unknown;
+    slides?: unknown;
+  };
+
+  const mode = normalizePromotionText(settings.mode) === "video" ? "video" : "rotating";
+  const rotationMode =
+    normalizePromotionText(settings.rotationMode) === "selected" ? "selected" : "random";
+  const slides = Array.isArray(settings.slides)
+    ? settings.slides.map(normalizeHomeHeaderSlide).filter((item): item is SiteHomeHeaderSlide => item !== null)
+    : [];
+
+  return {
+    mode,
+    videoUrl: normalizePromotionText(settings.videoUrl) || DEFAULT_HOME_HEADER_SETTINGS.videoUrl,
+    videoTitle: normalizePromotionText(settings.videoTitle) || DEFAULT_HOME_HEADER_SETTINGS.videoTitle,
+    videoDescription:
+      normalizePromotionText(settings.videoDescription) || DEFAULT_HOME_HEADER_SETTINGS.videoDescription,
+    videoCtaLabel:
+      normalizePromotionText(settings.videoCtaLabel) || DEFAULT_HOME_HEADER_SETTINGS.videoCtaLabel,
+    videoTitleByLocale: normalizePromotionTextMap(settings.videoTitleByLocale ?? settings.videoTitle),
+    videoDescriptionByLocale: normalizePromotionTextMap(settings.videoDescriptionByLocale ?? settings.videoDescription),
+    videoCtaLabelByLocale: normalizePromotionTextMap(settings.videoCtaLabelByLocale ?? settings.videoCtaLabel),
+    videoCtaHref: normalizePromotionText(settings.videoCtaHref) || DEFAULT_HOME_HEADER_SETTINGS.videoCtaHref,
+    rotationMode,
+    slides,
+  };
 }
 
 function normalizePromotionSettings(value: unknown): SitePromotionSettings {
@@ -269,6 +380,7 @@ export type SiteSettings = {
   twitterTitle: string;
   twitterDescription: string;
   promotions: SitePromotionSettings;
+  homeHeader: SiteHomeHeaderSettings;
 };
 
 function normalizeString(value: unknown) {
@@ -322,6 +434,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     twitterTitle?: unknown;
     twitterDescription?: unknown;
     promotions?: unknown;
+    homeHeader?: unknown;
   };
   const siteName = normalizeSiteName(settings.siteName);
   const siteDomain = normalizeSiteDomain(settings.siteDomain);
@@ -341,6 +454,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     twitterDescription:
       normalizeString(settings.twitterDescription) || defaultDescription,
     promotions: normalizePromotionSettings(settings.promotions ?? DEFAULT_PROMOTION_SETTINGS),
+    homeHeader: normalizeHomeHeaderSettings(settings.homeHeader ?? DEFAULT_HOME_HEADER_SETTINGS),
   };
 }
 
@@ -378,3 +492,5 @@ export function applySiteBranding<T>(value: T, settings: SiteSettings): T {
 
   return value;
 }
+
+export { normalizeHomeHeaderSettings };

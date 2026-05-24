@@ -45,5 +45,15 @@
       "tobacco-vanille"
     ],
     "messages": []
+  },
+  "homeHeader": {
+    "mode": "video",
+    "videoUrl": "/perfumevid.MP4",
+    "videoTitle": "KAY ALI Perfumes",
+    "videoDescription": "Discover the full KAY ALI collection.",
+    "videoCtaLabel": "View all brands",
+    "videoCtaHref": "/brands",
+    "rotationMode": "random",
+    "slides": []
   }
 }

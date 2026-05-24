@@ -388,7 +388,12 @@ export default async function PerfumeDetailPage({
 
         <div className="grid gap-8 xl:grid-cols-[0.98fr_1fr] xl:gap-12 xl:items-start">
           <div className="self-start xl:sticky xl:top-32">
-            <PerfumeHeroCover src={perfume.image} alt={perfume.imageAlt || perfume.name} />
+            <PerfumeHeroCover
+              src={perfume.image}
+              alt={perfume.imageAlt || perfume.name}
+              mediaScale={(perfume as any).mediaScale}
+              mediaScaleByDevice={(perfume as any).mediaScaleByDevice}
+            />
           </div>
 
           <div className="space-y-6">

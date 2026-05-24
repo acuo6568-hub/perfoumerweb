@@ -52,6 +52,12 @@
         "pauli",
         "nbr"
       ]
+    },
+    "mediaScale": 1.21,
+    "mediaScaleByDevice": {
+      "mobile": 1.21,
+      "laptop": 1.21,
+      "monitor": 1.21
     }
   },
   {

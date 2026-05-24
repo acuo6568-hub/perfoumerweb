@@ -47,6 +47,8 @@ import {
   normalizeSiteSettings,
   getPromotionLinkLabelForLocale,
   getPromotionTextForLocale,
+  type SiteHomeHeaderSettings,
+  type SiteHomeHeaderSlide,
   type SitePromotionLocale,
   type SitePromotionSettings,
   type SiteSettings,
@@ -80,7 +82,7 @@ type AdminPanelClientProps = {
 type PerfumeDraft = Perfume & { mediaScale?: number; mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number } };
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
-type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding" | "promotions";
+type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "discounts" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
@@ -380,6 +382,30 @@ const adminCopy = {
     branding: "Brendinq",
     brandingDescription:
       "Saytın başlığını və admin paneldə görünən əsas brend adını bir yerdən dəyişin.",
+    header: "Ana başlıq",
+    headerDescription:
+      "Başlığı video CTA ilə və ya seçilmiş qoxuların dəyişən paneli ilə idarə edin.",
+    headerPreview: "Başlıq önizləməsi",
+    headerPreviewDetail:
+      "Video rejimi və ya dəyişən ətir başlığı seçin, sonra dəyişikliyi bazaya saxlayın.",
+    headerMode: "Başlıq rejimi",
+    headerModeVideo: "Video CTA",
+    headerModeRotating: "Dönən ətirlər",
+    headerVideoUrl: "Video URL",
+    headerVideoTitle: "Video başlığı",
+    headerVideoDescription: "Video təsviri",
+    headerVideoCtaLabel: "CTA yazısı",
+    headerVideoCtaHref: "CTA keçidi",
+    headerVideoPreview: "Video önizləməsi",
+    headerRotatingMode: "Dönən rejim",
+    headerRandomMode: "Təsadüfi ətirlər",
+    headerSelectedMode: "Seçilmiş ətirlər",
+    headerSlides: "Seçilmiş slaydlar",
+    headerAddSlide: "Slayd əlavə et",
+    headerSlidePerfume: "Ətir slug-u",
+    headerSlideButtonLabel: "Düymə yazısı",
+    headerSlideDescription: "Təsvir",
+    headerSlideRemove: "Sil",
     promotions: "Promosiyalar",
     promotionsDescription:
       "Yuxarıda axan, rənglənən və bağlana bilən promo banneri buradan idarə edin.",
@@ -682,6 +708,30 @@ const adminCopy = {
     branding: "Branding",
     brandingDescription:
       "Change the website title and the main brand name shown across the admin from one place.",
+    header: "Home header",
+    headerDescription:
+      "Switch the homepage hero between a video CTA and rotating perfume cards.",
+    headerPreview: "Header preview",
+    headerPreviewDetail:
+      "Choose a video or a rotating perfume header, then save the change to the database.",
+    headerMode: "Header mode",
+    headerModeVideo: "Video CTA",
+    headerModeRotating: "Rotating perfumes",
+    headerVideoUrl: "Video URL",
+    headerVideoTitle: "Video title",
+    headerVideoDescription: "Video description",
+    headerVideoCtaLabel: "CTA label",
+    headerVideoCtaHref: "CTA link",
+    headerVideoPreview: "Video preview",
+    headerRotatingMode: "Rotating mode",
+    headerRandomMode: "Random perfumes",
+    headerSelectedMode: "Selected perfumes",
+    headerSlides: "Selected slides",
+    headerAddSlide: "Add slide",
+    headerSlidePerfume: "Perfume slug",
+    headerSlideButtonLabel: "Button label",
+    headerSlideDescription: "Description",
+    headerSlideRemove: "Remove",
     promotions: "Promotions",
     promotionsDescription:
       "Control the scrolling promo banner at the very top of the site from one place.",
@@ -1977,6 +2027,15 @@ export function AdminPanelClient({
     [notes],
   );
 
+  const perfumeSlugOptions = useMemo(
+    () =>
+      perfumes
+        .map((item) => ({ slug: normalizeSlug(item.slug), label: `${item.brand} ${item.name}`.trim() }))
+        .filter((item) => Boolean(item.slug))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    [perfumes],
+  );
+
   const perfumesLinkedToSelectedNote = useMemo(() => {
     if (!selectedNote) {
       return [] as PerfumeDraft[];
@@ -2200,6 +2259,60 @@ export function AdminPanelClient({
           : item,
       ),
     );
+  };
+
+  const setHomeHeader = (
+    updater: (current: SiteHomeHeaderSettings) => SiteHomeHeaderSettings,
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      homeHeader: updater(current.homeHeader),
+    }));
+  };
+
+  const setHomeHeaderField = <K extends keyof SiteHomeHeaderSettings>(
+    key: K,
+    value: SiteHomeHeaderSettings[K],
+  ) => {
+    setHomeHeader((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const setHomeHeaderSlideField = (
+    index: number,
+    key: keyof SiteHomeHeaderSlide,
+    value: string,
+  ) => {
+    setHomeHeader((current) => ({
+      ...current,
+      slides: current.slides.map((slide, slideIndex) =>
+        slideIndex === index ? { ...slide, [key]: value } : slide,
+      ),
+    }));
+  };
+
+  const addHomeHeaderSlide = () => {
+    const perfume = perfumes[0];
+    setHomeHeader((current) => ({
+      ...current,
+      slides: [
+        ...current.slides,
+        {
+          perfumeSlug: perfume?.slug || "",
+          buttonLabel: perfume ? perfume.name : "View perfume",
+          description: perfume ? `${perfume.brand} ${perfume.name}` : "",
+        },
+      ],
+    }));
+  };
+
+  const removeHomeHeaderSlide = (index: number) => {
+    setHomeHeader((current) => ({
+      ...current,
+      slides: current.slides.filter((_, slideIndex) => slideIndex !== index),
+    }));
   };
 
   const setPerfumeSizeField = (
@@ -3370,6 +3483,15 @@ export function AdminPanelClient({
               {copy.branding}
             </TabButton>
             <TabButton
+              active={view === "header"}
+              icon={<ImageSquare size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("header"));
+              }}
+            >
+              {copy.header}
+            </TabButton>
+            <TabButton
               active={view === "promotions"}
               icon={<Sparkle size={15} weight="bold" />}
               onClick={() => {
@@ -3384,6 +3506,11 @@ export function AdminPanelClient({
             <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
               <p className="text-sm font-semibold text-zinc-900">{copy.promotions}</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.promotionsDescription}</p>
+            </div>
+          ) : view === "header" ? (
+            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+              <p className="text-sm font-semibold text-zinc-900">{copy.header}</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.headerDescription}</p>
             </div>
           ) : view === "branding" ? (
             <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
@@ -4161,7 +4288,7 @@ export function AdminPanelClient({
                           <div className="mt-1 text-xs text-zinc-500">{settings.promotions.gradientAngle}°</div>
                         </Field>
                       </div>
-                    ) : (
+                    ) : (<>
                       <div className="grid gap-4 md:grid-cols-2">
                         <Field label={locale === "az" ? "Arxa fon rəngi" : "Background color"}>
                           <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
@@ -4191,7 +4318,88 @@ export function AdminPanelClient({
                           <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileHeight}px</div>
                         </Field>
                       </div>
-                    )}
+                      <div className="mt-6">
+                        <h3 className="text-sm font-semibold text-zinc-900">Translations</h3>
+                        <p className="mt-1 text-xs text-zinc-500">Provide localized text for title, description and CTA label.</p>
+                        <div className="mt-3 grid gap-3">
+                          <div className="grid gap-2 sm:grid-cols-4 sm:items-center">
+                            <label className="text-xs font-medium text-zinc-700">Locale</label>
+                            <label className="text-xs font-medium text-zinc-700">Title</label>
+                            <label className="text-xs font-medium text-zinc-700">Description</label>
+                            <label className="text-xs font-medium text-zinc-700">CTA label</label>
+                          </div>
+                          {(["az", "en", "ru"] as const).map((loc) => (
+                            <div key={loc} className="grid gap-2 sm:grid-cols-4 sm:items-center">
+                              <div className="text-sm font-medium text-zinc-800">{loc.toUpperCase()}</div>
+                              <input
+                                className={ui.input}
+                                value={((settings.homeHeader.videoTitleByLocale ?? {}) as any)[loc] ?? ""}
+                                onChange={(e) =>
+                                  setHomeHeader((current) => ({
+                                    ...current,
+                                    videoTitleByLocale: ( { ...(current.videoTitleByLocale ?? {}), [loc]: e.target.value } as any ),
+                                  } as any))
+                                }
+                                placeholder="KAY ALI"
+                              />
+                              <input
+                                className={ui.input}
+                                value={((settings.homeHeader.videoDescriptionByLocale ?? {}) as any)[loc] ?? ""}
+                                onChange={(e) =>
+                                  setHomeHeader((current) => ({
+                                    ...current,
+                                    videoDescriptionByLocale: ( { ...(current.videoDescriptionByLocale ?? {}), [loc]: e.target.value } as any ),
+                                  } as any))
+                                }
+                                placeholder="Discover the full KAY ALI collection."
+                              />
+                              <input
+                                className={ui.input}
+                                value={((settings.homeHeader.videoCtaLabelByLocale ?? {}) as any)[loc] ?? ""}
+                                onChange={(e) =>
+                                  setHomeHeader((current) => ({
+                                    ...current,
+                                    videoCtaLabelByLocale: ( { ...(current.videoCtaLabelByLocale ?? {}), [loc]: e.target.value } as any ),
+                                  } as any))
+                                }
+                                placeholder="View all brands"
+                              />
+                            </div>
+                          ))}
+
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              className={cx(ui.compactButton, "border-zinc-300 bg-white text-zinc-700")}
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch("/api/admin/git", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ message: "admin: update homeHeader translations" }),
+                                  });
+                                  const json = await res.json();
+                                  if (!res.ok) {
+                                    console.error("Git push failed", json);
+                                    alert("Git push failed: " + (json?.error || JSON.stringify(json)));
+                                  } else {
+                                    alert("Git push succeeded.");
+                                  }
+                                } catch (err) {
+                                  console.error(err);
+                                  alert("Git push failed. See console for details.");
+                                }
+                              }}
+                            >
+                              <ArrowsClockwise size={14} />
+                              <span className="ml-2">Commit & Push</span>
+                            </button>
+                            <div className="text-sm text-zinc-500">Commits data/admin and perfm77.csv to git (server must allow git).</div>
+                          </div>
+                        </div>
+                      </div>
+                    </>)
+                    }
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <Field label={locale === "az" ? "Mobil mətn ölçüsü" : "Mobile text scale"}>
@@ -4437,6 +4645,263 @@ export function AdminPanelClient({
                         </div>
                       </div>
                     ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : view === "header" ? (
+            <div className={ui.card}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    <ImageSquare size={14} weight="bold" />
+                    {copy.header}
+                  </div>
+                  <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                    {copy.header}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+                    {copy.headerDescription}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <SectionLabel
+                    icon={<ImageSquare size={16} weight="bold" />}
+                    title={copy.headerMode}
+                    detail={copy.headerPreviewDetail}
+                  />
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <TabButton
+                      active={settings.homeHeader.mode === "video"}
+                      icon={<ImageSquare size={15} weight="bold" />}
+                      onClick={() => setHomeHeaderField("mode", "video")}
+                    >
+                      {copy.headerModeVideo}
+                    </TabButton>
+                    <TabButton
+                      active={settings.homeHeader.mode === "rotating"}
+                      icon={<Sparkle size={15} weight="bold" />}
+                      onClick={() => setHomeHeaderField("mode", "rotating")}
+                    >
+                      {copy.headerModeRotating}
+                    </TabButton>
+                  </div>
+
+                  {settings.homeHeader.mode === "video" ? (
+                    <div className="mt-5 grid gap-4">
+                      <Field label={copy.headerVideoUrl} hint="Use an mp4 URL or a public file path like /perfumevid.MP4">
+                        <input
+                          className={ui.input}
+                          value={settings.homeHeader.videoUrl}
+                          onChange={(event) => setHomeHeaderField("videoUrl", event.target.value)}
+                          placeholder="/perfumevid.MP4"
+                        />
+                      </Field>
+                      <Field label={copy.headerVideoTitle}>
+                        <input
+                          className={ui.input}
+                          value={settings.homeHeader.videoTitle}
+                          onChange={(event) => setHomeHeaderField("videoTitle", event.target.value)}
+                          placeholder="KAY ALI Perfumes"
+                        />
+                      </Field>
+                      <Field label={copy.headerVideoDescription}>
+                        <textarea
+                          className={ui.textarea}
+                          value={settings.homeHeader.videoDescription}
+                          onChange={(event) => setHomeHeaderField("videoDescription", event.target.value)}
+                          rows={3}
+                          placeholder="Discover the full KAY ALI collection."
+                        />
+                      </Field>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <Field label={copy.headerVideoCtaLabel}>
+                          <input
+                            className={ui.input}
+                            value={settings.homeHeader.videoCtaLabel}
+                            onChange={(event) => setHomeHeaderField("videoCtaLabel", event.target.value)}
+                            placeholder="View all brands"
+                          />
+                        </Field>
+                        <Field label={copy.headerVideoCtaHref}>
+                          <input
+                            className={ui.input}
+                            value={settings.homeHeader.videoCtaHref}
+                            onChange={(event) => setHomeHeaderField("videoCtaHref", event.target.value)}
+                            placeholder="/brands"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-5 grid gap-4">
+                      <Field label={copy.headerRotatingMode}>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={cx(
+                              ui.compactButton,
+                              settings.homeHeader.rotationMode === "random"
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-300 bg-white text-zinc-700",
+                            )}
+                            onClick={() => setHomeHeaderField("rotationMode", "random")}
+                          >
+                            {copy.headerRandomMode}
+                          </button>
+                          <button
+                            type="button"
+                            className={cx(
+                              ui.compactButton,
+                              settings.homeHeader.rotationMode === "selected"
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-300 bg-white text-zinc-700",
+                            )}
+                            onClick={() => setHomeHeaderField("rotationMode", "selected")}
+                          >
+                            {copy.headerSelectedMode}
+                          </button>
+                        </div>
+                      </Field>
+
+                      {settings.homeHeader.rotationMode === "selected" ? (
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-zinc-900">{copy.headerSlides}</p>
+                              <p className="mt-1 text-xs text-zinc-500">{copy.headerPreviewDetail}</p>
+                            </div>
+                            <button type="button" className={ui.secondaryButton} onClick={addHomeHeaderSlide}>
+                              <Plus size={16} weight="bold" />
+                              {copy.headerAddSlide}
+                            </button>
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {settings.homeHeader.slides.length ? settings.homeHeader.slides.map((slide, index) => (
+                              <div key={`${slide.perfumeSlug}-${index}`} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                                <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                                  <Field label={copy.headerSlidePerfume}>
+                                    <input
+                                      list="header-perfume-options"
+                                      className={ui.input}
+                                      value={slide.perfumeSlug}
+                                      onChange={(event) => setHomeHeaderSlideField(index, "perfumeSlug", normalizeSlug(event.target.value))}
+                                      placeholder="perfume slug"
+                                    />
+                                  </Field>
+                                  <Field label={copy.headerSlideButtonLabel}>
+                                    <input
+                                      className={ui.input}
+                                      value={slide.buttonLabel}
+                                      onChange={(event) => setHomeHeaderSlideField(index, "buttonLabel", event.target.value)}
+                                      placeholder="Explore now"
+                                    />
+                                  </Field>
+                                </div>
+                                <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                                  <Field label={copy.headerSlideDescription}>
+                                    <textarea
+                                      className={ui.textarea}
+                                      rows={2}
+                                      value={slide.description}
+                                      onChange={(event) => setHomeHeaderSlideField(index, "description", event.target.value)}
+                                      placeholder="Short supporting copy for the slide."
+                                    />
+                                  </Field>
+                                  <button
+                                    type="button"
+                                    className={ui.dangerButton}
+                                    onClick={() => removeHomeHeaderSlide(index)}
+                                  >
+                                    <Trash size={16} weight="bold" />
+                                    {copy.headerSlideRemove}
+                                  </button>
+                                </div>
+                              </div>
+                            )) : (
+                              <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm text-zinc-500">
+                                {locale === "az"
+                                  ? "Hələ slayd seçilməyib. İlk ətiri əlavə edin."
+                                  : "No slides yet. Add the first perfume slide."}
+                              </div>
+                            )}
+                          </div>
+
+                          <datalist id="header-perfume-options">
+                            {perfumeSlugOptions.map((item) => (
+                              <option key={item.slug} value={item.slug} label={item.label} />
+                            ))}
+                          </datalist>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <SectionLabel
+                    icon={<Sparkle size={16} weight="bold" />}
+                    title={copy.headerPreview}
+                    detail={copy.headerPreviewDetail}
+                  />
+
+                  <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-zinc-200 bg-white p-4">
+                    {settings.homeHeader.mode === "video" ? (
+                      <div className="space-y-3">
+                        <div className="overflow-hidden rounded-[1.4rem] bg-zinc-950">
+                          <video
+                            src={settings.homeHeader.videoUrl || "/perfumevid.MP4"}
+                            className="aspect-[9/16] w-full object-cover"
+                            muted
+                            loop
+                            playsInline
+                            autoPlay
+                          />
+                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                          {settings.homeHeader.videoTitle}
+                        </p>
+                        <p className="text-sm leading-6 text-zinc-600">
+                          {settings.homeHeader.videoDescription}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-600">
+                            {settings.homeHeader.videoCtaLabel}
+                          </span>
+                          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-600">
+                            {settings.homeHeader.videoCtaHref}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {settings.homeHeader.rotationMode === "selected" && settings.homeHeader.slides.length ? (
+                          settings.homeHeader.slides.slice(0, 3).map((slide, index) => {
+                            const perfume = perfumes.find((item) => item.slug === slide.perfumeSlug || item.id === slide.perfumeSlug);
+                            return (
+                              <div key={`${slide.perfumeSlug}-${index}`} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                                  {perfume ? `${perfume.brand} ${perfume.name}` : slide.perfumeSlug}
+                                </p>
+                                <p className="mt-1 text-sm font-medium text-zinc-900">{slide.buttonLabel}</p>
+                                <p className="mt-1 text-sm leading-6 text-zinc-600">{slide.description}</p>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+                            {locale === "az"
+                              ? "Təsadüfi rejim aktivdir. Başlıq mövcud seçilmiş ətirlərdən avtomatik qurulacaq."
+                              : "Random mode is active. The header will rotate through the selected perfume pool automatically."}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

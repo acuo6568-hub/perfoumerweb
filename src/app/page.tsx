@@ -694,7 +694,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(featuredListStructuredData) }}
       />
       <div className="mx-auto max-w-[1540px] px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-5 md:px-10 md:pt-4 md:pb-6 xl:max-w-none xl:px-6 xl:pt-4 xl:pb-6">
-        <Hero locale={locale} spotlights={heroSpotlights} />
+        <Hero locale={locale} spotlights={heroSpotlights} allPerfumes={perfumes} homeHeader={settings.homeHeader} />
       </div>
 
       <BrandLogoMarquee brands={homepageBrands} />
