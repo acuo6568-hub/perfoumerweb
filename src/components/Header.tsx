@@ -1300,23 +1300,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                       })}
                     </div>
 
-                    <div className="mt-4 border-t pt-3">
-                      <div className="text-xs text-zinc-500 mb-2">{copy[locale].languageTag}</div>
-                      <div className="flex flex-wrap gap-2">
-                        {locales.map((it) => (
-                          <button
-                            key={it}
-                            onClick={() => {
-                              updateLocale(it);
-                              setIsMoreOpen(false);
-                            }}
-                            className="rounded-lg border border-zinc-100 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50"
-                          >
-                            {t.languages[it]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Language selector intentionally removed from More menu; language & currency are available in the mobile menu only */}
                   </div>
                 </div>
               </div>
@@ -1358,7 +1342,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3 xl:gap-3.5">
               <div
-                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex"
+                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1"
               >
                 {locales.map((item) => (
                   <button
@@ -1385,7 +1369,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 ))}
               </div>
 
-              <div ref={currencyMenuRef} className="relative z-[70] hidden lg:block">
+              <div ref={currencyMenuRef} className="relative z-[70] hidden">
                 <button
                   type="button"
                   onClick={() => setIsCurrencyMenuOpen((current) => !current)}
