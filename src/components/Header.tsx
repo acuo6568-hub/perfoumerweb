@@ -771,6 +771,55 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   }, [isLocaleMenuOpen]);
 
   useEffect(() => {
+    const panel = localeMenuRef.current?.querySelector('[role="listbox"]');
+    if (!panel) return;
+
+    let raf = 0;
+
+    function onPointerMove(e: PointerEvent) {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const items = Array.from(panel.querySelectorAll<HTMLElement>(".locale-item"));
+        for (const it of items) {
+          const r = it.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const dx = e.clientX - cx;
+          const dy = e.clientY - cy;
+          const dist = Math.hypot(dx, dy);
+          const max = 140;
+          const strength = Math.max(0, 1 - dist / max);
+          const nx = dist > 0 ? dx / dist : 0;
+          const ny = dist > 0 ? dy / dist : 0;
+          const tx = nx * strength * 10;
+          const ty = ny * strength * 6;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          it.style.willChange = "transform";
+          it.style.transition = "transform 90ms ease-out";
+        }
+      });
+    }
+
+    function onLeave() {
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(".locale-item"));
+      for (const it of items) {
+        it.style.transform = "";
+        it.style.willChange = "auto";
+        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
+      }
+    }
+
+    panel.addEventListener("pointermove", onPointerMove);
+    panel.addEventListener("pointerleave", onLeave);
+
+    return () => {
+      panel.removeEventListener("pointermove", onPointerMove);
+      panel.removeEventListener("pointerleave", onLeave);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [isLocaleMenuOpen]);
+
+  useEffect(() => {
     if (!isBrandsMenuOpen) {
       return;
     }
@@ -1493,7 +1542,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                           onClick={() => { setIsLocaleMenuOpen(false); void updateLocale(it); }}
                           disabled={isLocalePending}
                           className={[
-                            "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-left transition-colors duration-150",
+                            "locale-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-left transition-colors duration-150 transform-gpu",
                             (pendingLocale ?? locale) === it ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-50",
                           ].join(" ")}
                         >
