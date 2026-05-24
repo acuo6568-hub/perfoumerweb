@@ -1089,6 +1089,12 @@ function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
     sizes?: unknown;
     discount?: unknown;
     noteSlugs?: { top?: unknown; heart?: unknown; base?: unknown };
+    mediaScale?: unknown;
+    mediaScaleByDevice?: {
+      mobile?: unknown;
+      laptop?: unknown;
+      monitor?: unknown;
+    };
   };
 
   const slug = normalizeSlug(perfume.slug) || normalizeSlug(perfume.name);
@@ -1133,6 +1139,20 @@ function normalizePerfumeDraft(value: unknown): PerfumeDraft | null {
       heart: normalizeStringArray(perfume.noteSlugs?.heart),
       base: normalizeStringArray(perfume.noteSlugs?.base),
     },
+    mediaScale:
+      typeof perfume.mediaScale === "number" && Number.isFinite(perfume.mediaScale)
+        ? perfume.mediaScale
+        : undefined,
+    mediaScaleByDevice: (() => {
+      const mobile = Number(perfume.mediaScaleByDevice?.mobile);
+      const laptop = Number(perfume.mediaScaleByDevice?.laptop);
+      const monitor = Number(perfume.mediaScaleByDevice?.monitor);
+      const next: { mobile?: number; laptop?: number; monitor?: number } = {};
+      if (Number.isFinite(mobile)) next.mobile = mobile;
+      if (Number.isFinite(laptop)) next.laptop = laptop;
+      if (Number.isFinite(monitor)) next.monitor = monitor;
+      return Object.keys(next).length ? next : undefined;
+    })(),
   };
 }
 
