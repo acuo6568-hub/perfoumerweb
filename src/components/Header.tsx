@@ -112,6 +112,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const morePanelRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
+  const localeMenuRef = useRef<HTMLDivElement | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
@@ -753,6 +755,20 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
+
+  useEffect(() => {
+    if (!localeMenuRef.current) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!localeMenuRef.current) return;
+      const target = event.target;
+      if (target instanceof Node && !localeMenuRef.current.contains(target)) {
+        setIsLocaleMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isLocaleMenuOpen]);
 
   useEffect(() => {
     if (!isBrandsMenuOpen) {
@@ -1442,32 +1458,52 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
             </div>
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3 xl:gap-3.5">
-              <div
-                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex"
-              >
-                {locales.map((item) => (
+              <div className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex">
+                <div ref={localeMenuRef} className="relative">
                   <button
-                    key={item}
                     type="button"
-                    onClick={() => updateLocale(item)}
-                    disabled={isLocalePending}
-                    className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70 magnetic",
-                        (pendingLocale ?? locale) === item
-                          ? "bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
-                          : "text-zinc-500 hover:text-zinc-700",
-                    ].join(" ")}
+                    aria-haspopup="listbox"
+                    aria-expanded={isLocaleMenuOpen}
+                    onClick={() => setIsLocaleMenuOpen((c) => !c)}
+                    className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 magnetic"
                   >
                     <Image
-                      src={localeFlagSrc[item]}
-                      alt={t.languages[item]}
-                      width={16}
-                      height={16}
-                      className="h-4 w-4 rounded-full object-cover"
+                      src={localeFlagSrc[pendingLocale ?? locale]}
+                      alt={t.languages[pendingLocale ?? locale]}
+                      width={20}
+                      height={20}
+                      className="h-5 w-5 rounded-full object-cover"
                     />
-                    <span>{t.languages[item]}</span>
+                    <span className="hidden md:inline text-[0.72rem] font-medium">{(pendingLocale ?? locale).toUpperCase()}</span>
+                    <CaretDown size={12} className={isLocaleMenuOpen ? "transform rotate-180 ml-1" : "transform rotate-0 ml-1"} />
                   </button>
-                ))}
+
+                  <div
+                    className={[
+                      "absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-44 overflow-hidden rounded-[1.1rem] bg-white/95 p-1.5 shadow-[0_24px_54px_rgba(20,20,24,0.12)] backdrop-blur-xl transition-all duration-200",
+                      isLocaleMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
+                    ].join(" ")}
+                    role="listbox"
+                  >
+                    <div className="px-2 py-1">
+                      {locales.map((it) => (
+                        <button
+                          key={it}
+                          type="button"
+                          onClick={() => { setIsLocaleMenuOpen(false); void updateLocale(it); }}
+                          disabled={isLocalePending}
+                          className={[
+                            "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-left transition-colors duration-150",
+                            (pendingLocale ?? locale) === it ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-50",
+                          ].join(" ")}
+                        >
+                          <Image src={localeFlagSrc[it]} alt={t.languages[it]} width={18} height={18} className="h-4 w-4 rounded-full" />
+                          <span className="truncate">{t.languages[it]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div ref={currencyMenuRef} className="relative z-[70] hidden lg:block">
