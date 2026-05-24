@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactElement } from "react";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
@@ -862,7 +863,7 @@ export function Hero({ locale, spotlights, allPerfumes, homeHeader }: HeroProps)
           {/** bubbles generated once per mount */}
           {(() => {
             const count = 18;
-            const children = [] as JSX.Element[];
+            const children: ReactElement[] = [];
             for (let i = 0; i < count; i += 1) {
               const left = 6 + Math.round(Math.random() * 88);
               const top = 6 + Math.round(Math.random() * 78);
