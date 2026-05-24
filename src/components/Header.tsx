@@ -820,6 +820,55 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   }, [isLocaleMenuOpen]);
 
   useEffect(() => {
+    const panel = currencyMenuRef.current?.querySelector('[role="listbox"]') || currencyMenuRef.current;
+    if (!panel) return;
+
+    let raf = 0;
+
+    function onPointerMove(e: PointerEvent) {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const items = Array.from(panel.querySelectorAll<HTMLElement>(".currency-item"));
+        for (const it of items) {
+          const r = it.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const dx = e.clientX - cx;
+          const dy = e.clientY - cy;
+          const dist = Math.hypot(dx, dy);
+          const max = 160;
+          const strength = Math.max(0, 1 - dist / max);
+          const nx = dist > 0 ? dx / dist : 0;
+          const ny = dist > 0 ? dy / dist : 0;
+          const tx = nx * strength * 10;
+          const ty = ny * strength * 6;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          it.style.willChange = "transform";
+          it.style.transition = "transform 90ms ease-out";
+        }
+      });
+    }
+
+    function onLeave() {
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(".currency-item"));
+      for (const it of items) {
+        it.style.transform = "";
+        it.style.willChange = "auto";
+        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
+      }
+    }
+
+    panel.addEventListener("pointermove", onPointerMove);
+    panel.addEventListener("pointerleave", onLeave);
+
+    return () => {
+      panel.removeEventListener("pointermove", onPointerMove);
+      panel.removeEventListener("pointerleave", onLeave);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [isCurrencyMenuOpen]);
+
+  useEffect(() => {
     if (!isBrandsMenuOpen) {
       return;
     }
@@ -1588,11 +1637,10 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 </button>
 
                 <div
+                  ref={currencyMenuRef}
                   className={[
-                    "absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[16rem] overflow-hidden rounded-[1.35rem] border border-zinc-200/80 bg-white/95 p-1.5 shadow-[0_24px_54px_rgba(20,20,24,0.14)] backdrop-blur-xl transition-all duration-200",
-                    isCurrencyMenuOpen
-                      ? "pointer-events-auto translate-y-0 opacity-100"
-                      : "pointer-events-none -translate-y-1 opacity-0",
+                    "absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-56 overflow-hidden rounded-2xl bg-white/95 p-2 shadow-[0_20px_50px_rgba(10,10,12,0.08)] backdrop-blur-sm transition-all duration-180",
+                    isCurrencyMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
                   ].join(" ")}
                   role="listbox"
                 >
@@ -1614,10 +1662,10 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                             setIsCurrencyMenuOpen(false);
                           }}
                           className={[
-                            "flex w-full items-center justify-between rounded-[1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                            "currency-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all duration-150 transform-gpu",
                             active
-                              ? "border-zinc-200 bg-zinc-100/90 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
-                              : "border-transparent text-zinc-700 hover:border-zinc-200/80 hover:bg-zinc-50",
+                              ? "bg-zinc-100/90 text-zinc-900"
+                              : "text-zinc-700 hover:bg-zinc-50",
                           ].join(" ")}
                         >
                           <span className="flex items-center gap-2.5">
@@ -1638,15 +1686,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                               </span>
                             </span>
                           </span>
-                          <span
-                            aria-hidden="true"
-                            className={[
-                              "h-2.5 w-2.5 rounded-full border transition-all duration-200",
-                              active
-                                ? "border-zinc-900 bg-zinc-900 shadow-[0_0_0_4px_rgba(24,24,27,0.08)]"
-                                : "border-zinc-300 bg-transparent",
-                            ].join(" ")}
-                          />
+                          <span aria-hidden="true" className={active ? "h-2.5 w-2.5 rounded-full bg-zinc-900" : "h-2.5 w-2.5 rounded-full border border-zinc-300"} />
                         </button>
                       );
                     })}
