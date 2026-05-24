@@ -110,6 +110,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const morePanelRef = useRef<HTMLDivElement | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
@@ -652,6 +653,55 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isMoreOpen]);
+
+  useEffect(() => {
+    const panel = morePanelRef.current;
+    if (!panel) return;
+
+    let raf = 0;
+
+    function onPointerMove(e: PointerEvent) {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const items = Array.from(panel.querySelectorAll<HTMLElement>(".more-item"));
+        for (const it of items) {
+          const r = it.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const dx = e.clientX - cx;
+          const dy = e.clientY - cy;
+          const dist = Math.hypot(dx, dy);
+          const max = 160;
+          const strength = Math.max(0, 1 - dist / max);
+          const nx = dist > 0 ? dx / dist : 0;
+          const ny = dist > 0 ? dy / dist : 0;
+          const tx = nx * strength * 8;
+          const ty = ny * strength * 8;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          it.style.willChange = "transform";
+          it.style.transition = "transform 120ms ease-out";
+        }
+      });
+    }
+
+    function onPanelLeave() {
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(".more-item"));
+      for (const it of items) {
+        it.style.transform = "";
+        it.style.willChange = "auto";
+        it.style.transition = "transform 300ms cubic-bezier(0.22,1,0.36,1)";
+      }
+    }
+
+    panel.addEventListener("pointermove", onPointerMove);
+    panel.addEventListener("pointerleave", onPanelLeave);
+
+    return () => {
+      panel.removeEventListener("pointermove", onPointerMove);
+      panel.removeEventListener("pointerleave", onPanelLeave);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [isMoreOpen]);
 
   useEffect(() => {
@@ -1266,6 +1316,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 </button>
 
                 <div
+                  ref={morePanelRef}
                   className={
                     isMoreOpen
                       ? "absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.12)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right"
@@ -1291,7 +1342,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                             key={s.href}
                             href={toLocalePath(s.href, locale)}
                             onClick={() => setIsMoreOpen(false)}
-                            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                            className="more-item flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50 transform-gpu transition-transform duration-200"
                           >
                             {Icon ? <Icon size={18} className="text-zinc-500" /> : null}
                             <span className="truncate">{s.label}</span>
