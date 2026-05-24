@@ -52,50 +52,233 @@ type HeaderProps = {
   locale: Locale;
   topOffsetStyle?: CSSProperties;
 };
-      <div
-        className={[
-          "fixed inset-0 z-40 lg:hidden flex items-start justify-center",
-          menuTransition,
-          isMenuOpen ? "pointer-events-auto" : "pointer-events-none",
-        ].join(" ")}
-        aria-hidden={!isMenuOpen}
-      >
-        <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
-        <div className="relative mx-auto w-full max-w-sm px-4 pt-20">
-          <div
-            ref={mobilePanelRef}
-            className={
-              isMenuOpen
-                ? "rounded-2xl bg-zinc-900 p-4 text-white shadow-xl transform transition-all duration-200"
-                : "pointer-events-none opacity-0 -translate-y-2"
-            }
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">{siteSettings.siteName}</div>
-              <button onClick={() => setIsMenuOpen(false)} className="text-zinc-300 magnetic p-1 rounded-full">
-                <X size={20} />
-              </button>
-            </div>
 
-            <div className="mt-3 grid gap-2">
-              {primaryNav.map((item) => {
-                const Icon = (item as any).icon as any;
-                return (
-                  <Link
-                    key={item.href}
-                    href={toLocalePath(item.href, locale)}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="mobile-main-item magnetic flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-zinc-800"
-                  >
-                    {Icon ? <Icon size={18} className="text-zinc-300" /> : null}
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
+type HeaderSearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
+
+type HeaderSearchResult = {
+  id: string;
+  slug: string;
+  name: string;
+  brand: string;
+  image: string;
+  price: number | null;
+  originalPrice: number | null;
+  discountedPrice: number | null;
+  discountPercent: number | null;
+  gender: string;
+  inStock: boolean;
+  variantCount?: number;
+};
+
+type HeaderSearchBrandResult = {
+  brand: string;
+  count: number;
+};
+
+const BRAND_LETTERS = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
+
+function parsePrice(value: number | string): number {
+  const parsed = typeof value === "number" ? value : parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function slugToName(slug: string): string {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
+  const siteSettings = useSiteSettings();
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTab, setSearchTab] = useState<HeaderSearchTab>("all");
+  const [searchResults, setSearchResults] = useState<HeaderSearchResult[]>([]);
+  const [searchBrandResults, setSearchBrandResults] = useState<HeaderSearchBrandResult[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [brokenSearchImages, setBrokenSearchImages] = useState<Record<string, true>>({});
+  const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
+  const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
+  const [isMobileCurrencyMenuOpen, setIsMobileCurrencyMenuOpen] = useState(false);
+  const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
+  const [isBrandsMenuOpen, setIsBrandsMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const morePanelRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
+  const localeMenuRef = useRef<HTMLDivElement | null>(null);
+  const [isLocalePending, startLocaleTransition] = useTransition();
+  const [session, setSession] = useState<Session | null>(null);
+  const [cartItemCount, setCartItemCount] = useState(0);
+  const [wishlistItemCount, setWishlistItemCount] = useState(0);
+  const [isCartLoading, setIsCartLoading] = useState(false);
+  const [cartRows, setCartRows] = useState<CartItemRow[]>([]);
+  const [cartBusyId, setCartBusyId] = useState("");
+  const [cartMessage, setCartMessage] = useState("");
+  const [cartMetaBySlug, setCartMetaBySlug] = useState<Record<string, { name: string; brand: string; image: string }>>({});
+  const cartCountRequestRef = useRef(0);
+  const wishlistCountRequestRef = useRef(0);
+  const searchRequestRef = useRef(0);
+  const currencyMenuRef = useRef<HTMLDivElement | null>(null);
+  const brandsMenuRef = useRef<HTMLDivElement | null>(null);
+  const brandsMenuPanelRef = useRef<HTMLDivElement | null>(null);
+  const brandsMenuCloseTimerRef = useRef<number | null>(null);
+  const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
+  const { pathname: basePathname } = stripLocalePrefix(pathname);
+  const t = getDictionary(locale, siteSettings);
+  const supabase = getSupabaseBrowserClient();
+  const { selectedCurrency, setSelectedCurrency } = useCurrency();
+  const copy = {
+    az: {
+      login: "Giriş",
+      account: "Hesabım",
+      wishlist: "Seçilmişlər",
+      blog: "Blog",
+      aboutPage: "Haqqımızda",
+      navTitle: "Naviqasiya",
+      menuTag: "Menyu",
+      accountTag: "Hesab",
+      languageTag: "Dil",
+      currencyTag: "Valyuta",
+      trendingTag: "Trenddə",
+      instagramTag: "Instagram",
+      tiktokTag: "Unvan",
+      shopCategory: "Alış-veriş",
+      discoverCategory: "Kəşf et",
+      infoCategory: "Məlumat",
+      allProducts: "Bütün məhsullar",
+      menCategory: "Kişi ətirləri",
+      womenCategory: "Qadın ətirləri",
+      unisexCategory: "Uniseks ətirlər",
+      categoryOpen: "Kateqoriyanı aç",
+      categoryClose: "Kateqoriyanı bağla",
+      giftCard: "Hədiyyə Kartı",
+      giftIdeas: "Hədiyyə ideaları",
+      offersTab: "Təkliflər",
+      womenTab: "Qadın",
+      menTab: "Kişi",
+      unisexTab: "Uniseks",
+      brandsTab: "Brendlər",
+      compareTab: "Müqayisə",
+      homeTab: "Ana səhifə",
+      quickActions: "Sürətli keçidlər",
+      searchPlaceholder: "Ətir, brend və ya not axtar...",
+      searchProductsTitle: "Məhsullar",
+      searchBrandsTitle: "Brendlər",
+      searchCategoriesTitle: "Kateqoriyalar",
+      searchEmpty: "Axtarışa uyğun nəticə tapılmadı.",
+      searchVariantCount: "{count} versiya",
+      searchStartHint: "Ətir və ya kateqoriya tapmaq üçün axtarışa yazın.",
+      searchTabs: {
+        all: "Hamısı",
+        women: "Qadın",
+        men: "Kişi",
+        unisex: "Uniseks",
+        brands: "Brendlər",
+        home: "Ana səhifə",
+      },
+      cartTitle: "Səbət",
+      subtotal: "Cəmi",
+      shipping: "Çatdırılma",
+      shippingFree: "Ödənişsiz",
+      total: "Yekun",
+      checkout: "Səbətə keç",
+      continueShopping: "Alış-verişə davam et",
+      emptyCart: "Səbətiniz boşdur",
+      signInToCart: "Səbət üçün giriş et",
+      remove: "Sil",
+      size: "Ölçü",
+      qty: "Say",
+    },
+    en: {
+      login: "Login",
+      account: "My Account",
+      wishlist: "Wishlist",
+      blog: "Blog",
+      aboutPage: "About",
+      navTitle: "Navigation",
+      menuTag: "Menu",
+      accountTag: "Account",
+      languageTag: "Language",
+      currencyTag: "Currency",
+      trendingTag: "Trending",
+      instagramTag: "Instagram",
+      tiktokTag: "Address",
+      shopCategory: "Shop",
+      discoverCategory: "Discover",
+      infoCategory: "Info",
+      allProducts: "All products",
+      menCategory: "Men",
+      womenCategory: "Women",
+      unisexCategory: "Unisex",
+      categoryOpen: "Open category",
+      categoryClose: "Close category",
+      giftCard: "Gift Card",
+      giftIdeas: "Gift ideas",
+      offersTab: "Offers",
+      womenTab: "Women",
+      menTab: "Men",
+      unisexTab: "Unisex",
+      brandsTab: "Brands",
+      compareTab: "Compare",
+      homeTab: "Home",
+      quickActions: "Quick actions",
+      searchPlaceholder: "Search perfume, brand, or notes...",
+      searchProductsTitle: "Products",
+      searchBrandsTitle: "Brands",
+      searchCategoriesTitle: "Categories",
+      searchEmpty: "No matching results found.",
+      searchVariantCount: "{count} variants",
+      searchStartHint: "Type to find perfumes or categories.",
+      searchTabs: {
+        all: "All",
+        women: "Women",
+        men: "Men",
+        unisex: "Unisex",
+        brands: "Brands",
+        home: "Home",
+      },
+      cartTitle: "Cart",
+      subtotal: "Subtotal",
+      shipping: "Shipping",
+      shippingFree: "Free",
+      total: "Total",
+      checkout: "Go to cart",
+      continueShopping: "Continue shopping",
+      emptyCart: "Your cart is empty",
+      signInToCart: "Sign in for cart",
+      remove: "Remove",
+      size: "Size",
+      qty: "Qty",
+    },
+    ru: {
+      login: "Вход",
+      account: "Мой аккаунт",
+      wishlist: "Wishlist",
+      blog: "Блог",
+      aboutPage: "О нас",
+      navTitle: "Навигация",
+      menuTag: "Меню",
+      accountTag: "Аккаунт",
+      languageTag: "Язык",
+      currencyTag: "Валюта",
+      trendingTag: "Тренды",
+      instagramTag: "Instagram",
+      tiktokTag: "Адрес",
+      shopCategory: "Покупки",
+      discoverCategory: "Открыть",
+      infoCategory: "Инфо",
+      allProducts: "Все товары",
+      menCategory: "Мужские",
+      womenCategory: "Женские",
       unisexCategory: "Унисекс",
       categoryOpen: "Открыть категорию",
       categoryClose: "Закрыть категорию",
@@ -481,16 +664,19 @@ type HeaderProps = {
 
     let raf = 0;
 
-    function onPointerMove(e: PointerEvent) {
+    function onPointerMove(e: Event) {
+      const pe = e as PointerEvent;
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const items = Array.from(panel.querySelectorAll<HTMLElement>(".more-item"));
+        const p = panel;
+        if (!p) return;
+        const items = Array.from(p.querySelectorAll<HTMLElement>(".more-item"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
           const cy = r.top + r.height / 2;
-          const dx = e.clientX - cx;
-          const dy = e.clientY - cy;
+          const dx = pe.clientX - cx;
+          const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
           const max = 160;
           const strength = Math.max(0, 1 - dist / max);
@@ -506,7 +692,9 @@ type HeaderProps = {
     }
 
     function onPanelLeave() {
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(".more-item"));
+      const p = panel;
+      if (!p) return;
+      const items = Array.from(p.querySelectorAll<HTMLElement>(".more-item"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
@@ -514,12 +702,12 @@ type HeaderProps = {
       }
     }
 
-    panel.addEventListener("pointermove", onPointerMove);
-    panel.addEventListener("pointerleave", onPanelLeave);
+    panel.addEventListener("pointermove", onPointerMove as EventListener);
+    panel.addEventListener("pointerleave", onPanelLeave as EventListener);
 
     return () => {
-      panel.removeEventListener("pointermove", onPointerMove);
-      panel.removeEventListener("pointerleave", onPanelLeave);
+      panel.removeEventListener("pointermove", onPointerMove as EventListener);
+      panel.removeEventListener("pointerleave", onPanelLeave as EventListener);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [isMoreOpen]);
@@ -530,16 +718,19 @@ type HeaderProps = {
 
     let raf = 0;
 
-    function onPointerMove(e: PointerEvent) {
+    function onPointerMove(e: Event) {
+      const pe = e as PointerEvent;
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const items = Array.from(header.querySelectorAll<HTMLElement>(".magnetic"));
+        const h = header;
+        if (!h) return;
+        const items = Array.from(h.querySelectorAll<HTMLElement>(".magnetic"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
           const cy = r.top + r.height / 2;
-          const dx = e.clientX - cx;
-          const dy = e.clientY - cy;
+          const dx = pe.clientX - cx;
+          const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
           const max = 120;
           const strength = Math.max(0, 1 - dist / max);
@@ -555,7 +746,9 @@ type HeaderProps = {
     }
 
     function onLeave() {
-      const items = Array.from(header.querySelectorAll<HTMLElement>(".magnetic"));
+      const h = header;
+      if (!h) return;
+      const items = Array.from(h.querySelectorAll<HTMLElement>(".magnetic"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
@@ -563,12 +756,12 @@ type HeaderProps = {
       }
     }
 
-    header.addEventListener("pointermove", onPointerMove);
-    header.addEventListener("pointerleave", onLeave);
+    header.addEventListener("pointermove", onPointerMove as EventListener);
+    header.addEventListener("pointerleave", onLeave as EventListener);
 
     return () => {
-      header.removeEventListener("pointermove", onPointerMove);
-      header.removeEventListener("pointerleave", onLeave);
+      header.removeEventListener("pointermove", onPointerMove as EventListener);
+      header.removeEventListener("pointerleave", onLeave as EventListener);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -593,16 +786,19 @@ type HeaderProps = {
 
     let raf = 0;
 
-    function onPointerMove(e: PointerEvent) {
+    function onPointerMove(e: Event) {
+      const pe = e as PointerEvent;
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const items = Array.from(panel.querySelectorAll<HTMLElement>(".locale-item"));
+        const p = panel;
+        if (!p) return;
+        const items = Array.from(p.querySelectorAll<HTMLElement>(".locale-item"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
           const cy = r.top + r.height / 2;
-          const dx = e.clientX - cx;
-          const dy = e.clientY - cy;
+          const dx = pe.clientX - cx;
+          const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
           const max = 140;
           const strength = Math.max(0, 1 - dist / max);
@@ -618,7 +814,9 @@ type HeaderProps = {
     }
 
     function onLeave() {
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(".locale-item"));
+      const p = panel;
+      if (!p) return;
+      const items = Array.from(p.querySelectorAll<HTMLElement>(".locale-item"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
@@ -626,12 +824,12 @@ type HeaderProps = {
       }
     }
 
-    panel.addEventListener("pointermove", onPointerMove);
-    panel.addEventListener("pointerleave", onLeave);
+    panel.addEventListener("pointermove", onPointerMove as EventListener);
+    panel.addEventListener("pointerleave", onLeave as EventListener);
 
     return () => {
-      panel.removeEventListener("pointermove", onPointerMove);
-      panel.removeEventListener("pointerleave", onLeave);
+      panel.removeEventListener("pointermove", onPointerMove as EventListener);
+      panel.removeEventListener("pointerleave", onLeave as EventListener);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [isLocaleMenuOpen]);
@@ -642,16 +840,19 @@ type HeaderProps = {
 
     let raf = 0;
 
-    function onPointerMove(e: PointerEvent) {
+    function onPointerMove(e: Event) {
+      const pe = e as PointerEvent;
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const items = Array.from(panel.querySelectorAll<HTMLElement>(".currency-item"));
+        const p = panel;
+        if (!p) return;
+        const items = Array.from(p.querySelectorAll<HTMLElement>(".currency-item"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
           const cy = r.top + r.height / 2;
-          const dx = e.clientX - cx;
-          const dy = e.clientY - cy;
+          const dx = pe.clientX - cx;
+          const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
           const max = 160;
           const strength = Math.max(0, 1 - dist / max);
@@ -667,7 +868,9 @@ type HeaderProps = {
     }
 
     function onLeave() {
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(".currency-item"));
+      const p = panel;
+      if (!p) return;
+      const items = Array.from(p.querySelectorAll<HTMLElement>(".currency-item"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
@@ -675,64 +878,15 @@ type HeaderProps = {
       }
     }
 
-    panel.addEventListener("pointermove", onPointerMove);
-    panel.addEventListener("pointerleave", onLeave);
+    panel.addEventListener("pointermove", onPointerMove as EventListener);
+    panel.addEventListener("pointerleave", onLeave as EventListener);
 
     return () => {
-      panel.removeEventListener("pointermove", onPointerMove);
-      panel.removeEventListener("pointerleave", onLeave);
+      panel.removeEventListener("pointermove", onPointerMove as EventListener);
+      panel.removeEventListener("pointerleave", onLeave as EventListener);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [isCurrencyMenuOpen]);
-
-  useEffect(() => {
-    const panel = mobilePanelRef.current;
-    if (!panel) return;
-
-    let raf = 0;
-
-    function onPointerMove(e: PointerEvent) {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const items = Array.from(panel.querySelectorAll<HTMLElement>(".mobile-main-item"));
-        for (const it of items) {
-          const r = it.getBoundingClientRect();
-          const cx = r.left + r.width / 2;
-          const cy = r.top + r.height / 2;
-          const dx = e.clientX - cx;
-          const dy = e.clientY - cy;
-          const dist = Math.hypot(dx, dy);
-          const max = 220;
-          const strength = Math.max(0, 1 - dist / max);
-          const nx = dist > 0 ? dx / dist : 0;
-          const ny = dist > 0 ? dy / dist : 0;
-          const tx = nx * strength * 12;
-          const ty = ny * strength * 8;
-          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
-          it.style.willChange = "transform";
-          it.style.transition = "transform 90ms ease-out";
-        }
-      });
-    }
-
-    function onLeave() {
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(".mobile-main-item"));
-      for (const it of items) {
-        it.style.transform = "";
-        it.style.willChange = "auto";
-        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
-      }
-    }
-
-    panel.addEventListener("pointermove", onPointerMove);
-    panel.addEventListener("pointerleave", onLeave);
-
-    return () => {
-      panel.removeEventListener("pointermove", onPointerMove);
-      panel.removeEventListener("pointerleave", onLeave);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [isMenuOpen]);
 
   useEffect(() => {
     if (!isBrandsMenuOpen) {
@@ -1341,7 +1495,7 @@ type HeaderProps = {
                 >
                   <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
                   <span className="md:ml-1">
-                    <CaretDown size={14} className={isMoreOpen ? "transform rotate-180" : "transform rotate-0"} />
+                    <CaretDown size={14} className={`magnetic ${isMoreOpen ? "transform rotate-180" : "transform rotate-0"}`} />
                   </span>
                 </button>
 
