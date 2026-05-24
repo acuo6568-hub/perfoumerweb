@@ -1168,7 +1168,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           </div>
         </div>
 
-        <div className="hidden w-full px-0 pt-0 sm:px-0 sm:pt-0 md:px-0 xl:block">
+        <div className="hidden w-full px-0 pt-0 sm:px-0 sm:pt-0 md:px-0 lg:block">
           <div
             className="header-load-in relative isolate overflow-visible bg-[#f3f3f2] text-zinc-900 shadow-none ring-0 backdrop-blur-0 transition-[background-color,border-color] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
@@ -1206,7 +1206,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               </span>
             </Link>
 
-            <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 xl:flex">
+            <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 lg:flex">
               {primaryNav.map((item) => {
                 if (item.href === "/brands") {
                   const isActive = isItemActive(item.href);
@@ -1256,41 +1256,39 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 <button
                   type="button"
                   onClick={() => setIsMoreOpen((c) => !c)}
-                  className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"
+                  aria-expanded={isMoreOpen}
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm text-zinc-700 hover:text-zinc-900"
                 >
-                  <CaretDown size={14} />
-                  <span className="hidden md:inline">More</span>
+                  <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
+                  <span className="md:ml-1">
+                    <CaretDown size={14} className={isMoreOpen ? "transform rotate-180" : "transform rotate-0"} />
+                  </span>
                 </button>
 
-                <div
-                  className={[
-                    "absolute right-0 mt-2 w-44 overflow-hidden rounded-md bg-white shadow-lg z-40",
-                    isMoreOpen ? "block" : "hidden",
-                  ].join(" ")}
-                >
-                    <div className="py-1">
+                <div className={isMoreOpen ? "absolute right-0 mt-2 w-56 rounded-2xl bg-white shadow-xl z-40" : "hidden"}>
+                  <div className="py-2">
                     {secondaryNav.map((s) => {
                       const Icon = (s as any).icon as any;
                       return (
-                        <Link key={s.href} href={toLocalePath(s.href, locale)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50">
-                          {Icon ? <Icon size={14} /> : null}
-                          <span>{s.label}</span>
+                        <Link key={s.href} href={toLocalePath(s.href, locale)} className="flex items-center gap-3 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50">
+                          {Icon ? <Icon size={16} className="text-zinc-500" /> : null}
+                          <span className="truncate">{s.label}</span>
                         </Link>
                       );
                     })}
 
-                    <div className="border-t px-3 py-2">
-                      <div className="text-xs text-zinc-500 mb-1">Language</div>
-                      <div className="flex gap-1">
+                    <div className="border-t px-4 py-2">
+                      <div className="text-xs text-zinc-500 mb-2">{copy[locale].languageTag}</div>
+                      <div className="flex flex-wrap gap-2">
                         {locales.map((it) => (
-                          <button key={it} onClick={() => { updateLocale(it); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{it.toUpperCase()}</button>
+                          <button key={it} onClick={() => { updateLocale(it); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{t.languages[it]}</button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="border-t px-3 py-2">
-                      <div className="text-xs text-zinc-500 mb-1">Currency</div>
-                      <div className="flex gap-1">
+                    <div className="border-t px-4 py-2">
+                      <div className="text-xs text-zinc-500 mb-2">{copy[locale].currencyTag}</div>
+                      <div className="flex flex-wrap gap-2">
                         {SUPPORTED_CURRENCIES.map((c) => (
                           <button key={c} onClick={() => { setSelectedCurrency(c); setIsMoreOpen(false); }} className="text-sm px-2 py-1 rounded hover:bg-zinc-100">{getCurrencyShortLabel(c)}</button>
                         ))}
@@ -1337,7 +1335,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3 xl:gap-3.5">
               <div
-                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 xl:flex"
+                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex"
               >
                 {locales.map((item) => (
                   <button
