@@ -111,6 +111,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const morePanelRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
   const [session, setSession] = useState<Session | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
@@ -705,6 +706,55 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   }, [isMoreOpen]);
 
   useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    let raf = 0;
+
+    function onPointerMove(e: PointerEvent) {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const items = Array.from(header.querySelectorAll<HTMLElement>(".magnetic"));
+        for (const it of items) {
+          const r = it.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const dx = e.clientX - cx;
+          const dy = e.clientY - cy;
+          const dist = Math.hypot(dx, dy);
+          const max = 120;
+          const strength = Math.max(0, 1 - dist / max);
+          const nx = dist > 0 ? dx / dist : 0;
+          const ny = dist > 0 ? dy / dist : 0;
+          const tx = nx * strength * 6;
+          const ty = ny * strength * 6;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          it.style.willChange = "transform";
+          it.style.transition = "transform 100ms ease-out";
+        }
+      });
+    }
+
+    function onLeave() {
+      const items = Array.from(header.querySelectorAll<HTMLElement>(".magnetic"));
+      for (const it of items) {
+        it.style.transform = "";
+        it.style.willChange = "auto";
+        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
+      }
+    }
+
+    header.addEventListener("pointermove", onPointerMove);
+    header.addEventListener("pointerleave", onLeave);
+
+    return () => {
+      header.removeEventListener("pointermove", onPointerMove);
+      header.removeEventListener("pointerleave", onLeave);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isBrandsMenuOpen) {
       return;
     }
@@ -1231,7 +1281,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               className="hero-grain pointer-events-none absolute inset-0 opacity-0"
             />
 
-            <div className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 xl:gap-4 xl:px-8">
+            <div ref={headerRef} className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 xl:gap-4 xl:px-8">
 
             <Link
               href={toLocalePath("/", locale)}
@@ -1275,12 +1325,12 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                       >
                         <Buildings size={16} />
                         <span className="hidden md:inline">{item.label}</span>
-                        {
-                          (() => {
-                            const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-1 transition-transform";
-                            return <CaretDown size={12} className={caretClass} />;
-                          })()
-                        }
+                              {
+                                (() => {
+                                  const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-1 transition-transform";
+                                  return <CaretDown size={12} className={`magnetic ${caretClass}`} />;
+                                })()
+                              }
                       </button>
                     </div>
                   );
@@ -1311,7 +1361,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 >
                   <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
                   <span className="md:ml-1">
-                    <CaretDown size={14} className={isMoreOpen ? "transform rotate-180" : "transform rotate-0"} />
+                    <CaretDown size={14} className={`magnetic ${isMoreOpen ? "transform rotate-180" : "transform rotate-0"}`} />
                   </span>
                 </button>
 
@@ -1330,7 +1380,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                         <div className="text-xs text-zinc-500">{copy[locale].quickActions}</div>
                       </div>
                       <button aria-label="Close" onClick={() => setIsMoreOpen(false)} className="text-zinc-400 hover:text-zinc-600 ml-2">
-                        <X size={18} />
+                        <X size={18} className="magnetic" />
                       </button>
                     </div>
 
@@ -1393,7 +1443,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
             <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3 xl:gap-3.5">
               <div
-                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1"
+                className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex"
               >
                 {locales.map((item) => (
                   <button
@@ -1402,7 +1452,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                     onClick={() => updateLocale(item)}
                     disabled={isLocalePending}
                     className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70",
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.66rem] font-medium tracking-[0.22em] uppercase transition-colors duration-200 disabled:cursor-wait disabled:opacity-70 magnetic",
                         (pendingLocale ?? locale) === item
                           ? "bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
                           : "text-zinc-500 hover:text-zinc-700",
@@ -1420,13 +1470,13 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 ))}
               </div>
 
-              <div ref={currencyMenuRef} className="relative z-[70] hidden">
+              <div ref={currencyMenuRef} className="relative z-[70] hidden lg:block">
                 <button
                   type="button"
                   onClick={() => setIsCurrencyMenuOpen((current) => !current)}
                   aria-haspopup="listbox"
                   aria-expanded={isCurrencyMenuOpen}
-                  className="group relative inline-flex h-11 items-center gap-2 rounded-full border border-zinc-300/35 bg-transparent px-3.5 text-[0.68rem] font-medium tracking-[0.2em] text-zinc-700 uppercase shadow-none transition-[transform,box-shadow,background-color,border-color,color] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent active:translate-y-0"
+                  className="group relative inline-flex h-11 items-center gap-2 rounded-full border border-zinc-300/35 bg-transparent px-3.5 text-[0.68rem] font-medium tracking-[0.2em] text-zinc-700 uppercase shadow-none transition-[transform,box-shadow,background-color,border-color,color] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent active:translate-y-0 magnetic"
                 >
                   <span
                     aria-hidden="true"
