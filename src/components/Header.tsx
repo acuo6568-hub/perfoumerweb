@@ -2054,27 +2054,36 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   ].join(" ")}
                   aria-hidden={!isMenuOpen}
                 >
-                  <div className="px-3 py-3">
+                    <div className="px-3 py-3">
                     {session?.user ? (
                       <div className="px-2 pb-2">
                         <div className="text-sm font-semibold text-white/95">{`${t.header.hello}, ${displayName || ""}`}</div>
                       </div>
                     ) : null}
                     <div className="grid gap-1">
-                      {(extraPopoverItems.length > 0 ? extraPopoverItems : primaryNav).map((item) => {
-                        const Icon = (item as any).icon as any;
-                        return (
-                          <Link
-                            key={item.href}
-                            href={toLocalePath(item.href, locale)}
-                            onClick={() => setIsMenuOpen(false)}
-                            className="menu-item magnetic group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/5"
-                          >
-                            {Icon ? <HoverMorphIcon icon={Icon} /> : null}
-                            <span className="truncate">{item.label}</span>
-                          </Link>
-                        );
-                      })}
+                      {(() => {
+                        // Build a consistent popover list: prefer extraPopoverItems when present,
+                        // otherwise show primaryNav + secondaryNav so all locales get the same items.
+                        const combined = extraPopoverItems.length > 0
+                          ? extraPopoverItems
+                          : [...primaryNav, ...secondaryNav].filter((v, i, a) => a.findIndex((x) => x.href === v.href) === i);
+
+                        return combined.map((item) => {
+                          const Icon = (item as any).icon as any;
+
+                          return (
+                            <Link
+                              key={item.href}
+                              href={toLocalePath(item.href, locale)}
+                              onClick={() => setIsMenuOpen(false)}
+                              className="menu-item magnetic group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/5"
+                            >
+                              {Icon ? <HoverMorphIcon icon={Icon} /> : null}
+                              <span className="truncate">{item.label}</span>
+                            </Link>
+                          );
+                        })()}
+                      {/** end inline IIFE */}
                     </div>
                   </div>
                 </div>

@@ -97,6 +97,12 @@ const heroUiCopy = {
   },
 } as const;
 
+const secondaryAltLabelByLocale = {
+  az: "Bütün Məhsullara bax",
+  en: "Browse all products",
+  ru: "Все товары",
+} as const;
+
 
 type HeroPalette = {
   base: string;
@@ -926,7 +932,8 @@ export function Hero({ locale, spotlights, allPerfumes, homeHeader }: HeroProps)
                   href={toLocalePath("/catalog", locale)}
                   className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/20 bg-white/6 px-6 text-sm font-semibold text-white transition hover:bg-white/12"
                 >
-                  {copy.secondaryCta}
+                  {/** ensure secondary CTA differs from primary */}
+                  {videoCopy.ctaLabel === copy.secondaryCta ? (secondaryAltLabelByLocale as any)[locale] ?? secondaryAltLabelByLocale.en : copy.secondaryCta}
                 </Link>
               </div>
             </div>
@@ -970,7 +977,7 @@ export function Hero({ locale, spotlights, allPerfumes, homeHeader }: HeroProps)
                           href={toLocalePath("/catalog", locale)}
                           className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 bg-white/8 px-4 text-[0.82rem] font-semibold text-white"
                         >
-                          {copy.secondaryCta}
+                          {videoCopy.ctaLabel === copy.secondaryCta ? (secondaryAltLabelByLocale as any)[locale] ?? secondaryAltLabelByLocale.en : copy.secondaryCta}
                         </Link>
                       </div>
                     </div>
