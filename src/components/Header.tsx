@@ -295,7 +295,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     en: {
       login: "Login",
       account: "My Account",
-      wishlist: "Wishlist",
+      wishlist: "Избранное",
       blog: "Blog",
       aboutPage: "About",
       navTitle: "Navigation",

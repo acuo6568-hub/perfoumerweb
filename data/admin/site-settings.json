@@ -50,8 +50,8 @@
     "mode": "video",
     "videoUrl": "/perfumevid.MP4",
     "videoTitle": "KAYALI Perfumes",
-    "videoDescription": "Discover the full KAYALI collections",
-    "videoCtaLabel": "View all brands",
+    "videoDescription": "Discover the full KAYALI collections.",
+    "videoCtaLabel": "All KAYALI",
     "videoTitleByLocale": {
       "az": "KAYALI",
       "en": "KAYALI Perfumes",
@@ -59,17 +59,22 @@
     },
     "videoDescriptionByLocale": {
       "az": "KAYALI kolleksiyasını kəşf edin.",
-      "en": "Discover the full KAYALI collection.",
+      "en": "Discover the full KAYALI collections.",
       "ru": "Откройте всю коллекцию KAYALI."
     },
     "videoCtaLabelByLocale": {
-      "az": "Bütün qoxulara bax",
-      "en": "View all brands",
-      "ru": "Все бренды"
+      "az": "Bütün KAYALI",
+      "en": "All KAYALI",
+      "ru": "Все KAYALI"
     },
-    "videoCtaHref": "/brands",
-    "rotationMode": "random",
+    "videoCtaHref": "/catalog?brand=Kayali",
+    "rotationMode": "selected",
     "slides": [
+      {
+        "perfumeSlug": "perfume-mpfrwro0",
+        "buttonLabel": "Lacoste Essential Collector Edition",
+        "description": "Lacoste Lacoste Essential Collector Edition"
+      },
       {
         "perfumeSlug": "perfume-mpfrwro0",
         "buttonLabel": "Lacoste Essential Collector Edition",
