@@ -51,6 +51,7 @@ import {
   type SiteHomeHeaderSlide,
   type SitePromotionLocale,
   type SitePromotionSettings,
+  type SitePromotionTextMap,
   type SiteSettings,
 } from "@/lib/site-branding";
 import {
@@ -397,6 +398,13 @@ const adminCopy = {
     headerVideoCtaLabel: "CTA yazısı",
     headerVideoCtaHref: "CTA keçidi",
     headerVideoPreview: "Video önizləməsi",
+    headerTranslate: "AI tərcümə",
+    headerTranslateWorking: "Tərcümə hazırlanır...",
+    headerTranslateDone: "Başlıq tərcümələri yeniləndi.",
+    headerTranslateFailed: "Tərcümə alınmadı.",
+    headerTranslateNeedText: "Əvvəlcə başlıq, təsvir və ya CTA əlavə edin.",
+    headerTranslations: "Başlıq tərcümələri",
+    headerTranslationsHint: "Hər dil üçün ayrıca başlıq, təsvir və CTA əlavə edin və ya AI ilə tərcümə edin.",
     headerRotatingMode: "Dönən rejim",
     headerRandomMode: "Təsadüfi ətirlər",
     headerSelectedMode: "Seçilmiş ətirlər",
@@ -723,6 +731,13 @@ const adminCopy = {
     headerVideoCtaLabel: "CTA label",
     headerVideoCtaHref: "CTA link",
     headerVideoPreview: "Video preview",
+    headerTranslate: "AI translate",
+    headerTranslateWorking: "Translating...",
+    headerTranslateDone: "Header translations updated.",
+    headerTranslateFailed: "Translation failed.",
+    headerTranslateNeedText: "Add title, description, or CTA first.",
+    headerTranslations: "Header translations",
+    headerTranslationsHint: "Provide per-language title, description and CTA or use AI translate.",
     headerRotatingMode: "Rotating mode",
     headerRandomMode: "Random perfumes",
     headerSelectedMode: "Selected perfumes",
@@ -1639,9 +1654,11 @@ export function AdminPanelClient({
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [locale, setLocale] = useState<AdminLocale>("az");
   const [promotionEditorLocale, setPromotionEditorLocale] = useState<SitePromotionLocale>("az");
+  const [headerEditorLocale, setHeaderEditorLocale] = useState<SitePromotionLocale>("az");
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
   const [editingMessageValue, setEditingMessageValue] = useState<string>("");
   const [isTranslatingPromotion, setIsTranslatingPromotion] = useState(false);
+  const [isTranslatingHeader, setIsTranslatingHeader] = useState(false);
   const [promoAnalytics, setPromoAnalytics] = useState<PromoAnalyticsState | null>(null);
   const [isPromoAnalyticsLoading, setIsPromoAnalyticsLoading] = useState(false);
   const [promoAnalyticsError, setPromoAnalyticsError] = useState<string | null>(null);
@@ -1854,6 +1871,92 @@ export function AdminPanelClient({
         [promotionEditorLocale]: linkLabel,
       },
     });
+  };
+
+  const updateHeaderLocaleField = (
+    localeKey: SitePromotionLocale,
+    field: "videoTitleByLocale" | "videoDescriptionByLocale" | "videoCtaLabelByLocale",
+    value: string,
+  ) => {
+    setHomeHeader((current) => ({
+      ...current,
+      [field]: {
+        ...((current[field] ?? {}) as Record<string, string>),
+        [localeKey]: value,
+      },
+    } as any));
+  };
+
+  const translateHeaderCopy = async () => {
+    const sourceTitle = settings.homeHeader.videoTitle.trim();
+    const sourceDescription = settings.homeHeader.videoDescription.trim();
+    const sourceCta = settings.homeHeader.videoCtaLabel.trim();
+
+    if (!sourceTitle && !sourceDescription && !sourceCta) {
+      setStatus({ tone: "error", message: copy.headerTranslateNeedText });
+      return;
+    }
+
+    setIsTranslatingHeader(true);
+    setStatus({ tone: "neutral", message: copy.headerTranslateWorking });
+
+    try {
+      const response = await fetch("/api/admin/home-header/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLocale: headerEditorLocale,
+          videoTitle: sourceTitle,
+          videoDescription: sourceDescription,
+          videoCtaLabel: sourceCta,
+        }),
+      });
+
+      const body = (await response.json()) as {
+        error?: string;
+        titleByLocale?: Record<SitePromotionLocale, string>;
+        descriptionByLocale?: Record<SitePromotionLocale, string>;
+        ctaLabelByLocale?: Record<SitePromotionLocale, string>;
+      };
+
+      if (!response.ok || !body.titleByLocale || !body.descriptionByLocale || !body.ctaLabelByLocale) {
+        throw new Error(body.error || copy.headerTranslateFailed);
+      }
+
+      setHomeHeader((current) => {
+        const mergedTitleByLocale = PROMOTION_LOCALES.reduce((acc, loc) => {
+          acc[loc] = body.titleByLocale?.[loc] ?? (current.videoTitleByLocale as Record<string, string>)?.[loc] ?? "";
+          return acc;
+        }, {} as Record<SitePromotionLocale, string>);
+
+        const mergedDescriptionByLocale = PROMOTION_LOCALES.reduce((acc, loc) => {
+          acc[loc] = body.descriptionByLocale?.[loc] ?? (current.videoDescriptionByLocale as Record<string, string>)?.[loc] ?? "";
+          return acc;
+        }, {} as Record<SitePromotionLocale, string>);
+
+        const mergedCtaByLocale = PROMOTION_LOCALES.reduce((acc, loc) => {
+          acc[loc] = body.ctaLabelByLocale?.[loc] ?? (current.videoCtaLabelByLocale as Record<string, string>)?.[loc] ?? "";
+          return acc;
+        }, {} as Record<SitePromotionLocale, string>);
+
+        return {
+          ...current,
+          videoTitle: mergedTitleByLocale[headerEditorLocale] || sourceTitle || current.videoTitle,
+          videoDescription: mergedDescriptionByLocale[headerEditorLocale] || sourceDescription || current.videoDescription,
+          videoCtaLabel: mergedCtaByLocale[headerEditorLocale] || sourceCta || current.videoCtaLabel,
+          videoTitleByLocale: mergedTitleByLocale as unknown as SitePromotionTextMap,
+          videoDescriptionByLocale: mergedDescriptionByLocale as unknown as SitePromotionTextMap,
+          videoCtaLabelByLocale: mergedCtaByLocale as unknown as SitePromotionTextMap,
+        } as any;
+      });
+
+      setStatus({ tone: "success", message: copy.headerTranslateDone });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : copy.headerTranslateFailed;
+      setStatus({ tone: "error", message });
+    } finally {
+      setIsTranslatingHeader(false);
+    }
   };
 
   const translatePromotionCopy = async () => {
@@ -4318,86 +4421,86 @@ export function AdminPanelClient({
                           <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileHeight}px</div>
                         </Field>
                       </div>
-                      <div className="mt-6">
-                        <h3 className="text-sm font-semibold text-zinc-900">Translations</h3>
-                        <p className="mt-1 text-xs text-zinc-500">Provide localized text for title, description and CTA label.</p>
-                        <div className="mt-3 grid gap-3">
-                          <div className="grid gap-2 sm:grid-cols-4 sm:items-center">
-                            <label className="text-xs font-medium text-zinc-700">Locale</label>
-                            <label className="text-xs font-medium text-zinc-700">Title</label>
-                            <label className="text-xs font-medium text-zinc-700">Description</label>
-                            <label className="text-xs font-medium text-zinc-700">CTA label</label>
-                          </div>
-                          {(["az", "en", "ru"] as const).map((loc) => (
-                            <div key={loc} className="grid gap-2 sm:grid-cols-4 sm:items-center">
-                              <div className="text-sm font-medium text-zinc-800">{loc.toUpperCase()}</div>
-                              <input
-                                className={ui.input}
-                                value={((settings.homeHeader.videoTitleByLocale ?? {}) as any)[loc] ?? ""}
-                                onChange={(e) =>
-                                  setHomeHeader((current) => ({
-                                    ...current,
-                                    videoTitleByLocale: ( { ...(current.videoTitleByLocale ?? {}), [loc]: e.target.value } as any ),
-                                  } as any))
-                                }
-                                placeholder="KAY ALI"
-                              />
-                              <input
-                                className={ui.input}
-                                value={((settings.homeHeader.videoDescriptionByLocale ?? {}) as any)[loc] ?? ""}
-                                onChange={(e) =>
-                                  setHomeHeader((current) => ({
-                                    ...current,
-                                    videoDescriptionByLocale: ( { ...(current.videoDescriptionByLocale ?? {}), [loc]: e.target.value } as any ),
-                                  } as any))
-                                }
-                                placeholder="Discover the full KAY ALI collection."
-                              />
-                              <input
-                                className={ui.input}
-                                value={((settings.homeHeader.videoCtaLabelByLocale ?? {}) as any)[loc] ?? ""}
-                                onChange={(e) =>
-                                  setHomeHeader((current) => ({
-                                    ...current,
-                                    videoCtaLabelByLocale: ( { ...(current.videoCtaLabelByLocale ?? {}), [loc]: e.target.value } as any ),
-                                  } as any))
-                                }
-                                placeholder="View all brands"
-                              />
-                            </div>
-                          ))}
+                          <div className="mt-6">
+                            <h3 className="text-sm font-semibold text-zinc-900">Translations</h3>
+                            <p className="mt-1 text-xs text-zinc-500">Provide localized text for title, description and CTA label.</p>
+                            <div className="mt-3 grid gap-3">
+                              <div className="grid gap-2 sm:grid-cols-4 sm:items-center">
+                                <label className="text-xs font-medium text-zinc-700">Locale</label>
+                                <label className="text-xs font-medium text-zinc-700">Title</label>
+                                <label className="text-xs font-medium text-zinc-700">Description</label>
+                                <label className="text-xs font-medium text-zinc-700">CTA label</label>
+                              </div>
+                              {(["az", "en", "ru"] as const).map((loc) => (
+                                <div key={loc} className="grid gap-2 sm:grid-cols-4 sm:items-center">
+                                  <div className="text-sm font-medium text-zinc-800">{loc.toUpperCase()}</div>
+                                  <input
+                                    className={ui.input}
+                                    value={((settings.homeHeader.videoTitleByLocale ?? {}) as any)[loc] ?? ""}
+                                    onChange={(e) =>
+                                      setHomeHeader((current) => ({
+                                        ...current,
+                                        videoTitleByLocale: { ...(current.videoTitleByLocale ?? {}), [loc]: e.target.value } as any,
+                                      } as any))
+                                    }
+                                    placeholder="KAY ALI"
+                                  />
+                                  <input
+                                    className={ui.input}
+                                    value={((settings.homeHeader.videoDescriptionByLocale ?? {}) as any)[loc] ?? ""}
+                                    onChange={(e) =>
+                                      setHomeHeader((current) => ({
+                                        ...current,
+                                        videoDescriptionByLocale: { ...(current.videoDescriptionByLocale ?? {}), [loc]: e.target.value } as any,
+                                      } as any))
+                                    }
+                                    placeholder="Discover the full KAY ALI collection."
+                                  />
+                                  <input
+                                    className={ui.input}
+                                    value={((settings.homeHeader.videoCtaLabelByLocale ?? {}) as any)[loc] ?? ""}
+                                    onChange={(e) =>
+                                      setHomeHeader((current) => ({
+                                        ...current,
+                                        videoCtaLabelByLocale: { ...(current.videoCtaLabelByLocale ?? {}), [loc]: e.target.value } as any,
+                                      } as any))
+                                    }
+                                    placeholder="View all brands"
+                                  />
+                                </div>
+                              ))}
 
-                          <div className="mt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              className={cx(ui.compactButton, "border-zinc-300 bg-white text-zinc-700")}
-                              onClick={async () => {
-                                try {
-                                  const res = await fetch("/api/admin/git", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ message: "admin: update homeHeader translations" }),
-                                  });
-                                  const json = await res.json();
-                                  if (!res.ok) {
-                                    console.error("Git push failed", json);
-                                    alert("Git push failed: " + (json?.error || JSON.stringify(json)));
-                                  } else {
-                                    alert("Git push succeeded.");
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                  alert("Git push failed. See console for details.");
-                                }
-                              }}
-                            >
-                              <ArrowsClockwise size={14} />
-                              <span className="ml-2">Commit & Push</span>
-                            </button>
-                            <div className="text-sm text-zinc-500">Commits data/admin and perfm77.csv to git (server must allow git).</div>
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className={cx(ui.compactButton, "border-zinc-300 bg-white text-zinc-700")}
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch("/api/admin/git", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ message: "admin: update homeHeader translations" }),
+                                      });
+                                      const json = await res.json();
+                                      if (!res.ok) {
+                                        console.error("Git push failed", json);
+                                        alert("Git push failed: " + (json?.error || JSON.stringify(json)));
+                                      } else {
+                                        alert("Git push succeeded.");
+                                      }
+                                    } catch (err) {
+                                      console.error(err);
+                                      alert("Git push failed. See console for details.");
+                                    }
+                                  }}
+                                >
+                                  <ArrowsClockwise size={14} />
+                                  <span className="ml-2">Commit & Push</span>
+                                </button>
+                                <div className="text-sm text-zinc-500">Commits data/admin and perfm77.csv to git (server must allow git).</div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
                     </>)
                     }
 
@@ -4735,6 +4838,86 @@ export function AdminPanelClient({
                             placeholder="/brands"
                           />
                         </Field>
+                      </div>
+
+                      <div className="mt-2 rounded-2xl border border-zinc-200 bg-white p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-zinc-900">{copy.headerTranslations}</p>
+                            <p className="mt-1 text-xs text-zinc-500">{copy.headerTranslationsHint}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className={cx(ui.compactButton, "border-zinc-300 bg-white text-zinc-700")}
+                            disabled={isTranslatingHeader || !settings.homeHeader.videoTitle.trim()}
+                            onClick={translateHeaderCopy}
+                          >
+                            <ArrowsClockwise size={14} />
+                            <span className="ml-2">{isTranslatingHeader ? copy.headerTranslateWorking : copy.headerTranslate}</span>
+                          </button>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {(["az", "en", "ru"] as const).map((loc) => (
+                            <button
+                              key={`header-locale-${loc}`}
+                              type="button"
+                              className={cx(
+                                ui.compactButton,
+                                headerEditorLocale === loc
+                                  ? "border-zinc-900 bg-zinc-900 text-white"
+                                  : "border-zinc-300 bg-white text-zinc-700",
+                              )}
+                              onClick={() => setHeaderEditorLocale(loc)}
+                            >
+                              {loc.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="mt-4 grid gap-4">
+                          <Field label={copy.headerVideoTitle}>
+                            <input
+                              className={ui.input}
+                              value={((settings.homeHeader.videoTitleByLocale ?? {}) as any)[headerEditorLocale] ?? ""}
+                              onChange={(event) =>
+                                updateHeaderLocaleField(headerEditorLocale, "videoTitleByLocale", event.target.value)
+                              }
+                              placeholder="KAY ALI Perfumes"
+                            />
+                          </Field>
+                          <Field label={copy.headerVideoDescription}>
+                            <textarea
+                              className={ui.textarea}
+                              value={((settings.homeHeader.videoDescriptionByLocale ?? {}) as any)[headerEditorLocale] ?? ""}
+                              onChange={(event) =>
+                                updateHeaderLocaleField(headerEditorLocale, "videoDescriptionByLocale", event.target.value)
+                              }
+                              rows={3}
+                              placeholder="Discover the full KAY ALI collection."
+                            />
+                          </Field>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <Field label={copy.headerVideoCtaLabel}>
+                              <input
+                                className={ui.input}
+                                value={((settings.homeHeader.videoCtaLabelByLocale ?? {}) as any)[headerEditorLocale] ?? ""}
+                                onChange={(event) =>
+                                  updateHeaderLocaleField(headerEditorLocale, "videoCtaLabelByLocale", event.target.value)
+                                }
+                                placeholder="View all brands"
+                              />
+                            </Field>
+                            <Field label={copy.headerVideoCtaHref}>
+                              <input
+                                className={ui.input}
+                                value={settings.homeHeader.videoCtaHref}
+                                onChange={(event) => setHomeHeaderField("videoCtaHref", event.target.value)}
+                                placeholder="/brands"
+                              />
+                            </Field>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (
