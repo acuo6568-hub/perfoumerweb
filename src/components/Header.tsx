@@ -1710,18 +1710,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                       : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.04)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right"
                   }
                 >
-                  <div className="px-4 pt-4 pb-3">
-                    <div className="flex items-baseline justify-between">
-                      <div>
-                        <div className="text-sm font-semibold text-zinc-900">{t.detail.more ?? "More"}</div>
-                        <div className="text-xs text-zinc-500">{copy[locale].quickActions}</div>
-                      </div>
-                      <button aria-label="Close" onClick={() => setIsMoreOpen(false)} className="text-zinc-400 hover:text-zinc-600 ml-2">
-                        <X size={18} className="magnetic" />
-                      </button>
-                    </div>
-
-                    <div className="mt-3 grid gap-2">
+                  <div className="px-4 py-4">
+                    <div className="grid gap-2">
                       {secondaryNav.map((s) => {
                         const Icon = (s as any).icon as any;
                         return (
