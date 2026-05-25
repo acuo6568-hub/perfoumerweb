@@ -1624,16 +1624,15 @@ function slugToName(slug: string): string {
                 const localizedHref = toLocalePath(item.href, locale);
 
                 return (
-                  <AnimatedIconButton
+                  <Link
                     key={item.href}
                     href={localizedHref}
-                    ariaLabel={item.label}
-                    className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"
-                    onStart={() => setIsMenuOpen(false)}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
                   >
                     {Icon ? <Icon size={16} /> : null}
                     <span className="hidden md:inline">{item.label}</span>
-                  </AnimatedIconButton>
+                  </Link>
                 );
               })}
 
@@ -1998,13 +1997,9 @@ function slugToName(slug: string): string {
                               <span className="text-[0.95rem]">{copy[locale].greeting}{displayName ? ',' : ''}</span>
                               <span className="truncate">{displayName}</span>
                             </div>
-                            <AnimatedIconButton
-                              ariaLabel="Account"
-                              className={"h-7 w-7 text-white/95 bg-white/6 rounded-md"}
-                              onStart={() => { /* no-op */ }}
-                            >
+                            <Link href={accountHref} className="animated-icon h-7 w-7 text-white/95 bg-white/6 rounded-md inline-grid place-items-center">
                               <UserCircle size={16} />
-                            </AnimatedIconButton>
+                            </Link>
                           </div>
                       </div>
                     ) : null}
