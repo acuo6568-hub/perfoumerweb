@@ -1638,7 +1638,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                         aria-controls="brands-menu-panel"
                         onClick={toggleBrandsMenu}
                         className={[
-                          "group relative inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm font-medium transition-colors duration-200",
+                          "group relative inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm font-medium transition-colors duration-200",
                           isBrandsMenuOpen || isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
                         ].join(" ")}
                       >
@@ -1646,8 +1646,12 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                         <span className="hidden md:inline">{item.label}</span>
                               {
                                 (() => {
-                                  const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-1 transition-transform";
-                                  return <CaretDown size={12} className={caretClass} />;
+                                  const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-0.5 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]";
+                                  return (
+                                    <span key={isBrandsMenuOpen ? "open" : "closed"} className="inline-flex motion-safe:animate-header-chevron-morph">
+                                      <CaretDown size={12} className={caretClass} />
+                                    </span>
+                                  );
                                 })()
                               }
                       </button>
@@ -1676,11 +1680,19 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   type="button"
                   onClick={() => setIsMoreOpen((c) => !c)}
                   aria-expanded={isMoreOpen}
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm text-zinc-700 hover:text-zinc-900"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
-                  <span className="md:ml-1">
-                    <CaretDown size={14} className={isMoreOpen ? "transform rotate-180" : "transform rotate-0"} />
+                  <span className="md:ml-0.5">
+                    <span key={isMoreOpen ? "open" : "closed"} className="inline-flex motion-safe:animate-header-chevron-morph">
+                      <CaretDown
+                        size={14}
+                        className={[
+                          "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                          isMoreOpen ? "rotate-180" : "rotate-0",
+                        ].join(" ")}
+                      />
+                    </span>
                   </span>
                 </button>
 

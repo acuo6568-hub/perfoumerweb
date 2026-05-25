@@ -1191,6 +1191,30 @@ h6 {
   animation: headerIconBounce 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+@keyframes headerChevronMorph {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 0.92;
+  }
+  45% {
+    transform: translateY(-1px) scale(1.14) rotate(10deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(0.5px) scale(0.97) rotate(175deg);
+    opacity: 0.98;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(180deg);
+    opacity: 1;
+  }
+}
+
+.animate-header-chevron-morph {
+  animation: headerChevronMorph 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+}
+
 /* iPad optimization - make layout more compact */
 @media (min-width: 768px) and (max-width: 1023px) {
   /* Header optimization for iPad */
