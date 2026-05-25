@@ -472,7 +472,7 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
   });
   
   const saved = await saveSupabaseAdminData(adminData);
-  
+
   if (saved) {
     console.log("[Admin Data Save] ✓ Data successfully saved to Supabase");
   } else {
@@ -481,5 +481,6 @@ export async function saveAdminData(input: { perfumes: unknown; notes: unknown; 
     );
   }
 
-  return adminData;
+  // Return persistence flag so callers / admin UI can surface whether data was persisted to Supabase
+  return { perfumes, notes, settings, savedToSupabase: !!saved };
 }
