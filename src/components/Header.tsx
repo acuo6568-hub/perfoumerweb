@@ -251,6 +251,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       remove: "Sil",
       size: "Ölçü",
       qty: "Say",
+      greeting: "Salam",
     },
     en: {
       login: "Login",
@@ -312,6 +313,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       remove: "Remove",
       size: "Size",
       qty: "Qty",
+      greeting: "Hello",
     },
     ru: {
       login: "Вход",
@@ -373,6 +375,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       remove: "Удалить",
       size: "Размер",
       qty: "Кол-во",
+      greeting: "Привет",
     },
   } as const;
   const localeFlagSrc: Record<Locale, string> = {
@@ -1193,6 +1196,14 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     ? getUsernameFromMetadata(session.user.user_metadata) || getUsernameFromEmail(session.user.email)
     : "";
 
+  const [isWaving, setIsWaving] = useState(false);
+
+  const handleWaveClick = () => {
+    if (typeof window === "undefined") return;
+    setIsWaving(true);
+    window.setTimeout(() => setIsWaving(false), 900);
+  };
+
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId || typeof window === "undefined") {
@@ -1981,7 +1992,20 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   <div className="px-3 py-3">
                     {session?.user ? (
                       <div className="px-2 pb-2">
-                        <div className="text-sm font-semibold text-white/95">{`Hello, ${displayName || ""}`}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-semibold text-white/95 flex items-center gap-2">
+                            <span className="text-[0.95rem]">{copy[locale].greeting}{displayName ? ',' : ''}</span>
+                            <span className="truncate max-w-[10rem]">{displayName}</span>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Wave"
+                            onClick={handleWaveClick}
+                            className={"inline-grid h-7 w-7 place-items-center rounded-md bg-white/6 text-white/95 transition-transform duration-300 " + (isWaving ? "wave-animate" : "hover:-translate-y-0.5")}
+                          >
+                            <span aria-hidden="true" className="text-lg">👋</span>
+                          </button>
+                        </div>
                       </div>
                     ) : null}
                     <div className="grid gap-1">
