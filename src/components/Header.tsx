@@ -1751,10 +1751,10 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               id="brands-menu-panel"
               ref={brandsMenuPanelRef}
               className={[
-                "absolute inset-x-0 top-full z-[90] origin-top overflow-hidden border-y border-zinc-900/10 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] text-white shadow-[0_28px_70px_rgba(0,0,0,0.34)] transform-gpu transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[transform,opacity]",
+                "absolute inset-x-0 top-full z-[90] origin-top overflow-hidden border-y border-zinc-900/10 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] text-white shadow-[0_28px_70px_rgba(0,0,0,0.34)] transform-gpu transition-[transform,opacity,filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[transform,opacity,filter]",
                 isBrandsMenuOpen
-                  ? "pointer-events-auto translate-y-0 scale-y-100 opacity-100"
-                  : "pointer-events-none translate-y-0 scale-y-[0.94] opacity-0",
+                  ? "pointer-events-auto translate-y-0 scale-y-100 opacity-100 blur-0"
+                  : "pointer-events-none translate-y-0 scale-y-[0.93] opacity-0 blur-[2px]",
               ].join(" ")}
               style={{
                 transformOrigin: "top center",
@@ -1771,11 +1771,12 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                         key={letter}
                         href={getBrandLetterHref(letter)}
                         style={{
+                          animationDelay: `${index * 28}ms`,
                           transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 8}ms`,
                         }}
                         className={[
-                          "brand-letter group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                          isBrandsMenuOpen ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0",
+                          "brand-letter group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74",
+                          isBrandsMenuOpen ? "brand-letter--appear" : "translate-y-2 scale-95 opacity-0",
                         ].join(" ")}
                       >
                         <span className="absolute inset-x-1.5 bottom-1 h-px origin-left scale-x-0 bg-white/80 transition-transform duration-200 group-hover:scale-x-100" />
