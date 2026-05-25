@@ -84,18 +84,16 @@ function parsePrice(value: number | string): number {
 }
 
 function slugToName(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
-  const siteSettings = useSiteSettings();
-  const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+                return (
+                  <Link
+                    key={item.href}
+                    href={localizedHref}
+                    className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
+                  >
+                    {Icon ? <Icon size={16} /> : null}
+                    <span className="hidden md:inline">{item.label}</span>
+                  </Link>
+                );
   const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTab, setSearchTab] = useState<HeaderSearchTab>("all");
@@ -1995,21 +1993,17 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   <div className="px-3 py-3">
                     {session?.user ? (
                       <div className="px-2 pb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-semibold text-white/95 flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <div className="text-sm font-semibold text-white/95 flex items-center gap-1">
                               <span className="text-[0.95rem]">{copy[locale].greeting}{displayName ? ',' : ''}</span>
-                              <span className="truncate max-w-[10rem]">{displayName}</span>
+                              <span className="truncate">{displayName}</span>
                             </div>
                             <AnimatedIconButton
-                              ariaLabel="Wave"
-                              className={"h-7 w-7 text-sm text-white/95 bg-white/6 rounded-md"}
-                              onStart={() => { /* no-op: just play animation */ }}
+                              ariaLabel="Account"
+                              className={"h-7 w-7 text-white/95 bg-white/6 rounded-md"}
+                              onStart={() => { /* no-op */ }}
                             >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M2 12c2-4 6-6 10-6s8 3 10 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M7 12c0 3 2 5 5 5s5-2 5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                <circle cx="9" cy="9" r="1.2" fill="currentColor" />
-                              </svg>
+                              <UserCircle size={16} />
                             </AnimatedIconButton>
                           </div>
                       </div>
