@@ -84,16 +84,12 @@ function parsePrice(value: number | string): number {
 }
 
 function slugToName(slug: string): string {
-                return (
-                  <Link
-                    key={item.href}
-                    href={localizedHref}
-                    className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
-                  >
-                    {Icon ? <Icon size={16} /> : null}
-                    <span className="hidden md:inline">{item.label}</span>
-                  </Link>
-                );
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
   const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTab, setSearchTab] = useState<HeaderSearchTab>("all");
