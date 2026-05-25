@@ -17,6 +17,8 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { getSupabasePublicConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
+export const dynamic = "force-dynamic";
+
 const homeMetadata: Metadata = {
   title: "Orijinal və Premium Ətirlər Onlayn",
   description:

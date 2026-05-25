@@ -1,6 +1,7 @@
 import path from "node:path";
 import os from "node:os";
 import { readFile } from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
 
 import {
   DEFAULT_SITE_NAME,
@@ -10,11 +11,39 @@ import {
   normalizeSiteName,
   type SiteSettings,
 } from "@/lib/site-branding";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 
 const ADMIN_DATA_DIR = path.join(process.cwd(), "data", "admin");
 export const SITE_SETTINGS_PATH = path.join(ADMIN_DATA_DIR, "site-settings.json");
 
 export async function readSiteSettings() {
+  const config = getSupabaseServiceConfigFromServer();
+  if (config) {
+    try {
+      const supabase = createClient(config.url, config.serviceRoleKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
+
+      const { data, error } = await supabase
+        .from("admin_data")
+        .select("data")
+        .eq("id", "admin_data")
+        .single();
+
+      if (!error && data && typeof data === "object") {
+        const payload = (data as { data?: unknown }).data as { settings?: unknown } | undefined;
+        if (payload?.settings) {
+          return normalizeSiteSettings(payload.settings);
+        }
+      }
+    } catch {
+      // fall through to file-based settings
+    }
+  }
+
   // Try an alternate writable directory first (used when saveAdminData falls back)
   const altDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
   const altPath = path.join(altDir, "site-settings.json");
