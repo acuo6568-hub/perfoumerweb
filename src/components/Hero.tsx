@@ -97,6 +97,7 @@ const heroUiCopy = {
   },
 } as const;
 
+
 type HeroPalette = {
   base: string;
   deep: string;
@@ -567,20 +568,20 @@ function buildVideoCopy(homeHeader: SiteHomeHeaderSettings, locale: Locale) {
     az: {
       title: "KAY ALI",
       description: "KAY ALI Perfumes — KAY ALI kolleksiyasını kəşf edin.",
-      ctaLabel: "Bütün qoxulara bax",
-      ctaHref: "/brands",
+      ctaLabel: "Bütün KAYALI",
+      ctaHref: "/catalog?brand=Kayali",
     },
     en: {
       title: "KAY ALI",
       description: "Discover the full KAY ALI collection.",
-      ctaLabel: "View all brands",
-      ctaHref: "/brands",
+      ctaLabel: "All KAYALI",
+      ctaHref: "/catalog?brand=Kayali",
     },
     ru: {
       title: "KAY ALI",
       description: "Откройте всю коллекцию KAY ALI.",
-      ctaLabel: "Все бренды",
-      ctaHref: "/brands",
+      ctaLabel: "Все KAYALI",
+      ctaHref: "/catalog?brand=Kayali",
     },
   };
 
