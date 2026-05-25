@@ -47,11 +47,11 @@
     "messages": []
   },
   "homeHeader": {
-    "mode": "video",
+    "mode": "rotating",
     "videoUrl": "/perfumevid.MP4",
     "videoTitle": "KAYALI Perfumes",
     "videoDescription": "Discover the full KAYALI collections.",
-    "videoCtaLabel": "All KAYALI",
+    "videoCtaLabel": "View all brands",
     "videoTitleByLocale": {
       "az": "KAYALI",
       "en": "KAYALI Perfumes",
@@ -63,22 +63,17 @@
       "ru": "Откройте всю коллекцию KAYALI."
     },
     "videoCtaLabelByLocale": {
-      "az": "Bütün KAYALI",
-      "en": "All KAYALI",
-      "ru": "Все KAYALI"
+      "az": "Bütün qoxulara bax",
+      "en": "View all brands",
+      "ru": "Все бренды"
     },
-    "videoCtaHref": "/catalog?brand=Kayali",
+    "videoCtaHref": "/brands",
     "rotationMode": "selected",
     "slides": [
       {
-        "perfumeSlug": "perfume-mpfrwro0",
-        "buttonLabel": "Lacoste Essential Collector Edition",
-        "description": "Lacoste Lacoste Essential Collector Edition"
-      },
-      {
-        "perfumeSlug": "perfume-mpfrwro0",
-        "buttonLabel": "Lacoste Essential Collector Edition",
-        "description": "Lacoste Lacoste Essential Collector Edition"
+        "perfumeSlug": "cool-water",
+        "buttonLabel": "Cool Water",
+        "description": "Davidoff Cool Water"
       }
     ]
   }

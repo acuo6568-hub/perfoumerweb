@@ -12,6 +12,7 @@ import {
   type ReactNode,
   Suspense,
 } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import {
   TrendUp,
@@ -410,7 +411,12 @@ const adminCopy = {
     headerSelectedMode: "Seçilmiş ətirlər",
     headerSlides: "Seçilmiş slaydlar",
     headerAddSlide: "Slayd əlavə et",
-    headerSlidePerfume: "Ətir slug-u",
+    headerSlidePerfume: "Ətir seç",
+    headerSlideSearchPlaceholder: "Brend və ya adla axtar",
+    headerSlideSearchHint: "Şəkilli kartdan seçin, slug avtomatik doldurulsun.",
+    headerSlideSelected: "Seçilmiş ətir",
+    headerSlideChoose: "Seç",
+    headerSlideClear: "Təmizlə",
     headerSlideButtonLabel: "Düymə yazısı",
     headerSlideDescription: "Təsvir",
     headerSlideRemove: "Sil",
@@ -743,7 +749,12 @@ const adminCopy = {
     headerSelectedMode: "Selected perfumes",
     headerSlides: "Selected slides",
     headerAddSlide: "Add slide",
-    headerSlidePerfume: "Perfume slug",
+    headerSlidePerfume: "Choose perfume",
+    headerSlideSearchPlaceholder: "Search by brand or name",
+    headerSlideSearchHint: "Pick from image cards and fill the slug automatically.",
+    headerSlideSelected: "Selected perfume",
+    headerSlideChoose: "Choose",
+    headerSlideClear: "Clear",
     headerSlideButtonLabel: "Button label",
     headerSlideDescription: "Description",
     headerSlideRemove: "Remove",
@@ -1714,6 +1725,7 @@ export function AdminPanelClient({
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [brandSearch, setBrandSearch] = useState("");
   const [search, setSearch] = useState("");
+  const [headerSlideSearches, setHeaderSlideSearches] = useState<Record<number, string>>({});
   const [status, setStatus] = useState<StatusState | null>(null);
   const [statusTimerId, setStatusTimerId] = useState<NodeJS.Timeout | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatusState>({ tone: "idle", message: "" });
@@ -2130,10 +2142,17 @@ export function AdminPanelClient({
     [notes],
   );
 
-  const perfumeSlugOptions = useMemo(
+  const perfumePickerOptions = useMemo(
     () =>
       perfumes
-        .map((item) => ({ slug: normalizeSlug(item.slug), label: `${item.brand} ${item.name}`.trim() }))
+        .map((item) => ({
+          slug: normalizeSlug(item.slug),
+          label: `${item.brand} ${item.name}`.trim(),
+          brand: item.brand,
+          name: item.name,
+          image: item.image,
+          imageAlt: item.imageAlt,
+        }))
         .filter((item) => Boolean(item.slug))
         .sort((left, right) => left.label.localeCompare(right.label)),
     [perfumes],
@@ -2408,6 +2427,31 @@ export function AdminPanelClient({
           description: perfume ? `${perfume.brand} ${perfume.name}` : "",
         },
       ],
+    }));
+  };
+
+  const chooseHomeHeaderSlidePerfume = (index: number, perfume: PerfumeDraft) => {
+    const slug = normalizeSlug(perfume.slug);
+    if (!slug) {
+      return;
+    }
+
+    setHomeHeader((current) => ({
+      ...current,
+      slides: current.slides.map((slide, slideIndex) =>
+        slideIndex === index
+          ? {
+              ...slide,
+              perfumeSlug: slug,
+              buttonLabel: perfume.name,
+              description: `${perfume.brand} ${perfume.name}`.trim(),
+            }
+          : slide,
+      ),
+    }));
+    setHeaderSlideSearches((current) => ({
+      ...current,
+      [index]: `${perfume.brand} ${perfume.name}`.trim(),
     }));
   };
 
@@ -4967,15 +5011,148 @@ export function AdminPanelClient({
                           <div className="mt-4 space-y-3">
                             {settings.homeHeader.slides.length ? settings.homeHeader.slides.map((slide, index) => (
                               <div key={`${slide.perfumeSlug}-${index}`} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                                <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-                                  <Field label={copy.headerSlidePerfume}>
-                                    <input
-                                      list="header-perfume-options"
-                                      className={ui.input}
-                                      value={slide.perfumeSlug}
-                                      onChange={(event) => setHomeHeaderSlideField(index, "perfumeSlug", normalizeSlug(event.target.value))}
-                                      placeholder="perfume slug"
-                                    />
+                                <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
+                                  <Field label={copy.headerSlidePerfume} hint={copy.headerSlideSearchHint}>
+                                    <div className="grid gap-3">
+                                      {(() => {
+                                        const selectedPickerPerfume = perfumePickerOptions.find(
+                                          (item) => item.slug === normalizeSlug(slide.perfumeSlug),
+                                        ) || null;
+                                        const slideSearch = headerSlideSearches[index] ?? "";
+                                        const normalizedSlideSearch = normalizeSearchText(slideSearch);
+                                        const slideSearchTokens = tokenizeSearch(normalizedSlideSearch);
+                                        const slidePerfumeResults = perfumePickerOptions
+                                          .filter((item) => {
+                                            if (!normalizedSlideSearch) return true;
+                                            const pool = normalizeSearchText([item.label, item.slug].join(" "));
+                                            return slideSearchTokens.length
+                                              ? slideSearchTokens.every((token) => pool.includes(token))
+                                              : pool.includes(normalizedSlideSearch);
+                                          })
+                                          .slice(0, 8);
+                                        const showSlideResults = normalizedSlideSearch.length > 0;
+
+                                        return (
+                                          <>
+                                            {selectedPickerPerfume ? (
+                                              <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5">
+                                                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
+                                                  <Image
+                                                    src={selectedPickerPerfume.image}
+                                                    alt={selectedPickerPerfume.imageAlt}
+                                                    fill
+                                                    sizes="64px"
+                                                    className="object-cover"
+                                                  />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                  <p className="truncate text-sm font-semibold text-zinc-900">
+                                                    {selectedPickerPerfume.name}
+                                                  </p>
+                                                  <p className="truncate text-xs text-zinc-500">
+                                                    {selectedPickerPerfume.brand} · {selectedPickerPerfume.slug}
+                                                  </p>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  className={ui.secondaryButton}
+                                                  onClick={() => {
+                                                    setHomeHeaderSlideField(index, "perfumeSlug", "");
+                                                    setHeaderSlideSearches((current) => ({ ...current, [index]: "" }));
+                                                  }}
+                                                >
+                                                  {copy.headerSlideClear}
+                                                </button>
+                                              </div>
+                                            ) : null}
+
+                                            <label className="relative block">
+                                              <span className="sr-only">{copy.headerSlidePerfume}</span>
+                                              <MagnifyingGlass
+                                                size={16}
+                                                weight="bold"
+                                                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+                                              />
+                                              <input
+                                                className={cx(ui.input, "pl-11")}
+                                                value={slideSearch}
+                                                onChange={(event) =>
+                                                  setHeaderSlideSearches((current) => ({
+                                                    ...current,
+                                                    [index]: event.target.value,
+                                                  }))
+                                                }
+                                                placeholder={copy.headerSlideSearchPlaceholder}
+                                              />
+                                            </label>
+
+                                            {showSlideResults ? (
+                                              <div className="max-h-72 overflow-auto rounded-2xl border border-zinc-200 bg-white p-3">
+                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                  {slidePerfumeResults.length ? slidePerfumeResults.map((item) => {
+                                                    const isSelected = item.slug === normalizeSlug(slide.perfumeSlug);
+                                                    const matchingPerfume = perfumes.find(
+                                                      (perfume) => normalizeSlug(perfume.slug) === item.slug,
+                                                    );
+
+                                                    if (!matchingPerfume) {
+                                                      return null;
+                                                    }
+
+                                                    return (
+                                                      <button
+                                                        key={item.slug}
+                                                        type="button"
+                                                        onClick={() => chooseHomeHeaderSlidePerfume(index, matchingPerfume)}
+                                                        className={cx(
+                                                          "flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200",
+                                                          isSelected
+                                                            ? "border-zinc-900 bg-zinc-900 text-white"
+                                                            : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 hover:bg-white",
+                                                        )}
+                                                      >
+                                                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
+                                                          <Image
+                                                            src={item.image}
+                                                            alt={item.imageAlt}
+                                                            fill
+                                                            sizes="56px"
+                                                            className="object-cover"
+                                                          />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                          <p className="truncate text-sm font-semibold">
+                                                            {item.name}
+                                                          </p>
+                                                          <p className={cx("truncate text-xs", isSelected ? "text-white/70" : "text-zinc-500")}>
+                                                            {item.brand} · {item.slug}
+                                                          </p>
+                                                        </div>
+                                                        <span className={cx("text-xs font-semibold", isSelected ? "text-white" : "text-zinc-500")}>
+                                                          {isSelected ? copy.headerSlideSelected : copy.headerSlideChoose}
+                                                        </span>
+                                                      </button>
+                                                    );
+                                                  }) : (
+                                                    <div className="rounded-xl border border-dashed border-zinc-300 px-4 py-5 text-sm text-zinc-500 sm:col-span-2">
+                                                      {locale === "az"
+                                                        ? "Uyğun ətir tapılmadı. Fərqli ad və ya brend yazın."
+                                                        : "No matching perfume found. Try another name or brand."}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <p className="text-xs text-zinc-500">
+                                                {locale === "az"
+                                                  ? "Nəticələr yalnız axtarış yazdıqda görünəcək."
+                                                  : "Results will appear only after you start typing."}
+                                              </p>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
                                   </Field>
                                   <Field label={copy.headerSlideButtonLabel}>
                                     <input
@@ -5015,11 +5192,6 @@ export function AdminPanelClient({
                             )}
                           </div>
 
-                          <datalist id="header-perfume-options">
-                            {perfumeSlugOptions.map((item) => (
-                              <option key={item.slug} value={item.slug} label={item.label} />
-                            ))}
-                          </datalist>
                         </div>
                       ) : null}
                     </div>
