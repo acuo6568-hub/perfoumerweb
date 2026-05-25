@@ -1,88 +1,42 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { CSSProperties } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Buildings,
-  CaretDown,
-  Coins,
-  Gift,
-  GridFour,
-  HeartStraight,
-  House,
-  Info,
-  InstagramLogo,
-  MapPin,
-  MagnifyingGlass,
-  NewspaperClipping,
-  Phone,
-  Scales,
-  ShoppingBag,
-  Sparkle,
-  UserCircle,
-  X,
-} from "@phosphor-icons/react";
-import type { Session } from "@supabase/supabase-js";
-import { useCurrency } from "@/components/currency/CurrencyProvider";
-import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
-import {
-  getDictionary,
-  locales,
-  stripLocalePrefix,
-  toLocalePath,
-  type Locale,
-} from "@/lib/i18n";
-import {
-  CURRENCY_META,
-  SUPPORTED_CURRENCIES,
-  formatCurrencyFromAzn,
-  getCurrencyShortLabel,
-  type SupportedCurrency,
-} from "@/lib/currency";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { CartItemRow } from "@/types/cart";
+      <div
+        className={[
+          "absolute right-0 top-full mt-3 hidden lg:block",
+          isMenuOpen ? "pointer-events-auto" : "pointer-events-none",
+        ].join(" ")}
+        onMouseLeave={() => setIsMenuOpen(false)}
+        onMouseEnter={() => setIsMenuOpen(true)}
+        aria-hidden={!isMenuOpen}
+      >
+        <div className={[
+            "absolute right-0 mt-3 w-72 rounded-3xl bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] border border-white/6 text-white shadow-[0_18px_50px_rgba(2,6,23,0.5)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right",
+          ].join(' ')}
+        >
+          <div className="px-4 pt-4 pb-3">
+            <div className="text-sm font-semibold text-white/95 mb-2">{t.header.menuTag ?? 'Menu'}</div>
+            <div className="grid gap-2">
+              {desktopDrawerMenuItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={toLocalePath(item.href, locale)}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium text-white hover:bg-white/5"
+                >
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              ))}
 
-type HeaderProps = {
-  floating?: boolean;
-  locale: Locale;
-  topOffsetStyle?: CSSProperties;
-};
-
-type HeaderSearchTab = "all" | "women" | "men" | "unisex" | "brands" | "home";
-
-type HeaderSearchResult = {
-  id: string;
-  slug: string;
-  name: string;
-  brand: string;
-  image: string;
-  price: number | null;
-  originalPrice: number | null;
-  discountedPrice: number | null;
-  discountPercent: number | null;
-  gender: string;
-  inStock: boolean;
-  variantCount?: number;
-};
-
-type HeaderSearchBrandResult = {
-  brand: string;
-  count: number;
-};
-
-const BRAND_LETTERS = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
-
-function parsePrice(value: number | string): number {
-  const parsed = typeof value === "number" ? value : parseFloat(String(value));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function slugToName(slug: string): string {
+              <div className="mt-2 border-t border-white/6 pt-2">
+                <Link href={accountHref} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium text-white hover:bg-white/5">
+                  <UserCircle size={16} className="text-white/90" />
+                  <span>{accountLabel}</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
   return slug
     .split("-")
     .filter(Boolean)
@@ -1800,6 +1754,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
                 aria-expanded={isMenuOpen}
                 onClick={toggleMenuDrawer}
+                onMouseEnter={() => setIsMenuOpen(true)}
                 className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/35 bg-transparent text-zinc-700 shadow-none transition-[background-color,box-shadow,border-color,color,transform] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent sm:h-11 sm:w-11"
               >
                 <span
