@@ -27,7 +27,6 @@ import {
   UserCircle,
   X,
 } from "@phosphor-icons/react";
-import AnimatedIconButton from "@/components/AnimatedIconButton";
 import type { Session } from "@supabase/supabase-js";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
@@ -89,7 +88,13 @@ function slugToName(slug: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
 
+export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
+  const siteSettings = useSiteSettings();
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTab, setSearchTab] = useState<HeaderSearchTab>("all");
@@ -124,60 +129,6 @@ function slugToName(slug: string): string {
   const currencyMenuRef = useRef<HTMLDivElement | null>(null);
   const brandsMenuRef = useRef<HTMLDivElement | null>(null);
   const brandsMenuPanelRef = useRef<HTMLDivElement | null>(null);
-  // Per-letter magnetic hover: toggles 'brand-active' class on nearest letter for a snappy iPad-like feel
-  useEffect(() => {
-    const panel = brandsMenuPanelRef.current;
-    if (!panel) return;
-    const container = panel.querySelector('.brand-letters-container') as HTMLElement | null;
-    if (!container) return;
-
-    const letters = Array.from(container.querySelectorAll<HTMLElement>('.brand-letter'));
-    if (!letters.length) return;
-
-    let last = -1;
-    const TH = 48; // snap threshold px (smaller -> snappier)
-
-    function onMove(e: PointerEvent) {
-      const px = e.clientX;
-      const py = e.clientY;
-      let best = Infinity;
-      let bestIdx = -1;
-      for (let i = 0; i < letters.length; i += 1) {
-        const r = letters[i].getBoundingClientRect();
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        const d = Math.hypot(px - cx, py - cy);
-        if (d < best) { best = d; bestIdx = i; }
-      }
-
-      if (bestIdx !== last) {
-        // clear previous active
-        if (last >= 0) {
-          letters[last].classList.remove('brand-active');
-        }
-        if (best <= TH) {
-          // set only the active class on the nearest letter
-          letters[bestIdx].classList.add('brand-active');
-          last = bestIdx;
-        } else {
-          last = -1;
-        }
-      }
-    }
-
-    function onLeave() {
-      if (last >= 0) { letters[last].classList.remove('brand-active'); last = -1; }
-    }
-
-    container.addEventListener('pointermove', onMove);
-    container.addEventListener('pointerleave', onLeave);
-
-    return () => {
-      container.removeEventListener('pointermove', onMove);
-      container.removeEventListener('pointerleave', onLeave);
-    };
-  }, [isBrandsMenuOpen]);
-  const menuPanelRef = useRef<HTMLDivElement | null>(null);
   const brandsMenuCloseTimerRef = useRef<number | null>(null);
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
@@ -246,7 +197,6 @@ function slugToName(slug: string): string {
       remove: "Sil",
       size: "Ölçü",
       qty: "Say",
-      greeting: "Salam",
     },
     en: {
       login: "Login",
@@ -308,7 +258,6 @@ function slugToName(slug: string): string {
       remove: "Remove",
       size: "Size",
       qty: "Qty",
-      greeting: "Hello",
     },
     ru: {
       login: "Вход",
@@ -370,7 +319,6 @@ function slugToName(slug: string): string {
       remove: "Удалить",
       size: "Размер",
       qty: "Кол-во",
-      greeting: "Привет",
     },
   } as const;
   const localeFlagSrc: Record<Locale, string> = {
@@ -423,26 +371,6 @@ function slugToName(slug: string): string {
   const cartLoginHref = `${toLocalePath("/login", locale)}?next=${encodeURIComponent(toLocalePath("/cart", locale))}`;
   const accountHref = session ? toLocalePath("/account", locale) : loginHref;
   const accountLabel = session ? copy[locale].account : copy[locale].login;
-  // Useful additional links to show in the compact desktop popover if they
-  // aren't already present in the main navigation. Labels are translated.
-  const usefulCandidates = [
-    { href: accountHref, label: accountLabel, icon: UserCircle },
-    { href: toLocalePath("/wishlist", locale), label: copy[locale].wishlist, icon: HeartStraight },
-    { href: toLocalePath("/elaqe", locale), label: t.header.contact, icon: Phone },
-    { href: toLocalePath("/blog", locale), label: copy[locale].blog, icon: NewspaperClipping },
-    { href: toLocalePath("/catalog?special=gift-ideas", locale), label: copy[locale].giftIdeas, icon: Gift },
-    { href: toLocalePath("/offers", locale), label: copy[locale].offersTab, icon: Gift },
-    { href: toLocalePath("/compare", locale), label: t.header.compare, icon: Scales },
-    { href: toLocalePath("/qoxunu", locale), label: t.header.scentQuiz, icon: Sparkle },
-  ];
-
-  const existingHrefs = new Set([
-    ...primaryNav.map((n) => n.href),
-    ...secondaryNav.map((n) => n.href),
-    ...desktopMenuItems.map((n) => n.href),
-  ]);
-
-  const extraPopoverItems = usefulCandidates.filter((c) => !existingHrefs.has(c.href));
   const mobileCategories = [
     {
       id: "shop",
@@ -563,58 +491,6 @@ function slugToName(slug: string): string {
     window.dispatchEvent(new Event("perfoumer:cart-updated"));
   }, []);
 
-  useEffect(() => {
-    const panel = menuPanelRef.current;
-    if (!panel) return;
-
-    let raf = 0;
-
-    function onPointerMove(e: Event) {
-      const pe = e as PointerEvent;
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const items = Array.from(panel.querySelectorAll<HTMLElement>(".magnetic"));
-        for (const it of items) {
-          const r = it.getBoundingClientRect();
-          const cx = r.left + r.width / 2;
-          const cy = r.top + r.height / 2;
-          const dx = pe.clientX - cx;
-          const dy = pe.clientY - cy;
-          const dist = Math.hypot(dx, dy);
-          const max = 120;
-          const strength = Math.max(0, 1 - dist / max);
-          const nx = dist > 0 ? dx / dist : 0;
-          const ny = dist > 0 ? dy / dist : 0;
-          const tx = nx * strength * 6;
-          const ty = ny * strength * 6;
-          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
-          it.style.willChange = "transform";
-          it.style.transition = "transform 100ms ease-out";
-        }
-      });
-    }
-
-    function onLeave() {
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(".magnetic"));
-      for (const it of items) {
-        it.style.transform = "";
-        it.style.willChange = "auto";
-        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
-      }
-    }
-
-    panel.addEventListener("pointermove", onPointerMove as EventListener);
-    panel.addEventListener("pointerleave", onLeave as EventListener);
-
-    return () => {
-      panel.removeEventListener("pointermove", onPointerMove as EventListener);
-      panel.removeEventListener("pointerleave", onLeave as EventListener);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  // Brands alphabet magnet removed — feature disabled
-
   const loadCartRows = useCallback(async () => {
     if (!supabase || !session?.user?.id || !isSupabaseConfigured()) {
       setCartRows([]);
@@ -697,9 +573,16 @@ function slugToName(slug: string): string {
   );
 
   useEffect(() => {
-    // Intentionally do not lock body scroll when overlays open.
-    // This keeps the page scrollable while the menu/panels are visible.
-    return;
+    if (isMenuOpen || isCartDrawerOpen || isSearchDrawerOpen) {
+      document.body.style.overflow = "hidden";
+      return;
+    }
+
+    document.body.style.overflow = "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isCartDrawerOpen, isMenuOpen, isSearchDrawerOpen]);
 
   useEffect(() => {
@@ -1171,34 +1054,6 @@ function slugToName(slug: string): string {
     };
   }, [supabase, loadCartItemCount, loadWishlistItemCount]);
 
-  // Helper to extract a friendly username from Supabase user metadata or email.
-  const getUsernameFromMetadata = (metadata: unknown) => {
-    if (!metadata || typeof metadata !== "object") return "";
-    const meta = metadata as Record<string, unknown>;
-    const candidates = [meta.username, meta.full_name, meta.name]
-      .filter((v): v is string => typeof v === "string")
-      .map((v) => v.trim())
-      .filter(Boolean);
-    return candidates[0] ?? "";
-  };
-
-  const getUsernameFromEmail = (email: string | null | undefined) => {
-    const local = (email ?? "").split("@")[0]?.trim() ?? "";
-    return local.slice(0, 40);
-  };
-
-  const displayName = session?.user
-    ? getUsernameFromMetadata(session.user.user_metadata) || getUsernameFromEmail(session.user.email)
-    : "";
-
-  const [isWaving, setIsWaving] = useState(false);
-
-  const handleWaveClick = () => {
-    if (typeof window === "undefined") return;
-    setIsWaving(true);
-    window.setTimeout(() => setIsWaving(false), 900);
-  };
-
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId || typeof window === "undefined") {
@@ -1241,7 +1096,7 @@ function slugToName(slug: string): string {
   const menuTransition =
     "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]";
   const stickTransition =
-    "absolute left-1/2 top-1/2 block h-0.5 -translate-x-1/2 rounded-full bg-current opacity-100 transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]";
+    "absolute left-1/2 top-1/2 block h-0.5 w-4 -translate-x-1/2 rounded-full bg-current opacity-100 transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]";
 
   const isItemActive = useCallback(
     (href: string) => {
@@ -1559,7 +1414,6 @@ function slugToName(slug: string): string {
               aria-hidden="true"
               className="hero-grain pointer-events-none absolute inset-0 opacity-0"
             />
-            
 
             <div ref={headerRef} className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 xl:gap-4 xl:px-8">
 
@@ -1623,7 +1477,6 @@ function slugToName(slug: string): string {
                   <Link
                     key={item.href}
                     href={localizedHref}
-                    onClick={() => setIsMenuOpen(false)}
                     className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
                   >
                     {Icon ? <Icon size={16} /> : null}
@@ -1650,18 +1503,18 @@ function slugToName(slug: string): string {
                   ref={morePanelRef}
                   className={
                     isMoreOpen
-                      ? "absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.12)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right"
-                      : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.04)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right"
+                      ? "absolute right-0 mt-3 w-72 rounded-3xl bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] border border-white/6 text-white shadow-[0_18px_50px_rgba(2,6,23,0.5)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right"
+                      : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] border border-white/6 text-white shadow-[0_18px_50px_rgba(2,6,23,0.25)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right"
                   }
                 >
                   <div className="px-4 pt-4 pb-3">
                     <div className="flex items-baseline justify-between">
                       <div>
-                        <div className="text-sm font-semibold text-zinc-900">{t.detail.more ?? "More"}</div>
-                        <div className="text-xs text-zinc-500">{copy[locale].quickActions}</div>
+                        <div className="text-sm font-semibold text-white/95">{t.detail.more ?? "More"}</div>
+                        <div className="text-xs text-white/70">{copy[locale].quickActions}</div>
                       </div>
-                      <button aria-label="Close" onClick={() => setIsMoreOpen(false)} className="text-zinc-400 hover:text-zinc-600 ml-2">
-                        <X size={18} className="magnetic" />
+                      <button aria-label="Close" onClick={() => setIsMoreOpen(false)} className="text-white/60 hover:text-white ml-2">
+                        <X size={18} className="magnetic text-white/90" />
                       </button>
                     </div>
 
@@ -1673,9 +1526,9 @@ function slugToName(slug: string): string {
                             key={s.href}
                             href={toLocalePath(s.href, locale)}
                             onClick={() => setIsMoreOpen(false)}
-                            className="more-item flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50 transform-gpu transition-transform duration-200"
+                            className="more-item flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white hover:bg-white/5 transform-gpu transition-transform duration-200"
                           >
-                            {Icon ? <Icon size={18} className="text-zinc-500" /> : null}
+                            {Icon ? <Icon size={18} className="text-white/80" /> : null}
                             <span className="truncate">{s.label}</span>
                           </Link>
                         );
@@ -1704,23 +1557,20 @@ function slugToName(slug: string): string {
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
               <div className="absolute inset-x-0 top-0 h-14 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_50%)]" />
               <div className="mx-auto w-full max-w-[1540px] px-5 xl:px-8">
-                <div className="relative">
-                  {/* brand magnet removed */}
-                  <div className="brand-letters-container flex flex-nowrap items-center justify-between gap-1 overflow-x-auto whitespace-nowrap py-2.5 sm:gap-1.5 xl:gap-2 xl:py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    {BRAND_LETTERS.map((letter, index) => (
-                      <Link
-                        key={letter}
-                        href={getBrandLetterHref(letter)}
-                        style={{
-                          transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 8}ms`,
-                        }}
-                        className="brand-letter group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74"
-                      >
-                        <span className="absolute inset-x-1.5 bottom-1 h-px origin-left scale-x-0 bg-white/80 transition-transform duration-200 group-hover:scale-x-100" />
-                        {letter}
-                      </Link>
-                    ))}
-                  </div>
+                <div className="flex flex-nowrap items-center justify-between gap-1 overflow-x-auto whitespace-nowrap py-2.5 sm:gap-1.5 xl:gap-2 xl:py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  {BRAND_LETTERS.map((letter, index) => (
+                    <Link
+                      key={letter}
+                      href={getBrandLetterHref(letter)}
+                      style={{
+                        transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 8}ms`,
+                      }}
+                      className="group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74 transition-[transform,opacity,color,background-color] duration-250 hover:-translate-y-[1px] hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="absolute inset-x-1.5 bottom-1 h-px origin-left scale-x-0 bg-white/80 transition-transform duration-200 group-hover:scale-x-100" />
+                      {letter}
+                    </Link>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1945,86 +1795,34 @@ function slugToName(slug: string): string {
                 ) : null}
               </button>
 
-              <div className="relative">
-                <button
-                  type="button"
-                  aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
-                  aria-expanded={isMenuOpen}
-                  onClick={toggleMenuDrawer}
-                  className="group relative grid h-10 w-10 place-items-center rounded-full border border-transparent bg-black text-white shadow-none transition-[background-color,box-shadow,border-color,color,transform] duration-300 hover:-translate-y-px sm:h-11 sm:w-11"
-                >
-                  <span
-                    className={[
-                      stickTransition,
-                      "w-4",
-                      isMenuOpen ? "-translate-y-0 rotate-45" : "-translate-y-2 rotate-0 group-hover:-translate-y-3",
-                    ].join(" ")}
-                  />
-                  <span
-                    className={[
-                      stickTransition,
-                      "w-6",
-                      isMenuOpen ? "opacity-0 scale-x-0" : "translate-y-0 opacity-100",
-                    ].join(" ")}
-                  />
-                  <span
-                    className={[
-                      stickTransition,
-                      "w-3",
-                      isMenuOpen ? "translate-y-0 -rotate-45" : "translate-y-2 rotate-0 group-hover:translate-y-3",
-                    ].join(" ")}
-                  />
-                </button>
-
-                {/* Desktop compact popover anchored to this button */}
-                <div
-                  ref={menuPanelRef}
+              <button
+                type="button"
+                aria-label={isMenuOpen ? t.header.closeMenu : t.header.openMenu}
+                aria-expanded={isMenuOpen}
+                onClick={toggleMenuDrawer}
+                className="group relative grid h-10 w-10 place-items-center rounded-full border border-zinc-300/35 bg-transparent text-zinc-700 shadow-none transition-[background-color,box-shadow,border-color,color,transform] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent sm:h-11 sm:w-11"
+              >
+                <span
                   className={[
-                    "absolute right-0 top-full z-[80] mt-3 hidden w-72 rounded-3xl bg-gradient-to-br from-[#0b0b0b]/95 to-[#000]/100 border border-white/6 text-white shadow-[0_18px_60px_rgba(2,6,23,0.6)] transition-all duration-220 lg:block origin-top-right",
-                    isMenuOpen ? "pointer-events-auto opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-1",
+                    stickTransition,
+                    isMenuOpen
+                      ? "translate-y-0 rotate-45"
+                      : "-translate-y-1 rotate-0 group-hover:-translate-y-[5px] group-hover:w-5",
                   ].join(" ")}
-                  aria-hidden={!isMenuOpen}
-                >
-                  <div className="px-3 py-3">
-                    {session?.user ? (
-                      <div className="px-2 pb-2">
-                          <div className="flex items-center gap-1">
-                            <div className="text-sm font-semibold text-white/95 flex items-center gap-1">
-                              <span className="text-[0.95rem]">{copy[locale].greeting}{displayName ? ',' : ''}</span>
-                              <span className="truncate">{displayName}</span>
-                            </div>
-                            <Link href={accountHref} className="animated-icon h-7 w-7 text-white/95 bg-white/6 rounded-md inline-grid place-items-center">
-                              <UserCircle size={16} />
-                            </Link>
-                          </div>
-                      </div>
-                    ) : null}
-                    <div className="grid gap-1">
-                      {(extraPopoverItems.length > 0 ? extraPopoverItems : primaryNav).map((item) => {
-                        const Icon = (item as any).icon as any;
-                        return (
-                          <Link
-                            key={item.href}
-                            href={toLocalePath(item.href, locale)}
-                            onClick={() => setIsMenuOpen(false)}
-                            className="menu-item magnetic flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/5"
-                          >
-                            {Icon ? <Icon size={16} className="text-white/90" /> : null}
-                            <span className="truncate">{item.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                />
+                <span
+                  className={[
+                    stickTransition,
+                    isMenuOpen
+                      ? "translate-y-0 -rotate-45"
+                      : "translate-y-1 rotate-0 group-hover:translate-y-[5px] group-hover:w-5",
+                  ].join(" ")}
+                />
+              </button>
             </div>
             </div>
           </div>
         </div>
-      
-      
-
       </header>
 
       <div
@@ -2795,7 +2593,83 @@ function slugToName(slug: string): string {
         </div>
       </div>
 
-      {/* Desktop full-page menu removed — compact dropdown used instead */}
+      <div
+        className={[
+          "fixed inset-0 z-40 hidden origin-top transform-gpu overflow-hidden bg-[linear-gradient(138deg,#101114_0%,#17181d_34%,#23201f_68%,#2b2523_100%)] text-white shadow-[0_30px_80px_rgba(12,12,14,0.38)] lg:block",
+          menuTransition,
+          isMenuOpen
+            ? "pointer-events-auto translate-y-0"
+            : "pointer-events-none -translate-y-[104%]",
+        ].join(" ")}
+        aria-hidden={!isMenuOpen}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(248,220,196,0.18),transparent_28%),radial-gradient(circle_at_78%_24%,rgba(205,218,245,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0))]" />
+        <div className="hero-grain pointer-events-none absolute inset-0 opacity-[0.16]" />
+        <div className="pointer-events-none absolute -left-14 top-[18%] h-60 w-60 rounded-full bg-[#f6d2b5]/18 blur-3xl" />
+        <div className="pointer-events-none absolute right-[-6%] top-[10%] h-72 w-72 rounded-full bg-[#d7dff3]/14 blur-3xl" />
+        <div
+          className={[
+            "mx-auto flex h-full max-w-[1540px] flex-col px-6 pt-20 pb-10 md:px-10 md:pt-24",
+            menuTransition,
+            isMenuOpen ? "translate-y-0" : "-translate-y-2",
+          ].join(" ")}
+        >
+          <div className="flex flex-1">
+            <nav className="hidden w-full flex-col self-start lg:flex">
+              {desktopDrawerMenuItems.map((item, index) => (
+                <Link
+                  key={item.href}
+                  href={toLocalePath(item.href, locale)}
+                  onClick={() => setIsMenuOpen(false)}
+                  style={{ transitionDelay: isMenuOpen ? `${110 + index * 50}ms` : "0ms" }}
+                  className={[
+                    "group flex w-full items-center gap-4 border-b border-white/10 py-3 text-[2.15rem] leading-[1.02] font-[family-name:var(--font-playfair)] font-medium tracking-[-0.04em] text-white/92 sm:text-[2.55rem] md:py-3.5 md:text-[3.3rem]",
+                    menuTransition,
+                    isMenuOpen
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-4 opacity-0",
+                  ].join(" ")}
+                >
+                  <span>{item.label}</span>
+                  <span className="relative h-px min-w-0 flex-1 overflow-hidden bg-white/18">
+                    <span className="absolute inset-y-0 left-0 w-full origin-left scale-x-0 bg-white/70 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                  </span>
+                  <ArrowRight
+                    size={28}
+                    weight="light"
+                    className="shrink-0 translate-x-[-6px] text-white/52 opacity-0 transition-all duration-300 ease-out group-hover:translate-x-0 group-hover:opacity-100"
+                  />
+                </Link>
+              ))}
+
+              <Link
+                href={accountHref}
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  transitionDelay: isMenuOpen
+                    ? `${110 + (primaryMenuItems.length + secondaryMenuItems.length) * 50}ms`
+                    : "0ms",
+                }}
+                className={[
+                  "group flex w-full items-center gap-4 border-b border-white/10 py-3 text-[2.15rem] leading-[1.02] font-[family-name:var(--font-playfair)] font-semibold tracking-[-0.04em] text-white sm:text-[2.55rem] md:py-3.5 md:text-[3.3rem]",
+                  menuTransition,
+                  isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                ].join(" ")}
+              >
+                <span>{accountLabel}</span>
+                <span className="relative h-px min-w-0 flex-1 overflow-hidden bg-white/18">
+                  <span className="absolute inset-y-0 left-0 w-full origin-left scale-x-0 bg-white/85 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                </span>
+                <ArrowRight
+                  size={28}
+                  weight="light"
+                  className="shrink-0 translate-x-[-6px] text-white/58 opacity-0 transition-all duration-300 ease-out group-hover:translate-x-0 group-hover:opacity-100"
+                />
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </div>
 
     </>
   );
