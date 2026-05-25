@@ -90,6 +90,24 @@ function slugToName(slug: string): string {
     .join(" ");
 }
 
+function HoverMorphIcon({ icon: Icon }: { icon: any }) {
+  return (
+    <span className="relative grid h-5 w-5 shrink-0 place-items-center motion-safe:group-hover:animate-header-icon-bounce" aria-hidden="true">
+      <Icon
+        size={16}
+        weight="regular"
+        className="absolute inset-0 m-auto text-white/90 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-90 group-hover:opacity-0"
+      />
+      <Icon
+        size={16}
+        weight="fill"
+        className="absolute inset-0 m-auto scale-75 text-white opacity-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-100 group-hover:opacity-100"
+      />
+      <span className="absolute inset-0 rounded-full bg-white/10 opacity-0 blur-[1px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:opacity-100" />
+    </span>
+  );
+}
+
 export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
   const siteSettings = useSiteSettings();
   const router = useRouter();
@@ -569,6 +587,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   useEffect(() => {
     const panel = menuPanelRef.current;
     if (!panel) return;
+    const activePanel = panel;
 
     let raf = 0;
 
@@ -576,7 +595,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       const pe = e as PointerEvent;
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const items = Array.from(panel.querySelectorAll<HTMLElement>(".magnetic"));
+        const items = Array.from(activePanel.querySelectorAll<HTMLElement>(".magnetic"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
@@ -598,7 +617,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     }
 
     function onLeave() {
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(".magnetic"));
+      const items = Array.from(activePanel.querySelectorAll<HTMLElement>(".magnetic"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
@@ -606,12 +625,12 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       }
     }
 
-    panel.addEventListener("pointermove", onPointerMove as EventListener);
-    panel.addEventListener("pointerleave", onLeave as EventListener);
+    activePanel.addEventListener("pointermove", onPointerMove as EventListener);
+    activePanel.addEventListener("pointerleave", onLeave as EventListener);
 
     return () => {
-      panel.removeEventListener("pointermove", onPointerMove as EventListener);
-      panel.removeEventListener("pointerleave", onLeave as EventListener);
+      activePanel.removeEventListener("pointermove", onPointerMove as EventListener);
+      activePanel.removeEventListener("pointerleave", onLeave as EventListener);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -2013,7 +2032,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   <div className="px-3 py-3">
                     {session?.user ? (
                       <div className="px-2 pb-2">
-                        <div className="text-sm font-semibold text-white/95">{`Hello, ${displayName || ""}`}</div>
+                        <div className="text-sm font-semibold text-white/95">{`${t.header.hello}, ${displayName || ""}`}</div>
                       </div>
                     ) : null}
                     <div className="grid gap-1">
@@ -2024,9 +2043,9 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                             key={item.href}
                             href={toLocalePath(item.href, locale)}
                             onClick={() => setIsMenuOpen(false)}
-                            className="menu-item magnetic flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/5"
+                            className="menu-item magnetic group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/5"
                           >
-                            {Icon ? <Icon size={16} className="text-white/90" /> : null}
+                            {Icon ? <HoverMorphIcon icon={Icon} /> : null}
                             <span className="truncate">{item.label}</span>
                           </Link>
                         );
