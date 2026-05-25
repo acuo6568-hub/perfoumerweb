@@ -1,88 +1,39 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { CSSProperties } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Buildings,
-  CaretDown,
-  Coins,
-  Gift,
-  GridFour,
-  HeartStraight,
-  House,
-  Info,
-  InstagramLogo,
-  MapPin,
-  MagnifyingGlass,
-  NewspaperClipping,
-  Phone,
-  Scales,
-  ShoppingBag,
-  Sparkle,
-  UserCircle,
-  X,
-} from "@phosphor-icons/react";
-import type { Session } from "@supabase/supabase-js";
-import { useCurrency } from "@/components/currency/CurrencyProvider";
-import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
-import {
-  getDictionary,
-  locales,
-  stripLocalePrefix,
-  toLocalePath,
-  type Locale,
-} from "@/lib/i18n";
-import {
-  CURRENCY_META,
-  SUPPORTED_CURRENCIES,
-  formatCurrencyFromAzn,
-  getCurrencyShortLabel,
-  type SupportedCurrency,
-} from "@/lib/currency";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { CartItemRow } from "@/types/cart";
-const BRAND_LETTERS = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
+      <div
+        ref={menuPanelRef}
+        className={
+          isMenuOpen
+            ? "absolute right-0 mt-3 w-72 rounded-3xl bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] border border-white/6 text-white shadow-[0_18px_50px_rgba(2,6,23,0.5)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right lg:block"
+            : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] border border-white/6 text-white shadow-[0_18px_50px_rgba(2,6,23,0.25)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right lg:block"
+        }
+        onMouseLeave={() => setIsMenuOpen(false)}
+        onMouseEnter={() => setIsMenuOpen(true)}
+        aria-hidden={!isMenuOpen}
+      >
+        <div className="px-4 pt-4 pb-3">
+          <div className="text-sm font-semibold text-white/95 mb-2">{t.header.menuTag ?? 'Menu'}</div>
+          <div className="grid gap-2">
+            {desktopDrawerMenuItems.map((item) => (
+              <Link
+                key={item.href}
+                href={toLocalePath(item.href, locale)}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white hover:bg-white/5"
+              >
+                <span className="truncate">{item.label}</span>
+              </Link>
+            ))}
 
-function parsePrice(value: number | string): number {
-  const parsed = typeof value === "number" ? value : parseFloat(String(value));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function slugToName(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
-  const siteSettings = useSiteSettings();
-  const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
-  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchTab, setSearchTab] = useState<HeaderSearchTab>("all");
-  const [searchResults, setSearchResults] = useState<HeaderSearchResult[]>([]);
-  const [searchBrandResults, setSearchBrandResults] = useState<HeaderSearchBrandResult[]>([]);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [brokenSearchImages, setBrokenSearchImages] = useState<Record<string, true>>({});
-  const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
-  const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
-  const [isMobileCurrencyMenuOpen, setIsMobileCurrencyMenuOpen] = useState(false);
-  const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
-  const [isBrandsMenuOpen, setIsBrandsMenuOpen] = useState(false);
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
-  const morePanelRef = useRef<HTMLDivElement | null>(null);
-  const headerRef = useRef<HTMLDivElement | null>(null);
+            <div className="mt-2 border-t border-white/6 pt-2">
+              <Link href={accountHref} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white hover:bg-white/5">
+                <UserCircle size={16} className="text-white/90" />
+                <span>{accountLabel}</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
   const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
   const localeMenuRef = useRef<HTMLDivElement | null>(null);
   const [isLocalePending, startLocaleTransition] = useTransition();
