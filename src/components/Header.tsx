@@ -129,6 +129,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const currencyMenuRef = useRef<HTMLDivElement | null>(null);
   const brandsMenuRef = useRef<HTMLDivElement | null>(null);
   const brandsMenuPanelRef = useRef<HTMLDivElement | null>(null);
+  const menuCloseTimerRef = useRef<number | null>(null);
   // Per-letter magnetic hover: toggles 'brand-active' class on nearest letter for a snappy iPad-like feel
   useEffect(() => {
     const panel = brandsMenuPanelRef.current;
@@ -1329,6 +1330,31 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     setIsMenuOpen((prev) => !prev);
   }, []);
 
+  const openMenuDrawer = useCallback(() => {
+    if (menuCloseTimerRef.current) {
+      window.clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
+    setIsMenuOpen(true);
+  }, []);
+
+  const closeMenuDrawer = useCallback((delay = 0) => {
+    if (menuCloseTimerRef.current) {
+      window.clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
+
+    if (delay > 0) {
+      menuCloseTimerRef.current = window.setTimeout(() => {
+        setIsMenuOpen(false);
+        menuCloseTimerRef.current = null;
+      }, delay);
+      return;
+    }
+
+    setIsMenuOpen(false);
+  }, []);
+
   const searchTabs = useMemo(
     () => ["all", "women", "men", "unisex"] as HeaderSearchTab[],
     [],
@@ -1940,8 +1966,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
               <div
                 className="relative"
-                onMouseEnter={() => setIsMenuOpen(true)}
-                onMouseLeave={() => setIsMenuOpen(false)}
+                onMouseEnter={openMenuDrawer}
+                onMouseLeave={() => closeMenuDrawer(180)}
               >
                 <button
                   type="button"
@@ -1976,6 +2002,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 {/* Desktop compact popover anchored to this button */}
                 <div
                   ref={menuPanelRef}
+                  onMouseEnter={openMenuDrawer}
+                  onMouseLeave={() => closeMenuDrawer(180)}
                   className={[
                     "absolute right-0 top-full z-[80] mt-3 hidden w-72 rounded-3xl bg-gradient-to-br from-[#0b0b0b]/95 to-[#000]/100 border border-white/6 text-white shadow-[0_18px_60px_rgba(2,6,23,0.6)] transition-all duration-220 lg:block origin-top-right",
                     isMenuOpen ? "pointer-events-auto opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-1",
