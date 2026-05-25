@@ -1706,8 +1706,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   ref={morePanelRef}
                   className={
                     isMoreOpen
-                      ? "absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.12)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right"
-                      : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl bg-white/95 backdrop-blur-sm border border-zinc-100 shadow-[0_18px_50px_rgba(10,10,12,0.04)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right"
+                      ? "absolute right-0 mt-3 w-72 rounded-3xl border border-white/6 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] shadow-[0_18px_50px_rgba(0,0,0,0.42)] z-50 transform opacity-100 translate-y-0 scale-100 transition-all duration-220 ease-out origin-top-right"
+                      : "pointer-events-none absolute right-0 mt-3 w-72 rounded-3xl border border-white/6 bg-[linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] shadow-[0_18px_50px_rgba(0,0,0,0.22)] z-50 transform opacity-0 -translate-y-1 scale-95 transition-all duration-180 ease-in origin-top-right"
                   }
                 >
                   <div className="px-4 py-4">
@@ -1719,9 +1719,9 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                             key={s.href}
                             href={toLocalePath(s.href, locale)}
                             onClick={() => setIsMoreOpen(false)}
-                            className="more-item flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50 transform-gpu transition-transform duration-200"
+                            className="more-item flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/92 transition-colors duration-200 hover:bg-white/6"
                           >
-                            {Icon ? <Icon size={18} className="text-zinc-500" /> : null}
+                            {Icon ? <Icon size={18} className="text-white/72" /> : null}
                             <span className="truncate">{s.label}</span>
                           </Link>
                         );
