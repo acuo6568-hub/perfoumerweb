@@ -1647,7 +1647,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                               {
                                 (() => {
                                   const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-1 transition-transform";
-                                  return <CaretDown size={12} className={`magnetic ${caretClass}`} />;
+                                  return <CaretDown size={12} className={caretClass} />;
                                 })()
                               }
                       </button>
@@ -1680,7 +1680,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 >
                   <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
                   <span className="md:ml-1">
-                    <CaretDown size={14} className={`magnetic ${isMoreOpen ? "transform rotate-180" : "transform rotate-0"}`} />
+                    <CaretDown size={14} className={isMoreOpen ? "transform rotate-180" : "transform rotate-0"} />
                   </span>
                 </button>
 
