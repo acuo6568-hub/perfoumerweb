@@ -27,6 +27,7 @@ import {
   UserCircle,
   X,
 } from "@phosphor-icons/react";
+import AnimatedIconButton from "@/components/AnimatedIconButton";
 import type { Session } from "@supabase/supabase-js";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
@@ -1625,14 +1626,16 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 const localizedHref = toLocalePath(item.href, locale);
 
                 return (
-                  <Link
+                  <AnimatedIconButton
                     key={item.href}
                     href={localizedHref}
-                    className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
+                    ariaLabel={item.label}
+                    className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"
+                    onStart={() => setIsMenuOpen(false)}
                   >
                     {Icon ? <Icon size={16} /> : null}
                     <span className="hidden md:inline">{item.label}</span>
-                  </Link>
+                  </AnimatedIconButton>
                 );
               })}
 
@@ -1992,20 +1995,23 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   <div className="px-3 py-3">
                     {session?.user ? (
                       <div className="px-2 pb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-semibold text-white/95 flex items-center gap-2">
-                            <span className="text-[0.95rem]">{copy[locale].greeting}{displayName ? ',' : ''}</span>
-                            <span className="truncate max-w-[10rem]">{displayName}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-semibold text-white/95 flex items-center gap-2">
+                              <span className="text-[0.95rem]">{copy[locale].greeting}{displayName ? ',' : ''}</span>
+                              <span className="truncate max-w-[10rem]">{displayName}</span>
+                            </div>
+                            <AnimatedIconButton
+                              ariaLabel="Wave"
+                              className={"h-7 w-7 text-sm text-white/95 bg-white/6 rounded-md"}
+                              onStart={() => { /* no-op: just play animation */ }}
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M2 12c2-4 6-6 10-6s8 3 10 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M7 12c0 3 2 5 5 5s5-2 5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+                              </svg>
+                            </AnimatedIconButton>
                           </div>
-                          <button
-                            type="button"
-                            aria-label="Wave"
-                            onClick={handleWaveClick}
-                            className={"inline-grid h-7 w-7 place-items-center rounded-md bg-white/6 text-white/95 transition-transform duration-300 " + (isWaving ? "wave-animate" : "hover:-translate-y-0.5")}
-                          >
-                            <span aria-hidden="true" className="text-lg">👋</span>
-                          </button>
-                        </div>
                       </div>
                     ) : null}
                     <div className="grid gap-1">
