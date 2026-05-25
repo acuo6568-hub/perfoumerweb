@@ -1295,13 +1295,26 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     [locale],
   );
 
+  const closeCompetingUi = useCallback(() => {
+    setIsMenuOpen(false);
+    setIsMoreOpen(false);
+    setIsSearchDrawerOpen(false);
+    setIsCartDrawerOpen(false);
+    setIsLocaleMenuOpen(false);
+    setIsCurrencyMenuOpen(false);
+    setIsMobileLocaleMenuOpen(false);
+    setIsMobileCurrencyMenuOpen(false);
+    setOpenMobileCategory(null);
+  }, []);
+
   const openBrandsMenu = useCallback(() => {
     if (brandsMenuCloseTimerRef.current) {
       window.clearTimeout(brandsMenuCloseTimerRef.current);
       brandsMenuCloseTimerRef.current = null;
     }
+    closeCompetingUi();
     setIsBrandsMenuOpen(true);
-  }, []);
+  }, [closeCompetingUi]);
 
   const closeBrandsMenu = useCallback((delay = 0) => {
     if (brandsMenuCloseTimerRef.current) {
@@ -1760,7 +1773,10 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                         style={{
                           transitionDelay: isBrandsMenuOpen ? `${index * 10}ms` : `${(BRAND_LETTERS.length - index) * 8}ms`,
                         }}
-                        className="brand-letter group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74"
+                        className={[
+                          "brand-letter group relative inline-flex h-8 min-w-[0.88rem] items-center justify-center rounded-full px-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/74 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                          isBrandsMenuOpen ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0",
+                        ].join(" ")}
                       >
                         <span className="absolute inset-x-1.5 bottom-1 h-px origin-left scale-x-0 bg-white/80 transition-transform duration-200 group-hover:scale-x-100" />
                         {letter}
