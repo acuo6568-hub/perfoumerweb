@@ -128,6 +128,9 @@ const AZ_MODIFIERS = [
 const DEFAULT_AZ_TERMS = [
   "ətir",
   "parfum",
+  "perfumer",
+  "perfoumer",
+  "perfoumer.az",
   "orijinal ətir",
   "premium ətir",
   "lüks ətir",
@@ -147,6 +150,9 @@ const DEFAULT_AZ_TERMS = [
   "ətir online shop",
   "bakıda ətir",
   "azərbaycanda ətir",
+  "baku perfume shop",
+  "azerbaijan perfume shop",
+  "premium perfume shop",
   "ətir endirim",
   "ətir qiyməti",
   "parfum mağazası",
@@ -157,6 +163,9 @@ const DEFAULT_AZ_TERMS = [
   "niche perfume",
   "luxury perfume",
   "original perfume",
+  "designer fragrance",
+  "niche fragrance",
+  "luxury fragrance",
   "best perfume for men",
   "best perfume for women",
   "unisex perfume",
@@ -173,6 +182,16 @@ const DEFAULT_AZ_TERMS = [
   "gift perfume",
   "baku perfume store",
   "azerbaijan perfume",
+  "perfume comparison",
+  "scent finder",
+  "find my scent",
+  "perfume quiz",
+  "qoxunu tap",
+  "ətir testi",
+  "ətir müqayisəsi",
+  "ətir seçimi",
+  "ətir tövsiyəsi",
+  "ətir hədiyyə",
   "ətir baku",
   "ətir az",
   "kişi parfum",
@@ -187,7 +206,7 @@ const DEFAULT_AZ_TERMS = [
   "tester parfum",
 ];
 
-export const DEFAULT_SITE_META_KEYWORD_COUNT = 180;
+export const DEFAULT_SITE_META_KEYWORD_COUNT = 1000;
 
 export const buildAzeriPageKeywords = (
   pageTerms: string[],

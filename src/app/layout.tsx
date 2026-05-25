@@ -22,6 +22,7 @@ import {
   SITE_URL,
   absoluteUrl,
   absoluteUrlForLocale,
+  buildAzeriPageKeywords,
   buildStoreGeoCoordinates,
   buildStoreOpeningHoursSpecification,
   buildStorePostalAddress,
@@ -53,7 +54,37 @@ export async function generateMetadata(): Promise<Metadata> {
   const defaultTitle = settings.siteTitle || buildDefaultSiteTitle(settings.siteName);
   const defaultDescription =
     settings.siteDescription || buildDefaultSiteDescription(settings.siteName);
-  const keywordList = resolveSiteMetaKeywords(settings.metaKeywords, settings.siteName);
+  const keywordList = Array.from(
+    new Set([
+      ...resolveSiteMetaKeywords(settings.metaKeywords, settings.siteName),
+      ...buildAzeriPageKeywords(
+        [
+          "perfoumer",
+          "perfoumer.az",
+          "ətir mağazası",
+          "premium ətir",
+          "orijinal ətir",
+          "lüks ətir",
+          "niş ətir",
+          "ətir kataloqu",
+          "ətir müqayisəsi",
+          "ətir testi",
+          "qoxunu tap",
+          "ətir tövsiyəsi",
+          "ətir seçimi",
+          "ətir sifarişi",
+          "ətir qiyməti",
+          "ətir endirim",
+          "baku perfume shop",
+          "azerbaijan perfume shop",
+          "best perfume for women",
+          "best perfume for men",
+        ],
+        1000,
+        settings.siteName,
+      ),
+    ]),
+  );
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -182,6 +213,26 @@ export default async function RootLayout({
       },
       {
         "@type": "WebPage",
+        name: "Təkliflər",
+        url: absoluteUrlForLocale("/offers", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Müqayisə",
+        url: absoluteUrlForLocale("/compare", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Qoxunu Tap",
+        url: absoluteUrlForLocale("/qoxunu", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Blog",
+        url: absoluteUrlForLocale("/blog", locale),
+      },
+      {
+        "@type": "WebPage",
         name: "Haqqımızda",
         url: absoluteUrlForLocale("/haqqimizda", locale),
       },
@@ -192,8 +243,28 @@ export default async function RootLayout({
       },
       {
         "@type": "WebPage",
-        name: "Blog",
-        url: absoluteUrlForLocale("/blog", locale),
+        name: "Seçilmişlər",
+        url: absoluteUrlForLocale("/wishlist", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Səbət",
+        url: absoluteUrlForLocale("/cart", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Məxfilik siyasəti",
+        url: absoluteUrlForLocale("/privacy-policy", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Qaytarılma siyasəti",
+        url: absoluteUrlForLocale("/refund-policy", locale),
+      },
+      {
+        "@type": "WebPage",
+        name: "Şərtlər və qaydalar",
+        url: absoluteUrlForLocale("/terms-and-conditions", locale),
       },
     ],
     potentialAction: {
@@ -229,13 +300,35 @@ export default async function RootLayout({
   const navigationStructuredData = {
     "@context": "https://schema.org",
     "@type": "SiteNavigationElement",
-    name: ["Məhsullar", "Brendlər", "Haqqımızda", "Əlaqə və ünvan", "Blog"],
+    name: [
+      "Məhsullar",
+      "Brendlər",
+      "Təkliflər",
+      "Müqayisə",
+      "Qoxunu Tap",
+      "Blog",
+      "Haqqımızda",
+      "Əlaqə və ünvan",
+      "Seçilmişlər",
+      "Səbət",
+      "Məxfilik siyasəti",
+      "Qaytarılma siyasəti",
+      "Şərtlər və qaydalar",
+    ],
     url: [
       absoluteUrlForLocale("/catalog", locale),
       absoluteUrlForLocale("/brands", locale),
+      absoluteUrlForLocale("/offers", locale),
+      absoluteUrlForLocale("/compare", locale),
+      absoluteUrlForLocale("/qoxunu", locale),
+      absoluteUrlForLocale("/blog", locale),
       absoluteUrlForLocale("/haqqimizda", locale),
       absoluteUrlForLocale("/elaqe", locale),
-      absoluteUrlForLocale("/blog", locale),
+      absoluteUrlForLocale("/wishlist", locale),
+      absoluteUrlForLocale("/cart", locale),
+      absoluteUrlForLocale("/privacy-policy", locale),
+      absoluteUrlForLocale("/refund-policy", locale),
+      absoluteUrlForLocale("/terms-and-conditions", locale),
     ],
   };
 

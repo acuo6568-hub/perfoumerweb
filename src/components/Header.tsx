@@ -169,6 +169,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const brandsMenuRef = useRef<HTMLDivElement | null>(null);
   const brandsMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const menuCloseTimerRef = useRef<number | null>(null);
+  const currencyPanelCloseTimerRef = useRef<number | null>(null);
   // Per-letter magnetic hover: toggles 'brand-active' class on nearest letter for a snappy iPad-like feel
   useEffect(() => {
     const panel = brandsMenuPanelRef.current;
@@ -295,7 +296,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     en: {
       login: "Login",
       account: "My Account",
-      wishlist: "Избранное",
+      wishlist: "Wishlist",
       blog: "Blog",
       aboutPage: "About",
       navTitle: "Navigation",
@@ -478,13 +479,24 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     { href: toLocalePath("/qoxunu", locale), label: t.header.scentQuiz, icon: Sparkle },
   ];
 
+  const normalizeHref = (href: string) => {
+    try {
+      const { pathname: p } = stripLocalePrefix(href);
+      return p || href;
+    } catch {
+      return href;
+    }
+  };
+
   const existingHrefs = new Set([
-    ...primaryNav.map((n) => n.href),
-    ...secondaryNav.map((n) => n.href),
-    ...desktopMenuItems.map((n) => n.href),
+    ...primaryNav.map((n) => normalizeHref(n.href)),
+    ...secondaryNav.map((n) => normalizeHref(n.href)),
+    ...desktopMenuItems.map((n) => normalizeHref(n.href)),
   ]);
 
-  const extraPopoverItems = usefulCandidates.filter((c) => !existingHrefs.has(c.href));
+  const extraPopoverItems = usefulCandidates.filter((c) => !existingHrefs.has(normalizeHref(c.href)));
+  // Show only items that are not already present in the main navbar (desktopMenuItems)
+  const popoverList = extraPopoverItems;
   const mobileCategories = [
     {
       id: "shop",
@@ -616,7 +628,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       const pe = e as PointerEvent;
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const items = Array.from(activePanel.querySelectorAll<HTMLElement>(".magnetic"));
+      const items = Array.from(activePanel.querySelectorAll<HTMLElement>(".menu-item"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
@@ -624,25 +636,27 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           const dx = pe.clientX - cx;
           const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
-          const max = 120;
+          const max = 140;
           const strength = Math.max(0, 1 - dist / max);
           const nx = dist > 0 ? dx / dist : 0;
           const ny = dist > 0 ? dy / dist : 0;
-          const tx = nx * strength * 6;
-          const ty = ny * strength * 6;
-          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          const tx = nx * strength * 3; // softer translation
+          const ty = ny * strength * 3;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.01})`;
           it.style.willChange = "transform";
-          it.style.transition = "transform 100ms ease-out";
+          const _z = Math.round(strength * 100);
+          it.style.zIndex = _z > 0 ? String(50 + _z) : "";
         }
       });
     }
 
     function onLeave() {
-      const items = Array.from(activePanel.querySelectorAll<HTMLElement>(".magnetic"));
+      const items = Array.from(activePanel.querySelectorAll<HTMLElement>(".menu-item"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
-        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
+        it.style.zIndex = "";
+        it.style.transition = "transform 420ms cubic-bezier(0.22,0.9,0.36,1)";
       }
     }
 
@@ -838,15 +852,14 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           const dx = pe.clientX - cx;
           const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
-          const max = 160;
+          const max = 180;
           const strength = Math.max(0, 1 - dist / max);
           const nx = dist > 0 ? dx / dist : 0;
           const ny = dist > 0 ? dy / dist : 0;
-          const tx = nx * strength * 8;
-          const ty = ny * strength * 8;
-          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          const tx = nx * strength * 4;
+          const ty = ny * strength * 4;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.01})`;
           it.style.willChange = "transform";
-          it.style.transition = "transform 120ms ease-out";
         }
       });
     }
@@ -858,7 +871,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
-        it.style.transition = "transform 300ms cubic-bezier(0.22,1,0.36,1)";
+        it.style.zIndex = "";
+        it.style.transition = "transform 420ms cubic-bezier(0.22,0.9,0.36,1)";
       }
     }
 
@@ -884,7 +898,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       raf = requestAnimationFrame(() => {
         const h = header;
         if (!h) return;
-        const items = Array.from(h.querySelectorAll<HTMLElement>(".magnetic"));
+        const items = Array.from(h.querySelectorAll<HTMLElement>(".menu-item, .more-item, .currency-item, .locale-item"));
         for (const it of items) {
           const r = it.getBoundingClientRect();
           const cx = r.left + r.width / 2;
@@ -892,15 +906,14 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           const dx = pe.clientX - cx;
           const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
-          const max = 120;
+          const max = 140;
           const strength = Math.max(0, 1 - dist / max);
           const nx = dist > 0 ? dx / dist : 0;
           const ny = dist > 0 ? dy / dist : 0;
-          const tx = nx * strength * 6;
-          const ty = ny * strength * 6;
-          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          const tx = nx * strength * 3;
+          const ty = ny * strength * 3;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.01})`;
           it.style.willChange = "transform";
-          it.style.transition = "transform 100ms ease-out";
         }
       });
     }
@@ -908,11 +921,12 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
     function onLeave() {
       const h = header;
       if (!h) return;
-      const items = Array.from(h.querySelectorAll<HTMLElement>(".magnetic"));
+      const items = Array.from(h.querySelectorAll<HTMLElement>(".menu-item, .more-item, .currency-item, .locale-item"));
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
-        it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
+        it.style.zIndex = "";
+        it.style.transition = "transform 420ms cubic-bezier(0.22,0.9,0.36,1)";
       }
     }
 
@@ -968,6 +982,8 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           const ty = ny * strength * 6;
           it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
           it.style.willChange = "transform";
+          const _z = Math.round(strength * 100);
+          it.style.zIndex = _z > 0 ? String(50 + _z) : "";
           it.style.transition = "transform 90ms ease-out";
         }
       });
@@ -980,6 +996,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
+        it.style.zIndex = "";
         it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
       }
     }
@@ -1014,15 +1031,17 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           const dx = pe.clientX - cx;
           const dy = pe.clientY - cy;
           const dist = Math.hypot(dx, dy);
-          const max = 160;
+          const max = 120;
           const strength = Math.max(0, 1 - dist / max);
           const nx = dist > 0 ? dx / dist : 0;
           const ny = dist > 0 ? dy / dist : 0;
-          const tx = nx * strength * 10;
-          const ty = ny * strength * 6;
-          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.02})`;
+          const tx = nx * strength * 12;
+          const ty = ny * strength * 8;
+          it.style.transform = `translate(${tx}px, ${ty}px) scale(${1 + strength * 0.035})`;
           it.style.willChange = "transform";
-          it.style.transition = "transform 90ms ease-out";
+          const _z = Math.round(strength * 100);
+          it.style.zIndex = _z > 0 ? String(50 + _z) : "";
+          it.style.transition = "transform 140ms cubic-bezier(0.22,1,0.36,1)";
         }
       });
     }
@@ -1034,6 +1053,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       for (const it of items) {
         it.style.transform = "";
         it.style.willChange = "auto";
+        it.style.zIndex = "";
         it.style.transition = "transform 220ms cubic-bezier(0.22,1,0.36,1)";
       }
     }
@@ -1380,6 +1400,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const toggleMenuDrawer = useCallback(() => {
     setIsSearchDrawerOpen(false);
     setIsCartDrawerOpen(false);
+    setIsCurrencyMenuOpen(false);
     setIsMenuOpen((prev) => !prev);
   }, []);
 
@@ -1388,6 +1409,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       window.clearTimeout(menuCloseTimerRef.current);
       menuCloseTimerRef.current = null;
     }
+    setIsCurrencyMenuOpen(false);
     setIsMenuOpen(true);
   }, []);
 
@@ -1634,7 +1656,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
             />
             
 
-            <div ref={headerRef} className="mx-auto flex w-full max-w-[1540px] items-center gap-3 px-5 py-3 xl:gap-4 xl:px-8">
+            <div ref={headerRef} className="mx-auto grid w-full max-w-[1540px] grid-cols-[auto_1fr_auto] items-center gap-3 px-5 py-3 xl:gap-4 xl:px-8">
 
             <Link
               href={toLocalePath("/", locale)}
@@ -1659,10 +1681,11 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               </span>
             </Link>
 
-            <nav className="header-load-in relative z-10 ml-2 hidden flex-1 items-center justify-center gap-1 lg:flex">
+            <nav className="header-load-in relative z-10 justify-self-center hidden w-full max-w-[780px] items-center justify-center gap-1 lg:flex">
               {primaryNav.map((item) => {
                 if (item.href === "/brands") {
                   const isActive = isItemActive(item.href);
+                  const BrandIcon = item.icon as any;
 
                   return (
                     <div key={item.href} ref={brandsMenuRef} className="relative">
@@ -1676,7 +1699,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                           isBrandsMenuOpen || isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
                         ].join(" ")}
                       >
-                        <Buildings size={16} />
+                        <BrandIcon size={16} weight={isBrandsMenuOpen || isActive ? "fill" : "regular"} />
                         <span className="hidden md:inline">{item.label}</span>
                         <span className="ml-0 inline-flex translate-y-px">
                           <ChevronMorphIcon open={isBrandsMenuOpen} size={12} />
@@ -1688,14 +1711,18 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
 
                 const Icon = (item as any).icon as any;
                 const localizedHref = toLocalePath(item.href, locale);
+                const isActive = isItemActive(item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={localizedHref}
-                    className={"inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 hover:text-zinc-900"}
+                    className={[
+                      "inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm transition-colors duration-200",
+                      isActive ? "text-zinc-900" : "text-zinc-700 hover:text-zinc-900",
+                    ].join(" ")}
                   >
-                    {Icon ? <Icon size={16} /> : null}
+                    {Icon ? <Icon size={16} weight={isActive ? "fill" : "regular"} /> : null}
                     <span className="hidden md:inline">{item.label}</span>
                   </Link>
                 );
@@ -1705,9 +1732,15 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               <div ref={moreMenuRef} className="relative">
                 <button
                   type="button"
-                  onClick={() => setIsMoreOpen((c) => !c)}
+                  onClick={() => {
+                    setIsCurrencyMenuOpen(false);
+                    setIsMoreOpen((c) => !c);
+                  }}
                   aria-expanded={isMoreOpen}
-                  className="inline-flex items-center gap-0.5 rounded-full px-3 py-1 text-sm text-zinc-700 hover:text-zinc-900"
+                  className={[
+                    "inline-flex items-center gap-0.5 rounded-full px-3 py-1 text-sm transition-colors duration-200",
+                    isMoreOpen ? "text-zinc-900" : "text-zinc-700 hover:text-zinc-900",
+                  ].join(" ")}
                 >
                   <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
                   <span className="md:ml-0 inline-flex translate-y-px">
@@ -1788,7 +1821,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               </div>
             </div>
 
-            <div className="header-load-in header-load-in--controls relative z-10 ml-auto flex items-center gap-2 sm:gap-3 xl:gap-3.5">
+            <div className="header-load-in header-load-in--controls relative z-10 flex items-center gap-2 sm:gap-3 xl:gap-3.5 justify-self-end">
               <div className="hidden items-center rounded-full border border-zinc-300/55 bg-zinc-100/70 p-1 lg:flex">
                 <div ref={localeMenuRef} className="relative">
                   <button
@@ -1796,27 +1829,63 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                     aria-haspopup="listbox"
                     aria-expanded={isLocaleMenuOpen}
                     onClick={() => setIsLocaleMenuOpen((c) => !c)}
-                    className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 magnetic"
+                    className={[
+                      "locale-switcher-button group relative inline-flex h-10 min-w-[5.25rem] items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-zinc-900 shadow-[0_10px_26px_rgba(0,0,0,0.08)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-zinc-300 hover:shadow-[0_16px_36px_rgba(0,0,0,0.12)]",
+                      isLocaleMenuOpen ? "locale-switcher-button--open border-zinc-300 shadow-[0_18px_42px_rgba(0,0,0,0.10)]" : "",
+                    ].join(" ")}
                   >
-                    <Image
-                      src={localeFlagSrc[pendingLocale ?? locale]}
-                      alt={t.languages[pendingLocale ?? locale]}
-                      width={20}
-                      height={20}
-                      className="h-5 w-5 rounded-full object-cover"
-                    />
-                    <span className="hidden md:inline text-[0.72rem] font-medium">{(pendingLocale ?? locale).toUpperCase()}</span>
-                    <CaretDown size={12} className={isLocaleMenuOpen ? "transform rotate-180 ml-1" : "transform rotate-0 ml-1"} />
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+                      <span className="absolute -inset-x-8 top-[-55%] h-[210%] bg-[linear-gradient(115deg,transparent_30%,rgba(255,255,255,0.22)_44%,rgba(255,255,255,0.65)_50%,rgba(255,255,255,0.18)_56%,transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 locale-switcher-button-sheen" />
+                      <span className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.55),transparent_26%),radial-gradient(circle_at_82%_20%,rgba(255,255,255,0.18),transparent_24%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.12),transparent_34%)] opacity-70" />
+                    </span>
+                    <span className="relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-1 ring-zinc-200 transition-all duration-500 group-hover:scale-105 group-hover:ring-zinc-300 locale-switcher-orb">
+                      <Image
+                        src={localeFlagSrc[pendingLocale ?? locale]}
+                        alt={t.languages[pendingLocale ?? locale]}
+                        width={20}
+                        height={20}
+                        className="relative z-[1] h-5 w-5 rounded-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                      />
+                    </span>
+                    <span className="relative flex min-w-0 flex-col items-start overflow-hidden leading-none">
+                      <span className="block text-[0.54rem] font-semibold tracking-[0.30em] text-zinc-700 transition-all duration-500 group-hover:text-zinc-900 locale-switcher-code">
+                        {(pendingLocale ?? locale).toUpperCase()}
+                      </span>
+                    </span>
+                    <span className="relative ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                      <CaretDown
+                        size={12}
+                        className={[
+                          "absolute inset-0 m-auto text-zinc-700/70 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                          isLocaleMenuOpen ? "rotate-180 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100 group-hover:text-zinc-900",
+                        ].join(" ")}
+                      />
+                      <CaretDown
+                        size={12}
+                        className={[
+                          "absolute inset-0 m-auto text-zinc-900 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                          isLocaleMenuOpen ? "rotate-180 scale-100 opacity-100" : "rotate-0 scale-0 opacity-0",
+                        ].join(" ")}
+                      />
+                    </span>
                   </button>
 
                   <div
                     className={[
-                      "absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-44 overflow-hidden rounded-[1.1rem] bg-white/95 p-1.5 shadow-[0_24px_54px_rgba(20,20,24,0.12)] backdrop-blur-xl transition-all duration-200",
-                      isLocaleMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
+                      "locale-switcher-panel absolute right-0 top-[calc(100%+0.4rem)] z-[80] w-44 overflow-visible rounded-[1.05rem] border border-zinc-200 bg-white p-1.5 text-zinc-900 shadow-[0_20px_48px_rgba(0,0,0,0.10)] backdrop-blur-2xl transition-all duration-250",
+                      isLocaleMenuOpen ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-2 scale-[0.98] opacity-0",
                     ].join(" ")}
                     role="listbox"
                   >
-                    <div className="px-2 py-1">
+                    <div className="px-2 pb-1.5 pt-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[0.58rem] font-semibold tracking-[0.30em] text-zinc-500 uppercase">
+                          {copy[locale].languageTag}
+                        </p>
+                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-900 shadow-[0_0_14px_rgba(0,0,0,0.35)] locale-switcher-pulse" />
+                      </div>
+                    </div>
+                    <div className="space-y-0.5 pb-0.5">
                       {locales.map((it) => (
                         <button
                           key={it}
@@ -1824,12 +1893,29 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                           onClick={() => { setIsLocaleMenuOpen(false); void updateLocale(it); }}
                           disabled={isLocalePending}
                           className={[
-                            "locale-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-left transition-colors duration-150 transform-gpu",
-                            (pendingLocale ?? locale) === it ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-50",
+                            "locale-item locale-switcher-item group flex w-full items-center gap-2.5 rounded-[0.9rem] px-2.5 py-2 text-left transition-all duration-300 transform-gpu",
+                            (pendingLocale ?? locale) === it
+                              ? "bg-zinc-50 text-zinc-900 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05),0_8px_18px_rgba(0,0,0,0.06)]"
+                              : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900",
                           ].join(" ")}
                         >
-                          <Image src={localeFlagSrc[it]} alt={t.languages[it]} width={18} height={18} className="h-4 w-4 rounded-full" />
-                          <span className="truncate">{t.languages[it]}</span>
+                          <span className={[
+                            "relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[0.8rem] transition-all duration-300 group-hover:scale-[1.03]",
+                            (pendingLocale ?? locale) === it ? "bg-white ring-1 ring-zinc-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" : "bg-zinc-100 ring-1 ring-zinc-200 group-hover:ring-zinc-300",
+                          ].join(" ")}
+                          >
+                            <Image src={localeFlagSrc[it]} alt={t.languages[it]} width={18} height={18} className="h-5 w-5 rounded-full object-cover" />
+                            <span aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(255,255,255,0.2),transparent_40%)] opacity-80" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={[
+                              "block text-[0.58rem] font-semibold uppercase tracking-[0.24em] transition-colors duration-300",
+                              (pendingLocale ?? locale) === it ? "text-zinc-700" : "text-zinc-500",
+                            ].join(" ")}>
+                              {it.toUpperCase()}
+                            </span>
+                          </span>
+                          <span aria-hidden="true" className={(pendingLocale ?? locale) === it ? "h-2.5 w-2.5 rounded-full bg-zinc-900 shadow-[0_0_10px_rgba(0,0,0,0.18)]" : "h-2.5 w-2.5 rounded-full border border-zinc-300"} />
                         </button>
                       ))}
                     </div>
@@ -1837,96 +1923,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                 </div>
               </div>
 
-              <div ref={currencyMenuRef} className="relative z-[70] hidden lg:block">
-                <button
-                  type="button"
-                  onClick={() => setIsCurrencyMenuOpen((current) => !current)}
-                  aria-haspopup="listbox"
-                  aria-expanded={isCurrencyMenuOpen}
-                  className="group relative inline-flex h-11 items-center gap-2 rounded-full border border-zinc-300/35 bg-transparent px-3.5 text-[0.68rem] font-medium tracking-[0.2em] text-zinc-700 uppercase shadow-none transition-[transform,box-shadow,background-color,border-color,color] duration-300 hover:-translate-y-px hover:border-zinc-400/45 hover:bg-transparent active:translate-y-0 magnetic"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 rounded-full opacity-0"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-zinc-200/0 transition-all duration-300 group-hover:scale-[1.04] group-hover:ring-zinc-300/80 group-active:scale-100"
-                  />
-                  <Coins
-                    size={16}
-                    weight="duotone"
-                    className="relative z-[1] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-active:translate-y-0 group-active:scale-95"
-                  />
-                  <span className="relative z-[1]">{currentCurrencyLabel}</span>
-                  <CaretDown
-                    size={13}
-                    weight="bold"
-                    className={[
-                      "relative z-[1] transition-transform duration-200 group-hover:-translate-y-0.5",
-                      isCurrencyMenuOpen ? "rotate-180" : "rotate-0",
-                    ].join(" ")}
-                  />
-                </button>
-
-                <div
-                  ref={currencyMenuRef}
-                  className={[
-                    "absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-56 overflow-hidden rounded-2xl bg-white/95 p-2 shadow-[0_20px_50px_rgba(10,10,12,0.08)] backdrop-blur-sm transition-all duration-180",
-                    isCurrencyMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
-                  ].join(" ")}
-                  role="listbox"
-                >
-                  <div className="px-3 py-2">
-                    <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">
-                      {copy[locale].currencyTag}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    {SUPPORTED_CURRENCIES.map((currency) => {
-                      const active = selectedCurrency === currency;
-
-                      return (
-                        <button
-                          key={currency}
-                          type="button"
-                          onClick={() => {
-                            setSelectedCurrency(currency);
-                            setIsCurrencyMenuOpen(false);
-                          }}
-                          className={[
-                            "currency-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all duration-150 transform-gpu",
-                            active
-                              ? "bg-zinc-100/90 text-zinc-900"
-                              : "text-zinc-700 hover:bg-zinc-50",
-                          ].join(" ")}
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <span
-                              className={[
-                                "inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold transition-colors duration-200",
-                                active
-                                  ? "border-zinc-200 bg-white text-zinc-900"
-                                  : "border-zinc-200 bg-zinc-50 text-zinc-700",
-                              ].join(" ")}
-                            >
-                              {CURRENCY_META[currency].symbol}
-                            </span>
-                            <span>
-                              <span className="block text-sm font-medium">{getCurrencyShortLabel(currency)}</span>
-                              <span className={["block text-xs", active ? "text-zinc-500" : "text-zinc-500/90"].join(" ")}>
-                                {CURRENCY_META[currency].label}
-                              </span>
-                            </span>
-                          </span>
-                          <span aria-hidden="true" className={active ? "h-2.5 w-2.5 rounded-full bg-zinc-900" : "h-2.5 w-2.5 rounded-full border border-zinc-300"} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
+              
               <button
                 type="button"
                 onClick={isSearchDrawerOpen ? closeSearchDrawer : openSearchDrawer}
@@ -2009,6 +2006,106 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               </button>
 
               <div
+                ref={currencyMenuRef}
+                className="relative z-[70] hidden lg:block mr-2"
+                onMouseEnter={() => {
+                  if (typeof window !== "undefined") {
+                    if (menuCloseTimerRef.current) { window.clearTimeout(menuCloseTimerRef.current); menuCloseTimerRef.current = null; }
+                    if (currencyPanelCloseTimerRef.current) { window.clearTimeout(currencyPanelCloseTimerRef.current); currencyPanelCloseTimerRef.current = null; }
+                  }
+                  setIsMenuOpen(false);
+                  setIsCurrencyMenuOpen(true);
+                }}
+                onMouseLeave={() => {
+                  if (currencyPanelCloseTimerRef.current) { window.clearTimeout(currencyPanelCloseTimerRef.current); currencyPanelCloseTimerRef.current = null; }
+                  currencyPanelCloseTimerRef.current = window.setTimeout(() => {
+                    setIsCurrencyMenuOpen(false);
+                    currencyPanelCloseTimerRef.current = null;
+                  }, 120) as any;
+                }}
+              >
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={isCurrencyMenuOpen}
+                  className="group relative grid h-10 w-10 place-items-center rounded-full bg-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:-translate-y-px sm:h-11 sm:w-11"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setIsCurrencyMenuOpen((s) => !s);
+                  }}
+                >
+                  <span className="relative z-[1] block h-[18px] w-[18px] text-[0.95rem] font-semibold leading-none">
+                    {CURRENCY_META[selectedCurrency].symbol}
+                  </span>
+                </button>
+
+                <div
+                  className={[
+                    "absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-56 overflow-visible rounded-2xl bg-[#050505] p-2 shadow-[0_30px_80px_rgba(0,0,0,0.6)] backdrop-blur-sm transition-all duration-220",
+                    isCurrencyMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
+                  ].join(" ")}
+                  role="listbox"
+                  onMouseEnter={() => {
+                    if (currencyPanelCloseTimerRef.current) { window.clearTimeout(currencyPanelCloseTimerRef.current); currencyPanelCloseTimerRef.current = null; }
+                    setIsCurrencyMenuOpen(true);
+                  }}
+                  onMouseLeave={() => {
+                    if (currencyPanelCloseTimerRef.current) { window.clearTimeout(currencyPanelCloseTimerRef.current); }
+                    currencyPanelCloseTimerRef.current = window.setTimeout(() => {
+                      setIsCurrencyMenuOpen(false);
+                      currencyPanelCloseTimerRef.current = null;
+                    }, 120) as any;
+                  }}
+                >
+                  <div className="px-3 py-2">
+                    <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-white/80 uppercase">
+                      {copy[locale].currencyTag}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    {SUPPORTED_CURRENCIES.map((currency) => {
+                      const active = selectedCurrency === currency;
+
+                      return (
+                        <button
+                          key={currency}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCurrency(currency);
+                            setIsCurrencyMenuOpen(false);
+                          }}
+                          className={[
+                            "currency-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all duration-200 transform-gpu",
+                            active
+                              ? "bg-white/6 text-white"
+                              : "text-white/80 hover:bg-white/6",
+                          ].join(" ")}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span
+                              className={[
+                                "inline-flex h-6 w-6 items-center justify-center text-sm font-semibold transition-colors duration-200",
+                                active ? "text-white" : "text-white/90",
+                              ].join(" ")}
+                            >
+                              {CURRENCY_META[currency].symbol}
+                            </span>
+                            <span>
+                              <span className="block text-sm font-medium text-white">{getCurrencyShortLabel(currency)}</span>
+                              <span className={["block text-xs", active ? "text-white/70" : "text-white/60"].join(" ")}> 
+                                {CURRENCY_META[currency].label}
+                              </span>
+                            </span>
+                          </span>
+                          <span aria-hidden="true" className={active ? "h-2.5 w-2.5 rounded-full bg-white" : "h-2.5 w-2.5 rounded-full border border-white/10"} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div
                 className="relative"
                 onMouseEnter={openMenuDrawer}
                 onMouseLeave={() => closeMenuDrawer(180)}
@@ -2049,7 +2146,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   onMouseEnter={openMenuDrawer}
                   onMouseLeave={() => closeMenuDrawer(180)}
                   className={[
-                    "absolute right-0 top-full z-[80] mt-3 hidden w-72 rounded-3xl bg-gradient-to-br from-[#0b0b0b]/95 to-[#000]/100 border border-white/6 text-white shadow-[0_18px_60px_rgba(2,6,23,0.6)] transition-all duration-220 lg:block origin-top-right",
+                    "absolute right-0 top-full z-[80] mt-3 hidden w-72 rounded-3xl bg-[#050505] border border-white/6 text-white shadow-[0_18px_60px_rgba(2,6,23,0.6)] transition-all duration-220 lg:block origin-top-right",
                     isMenuOpen ? "pointer-events-auto opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-1",
                   ].join(" ")}
                   aria-hidden={!isMenuOpen}
@@ -2061,29 +2158,21 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                       </div>
                     ) : null}
                     <div className="grid gap-1">
-                      {(() => {
-                        // Build a consistent popover list: prefer extraPopoverItems when present,
-                        // otherwise show primaryNav + secondaryNav so all locales get the same items.
-                        const combined = extraPopoverItems.length > 0
-                          ? extraPopoverItems
-                          : [...primaryNav, ...secondaryNav].filter((v, i, a) => a.findIndex((x) => x.href === v.href) === i);
+                      {popoverList.map((item) => {
+                        const Icon = (item as any).icon as any;
 
-                        return combined.map((item) => {
-                          const Icon = (item as any).icon as any;
-
-                          return (
-                            <Link
-                              key={item.href}
-                              href={toLocalePath(item.href, locale)}
-                              onClick={() => setIsMenuOpen(false)}
-                              className="menu-item magnetic group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/5"
-                            >
-                              {Icon ? <HoverMorphIcon icon={Icon} /> : null}
-                              <span className="truncate">{item.label}</span>
-                            </Link>
-                          );
-                        })()}
-                      {/** end inline IIFE */}
+                        return (
+                          <Link
+                            key={item.href}
+                            href={toLocalePath(item.href, locale)}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="menu-item magnetic group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/5"
+                          >
+                            {Icon ? <HoverMorphIcon icon={Icon} /> : null}
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

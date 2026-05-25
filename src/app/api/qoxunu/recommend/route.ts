@@ -10,8 +10,12 @@ type QuizAnswers = {
   vibe?: string;
   occasion?: string;
   intensity?: string;
+  projection?: string;
+  sweetness?: string;
   profile?: string;
   budget?: string;
+  season?: string;
+  longevity?: string;
 };
 
 type RecommendRequest = {
@@ -80,6 +84,18 @@ const KEYWORDS = {
     soft: ["citrus", "green", "tea", "floral", "neroli"],
     balanced: ["musk", "floral", "woody", "amber"],
     strong: ["oud", "leather", "tobacco", "amber", "patchouli", "incense"],
+  },
+  projection: {
+    skin: ["musk", "tea", "iris", "cashmere", "soft"],
+    close: ["floral", "green", "woody", "musk", "smooth"],
+    moderate: ["amber", "citrus", "woody", "floral", "musk"],
+    bold: ["oud", "leather", "tobacco", "incense", "patchouli"],
+  },
+  sweetness: {
+    dry: ["citrus", "green", "tea", "iris", "woody"],
+    balanced: ["musk", "floral", "amber", "woody", "vanilla"],
+    sweet: ["vanilla", "tonka", "caramel", "amber", "jasmine"],
+    rich: ["vanilla", "amber", "tonka", "resin", "benzoin", "caramel"],
   },
   profile: {
     citrus: ["citrus", "bergamot", "lemon", "mandarin", "grapefruit", "neroli"],
@@ -184,6 +200,14 @@ function scorePerfume(perfume: Perfume, answers: QuizAnswers) {
 
   if (answers.intensity && answers.intensity in KEYWORDS.intensity) {
     score += countMatches(tokens, KEYWORDS.intensity[answers.intensity as keyof typeof KEYWORDS.intensity]) * 1.5;
+  }
+
+  if (answers.projection && answers.projection in KEYWORDS.projection) {
+    score += countMatches(tokens, KEYWORDS.projection[answers.projection as keyof typeof KEYWORDS.projection]) * 1.4;
+  }
+
+  if (answers.sweetness && answers.sweetness in KEYWORDS.sweetness) {
+    score += countMatches(tokens, KEYWORDS.sweetness[answers.sweetness as keyof typeof KEYWORDS.sweetness]) * 1.6;
   }
 
   if (answers.profile && answers.profile in KEYWORDS.profile) {

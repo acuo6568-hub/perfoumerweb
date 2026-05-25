@@ -14,6 +14,8 @@ type QuizAnswers = {
   vibe: string;
   occasion: string;
   intensity: string;
+  projection: string;
+  sweetness: string;
   profile: string;
   budget: string;
   season: string;
@@ -162,6 +164,30 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
           { value: "soft", label: "Yüngül", hint: "Sakit, yaxın məsafə" },
           { value: "balanced", label: "Balanslı", hint: "Gündəlik üçün ideal" },
           { value: "strong", label: "Güclü", hint: "Daha ifadəli və qalıcı" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "projection",
+        title: "İzlənmə nə qədər yaxın olsun?",
+        description: "Ətrinin səndən nə qədər uzağa hiss olunmasını istəyirsən?",
+        options: [
+          { value: "skin", label: "Dəriyə yaxın", hint: "Yalnız yaxın məsafədə hiss olunur" },
+          { value: "close", label: "Yaxın aura", hint: "Zərif, səliqəli iz buraxır" },
+          { value: "moderate", label: "Orta yayılım", hint: "Gündəlik üçün ən balanslı" },
+          { value: "bold", label: "İddialı iz", hint: "Girişdə hiss olunan daha güclü aura" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "sweetness",
+        title: "Şirinlik səviyyəsi necə olsun?",
+        description: "Şirinlik qoxunun minimal, balanslı və ya gur olmasını dəyişir.",
+        options: [
+          { value: "dry", label: "Quru və təmiz", hint: "Şirinlik demək olar ki, hiss olunmur" },
+          { value: "balanced", label: "Balanslı", hint: "Yumşaq, zərif şirinlik" },
+          { value: "sweet", label: "Şirin", hint: "Daha yumşaq və cazibəli" },
+          { value: "rich", label: "Doygun", hint: "Aydın, zəngin şirin ton" },
         ],
       },
       {
@@ -329,6 +355,18 @@ const KEYWORDS = {
     balanced: ["musk", "floral", "woody", "amber"],
     strong: ["oud", "leather", "tobacco", "amber", "patchouli", "incense"],
   },
+  projection: {
+    skin: ["musk", "tea", "iris", "cashmere", "soft"],
+    close: ["floral", "green", "woody", "musk", "smooth"],
+    moderate: ["amber", "citrus", "woody", "floral", "musk"],
+    bold: ["oud", "leather", "tobacco", "incense", "patchouli"],
+  },
+  sweetness: {
+    dry: ["citrus", "green", "tea", "iris", "woody"],
+    balanced: ["musk", "floral", "amber", "woody", "vanilla"],
+    sweet: ["vanilla", "tonka", "caramel", "amber", "jasmine"],
+    rich: ["vanilla", "amber", "tonka", "resin", "benzoin", "caramel"],
+  },
   profile: {
     citrus: ["citrus", "bergamot", "lemon", "mandarin", "grapefruit", "neroli"],
     floral: ["floral", "rose", "jasmine", "iris", "violet", "peony", "ylang"],
@@ -354,6 +392,8 @@ const INITIAL_ANSWERS: QuizAnswers = {
   vibe: "",
   occasion: "",
   intensity: "",
+  projection: "",
+  sweetness: "",
   profile: "",
   budget: "",
   season: "",
@@ -406,6 +446,8 @@ const QUIZ_CARD_COPY: Record<
     quote: "Цена по запросу",
   },
 };
+
+const NOTE_SEARCH_SHORTCUTS = ["bergamot", "vanilla", "oud", "rose", "musk", "citrus", "jasmine", "amber"];
 
 function normalize(value: string) {
   return value
@@ -562,6 +604,8 @@ function scorePerfume(perfume: Perfume, answers: QuizAnswers) {
   if (answers.vibe && answers.vibe in KEYWORDS.vibe) score += countMatches(tokens, KEYWORDS.vibe[answers.vibe as keyof typeof KEYWORDS.vibe]) * 2.2;
   if (answers.occasion && answers.occasion in KEYWORDS.occasion) score += countMatches(tokens, KEYWORDS.occasion[answers.occasion as keyof typeof KEYWORDS.occasion]) * 1.8;
   if (answers.intensity && answers.intensity in KEYWORDS.intensity) score += countMatches(tokens, KEYWORDS.intensity[answers.intensity as keyof typeof KEYWORDS.intensity]) * 1.5;
+  if (answers.projection && answers.projection in KEYWORDS.projection) score += countMatches(tokens, KEYWORDS.projection[answers.projection as keyof typeof KEYWORDS.projection]) * 1.4;
+  if (answers.sweetness && answers.sweetness in KEYWORDS.sweetness) score += countMatches(tokens, KEYWORDS.sweetness[answers.sweetness as keyof typeof KEYWORDS.sweetness]) * 1.6;
   if (answers.profile && answers.profile in KEYWORDS.profile) score += countMatches(tokens, KEYWORDS.profile[answers.profile as keyof typeof KEYWORDS.profile]) * 2.8;
   if (answers.season && answers.season in KEYWORDS.season) score += countMatches(tokens, KEYWORDS.season[answers.season as keyof typeof KEYWORDS.season]) * 1.2;
   if (answers.longevity && answers.longevity in KEYWORDS.longevity) score += countMatches(tokens, KEYWORDS.longevity[answers.longevity as keyof typeof KEYWORDS.longevity]) * 1.2;
@@ -696,6 +740,8 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
     answers.occasion ? getChoiceLabel(choiceQuestions, "occasion", answers.occasion) : "",
     answers.season ? getChoiceLabel(choiceQuestions, "season", answers.season) : "",
     answers.longevity ? getChoiceLabel(choiceQuestions, "longevity", answers.longevity) : "",
+    answers.projection ? getChoiceLabel(choiceQuestions, "projection", answers.projection) : "",
+    answers.sweetness ? getChoiceLabel(choiceQuestions, "sweetness", answers.sweetness) : "",
   ]
     .filter(Boolean)
     .join(" • ");
@@ -734,6 +780,22 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
     const start = (currentNotesPage - 1) * NOTES_PER_PAGE;
     return filteredNotes.slice(start, start + NOTES_PER_PAGE);
   }, [currentNotesPage, filteredNotes]);
+
+  const selectedNotes = useMemo(
+    () =>
+      Object.entries(notePreferences)
+        .filter(([, state]) => state !== undefined)
+        .map(([slug, state]) => {
+          const note = noteBySlug.get(slug);
+          return {
+            slug,
+            state,
+            label: note ? localizeNoteLabel(note, locale) : humanizeNoteToken(slug),
+          };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [locale, noteBySlug, notePreferences],
+  );
 
   const notesLine = likedNotes.length
     ? likedNotes
@@ -802,6 +864,23 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
     setAiNotice("");
     setHasGeneratedAi(false);
     lastGeneratedRef.current = "";
+  };
+
+  const toggleNotePreference = (slug: string) => {
+    setNotePreferences((prev) => {
+      const next = { ...prev };
+      const current = next[slug];
+      if (!current) {
+        next[slug] = "like";
+        return next;
+      }
+      if (current === "like") {
+        next[slug] = "dislike";
+        return next;
+      }
+      delete next[slug];
+      return next;
+    });
   };
 
   const requestAiRecommendations = async () => {
@@ -968,7 +1047,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
   };
 
   return (
-    <section className="mx-auto w-full max-w-none px-0 pb-10 pt-3 sm:pb-6 sm:pt-4">
+    <section className="mx-auto w-full max-w-none px-0 pb-10 pt-0 sm:pb-6 sm:pt-1">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">{dictionary.eyebrow}</p>
         <h1 className="mt-2 text-3xl leading-tight text-zinc-900 sm:text-4xl">{dictionary.title}</h1>
@@ -976,7 +1055,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
       </div>
 
       {!isComplete ? (
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-2.5 flex items-center justify-between gap-3">
           <p className="text-sm font-medium text-zinc-600">
             {dictionary.stepsLabel} {Math.min(stepIndex + 1, totalSteps)} / {totalSteps}
           </p>
@@ -986,7 +1065,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
         </div>
       ) : null}
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-200">
+      <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-zinc-200">
         <div
           className="h-full rounded-full bg-zinc-900 transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ width: `${progress}%` }}
@@ -997,9 +1076,9 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
         <div
           ref={questionCardRef}
           style={questionCardHeight !== null ? { height: `${questionCardHeight}px` } : undefined}
-          className="mt-3 overflow-hidden transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="mt-2.5 overflow-hidden transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
         >
-          <div ref={questionCardInnerRef} className="py-1 sm:py-2">
+          <div ref={questionCardInnerRef} className="py-0.5 sm:py-1.5">
             {!isNotesStep ? (
               <>
                 <h2
@@ -1046,120 +1125,182 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
               </>
             ) : (
               <div>
-                <h2 className="text-[1.85rem] leading-tight text-zinc-900 sm:text-[2rem]">
+                <h2 className="text-[1.95rem] leading-tight text-zinc-900 sm:text-[2.25rem]">
                   {locale === "az"
-                    ? "Sevdiyin və sevmədiyin notları seç"
+                    ? "İstədiyin notları sürətli axtarışla seç"
                     : locale === "ru"
-                      ? "Выберите любимые и нежелательные ноты"
-                      : "Pick notes you like and dislike"}
+                      ? "Быстро выберите нужные ноты"
+                      : "Find the notes you want, fast"}
                 </h2>
-                <p className="mt-1.5 text-[0.95rem] text-zinc-500 sm:text-base">
+                <p className="mt-1.5 max-w-2xl text-[0.95rem] text-zinc-500 sm:text-base">
                   {locale === "az"
-                    ? "Kartlara klik et: əvvəl sevilən, ikinci klik sevilməyən, üçüncü klik sıfırlayır."
+                    ? "Axtar, seç və ya seçimi sil. Seçilən notlar yuxarıda görünür və nəticəni dərhal yaxşılaşdırır."
                     : locale === "ru"
-                      ? "Нажмите на карточку: сначала нравится, второй раз не нравится, третий раз сбрасывает выбор."
-                      : "Tap a card: first click likes, second dislikes, third resets."}
+                      ? "Ищите, выбирайте или снимайте выбор. Отмеченные ноты остаются сверху и сразу влияют на подборку."
+                      : "Search, pick, or clear. Selected notes stay pinned above and improve the result immediately."}
                 </p>
 
-                <div className="mt-3 rounded-2xl border border-zinc-200 bg-white/90 p-3">
-                  <input
-                    value={notesQuery}
-                    onChange={(event) => setNotesQuery(event.target.value)}
-                    placeholder={locale === "az" ? "Not axtar..." : locale === "ru" ? "Поиск нот..." : "Search notes..."}
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 outline-none"
-                  />
-                  <div className="mt-2 flex items-center justify-between gap-2 text-[0.7rem] font-medium text-zinc-500 sm:text-xs">
+                <div className="mt-4 rounded-[1.4rem] border border-zinc-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.05)] sm:p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <label className="block min-w-0 flex-1">
+                      <span className="mb-2 block text-[0.66rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">
+                        {locale === "az" ? "Not axtar" : locale === "ru" ? "Поиск нот" : "Search notes"}
+                      </span>
+                      <div className="relative">
+                        <input
+                          value={notesQuery}
+                          onChange={(event) => setNotesQuery(event.target.value)}
+                          placeholder={locale === "az" ? "Məsələn: vanil, oud, gül..." : locale === "ru" ? "Например: ваниль, oud, роза..." : "Try: vanilla, oud, rose..."}
+                          className="w-full rounded-full border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-sm text-zinc-800 outline-none transition focus:border-zinc-400 focus:bg-white"
+                        />
+                        {notesQuery ? (
+                          <button
+                            type="button"
+                            onClick={() => setNotesQuery("")}
+                            aria-label={locale === "az" ? "Axtarışı təmizlə" : locale === "ru" ? "Очистить поиск" : "Clear search"}
+                            className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-[0_6px_14px_rgba(15,23,42,0.05)] transition hover:border-zinc-300 hover:text-zinc-800"
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
+                    </label>
+
+                    <div className="flex min-w-0 flex-wrap gap-1.5 lg:max-w-[28rem] lg:justify-end">
+                      {NOTE_SEARCH_SHORTCUTS.map((shortcut) => {
+                        const active = normalizedNotesQuery === normalize(shortcut);
+                        return (
+                          <button
+                            key={shortcut}
+                            type="button"
+                            onClick={() => setNotesQuery(shortcut)}
+                            className={[
+                              "rounded-full border px-3 py-1.5 text-[0.72rem] font-medium transition-all duration-300",
+                              active
+                                ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_10px_18px_rgba(15,23,42,0.12)]"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900",
+                            ].join(" ")}
+                          >
+                            {shortcut}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-2 text-[0.72rem] font-medium text-zinc-500 sm:text-xs">
                     <span>
                       {locale === "az"
-                        ? `${filteredNotes.length} not tapıldı`
+                        ? `${filteredNotes.length} not göstərilir`
                         : locale === "ru"
-                          ? `Найдено: ${filteredNotes.length}`
-                          : `${filteredNotes.length} notes found`}
+                          ? `Показано: ${filteredNotes.length}`
+                          : `${filteredNotes.length} notes shown`}
                     </span>
                     <span>
                       {locale === "az"
                         ? `Səhifə ${currentNotesPage}/${totalNotePages}`
                         : locale === "ru"
-                          ? `Страница ${currentNotesPage}/${totalNotePages}`
+                          ? `Page ${currentNotesPage}/${totalNotePages}`
                           : `Page ${currentNotesPage}/${totalNotePages}`}
                     </span>
                   </div>
 
-                  <div key={`${currentNotesPage}-${normalizedNotesQuery}`} className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                    {visibleNotes.map((note, index) => {
-                        const state = notePreferences[note.slug];
-                        return (
+                  {selectedNotes.length ? (
+                    <div className="mt-3 rounded-[1.1rem] border border-zinc-200 bg-zinc-50 p-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[0.65rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+                          {locale === "az" ? "Seçilən notlar" : locale === "ru" ? "Выбранные ноты" : "Selected notes"}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setNotePreferences({})}
+                          className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-zinc-500 transition hover:text-zinc-900"
+                        >
+                          {locale === "az" ? "Hamısını sil" : locale === "ru" ? "Сбросить" : "Clear all"}
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {selectedNotes.map((item) => (
                           <button
-                            key={note.slug}
+                            key={item.slug}
                             type="button"
-                            onClick={() => {
-                              setNotePreferences((prev) => {
-                                const next = { ...prev };
-                                const current = next[note.slug];
-                                if (!current) {
-                                  next[note.slug] = "like";
-                                  return next;
-                                }
-                                if (current === "like") {
-                                  next[note.slug] = "dislike";
-                                  return next;
-                                }
-                                delete next[note.slug];
-                                return next;
-                              });
-                            }}
+                            onClick={() => toggleNotePreference(item.slug)}
                             className={[
-                              "qoxunu-note-reveal group rounded-xl border bg-white p-1.5 text-left transition-all duration-300",
-                              state === "like"
-                                ? "border-emerald-400 bg-emerald-50/65"
-                                : state === "dislike"
-                                  ? "border-rose-400 bg-rose-50/65"
-                                  : "border-zinc-200 hover:-translate-y-[1px] hover:border-zinc-300 hover:bg-zinc-50",
+                              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[0.72rem] font-medium transition-all duration-300",
+                              item.state === "like"
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:text-zinc-900",
                             ].join(" ")}
-                            style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}
                           >
-                            <div className="flex items-center gap-2 rounded-[0.7rem]">
-                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-[0.65rem] bg-zinc-100">
-                                {note.image ? (
-                                  <Image
-                                    src={note.image}
-                                    alt={note.imageAlt || localizeNoteLabel(note, locale)}
-                                    fill
-                                    sizes="(max-width: 640px) 20vw, (max-width: 1024px) 14vw, 9vw"
-                                    unoptimized
-                                    className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
-                                  />
-                                ) : (
-                                  <div className="grid h-full w-full place-items-center text-[0.6rem] text-zinc-400">{siteSettings.siteName}</div>
-                                )}
+                            <span className={item.state === "like" ? "h-1.5 w-1.5 rounded-full bg-white" : "h-1.5 w-1.5 rounded-full bg-zinc-400"} />
+                            <span className="max-w-[9rem] truncate">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div key={`${currentNotesPage}-${normalizedNotesQuery}`} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {visibleNotes.map((note, index) => {
+                      const state = notePreferences[note.slug];
+                      const noteLabel = localizeNoteLabel(note, locale);
+                      const notePreview = sanitizeUserFacingText(note.content).slice(0, 96);
+
+                      return (
+                        <button
+                          key={note.slug}
+                          type="button"
+                          onClick={() => toggleNotePreference(note.slug)}
+                          className={[
+                            "qoxunu-note-reveal group flex items-center gap-3 rounded-[1.2rem] border p-2.5 text-left transition-all duration-300",
+                            state === "like"
+                              ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_16px_32px_rgba(15,23,42,0.14)]"
+                              : state === "dislike"
+                                ? "border-rose-300 bg-rose-50/70 text-zinc-900 shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+                                : "border-zinc-200 bg-white text-zinc-900 hover:-translate-y-[1px] hover:border-zinc-300 hover:bg-zinc-50 hover:shadow-[0_12px_26px_rgba(15,23,42,0.05)]",
+                          ].join(" ")}
+                          style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[0.9rem] bg-zinc-100 ring-1 ring-zinc-200">
+                            {note.image ? (
+                              <Image
+                                src={note.image}
+                                alt={note.imageAlt || noteLabel}
+                                fill
+                                sizes="(max-width: 640px) 18vw, (max-width: 1024px) 12vw, 72px"
+                                unoptimized
+                                className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                              />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-[0.6rem] text-zinc-400">{siteSettings.siteName}</div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="line-clamp-1 text-[0.88rem] font-semibold leading-5 text-current">{noteLabel}</p>
+                                <p className="mt-0.5 line-clamp-2 text-[0.72rem] leading-5 text-current/55">
+                                  {notePreview || (locale === "az" ? "Mövzunu seç" : locale === "ru" ? "Выберите эту тему" : "Choose this tone")}
+                                </p>
                               </div>
 
-                              <div className="min-w-0">
-                                <p className="line-clamp-1 text-[0.78rem] font-medium text-zinc-900">{localizeNoteLabel(note, locale)}</p>
-                                <p className="mt-0.5 line-clamp-1 text-[0.7rem] text-zinc-500">
-                                {state === "like"
-                                  ? locale === "az"
-                                    ? "Sevirəm"
-                                    : locale === "ru"
-                                      ? "Нравится"
-                                      : "Like"
-                                  : state === "dislike"
-                                    ? locale === "az"
-                                      ? "Sevmirəm"
-                                      : locale === "ru"
-                                        ? "Не нравится"
-                                        : "Dislike"
-                                    : locale === "az"
-                                      ? "Seçilməyib"
-                                      : locale === "ru"
-                                        ? "Не выбрано"
-                                        : "Not selected"}
-                                  </p>
-                                </div>
+                              <span
+                                aria-hidden="true"
+                                className={[
+                                  "mt-1 inline-flex h-3.5 w-3.5 shrink-0 rounded-full transition-all duration-300",
+                                  state === "like"
+                                    ? "bg-zinc-900 shadow-[0_0_0_5px_rgba(0,0,0,0.06)]"
+                                    : state === "dislike"
+                                      ? "border border-rose-400 bg-white"
+                                      : "border border-zinc-300 bg-white",
+                                ].join(" ")}
+                              />
                             </div>
-                          </button>
-                        );
-                      })}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {filteredNotes.length === 0 ? (
@@ -1173,50 +1314,23 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                   ) : null}
 
                   {totalNotePages > 1 ? (
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setNotesPage((page) => Math.max(1, page - 1))}
-                        disabled={currentNotesPage <= 1}
-                        className="inline-flex min-h-9 items-center justify-center rounded-full border border-zinc-300 bg-[#f6f5f2] px-3 text-xs font-semibold text-zinc-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        {locale === "az" ? "Əvvəlki" : locale === "ru" ? "Назад" : "Previous"}
-                      </button>
-
-                      <div className="flex items-center gap-1.5">
-                        {Array.from({ length: Math.min(totalNotePages, 5) }, (_, idx) => {
-                          const start = Math.min(
-                            Math.max(1, currentNotesPage - 2),
-                            Math.max(1, totalNotePages - 4),
-                          );
-                          const page = start + idx;
-                          const active = page === currentNotesPage;
-
-                          return (
-                            <button
-                              key={page}
-                              type="button"
-                              onClick={() => setNotesPage(page)}
-                              className={[
-                                "inline-flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition",
-                                active
-                                  ? "border-zinc-900 bg-zinc-900 text-white"
-                                  : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
-                              ].join(" ")}
-                            >
-                              {page}
-                            </button>
-                          );
-                        })}
-                      </div>
-
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[0.72rem] font-medium text-zinc-500">
+                        {locale === "az"
+                          ? `Növbəti hissə ${Math.min(currentNotesPage + 1, totalNotePages)}/${totalNotePages}`
+                          : locale === "ru"
+                            ? `Следующий блок ${Math.min(currentNotesPage + 1, totalNotePages)}/${totalNotePages}`
+                            : `Next batch ${Math.min(currentNotesPage + 1, totalNotePages)}/${totalNotePages}`}
+                      </p>
                       <button
                         type="button"
                         onClick={() => setNotesPage((page) => Math.min(totalNotePages, page + 1))}
                         disabled={currentNotesPage >= totalNotePages}
-                        className="inline-flex min-h-9 items-center justify-center rounded-full border border-zinc-300 bg-[#f6f5f2] px-3 text-xs font-semibold text-zinc-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex min-h-10 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-xs font-semibold text-white transition hover:-translate-y-px hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        {locale === "az" ? "Növbəti" : locale === "ru" ? "Далее" : "Next"}
+                        {currentNotesPage >= totalNotePages
+                          ? (locale === "az" ? "Son" : locale === "ru" ? "Конец" : "End")
+                          : (locale === "az" ? "Daha çox not" : locale === "ru" ? "Ещё ноты" : "Load more notes")}
                       </button>
                     </div>
                   ) : null}

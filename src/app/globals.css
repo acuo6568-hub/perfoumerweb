@@ -426,6 +426,117 @@ h6 {
 }
 /* removed neighbor highlight - keep single active letter only */
 
+.locale-switcher-button {
+  isolation: isolate;
+  transform: translateZ(0);
+  will-change: transform, box-shadow, border-color;
+}
+
+.locale-switcher-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02) 32%, rgba(255, 255, 255, 0.08) 66%, rgba(255, 255, 255, 0.01));
+  opacity: 0;
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.locale-switcher-button--open::before {
+  opacity: 1;
+}
+
+.locale-switcher-button-sheen {
+  animation: localeSwitcherSheen 5.8s linear infinite;
+}
+
+.locale-switcher-orb {
+  animation: localeSwitcherOrb 2.8s ease-in-out infinite;
+}
+
+.locale-switcher-panel {
+  transform-origin: top right;
+  will-change: transform, opacity, filter;
+  animation: localeSwitcherPanelIn 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.locale-switcher-item {
+  position: relative;
+}
+
+.locale-switcher-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 48%, rgba(255, 255, 255, 0.04));
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.locale-switcher-item:hover::before {
+  opacity: 1;
+}
+
+.locale-switcher-pulse {
+  animation: localeSwitcherPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes localeSwitcherSheen {
+  0% {
+    transform: translateX(-28%) skewX(-18deg);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.95;
+  }
+  45% {
+    transform: translateX(48%) skewX(-18deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(120%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes localeSwitcherOrb {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.12);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.03);
+    transform: scale(1.03);
+  }
+}
+
+@keyframes localeSwitcherPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes localeSwitcherPulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 .footer-wordmark-track {
   display: inline-flex;
   align-items: flex-end;

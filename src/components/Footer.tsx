@@ -82,6 +82,7 @@ export function Footer({ locale }: FooterProps) {
     return `${toLocalePath("/login", locale)}?mode=signup&next=${encodeURIComponent(currentLocalizedPath)}`;
   }, [currentLocalizedPath, locale]);
   const isAuthPage = basePathname === "/login" || basePathname.startsWith("/auth");
+  const hideSeoFooter = basePathname.startsWith("/qoxunu");
   const showSignupBanner =
     isSessionResolved &&
     isSignupBannerReady &&
@@ -130,46 +131,13 @@ export function Footer({ locale }: FooterProps) {
     setIsSignupBannerReady(true);
     setPortalRoot(document.body);
 
-    let resetTimer = 0;
-
-    try {
-      const dismissUntil = Number(window.localStorage.getItem(SIGNUP_BANNER_DISMISS_UNTIL_KEY) ?? "0");
-      const sessionDismissed = window.sessionStorage.getItem(SIGNUP_BANNER_DISMISS_KEY) === "1";
-      const remainingMs = dismissUntil - Date.now();
-
-      if (sessionDismissed || (Number.isFinite(dismissUntil) && remainingMs > 0)) {
-        setIsSignupBannerDismissed(true);
-
-        if (remainingMs > 0) {
-          resetTimer = window.setTimeout(() => {
-            window.sessionStorage.removeItem(SIGNUP_BANNER_DISMISS_KEY);
-            window.localStorage.removeItem(SIGNUP_BANNER_DISMISS_UNTIL_KEY);
-            setIsSignupBannerDismissed(false);
-          }, remainingMs);
-        }
-      } else {
-        window.sessionStorage.removeItem(SIGNUP_BANNER_DISMISS_KEY);
-        window.localStorage.removeItem(SIGNUP_BANNER_DISMISS_UNTIL_KEY);
-        setIsSignupBannerDismissed(false);
-      }
-    } catch {
-      setIsSignupBannerDismissed(false);
-    }
-
-    return () => {
-      if (resetTimer) {
-        window.clearTimeout(resetTimer);
-      }
-    };
-  }, [pathname]);
-
-  useEffect(() => {
     if (!supabase || !isSupabaseConfigured()) {
       setIsSessionResolved(true);
       return;
     }
 
     let isMounted = true;
+
     supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
       setSession(data.session ?? null);
@@ -248,6 +216,62 @@ export function Footer({ locale }: FooterProps) {
       icon: ArrowCounterClockwise,
     },
   ] as const;
+
+  const seoLinkGroups = [
+    {
+      title: t.footer.exploreTitle,
+      description: t.footer.exploreDescription,
+      links: [
+        { href: toLocalePath("/catalog", locale), label: t.footer.products },
+        { href: toLocalePath("/brands", locale), label: t.footer.brands },
+        { href: toLocalePath("/offers", locale), label: t.header.compare ? (locale === "az" ? "Təkliflər" : locale === "ru" ? "Предложения" : "Offers") : "Offers" },
+        { href: toLocalePath("/compare", locale), label: t.header.compare },
+        { href: toLocalePath("/qoxunu", locale), label: t.header.scentQuiz },
+      ],
+    },
+    {
+      title: t.footer.categoriesTitle,
+      description:
+        locale === "ru"
+          ? "Короткие подборки, чтобы быстрее найти нужный аромат."
+          : locale === "en"
+            ? "Quick shortcuts to narrow the right scent."
+            : "Uyğun qoxunu tez tapmaq üçün qısa keçidlər.",
+      links: [
+        { href: `${toLocalePath("/catalog", locale)}?gender=female`, label: locale === "ru" ? "Женские" : locale === "en" ? "Women" : "Qadın" },
+        { href: `${toLocalePath("/catalog", locale)}?gender=male`, label: locale === "ru" ? "Мужские" : locale === "en" ? "Men" : "Kişi" },
+        { href: `${toLocalePath("/catalog", locale)}?gender=unisex`, label: locale === "ru" ? "Унисекс" : locale === "en" ? "Unisex" : "Uniseks" },
+        { href: toLocalePath("/catalog?special=gift-ideas", locale), label: locale === "ru" ? "Идеи подарков" : locale === "en" ? "Gift ideas" : "Hədiyyə ideyaları" },
+        { href: toLocalePath("/blog", locale), label: t.footer.blog },
+      ],
+    },
+    {
+      title: t.footer.helpTitle,
+      description:
+        locale === "ru"
+          ? "Покупка, помощь и юридические страницы в одном месте."
+          : locale === "en"
+            ? "Shopping, support, and legal pages in one place."
+            : "Sifariş, dəstək və hüquqi səhifələr bir yerdə.",
+      links: [
+        { href: toLocalePath("/haqqimizda", locale), label: t.footer.about },
+        { href: toLocalePath("/elaqe", locale), label: t.header.contact },
+        { href: toLocalePath("/wishlist", locale), label: locale === "ru" ? "Избранное" : locale === "en" ? "Wishlist" : "Seçilmişlər" },
+        { href: toLocalePath("/cart", locale), label: locale === "ru" ? "Корзина" : locale === "en" ? "Cart" : "Səbət" },
+        ...legalLinks.map((link) => ({ href: link.href, label: link.label })),
+      ],
+    },
+  ] as const;
+
+  const legalDisclaimer = [
+    t.footer.legalNoticeCopyright,
+    t.footer.legalNoticeBrand,
+    t.footer.legalNoticeTrademark,
+  ] as const;
+
+  if (hideSeoFooter) {
+    return null;
+  }
 
   const fallbackStyleImages = [
     { id: "fallback-1", src: "/perfoumerjar.png", alt: `${siteSettings.siteName} style image 1`, href: "https://www.instagram.com/perfoumer/" },
@@ -504,6 +528,20 @@ export function Footer({ locale }: FooterProps) {
           })}
         </div>
 
+        <section className="mb-5 rounded-[1.3rem] border border-zinc-200/70 bg-white/70 px-5 py-4 text-zinc-600 shadow-[0_10px_22px_rgba(18,18,18,0.035)] md:mb-6 md:px-6 md:py-4">
+          <div className="flex flex-col gap-2 text-[0.92rem] leading-6 md:flex-row md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2">
+            <span className="text-[0.78rem] font-semibold tracking-[0.14em] text-zinc-500 uppercase">
+              {t.footer.legalNoticeTitle}
+            </span>
+            <span className="max-w-3xl text-zinc-500">{t.footer.legalNoticeDescription}</span>
+            {legalDisclaimer.map((line) => (
+              <p key={line} className="max-w-3xl">
+                {line}
+              </p>
+            ))}
+          </div>
+        </section>
+
         <div className="overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.64)_0%,rgba(245,245,243,0.7)_100%)] shadow-[0_24px_56px_rgba(26,26,26,0.06)] ring-1 ring-zinc-200/45">
           <div className="grid gap-10 px-6 pt-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-10 md:px-10 md:pt-12 xl:px-12">
             <div className="text-center md:text-left">
@@ -617,14 +655,10 @@ export function Footer({ locale }: FooterProps) {
                 </span>
               </div>
 
-              <a
-                href="https://wa.me/bakhishov"
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-zinc-500 transition-colors hover:text-zinc-700"
-              >
-                © 2026 Bakhishov Brands <span className="mx-2">—</span> {siteSettings.siteDomain}
-              </a>
+              <div className="max-w-[68ch] space-y-1 text-sm leading-6 text-zinc-500">
+                <p>{legalDisclaimer[0]}</p>
+                <p>{siteSettings.siteDomain}</p>
+              </div>
               <p
                 className="footer-wordmark footer-wordmark-animated mt-2 select-none whitespace-nowrap leading-[0.78] text-zinc-800 will-change-transform"
                 style={{
