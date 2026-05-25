@@ -108,6 +108,27 @@ function HoverMorphIcon({ icon: Icon }: { icon: any }) {
   );
 }
 
+function ChevronMorphIcon({ open, size = 14 }: { open: boolean; size?: number }) {
+  return (
+    <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center align-middle leading-none" aria-hidden="true">
+      <CaretDown
+        size={size}
+        className={[
+          "absolute inset-0 m-auto text-current transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          open ? "rotate-180 scale-95 opacity-0" : "rotate-0 scale-100 opacity-100",
+        ].join(" ")}
+      />
+      <CaretDown
+        size={size}
+        className={[
+          "absolute inset-0 m-auto text-current transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          open ? "rotate-180 scale-100 opacity-100" : "rotate-0 scale-95 opacity-0",
+        ].join(" ")}
+      />
+    </span>
+  );
+}
+
 export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps) {
   const siteSettings = useSiteSettings();
   const router = useRouter();
@@ -1638,22 +1659,15 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                         aria-controls="brands-menu-panel"
                         onClick={toggleBrandsMenu}
                         className={[
-                          "group relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-medium transition-colors duration-200",
+                          "group relative inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-sm font-medium transition-colors duration-200",
                           isBrandsMenuOpen || isActive ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800",
                         ].join(" ")}
                       >
                         <Buildings size={16} />
                         <span className="hidden md:inline">{item.label}</span>
-                              {
-                                (() => {
-                                  const caretClass = (isBrandsMenuOpen ? "rotate-180" : "rotate-0") + " ml-0 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]";
-                                  return (
-                                    <span key={isBrandsMenuOpen ? "open" : "closed"} className="inline-flex animate-header-chevron-morph">
-                                      <CaretDown size={12} className={caretClass} />
-                                    </span>
-                                  );
-                                })()
-                              }
+                        <span className="ml-0 inline-flex translate-y-px">
+                          <ChevronMorphIcon open={isBrandsMenuOpen} size={12} />
+                        </span>
                       </button>
                     </div>
                   );
@@ -1680,19 +1694,11 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                   type="button"
                   onClick={() => setIsMoreOpen((c) => !c)}
                   aria-expanded={isMoreOpen}
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm text-zinc-700 hover:text-zinc-900"
+                  className="inline-flex items-center gap-0.5 rounded-full px-3 py-1 text-sm text-zinc-700 hover:text-zinc-900"
                 >
                   <span className="hidden md:inline">{t.detail.more ?? "More"}</span>
-                  <span className="md:ml-0">
-                    <span key={isMoreOpen ? "open" : "closed"} className="inline-flex animate-header-chevron-morph">
-                      <CaretDown
-                        size={14}
-                        className={[
-                          "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                          isMoreOpen ? "rotate-180" : "rotate-0",
-                        ].join(" ")}
-                      />
-                    </span>
+                  <span className="md:ml-0 inline-flex translate-y-px">
+                    <ChevronMorphIcon open={isMoreOpen} size={14} />
                   </span>
                 </button>
 
