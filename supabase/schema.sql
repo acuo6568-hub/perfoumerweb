@@ -87,16 +87,64 @@ create table if not exists public.checkout_addresses (
 
 create table if not exists public.ai_chat_sessions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  anonymous_id text not null default '' check (char_length(anonymous_id) between 6 and 128),
   locale text not null default 'en' check (char_length(locale) between 2 and 10),
   title text not null default '' check (char_length(title) <= 140),
   preview text not null default '' check (char_length(preview) <= 300),
   messages_json jsonb not null default '[]'::jsonb,
+  page_path text not null default '' check (char_length(page_path) <= 180),
+  current_perfume_slug text not null default '' check (char_length(current_perfume_slug) <= 120),
+  device_type text not null default '' check (char_length(device_type) <= 24),
+  browser text not null default '' check (char_length(browser) <= 48),
+  os text not null default '' check (char_length(os) <= 48),
+  user_agent text not null default '' check (char_length(user_agent) <= 320),
+  country_code text not null default '' check (char_length(country_code) <= 4),
+  country text not null default '' check (char_length(country) <= 120),
+  region text not null default '' check (char_length(region) <= 120),
+  city text not null default '' check (char_length(city) <= 120),
+  timezone text not null default '' check (char_length(timezone) <= 80),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   last_message_at timestamptz not null default timezone('utc', now()),
   expires_at timestamptz not null default (timezone('utc', now()) + interval '3 hours')
 );
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists anonymous_id text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists page_path text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists current_perfume_slug text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists device_type text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists browser text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists os text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists user_agent text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists country_code text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists country text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists region text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists city text default '';
+
+alter table if exists public.ai_chat_sessions
+  add column if not exists timezone text default '';
 
 create table if not exists public.abandoned_cart_recovery (
   id uuid primary key default gen_random_uuid(),
@@ -230,6 +278,12 @@ create index if not exists ai_chat_sessions_user_last_message_idx
 
 create index if not exists ai_chat_sessions_user_expires_idx
   on public.ai_chat_sessions (user_id, expires_at desc);
+
+create index if not exists ai_chat_sessions_anonymous_last_message_idx
+  on public.ai_chat_sessions (anonymous_id, last_message_at desc);
+
+create index if not exists ai_chat_sessions_last_message_idx
+  on public.ai_chat_sessions (last_message_at desc);
 
 create index if not exists abandoned_cart_recovery_user_created_idx
   on public.abandoned_cart_recovery (user_id, created_at desc);

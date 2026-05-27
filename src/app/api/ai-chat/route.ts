@@ -9,6 +9,11 @@ import { getSiteSettings } from "@/lib/site-settings";
 type ChatRequest = {
   message: string;
   locale: string;
+  sessionId?: string;
+  anonymousId?: string;
+  imageDataUrl?: string;
+  imageName?: string;
+  imageMimeType?: string;
   pageContext?: {
     pathname?: string;
     currentPerfumeSlug?: string;
@@ -110,6 +115,7 @@ type Perfume = {
 
 type SanitizedUserContext = {
   signedIn: boolean;
+  userId: string;
   email: string;
   username: string;
   profileGender: string;
@@ -267,6 +273,275 @@ function sanitizeSlug(value: unknown): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
 }
 
+function sanitizeText(value: unknown, fallback = "", maxLength = 120): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  return trimmed.slice(0, maxLength);
+}
+
+function sanitizeDataUrl(value: unknown, maxLength = 4_000_000): string {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(trimmed)) return "";
+  return trimmed.slice(0, maxLength);
+}
+
+function readHeader(headers: Headers, keys: string[]): string {
+  for (const key of keys) {
+    const value = headers.get(key);
+    if (value && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
+
+function decodeHeaderValue(value: string): string {
+  if (!value) return "";
+
+  try {
+    return decodeURIComponent(value.replace(/\+/g, "%20"));
+  } catch {
+    return value;
+  }
+}
+
+function detectDeviceType(userAgent: string): string {
+  const normalized = userAgent.toLowerCase();
+  if (/tablet|ipad/.test(normalized)) return "tablet";
+  if (/mobi|iphone|android/.test(normalized)) return "mobile";
+  if (normalized) return "desktop";
+  return "unknown";
+}
+
+function detectBrowser(userAgent: string): string {
+  const normalized = userAgent.toLowerCase();
+  if (/edg\//.test(normalized)) return "Edge";
+  if (/chrome\//.test(normalized) && !/edg\//.test(normalized)) return "Chrome";
+  if (/firefox\//.test(normalized)) return "Firefox";
+  if (/safari\//.test(normalized) && !/chrome\//.test(normalized)) return "Safari";
+  return userAgent ? "Other" : "";
+}
+
+function detectOs(userAgent: string): string {
+  const normalized = userAgent.toLowerCase();
+  if (/windows nt/.test(normalized)) return "Windows";
+  if (/mac os x/.test(normalized) && /mobile/.test(normalized)) return "iOS";
+  if (/mac os x/.test(normalized)) return "macOS";
+  if (/android/.test(normalized)) return "Android";
+  if (/linux/.test(normalized)) return "Linux";
+  return userAgent ? "Other" : "";
+}
+
+type SessionMessage = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+type PerfumeImageAnalysis = {
+  brand: string;
+  name: string;
+  visibleText: string;
+  bottleDescription: string;
+  confidence: number;
+  likelyExact: boolean;
+  notes: string[];
+  searchHints: string[];
+};
+
+type PerfumeMatch = {
+  perfume: Perfume;
+  score: number;
+};
+
+function buildSessionTitle(messages: SessionMessage[], locale: string): string {
+  const allText = messages
+    .filter((message) => message.text && message.text.length > 0)
+    .map((message) => message.text.trim())
+    .join(" ");
+
+  if (!allText) {
+    if (locale === "az") return "Yeni söhbət";
+    if (locale === "ru") return "Новый чат";
+    return "New chat";
+  }
+
+  const normalized = allText.toLowerCase();
+  const keywords: string[] = [];
+
+  if (/(gift|hədiyyə|hediye|podarok|подар)/i.test(normalized)) keywords.push(locale === "az" ? "Hədiyyə" : locale === "ru" ? "Подарок" : "Gift");
+  if (/(recommend|tövsiyə|совету|рекомендуй)/i.test(normalized)) keywords.push(locale === "az" ? "Tövsiyə" : locale === "ru" ? "Рекомендация" : "Recommendation");
+  if (/(fragrance|perfume|ətir|qoxu|аромат)/i.test(normalized)) keywords.push(locale === "az" ? "Ətir" : locale === "ru" ? "Аромат" : "Perfume");
+  if (/(fresh|clean|light|təmiz|свежий)/i.test(normalized)) keywords.push(locale === "az" ? "Fresh" : locale === "ru" ? "Свежий" : "Fresh");
+  if (/(sweet|vanilla|şirin|vanil|ванил|сладкий)/i.test(normalized)) keywords.push(locale === "az" ? "Şirin" : locale === "ru" ? "Сладкий" : "Sweet");
+  if (/(spicy|ədviyyat|пряный)/i.test(normalized)) keywords.push(locale === "az" ? "Ədviyyatlı" : locale === "ru" ? "Пряный" : "Spicy");
+  if (/(budget|price|azn|manat|цена)/i.test(normalized)) keywords.push(locale === "az" ? "Büdcə" : locale === "ru" ? "Бюджет" : "Budget");
+
+  if (keywords.length > 0) {
+    return keywords.slice(0, 3).join(" • ");
+  }
+
+  const firstUserMessage = messages.find((message) => message.role === "user")?.text.trim();
+  if (firstUserMessage) {
+    return firstUserMessage.length > 50 ? `${firstUserMessage.slice(0, 47)}...` : firstUserMessage;
+  }
+
+  if (locale === "az") return "Yeni söhbət";
+  if (locale === "ru") return "Новый чат";
+  return "New chat";
+}
+
+function buildSessionPreview(messages: SessionMessage[]): string {
+  const assistantMessage = [...messages].reverse().find((message) => message.role === "assistant")?.text.trim();
+  const fallback = messages[messages.length - 1]?.text?.trim() ?? "";
+  const preview = assistantMessage || fallback;
+  if (!preview) return "";
+  return preview.length > 110 ? `${preview.slice(0, 107)}...` : preview;
+}
+
+function normalizePerfumeSearchText(value: string): string {
+  return normalizeText(value).replace(/[\s-]+/g, " ").trim();
+}
+
+function perfumeSearchScore(perfume: Perfume, analysis: PerfumeImageAnalysis): number {
+  const combined = normalizePerfumeSearchText(`${perfume.brand} ${perfume.name} ${perfume.slug}`);
+  const brand = normalizePerfumeSearchText(perfume.brand);
+  const name = normalizePerfumeSearchText(perfume.name);
+  const candidateBrand = normalizePerfumeSearchText(analysis.brand);
+  const candidateName = normalizePerfumeSearchText(analysis.name);
+  const visibleText = normalizePerfumeSearchText(analysis.visibleText);
+  const hintText = normalizePerfumeSearchText(analysis.searchHints.join(" "));
+  const tokens = new Set(
+    `${candidateBrand} ${candidateName} ${visibleText} ${hintText}`
+      .split(" ")
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3),
+  );
+
+  let score = 0;
+
+  if (candidateBrand) {
+    if (brand === candidateBrand) score += 48;
+    else if (brand.includes(candidateBrand) || candidateBrand.includes(brand)) score += 28;
+  }
+
+  if (candidateName) {
+    if (name === candidateName) score += 68;
+    else if (name.includes(candidateName) || candidateName.includes(name)) score += 34;
+  }
+
+  for (const token of tokens) {
+    if (brand.includes(token)) score += 8;
+    if (name.includes(token)) score += 10;
+    if (combined.includes(token)) score += 4;
+    if (token === perfume.slug) score += 14;
+  }
+
+  if (visibleText) {
+    const visibleDistance = levenshteinDistance(visibleText, combined);
+    score += Math.max(0, 24 - visibleDistance);
+  }
+
+  if (candidateName && candidateBrand) {
+    const candidateCombined = normalizePerfumeSearchText(`${analysis.brand} ${analysis.name}`);
+    const distance = levenshteinDistance(candidateCombined, `${brand} ${name}`);
+    score += Math.max(0, 28 - distance);
+  }
+
+  if (analysis.confidence > 0) {
+    score += Math.round(Math.min(18, analysis.confidence * 18));
+  }
+
+  if (analysis.likelyExact) {
+    score += 10;
+  }
+
+  return score;
+}
+
+function rankPerfumeMatches(perfumes: Perfume[], analysis: PerfumeImageAnalysis, limit = 4): PerfumeMatch[] {
+  return perfumes
+    .map((perfume) => ({ perfume, score: perfumeSearchScore(perfume, analysis) }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit);
+}
+
+function buildImageMatchReply(locale: string, exactMatch: Perfume | null, alternatives: Perfume[], analysis: PerfumeImageAnalysis): string {
+  const intro =
+    locale === "az"
+      ? exactMatch
+        ? "Bu şəkildən eyni ətri tapdım."
+        : "Bu şəkildən dəqiq ətri təsdiqləyə bilmədim, amma ən yaxın in-store alternativləri seçdim."
+      : locale === "ru"
+        ? exactMatch
+          ? "По этому фото я нашёл тот же аромат в магазине."
+          : "По фото не удалось точно подтвердить аромат, но я подобрал ближайшие варианты из магазина."
+        : exactMatch
+          ? "I found the same perfume in the store from your photo."
+          : "I couldn't confirm the exact perfume from the photo, but I picked the closest in-store alternatives.";
+
+  const sections: string[] = [intro];
+
+  if (exactMatch) {
+    sections.push(`${exactMatch.brand} ${exactMatch.name} — ${locale === "az" ? "dəqiq uyğunluq" : locale === "ru" ? "точное совпадение" : "exact match"}. /perfumes/${exactMatch.slug}`);
+  }
+
+  if (alternatives.length) {
+    sections.push(locale === "az" ? "Yaxın alternativlər:" : locale === "ru" ? "Ближайшие альтернативы:" : "Closest alternatives:");
+    alternatives.slice(0, 3).forEach((perfume, index) => {
+      sections.push(`${index + 1}. ${perfume.brand} ${perfume.name} — /perfumes/${perfume.slug}`);
+    });
+  }
+
+  return sections.join("\n");
+}
+
+function parsePerfumeImageAnalysis(content: string | undefined): PerfumeImageAnalysis {
+  if (!content) {
+    return {
+      brand: "",
+      name: "",
+      visibleText: "",
+      bottleDescription: "",
+      confidence: 0,
+      likelyExact: false,
+      notes: [],
+      searchHints: [],
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(content) as Partial<PerfumeImageAnalysis>;
+    return {
+      brand: typeof parsed.brand === "string" ? parsed.brand.trim().slice(0, 120) : "",
+      name: typeof parsed.name === "string" ? parsed.name.trim().slice(0, 120) : "",
+      visibleText: typeof parsed.visibleText === "string" ? parsed.visibleText.trim().slice(0, 240) : "",
+      bottleDescription: typeof parsed.bottleDescription === "string" ? parsed.bottleDescription.trim().slice(0, 240) : "",
+      confidence: Number.isFinite(Number(parsed.confidence)) ? Math.max(0, Math.min(1, Number(parsed.confidence))) : 0,
+      likelyExact: Boolean(parsed.likelyExact),
+      notes: Array.isArray(parsed.notes)
+        ? parsed.notes.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 40)).filter(Boolean)
+        : [],
+      searchHints: Array.isArray(parsed.searchHints)
+        ? parsed.searchHints.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 60)).filter(Boolean)
+        : [],
+    };
+  } catch {
+    return {
+      brand: "",
+      name: "",
+      visibleText: "",
+      bottleDescription: "",
+      confidence: 0,
+      likelyExact: false,
+      notes: [],
+      searchHints: [],
+    };
+  }
+}
+
 function sanitizeUserContext(input: unknown): SanitizedUserContext | null {
   if (!input || typeof input !== "object") return null;
 
@@ -300,6 +575,7 @@ function sanitizeUserContext(input: unknown): SanitizedUserContext | null {
 
   return {
     signedIn: Boolean(raw.signedIn),
+    userId: "",
     email: typeof raw.email === "string" ? raw.email.trim().slice(0, 120) : "",
     username: typeof raw.username === "string" ? raw.username.trim().slice(0, 80) : "",
     profileGender: typeof raw.profileGender === "string" ? raw.profileGender.trim().slice(0, 40) : "",
@@ -336,6 +612,7 @@ function stripSensitiveClientFields(context: SanitizedUserContext | null): Sanit
   return {
     ...context,
     signedIn: false,
+    userId: "",
     email: "",
     username: "",
     profileGender: "",
@@ -403,6 +680,7 @@ async function resolveSecureUserContext(
 
   return {
     signedIn: true,
+    userId: user.id,
     email: user.email?.trim() ?? "",
     username: typeof metadata.username === "string" ? metadata.username.trim().slice(0, 80) : "",
     profileGender: typeof metadata.gender === "string" ? metadata.gender.trim().slice(0, 40) : "",
@@ -1641,6 +1919,23 @@ function isDeveloperContactQuestion(message: string): boolean {
   return /(bakhishov|developer|brands|agency|studio|dev)/iu.test(normalized) && /(contact|reach|whatsapp|phone|number|elaqe|elaqe|əlaqə|nomre|номер|контакт|телефон|how to contact)/iu.test(normalized);
 }
 
+function isAuthenticityOrPackagingQuestion(message: string): boolean {
+  const normalized = normalizeText(message);
+  return /(?:original|genuine|authentic|real|orijinal|saxta|fake|padelka|qablasdirm|qablasdirma|qutu|box|package|packaging|branded box|branded qutu|orijinal qutu|oz qablasdirma|oz qablasdirm)/iu.test(
+    normalized,
+  );
+}
+
+function authenticityReply(locale: string): string {
+  if (locale === "az") {
+    return "Bəli, Perfoumer-də satılan məhsullar orijinaldır. Sifarişlər də Perfoumer brendli qutularda göndərilir.";
+  }
+  if (locale === "ru") {
+    return "Да, товары в Perfoumer оригинальные. Заказы отправляются в коробках с брендингом Perfoumer.";
+  }
+  return "Yes, the products sold at Perfoumer are original. Orders are shipped in Perfoumer-branded boxes.";
+}
+
 function assistantHistoryText(entry: NonNullable<ChatRequest["messages"]>[number]): string {
   const text = entry.text.trim();
   const followUpQuestion = typeof entry.followUp?.question === "string" ? entry.followUp.question.trim() : "";
@@ -1898,8 +2193,6 @@ function extractBudgetBounds(message: string): { min?: number; max?: number } {
 
 function appendFallbackRecommendationLinks(answer: string, locale: string, message: string, perfumes: Perfume[]): string {
   if (!answer) return answer;
-  if (/\/perfumes\/[a-z0-9-]+/iu.test(answer)) return answer;
-
   const ranked = selectRelevantPerfumes(message, perfumes);
   if (!ranked.length) return answer;
 
@@ -1915,7 +2208,12 @@ function appendFallbackRecommendationLinks(answer: string, locale: string, messa
   const picks = (budgetFiltered.length ? budgetFiltered : ranked).slice(0, 3);
   if (!picks.length) return answer;
 
-  const lines = picks.map((perfume, index) => `${index + 1}. **${perfume.brand} ${perfume.name}** - /perfumes/${perfume.slug}`);
+  const lines = picks.map((perfume, index) => {
+    const notes = perfumeNotesSummary(perfume);
+    const sizes = perfumeSizesSummary(perfume);
+    const details = [notes, sizes].filter(Boolean).join(" · ");
+    return `${index + 1}. **${perfume.brand} ${perfume.name}**${details ? ` — ${details}` : ""}`;
+  });
 
   if (locale === "az") {
     return `${answer}\n\nKonkret seçimlər:\n${lines.join("\n")}`;
@@ -1925,6 +2223,128 @@ function appendFallbackRecommendationLinks(answer: string, locale: string, messa
   }
 
   return `${answer}\n\nConcrete picks:\n${lines.join("\n")}`;
+}
+
+function buildPowerRecommendationReply(locale: string, message: string, perfumes: Perfume[]): string | null {
+  const ranked = selectRelevantPerfumes(message, perfumes);
+  if (!ranked.length) return null;
+
+  const budget = extractBudgetBounds(message);
+  const filtered = ranked.filter((perfume) => {
+    const price = getStartingPrice(perfume);
+    if (!Number.isFinite(price)) return false;
+    if (typeof budget.min === "number" && price < budget.min) return false;
+    if (typeof budget.max === "number" && price > budget.max) return false;
+    return true;
+  });
+
+  const picks = (filtered.length ? filtered : ranked).slice(0, 3);
+  if (!picks.length) return null;
+
+  const best = picks[0]!;
+  const leadByLocale =
+    locale === "az"
+      ? `Ən güclü istiqamət: **${best.brand} ${best.name}**.`
+      : locale === "ru"
+        ? `Самое сильное направление: **${best.brand} ${best.name}**.`
+        : `Best direction: **${best.brand} ${best.name}**.`;
+
+  const whyBestByLocale =
+    locale === "az"
+      ? "Bu, sorğunuza ən yaxın kataloq seçimi kimi görünür."
+      : locale === "ru"
+        ? "Это выглядит как самый близкий вариант из каталога для вашего запроса."
+        : "This looks like the closest catalog fit for your request.";
+
+  const backupLeadByLocale =
+    locale === "az"
+      ? "Yaxın alternativlər:"
+      : locale === "ru"
+        ? "Ближайшие альтернативы:"
+        : "Closest alternatives:";
+
+  const lines = picks.map((perfume, index) => {
+    const details = [perfumeNotesSummary(perfume), perfumeSizesSummary(perfume)]
+      .filter(Boolean)
+      .join(" · ");
+    return `${index + 1}. **${perfume.brand} ${perfume.name}** — ${details}.`;
+  });
+
+  const nextStep =
+    locale === "az"
+      ? "Daha dəqiq shortlist istəyirsinizsə, mənə büdcə, mövsüm və qoxu gücünü yazın."
+      : locale === "ru"
+        ? "Если нужен более точный shortlist, напишите бюджет, сезон и желаемую насыщенность."
+        : "If you want a tighter shortlist, send me your budget, season, and projection preference.";
+
+  return [leadByLocale, whyBestByLocale, backupLeadByLocale, ...lines, nextStep].join("\n");
+}
+
+function isPerfumeInfoQuestion(message: string): boolean {
+  const normalized = normalizeText(message);
+  return /(how is|what is|what's|tell me about|describe|is it good|worth it|what does.*smell like|how does.*smell|nece parfumdur|necə parfumdur|bu parfum|bu ətir|bu etir|этот аромат|что за аромат|как он пахнет)/iu.test(
+    normalized,
+  ) && /(ətir|etir|parfum|perfume|fragrance|аромат|дух)/iu.test(normalized);
+}
+
+function isVaguePerfumeQuestion(message: string, perfumes: Perfume[]): boolean {
+  const normalized = normalizeText(message);
+  if (!/(ətir|etir|parfum|perfume|fragrance|аромат|дух)/iu.test(normalized)) return false;
+  if (/(budget|price|under|up to|max|büdcə|qiymət|цена|бюджет|cheap|affordable|best|recommend|suggest|top|good|nice|women|men|woman|man|qadin|qadın|kişi|муж|жен|for me|for him|for her)/iu.test(normalized)) {
+    return false;
+  }
+
+  return !findSpecificPerfumeMention(message, perfumes);
+}
+
+function buildPerfumeInfoReply(locale: string, perfume: Perfume): string {
+  const noteText = perfumeNoteText(perfume);
+  const notes = perfumeNotesSummary(perfume);
+  const sizes = perfumeSizesSummary(perfume);
+  const vibe = (() => {
+    const facets = Array.from(perfumeFacets(perfume));
+    if (facets.includes("fresh") && facets.includes("citrus")) return locale === "az" ? "təmiz və işıqlı" : locale === "ru" ? "чистый и яркий" : "clean and bright";
+    if (facets.includes("sweet") && facets.includes("floral")) return locale === "az" ? "şirin və yumşaq" : locale === "ru" ? "сладкий и мягкий" : "sweet and soft";
+    if (facets.includes("woody") || facets.includes("oud")) return locale === "az" ? "daha dərin və ağaclı" : locale === "ru" ? "более глубокий и древесный" : "deeper and woodier";
+    if (facets.includes("spicy")) return locale === "az" ? "ədviyyatlı və xarakterli" : locale === "ru" ? "пряный и характерный" : "spicy and characterful";
+    return locale === "az" ? "balanslı" : locale === "ru" ? "сбалансированный" : "balanced";
+  })();
+
+  if (locale === "az") {
+    return `**${perfume.brand} ${perfume.name}** kataloqda **${perfume.gender || "unisex"}** xəttinə yaxındır və ümumi olaraq ${vibe} hiss verir. Qoxu xətti: ${noteText || "kataloqda əlavə not məlumatı yoxdur"}. Bu, gündəlik istifadə üçün rahat, təmiz və çox vaxt təhlükəsiz seçim kimi görünür. Ölçülər: ${sizes || "mövcud ölçülər göstərilməyib"}.`;
+  }
+  if (locale === "ru") {
+    return `**${perfume.brand} ${perfume.name}** в каталоге относится к линии **${perfume.gender || "unisex"}** и в целом звучит как ${vibe}. Профиль аромата: ${noteText || "в каталоге нет дополнительной разбивки по нотам"}. Это выглядит как удобный, чистый и часто безопасный вариант на каждый день. Объёмы: ${sizes || "размеры не указаны"}.`;
+  }
+  return `**${perfume.brand} ${perfume.name}** in the catalog is closest to the **${perfume.gender || "unisex"}** line and feels ${vibe}. Scent profile: ${noteText || "no extra note breakdown is listed in the catalog"}. It reads like a clean, easy, everyday-friendly option. Sizes: ${sizes || "sizes are not listed"}.`;
+}
+
+function findSpecificPerfumeMention(message: string, perfumes: Perfume[]): Perfume | null {
+  const normalizedMessage = normalizeText(message);
+  if (!normalizedMessage) return null;
+
+  const exactMatches = perfumes.filter((perfume) => {
+    const brandName = normalizeText(`${perfume.brand} ${perfume.name}`);
+    const name = normalizeText(perfume.name);
+    return normalizedMessage.includes(brandName) || normalizedMessage === name || normalizedMessage.includes(` ${name} `);
+  });
+
+  if (exactMatches.length === 1) return exactMatches[0] ?? null;
+  if (exactMatches.length > 1) {
+    return exactMatches.sort((left, right) => right.name.length - left.name.length)[0] ?? null;
+  }
+
+  return null;
+}
+
+function buildPerfumeClarificationReply(locale: string): string {
+  if (locale === "az") {
+    return "Dəqiq hansı ətri nəzərdə tutursunuz? Brend və model adını yazın, mən qoxusunu aydın şəkildə izah edim.";
+  }
+  if (locale === "ru") {
+    return "Какой именно аромат вы имеете в виду? Напишите бренд и модель, и я нормально опишу его звучание.";
+  }
+  return "Which exact perfume do you mean? Send me the brand and model name, and I’ll describe it clearly.";
 }
 
 function detectFollowUpIntent(message: string): FollowUpIntent {
@@ -2383,6 +2803,20 @@ Mövzudan kənar suallar gəldikdə — bir cümlədə geri yönləndir. Izahat 
 ## TOVSİYƏ MƏNTİQİ
 Geniş tövsiyə sorğularında 2–4 variant təklif et. Hər biri üçün niyə uyğun olduğunu izah et. Kontekstdəki dəqiq kataloq elementlərini üstün tut. Uyğun variant yoxdursa — açıq söylə, /catalog-a yönləndir.
 
+## ƏTR CAVABI STANDARTI
+- Ətir suallarında ümumi chatbot kimi yox, təcrübəli parfüm məsləhətçisi kimi cavab ver.
+- Ən güclü uyğunluğu və ya ən aydın istiqaməti əvvəl ver.
+- 2–3 alternativi yalnız həqiqətən faydalı olduqda əlavə et.
+- Hər seçim üçün niyə uyğun olduğunu bir qısa cümlə ilə izah et.
+- Cavabı bir praktik növbəti addımla bitir: büdcə, mövsüm, qalıcılıq və ya istifadə yeri.
+- Aydın ətir sualına yalnız dəqiqləşdirici sualla cavab vermə.
+
+## ORİJİNAL VƏ QABLAŞDIRMA
+- Məhsulların orijinal olduğunu açıq de.
+- Bəzi məhsulların daha ucuz variantları ola bilər, bunu da sadə və dürüst formada qeyd et.
+- Sifarişlərin Perfoumer brendli qutularda göndərildiyini yaz.
+- Bu mövzuda qeyri-müəyyən, ehtiyatlı və ya ziddiyyətli dil işlətmə.
+
 ## İZAHLI SUALLAR
 Bir qısa dəqiqləşdirmə cavabı əhəmiyyətli dərəcədə yaxşılaşdıracaqsa — tam olaraq bir sual ver.
 - Büdcə, not, mövsüm, intensivlik, fürsət, üslub kimi detallar lazımdırsa → azad mətn
@@ -2451,6 +2885,14 @@ Off-topic questions get a single redirect sentence. No explanation. No apology.
 
 ## RECOMMENDATION LOGIC
 For broad requests, offer 2–4 varied options with a clear rationale for each. Prioritize exact catalog matches from provided context. If no match exists, say so plainly and direct the user to /catalog.
+
+## FRAGRANCE RESPONSE STANDARD
+- For perfume questions, answer like a senior fragrance curator, not a generic chatbot.
+- Start with the strongest match or the clearest direction first.
+- Give 2–3 backups only if they genuinely add value.
+- Explain why each pick fits in one short sentence.
+- End with one practical next step: budget, season, projection, or wear occasion.
+- Never respond to a clear fragrance request with only a follow-up question.
 
 ## FOLLOW-UP QUESTIONS
 Ask exactly one clarifying question only when it would meaningfully improve the response.
@@ -2521,6 +2963,20 @@ Respond only in English.`,
 ## ЛОГИКА РЕКОМЕНДАЦИЙ
 На широкие запросы — предлагайте 2–4 варианта с чётким обоснованием для каждого. Приоритет — точным позициям из переданного каталожного контекста. Если совпадений нет — скажите об этом прямо и направьте на /catalog.
 
+## СТАНДАРТ ОТВЕТА ПО АРОМАТАМ
+- На вопросы про ароматы отвечайте как опытный парфюмерный консультант, а не как общий чат-бот.
+- Сначала давайте самый сильный матч или самое ясное направление.
+- Добавляйте 2–3 альтернативы только если они реально полезны.
+- Для каждого варианта объясняйте в одном коротком предложении, почему он подходит.
+- Завершайте одним практичным следующим шагом: бюджет, сезон, стойкость или повод.
+- Не отвечайте на понятный вопрос про аромат только уточняющим вопросом.
+
+## ОРИГИНАЛЬНОСТЬ И УПАКОВКА
+- Прямо говорите, что товары оригинальные.
+- Упоминайте, что у некоторых позиций могут быть более доступные варианты, и делайте это просто и без двусмысленности.
+- Пишите, что заказы отправляются в коробках с брендингом Perfoumer.
+- Не используйте расплывчатые или противоречивые формулировки по этой теме.
+
 ## УТОЧНЯЮЩИЕ ВОПРОСЫ
 Задавайте ровно один уточняющий вопрос — только если это заметно улучшит ответ.
 - Нужны детали: бюджет, ноты, сезон, интенсивность, повод, стиль → свободный ввод
@@ -2556,9 +3012,88 @@ export async function POST(request: Request) {
     const siteSettings = await getSiteSettings();
     const body = (await request.json().catch(() => ({}))) as ChatRequest;
     const { message, locale = "en" } = body;
+    const sanitizedInputContext = sanitizeUserContext(body.userContext);
+    const sessionId = sanitizeText(body.sessionId, "", 96) || sanitizeText(body.anonymousId, "", 96) || (typeof crypto !== "undefined" ? crypto.randomUUID() : `chat-${Date.now()}`);
+    const anonymousId = sanitizeText(body.anonymousId, "", 96) || sessionId;
+    const sessionMessages = Array.isArray(body.messages)
+      ? body.messages
+          .filter((entry) => entry && (entry.role === "user" || entry.role === "assistant") && typeof entry.text === "string")
+          .slice(0, 200)
+      : [];
+    const countryCodeFromHeaders = readHeader(request.headers, ["x-vercel-ip-country", "cf-ipcountry", "x-country-code"]).toUpperCase();
+    const countryFromHeaders = readHeader(request.headers, ["x-vercel-ip-country-name", "cf-country-name"]);
+    const regionFromHeaders = readHeader(request.headers, ["x-vercel-ip-country-region", "x-vercel-ip-region", "cf-region"]);
+    const cityFromHeaders = readHeader(request.headers, ["x-vercel-ip-city", "cf-ipcity", "x-city"]);
+    const userAgent = sanitizeText(request.headers.get("user-agent") || "", "", 320);
+    const sessionLocation = {
+      countryCode: sanitizeText(countryCodeFromHeaders, "", 4).toUpperCase(),
+      country: sanitizeText(decodeHeaderValue(countryFromHeaders), "", 120),
+      region: sanitizeText(decodeHeaderValue(regionFromHeaders), "", 120),
+      city: sanitizeText(decodeHeaderValue(cityFromHeaders), "", 120),
+      userAgent,
+      deviceType: detectDeviceType(userAgent),
+      browser: detectBrowser(userAgent),
+      os: detectOs(userAgent),
+    };
+    const userContext = await resolveSecureUserContext(request, sanitizedInputContext);
+    const pageContext = sanitizePageContext(body.pageContext);
     const effectiveMessage = resolveConfirmedTypoMessage(body) || message;
+    const imageDataUrl = sanitizeDataUrl(body.imageDataUrl, 2_000_000);
 
-    if (!effectiveMessage || typeof effectiveMessage !== "string") {
+    const persistChatSession = async (params: {
+      responseText: string;
+      followUp: StructuredFollowUp | null;
+      actionSuggestions: ActionSuggestion[];
+      resolvedUserId: string | null;
+    }) => {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !supabaseServiceRoleKey) {
+        return;
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+
+      const now = new Date();
+      const completedConversation = [
+        ...sessionMessages,
+        {
+          role: "assistant" as const,
+          text: params.responseText,
+          followUp: params.followUp,
+        },
+      ];
+
+      await supabase.from("ai_chat_sessions").upsert(
+        {
+          id: sessionId,
+          user_id: params.resolvedUserId,
+          anonymous_id: anonymousId,
+          locale: sanitizeText(locale, "en", 10),
+          title: buildSessionTitle(completedConversation, locale),
+          preview: buildSessionPreview(completedConversation),
+          messages_json: completedConversation,
+          page_path: pageContext.pathname,
+          current_perfume_slug: pageContext.currentPerfumeSlug,
+          device_type: sessionLocation.deviceType,
+          browser: sessionLocation.browser,
+          os: sessionLocation.os,
+          user_agent: sessionLocation.userAgent,
+          country_code: sessionLocation.countryCode,
+          country: sessionLocation.country,
+          region: sessionLocation.region,
+          city: sessionLocation.city,
+          timezone: sanitizeText(sanitizedInputContext?.device?.timezone || "", "", 80),
+          last_message_at: now.toISOString(),
+          expires_at: new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(),
+        },
+        { onConflict: "id" },
+      );
+    };
+
+    if ((!effectiveMessage || typeof effectiveMessage !== "string") && !imageDataUrl) {
       return NextResponse.json(
         { error: "Message is required" },
         { status: 400 }
@@ -2568,24 +3103,173 @@ export async function POST(request: Request) {
     const apiKey = process.env.QOXUNU_OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
+    if (imageDataUrl) {
+      const perfumes = await loadPerfumes();
+      let responseText =
+        locale === "az"
+          ? "Şəkli analiz edə bilmədim. Zəhmət olmasa daha aydın bir foto göndərin və ya brend adını yazın."
+          : locale === "ru"
+            ? "Не удалось проанализировать фото. Попробуйте более чёткое изображение или напишите бренд вручную."
+            : "I couldn't analyze the photo. Please try a clearer image or type the brand name.";
+
+      if (apiKey) {
+        try {
+          const analysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You inspect a perfume bottle photo. Return only JSON. Be conservative and identify visible brand, product name, visible text, bottle description, confidence from 0 to 1, whether it is likely an exact match, notes, and search hints. If uncertain, leave fields empty rather than guessing.",
+                },
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text:
+                        "Identify the perfume bottle in this image for a store catalog. Focus on brand text, bottle shape, cap, color, and any visible labeling. If you cannot read the bottle, say so conservatively.",
+                    },
+                    {
+                      type: "image_url",
+                      image_url: { url: imageDataUrl },
+                    },
+                  ],
+                },
+              ],
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: "perfume_image_analysis",
+                  strict: true,
+                  schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      brand: { type: "string" },
+                      name: { type: "string" },
+                      visibleText: { type: "string" },
+                      bottleDescription: { type: "string" },
+                      confidence: { type: "number" },
+                      likelyExact: { type: "boolean" },
+                      notes: {
+                        type: "array",
+                        items: { type: "string" },
+                      },
+                      searchHints: {
+                        type: "array",
+                        items: { type: "string" },
+                      },
+                    },
+                    required: ["brand", "name", "visibleText", "bottleDescription", "confidence", "likelyExact", "notes", "searchHints"],
+                  },
+                },
+              },
+              temperature: 0.2,
+              max_tokens: 350,
+            }),
+            cache: "no-store",
+          });
+
+          if (analysisResponse.ok) {
+            const analysisData = (await analysisResponse.json()) as { choices?: Array<{ message?: { content?: string } }> };
+            const analysis = parsePerfumeImageAnalysis(analysisData.choices?.[0]?.message?.content);
+            const rankedMatches = rankPerfumeMatches(perfumes, analysis, 5);
+            const topMatch = rankedMatches[0]?.perfume ?? null;
+            const topScore = rankedMatches[0]?.score ?? 0;
+            const exactMatch = topMatch && (topScore >= 88 || (analysis.likelyExact && topScore >= 72)) ? topMatch : null;
+            const alternatives = (exactMatch ? rankedMatches.slice(1) : rankedMatches)
+              .map((entry) => entry.perfume)
+              .filter((perfume): perfume is Perfume => Boolean(perfume))
+              .slice(0, 3);
+
+            responseText = buildImageMatchReply(locale, exactMatch, alternatives, analysis);
+          }
+        } catch (error) {
+          console.error("Perfume image analysis error:", error);
+        }
+      }
+
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: userContext?.userId || null,
+      });
+
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
+
     if (isDeveloperContactQuestion(effectiveMessage)) {
-      return NextResponse.json({ response: developerContactReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = developerContactReply(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     if (isDeveloperQuestion(effectiveMessage)) {
-      return NextResponse.json({ response: developerReply(locale, siteSettings), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = developerReply(locale, siteSettings);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
+
+    if (isAuthenticityOrPackagingQuestion(effectiveMessage)) {
+      const responseText = authenticityReply(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     if (isSensitiveDataExfiltrationQuery(effectiveMessage)) {
-      return NextResponse.json({ response: sensitiveDataRefusal(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = sensitiveDataRefusal(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     if (isBulkActionRequest(effectiveMessage)) {
-      return NextResponse.json({ response: bulkActionBlockedReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = bulkActionBlockedReply(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     if (isTotalStockCountQuestion(effectiveMessage)) {
-      return NextResponse.json({ response: totalStockBlockedReply(locale), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = totalStockBlockedReply(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     const giftFlowFromHistory = hasActiveGiftFlow(body);
@@ -2599,10 +3283,18 @@ export async function POST(request: Request) {
       const nextStep = nextGiftDiscoveryStep(effectiveGiftSignals);
 
       if (nextStep) {
+        const responseText = giftFlowFromHistory ? giftDiscoveryProgressReply(locale, nextStep) : giftDiscoveryPreface(locale);
+        const followUp = buildGiftDiscoveryFollowUp(locale, nextStep);
+        await persistChatSession({
+          responseText,
+          followUp,
+          actionSuggestions: [],
+          resolvedUserId: null,
+        });
         return NextResponse.json(
           {
-            response: giftFlowFromHistory ? giftDiscoveryProgressReply(locale, nextStep) : giftDiscoveryPreface(locale),
-            followUp: buildGiftDiscoveryFollowUp(locale, nextStep),
+            response: responseText,
+            followUp,
             actionSuggestions: [],
           },
           { status: 200 }
@@ -2620,12 +3312,73 @@ export async function POST(request: Request) {
           : locale === "ru"
             ? "Уточню название и сразу продолжу расчёт."
             : "Let me confirm the perfume name, then I will continue your request.";
+      await persistChatSession({
+        responseText: typoPrompt,
+        followUp: priceTypoFollowUp,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
       return NextResponse.json({ response: typoPrompt, followUp: priceTypoFollowUp, actionSuggestions: [] }, { status: 200 });
     }
 
     const deterministicPriceReply = tryBuildPriceCalculationReply(locale, effectiveMessage, perfumes);
     if (deterministicPriceReply) {
+      await persistChatSession({
+        responseText: deterministicPriceReply,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: null,
+      });
       return NextResponse.json({ response: deterministicPriceReply, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
+
+    if (isVaguePerfumeQuestion(effectiveMessage, perfumes)) {
+      const responseText = buildPerfumeClarificationReply(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: userContext?.userId || null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
+
+    if (isPerfumeInfoQuestion(effectiveMessage)) {
+      const targetPerfume = findSpecificPerfumeMention(effectiveMessage, perfumes);
+      if (targetPerfume) {
+        const responseText = buildPerfumeInfoReply(locale, targetPerfume);
+        await persistChatSession({
+          responseText,
+          followUp: null,
+          actionSuggestions: [],
+          resolvedUserId: userContext?.userId || null,
+        });
+        return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
+      }
+
+      const responseText = buildPerfumeClarificationReply(locale);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: userContext?.userId || null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
+    }
+
+    const intent = detectFollowUpIntent(effectiveMessage);
+    if (intent === "recommendation") {
+      const powerRecommendationReply = buildPowerRecommendationReply(locale, effectiveMessage, perfumes);
+      if (powerRecommendationReply) {
+        const actionSuggestions = buildActionSuggestions(effectiveMessage, locale, userContext, perfumes, pageContext);
+        await persistChatSession({
+          responseText: powerRecommendationReply,
+          followUp: null,
+          actionSuggestions,
+          resolvedUserId: userContext?.userId || null,
+        });
+        return NextResponse.json({ response: powerRecommendationReply, followUp: null, actionSuggestions }, { status: 200 });
+      }
     }
     const brands = [...new Set(perfumes.map((p) => p.brand))].slice(0, 25);
     const relevantCatalogContext = buildCatalogContext(effectiveMessage, perfumes);
@@ -2657,20 +3410,32 @@ When recommendation constraints exist, include one catalog link that preserves t
 Combine params when useful (example: /catalog?q=fresh&max=30&brand=lattafa). If no clear filter is needed, use /catalog.
 Keep answers natural, intelligent, and specific.`;
 
-    const userContext = await resolveSecureUserContext(request, sanitizeUserContext(body.userContext));
-    const pageContext = sanitizePageContext(body.pageContext);
     const personalizationContext = buildPersonalizationContext(userContext, perfumes);
 
     if (userContext?.signedIn && isCartCountQuestion(effectiveMessage)) {
       const lineCount = userContext.cartItems.length;
       const totalQuantity = userContext.cartItems.reduce((sum, item) => sum + item.quantity, 0);
-      return NextResponse.json({ response: buildCartCountReply(locale, totalQuantity, lineCount), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = buildCartCountReply(locale, totalQuantity, lineCount);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: userContext.userId || null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     if (userContext?.signedIn && isCartTotalQuestion(effectiveMessage)) {
       const lineCount = userContext.cartItems.length;
       const totalAmount = userContext.cartItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-      return NextResponse.json({ response: buildCartTotalReply(locale, totalAmount, lineCount), followUp: null, actionSuggestions: [] }, { status: 200 });
+      const responseText = buildCartTotalReply(locale, totalAmount, lineCount);
+      await persistChatSession({
+        responseText,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: userContext.userId || null,
+      });
+      return NextResponse.json({ response: responseText, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
     const enhancedSystemPromptWithUser = `${enhancedSystemPrompt}
@@ -2703,6 +3468,12 @@ Rules for personalization and privacy:
           : locale === "ru"
             ? "AI-ассистент временно недоступен по технической причине. Попробуйте чуть позже или напишите в поддержку: support@perfoumer.az"
             : "The AI assistant is temporarily unavailable due to a technical issue. Please try again shortly or contact support: support@perfoumer.az";
+      await persistChatSession({
+        responseText: missingKeyReply,
+        followUp: null,
+        actionSuggestions: [],
+        resolvedUserId: userContext?.userId || null,
+      });
       return NextResponse.json({ response: missingKeyReply, followUp: null, actionSuggestions: [] }, { status: 200 });
     }
 
@@ -2772,6 +3543,12 @@ Rules for personalization and privacy:
             : "The AI service is temporarily busy, but I can still help right away: we can pick items from the catalog or solve your account/order question step by step.";
 
       const fallbackActions = buildActionSuggestions(effectiveMessage, locale, userContext, perfumes, pageContext);
+      await persistChatSession({
+        responseText: fallbackResponse,
+        followUp: buildSmartFollowUp(locale, fallbackIntent),
+        actionSuggestions: fallbackActions,
+        resolvedUserId: userContext?.userId || null,
+      });
       return NextResponse.json(
         {
           response: fallbackResponse,
@@ -2791,19 +3568,22 @@ Rules for personalization and privacy:
     if (actionSuggestions.length > 0) {
       aiResponse = buildDirectActionReply(locale, actionSuggestions[0]!);
     }
-    const intent = detectFollowUpIntent(effectiveMessage);
     const requestedNoteSlug = resolveRequestedNoteSlug(effectiveMessage, perfumes);
     if (requestedNoteSlug && intent === "recommendation" && hasExplicitNoteIntent(effectiveMessage)) {
       aiResponse = appendNoteCatalogLink(aiResponse, locale, requestedNoteSlug);
-    }
-    if (intent === "recommendation") {
-      aiResponse = appendFallbackRecommendationLinks(aiResponse, locale, effectiveMessage, perfumes);
     }
     const followUp = parsed.followUp.question ? parsed.followUp : null;
 
     if (!userContext?.signedIn && shouldNudgeGuestSignUp(effectiveMessage)) {
       aiResponse = `${aiResponse}\n\n${guestSignUpNudge(locale)}`;
     }
+
+    await persistChatSession({
+      responseText: aiResponse,
+      followUp,
+      actionSuggestions,
+      resolvedUserId: userContext?.userId || null,
+    });
 
     return NextResponse.json({ response: aiResponse, followUp, actionSuggestions }, { status: 200 });
   } catch (error) {

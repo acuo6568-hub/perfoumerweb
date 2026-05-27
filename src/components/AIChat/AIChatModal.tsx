@@ -1,11 +1,12 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ChangeEvent, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
+import { ArrowUpRight, UploadSimple } from "@phosphor-icons/react";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import type { Locale } from "@/lib/i18n";
 import { applySiteBranding } from "@/lib/site-branding";
@@ -51,6 +52,7 @@ type StoredChatSession = {
 };
 
 const CHAT_PERSIST_KEY = "ai-chat-preserved-conversation-v1";
+const CHAT_ANONYMOUS_ID_KEY = "ai-chat-anonymous-id-v1";
 
 type AIChatModalProps = {
   isOpen: boolean;
@@ -90,6 +92,12 @@ type UserContextPayload = {
   }>;
 };
 
+type PendingImageAttachment = {
+  dataUrl: string;
+  fileName: string;
+  mimeType: string;
+};
+
 function collectDeviceContext(): UserContextPayload["device"] {
   if (typeof window === "undefined") {
     return {};
@@ -108,6 +116,9 @@ const copyByLocale: Record<
   {
     title: string;
     placeholder: string;
+    photoUpload: string;
+    photoAttached: string;
+    photoRemove: string;
     tabChat: string;
     tabContact: string;
     introName: string;
@@ -143,6 +154,9 @@ const copyByLocale: Record<
   az: {
     title: "Perfoumer-ə xoş gəlmisiniz.",
     placeholder: "Sualınızı yazın...",
+    photoUpload: "Şəkil yüklə",
+    photoAttached: "Şəkil əlavə olundu",
+    photoRemove: "Sil",
     tabChat: "Çat",
     tabContact: "Əlaqə",
     introName: "Remi",
@@ -177,6 +191,9 @@ const copyByLocale: Record<
   en: {
     title: "How can I help?",
     placeholder: "Ask me anything...",
+    photoUpload: "Upload photo",
+    photoAttached: "Photo attached",
+    photoRemove: "Remove",
     tabChat: "Chat",
     tabContact: "Contact",
     introName: "Remi",
@@ -211,6 +228,9 @@ const copyByLocale: Record<
   ru: {
     title: "Чем я могу помочь?",
     placeholder: "Напишите ваш вопрос...",
+    photoUpload: "Загрузить фото",
+    photoAttached: "Фото добавлено",
+    photoRemove: "Удалить",
     tabChat: "Чат",
     tabContact: "Контакт",
     introName: "Remi",
@@ -1204,11 +1224,16 @@ function parsePerfumeCards(text: string): RecommendationCard[] {
     const name = stripRichTextDecorators(nameRaw).replace(/[.,;:!?]+$/g, "");
     const details = stripRichTextDecorators(detailsRaw).replace(/^[,\s]+/, "").replace(/[\s]+$/g, "");
     const words = name.split(/\s+/).filter(Boolean);
+    const combined = `${name} ${details}`.toLowerCase();
 
     if (!name || !details) return;
     if (name.includes("/") || name.includes("http")) return;
     if (words.length < (allowSingleWord ? 1 : 2) || words.length > 6) return;
     if (name.length < 4 || name.length > 60) return;
+    if (/[0-9]/.test(combined)) return;
+    if (/(azn|manat|usd|eur|rub|ml|stok|stock|available|availability|mövcud|в наличии|alternativ|alternative)/iu.test(combined)) {
+      return;
+    }
 
     const key = name.toLowerCase();
     if (seenNames.has(key)) return;
@@ -1591,6 +1616,7 @@ export function AIChatModal({
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [anonymousChatId, setAnonymousChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<StoredChatSession[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -1603,6 +1629,41 @@ export function AIChatModal({
   const openRafTwoRef = useRef<number | null>(null);
   const autoNudgeDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNudgeResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingImageAttachment | null>(null);
+
+  const ensureAnonymousChatId = () => {
+    if (anonymousChatId) {
+      return anonymousChatId;
+    }
+
+    if (typeof window === "undefined") {
+      const fallbackId = typeof crypto !== "undefined" ? crypto.randomUUID() : `anon-${Date.now()}`;
+      setAnonymousChatId(fallbackId);
+      return fallbackId;
+    }
+
+    const storedId = window.localStorage.getItem(CHAT_ANONYMOUS_ID_KEY);
+    if (storedId) {
+      setAnonymousChatId(storedId);
+      return storedId;
+    }
+
+    const nextId = typeof crypto !== "undefined" ? crypto.randomUUID() : `anon-${Date.now()}`;
+    window.localStorage.setItem(CHAT_ANONYMOUS_ID_KEY, nextId);
+    setAnonymousChatId(nextId);
+    return nextId;
+  };
+
+  const ensureConversationId = () => {
+    if (chatSessionId) {
+      return chatSessionId;
+    }
+
+    const nextId = typeof crypto !== "undefined" ? crypto.randomUUID() : `chat-${Date.now()}`;
+    setChatSessionId(nextId);
+    return nextId;
+  };
 
   const loadActiveChatHistory = async (userId: string) => {
     if (!supabase) return;
@@ -1644,32 +1705,6 @@ export function AIChatModal({
     }
   };
 
-  const persistChatSession = async (conversation: Message[]) => {
-    if (!supabase || !currentUserId || !conversation.length) return;
-
-    const sessionId = chatSessionId ?? (typeof crypto !== "undefined" ? crypto.randomUUID() : `chat-${Date.now()}`);
-    if (!chatSessionId) {
-      setChatSessionId(sessionId);
-    }
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-
-    const payload = {
-      id: sessionId,
-      user_id: currentUserId,
-      locale,
-      title: buildSessionTitle(conversation, locale),
-      preview: buildSessionPreview(conversation),
-      messages_json: conversation,
-      last_message_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
-    };
-
-    await supabase.from("ai_chat_sessions").upsert(payload, { onConflict: "id" });
-    void loadActiveChatHistory(currentUserId);
-  };
-
   const resumeChatSession = (session: StoredChatSession) => {
     const restored = sanitizeStoredMessages(session.messages);
     if (!restored.length) return;
@@ -1691,7 +1726,6 @@ export function AIChatModal({
     const applyGuestContext = () => {
       if (!isMounted) return;
       setCurrentUserId(null);
-      setChatSessionId(null);
       setChatHistory([]);
       setIsHistoryOpen(false);
       setUserContext({
@@ -1711,6 +1745,7 @@ export function AIChatModal({
         return;
       }
 
+      ensureAnonymousChatId();
       setCurrentUserId(session.user.id);
       void loadActiveChatHistory(session.user.id);
 
@@ -1793,6 +1828,10 @@ export function AIChatModal({
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    ensureAnonymousChatId();
+  }, []);
 
   useEffect(() => {
     try {
@@ -1900,6 +1939,7 @@ export function AIChatModal({
   useEffect(() => {
     if (!isOpen) {
       setActiveTab("chat");
+      setPendingImage(null);
     }
   }, [isOpen]);
 
@@ -2037,9 +2077,19 @@ export function AIChatModal({
     return () => clearTimeout(timer);
   }, [isOpen, pendingNavigation, router]);
 
-  const handleSendMessage = async (messageText: string = input) => {
+  const handleSendMessage = async (
+    messageText: string = input,
+    options?: { imageDataUrl?: string; imageName?: string; imageMimeType?: string },
+  ) => {
+    const attachment = options?.imageDataUrl
+      ? {
+          dataUrl: options.imageDataUrl,
+          fileName: options.imageName ?? "",
+          mimeType: options.imageMimeType ?? "",
+        }
+      : pendingImage;
     const trimmed = messageText.trim();
-    if (!trimmed) return;
+    if (!trimmed && !attachment) return;
     const requestStartedAt = Date.now();
     setActiveTab("chat");
     setIsHistoryOpen(false);
@@ -2047,13 +2097,12 @@ export function AIChatModal({
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
-      text: trimmed,
+      text: trimmed || copy.photoAttached,
       createdAt: Date.now(),
     };
 
     const nextConversation = [...messages, userMessage];
     setMessages(nextConversation);
-    void persistChatSession(nextConversation);
     setInput("");
     setIsLoading(true);
 
@@ -2062,6 +2111,8 @@ export function AIChatModal({
         userContext.signedIn && supabase
           ? (await supabase.auth.getSession()).data.session?.access_token ?? null
           : null;
+      const sessionId = ensureConversationId();
+      const anonymousId = ensureAnonymousChatId();
 
       const response = await fetch("/api/ai-chat", {
         method: "POST",
@@ -2070,8 +2121,13 @@ export function AIChatModal({
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
-          message: trimmed,
+          sessionId,
+          anonymousId,
+          message: trimmed || copy.photoAttached,
           locale,
+          imageDataUrl: attachment?.dataUrl,
+          imageName: attachment?.fileName,
+          imageMimeType: attachment?.mimeType,
           pageContext:
             typeof window !== "undefined"
               ? {
@@ -2109,7 +2165,9 @@ export function AIChatModal({
       };
       const completedConversation = [...nextConversation, assistantMessage];
       setMessages(completedConversation);
-      void persistChatSession(completedConversation);
+      if (attachment) {
+        setPendingImage(null);
+      }
       setTypingMessageId(assistantMessage.id);
       if (typingResetTimerRef.current) clearTimeout(typingResetTimerRef.current);
       const duration = Math.min(2600, Math.max(900, assistantMessage.text.length * 18));
@@ -2129,7 +2187,6 @@ export function AIChatModal({
       };
       const completedConversation = [...nextConversation, errorMessage];
       setMessages(completedConversation);
-      void persistChatSession(completedConversation);
       setTypingMessageId(errorMessage.id);
       if (typingResetTimerRef.current) clearTimeout(typingResetTimerRef.current);
       typingResetTimerRef.current = setTimeout(() => {
@@ -2137,6 +2194,41 @@ export function AIChatModal({
       }, 1200);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const readImageAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error("Unable to read image file"));
+      };
+      reader.onerror = () => reject(reader.error || new Error("Unable to read image file"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || isLoading) return;
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+
+    try {
+      const dataUrl = await readImageAsDataUrl(file);
+      setPendingImage({
+        dataUrl,
+        fileName: file.name,
+        mimeType: file.type,
+      });
+    } catch {
+      return;
     }
   };
 
@@ -2283,6 +2375,9 @@ export function AIChatModal({
       } catch {
         // Ignore storage errors.
       }
+      router.push(href);
+      onClose();
+      return;
     }
 
     setPendingNavigation(href);
@@ -2299,6 +2394,7 @@ export function AIChatModal({
       setMessages([]);
       setChatSessionId(null);
       setInput("");
+      setPendingImage(null);
       setIsLoading(false);
       setActiveTab("chat");
       setTypingMessageId(null);
@@ -2785,21 +2881,65 @@ export function AIChatModal({
                     : "opacity 280ms ease 30ms, transform 420ms cubic-bezier(0.22,1,0.36,1) 20ms, filter 300ms ease 20ms",
                 }}
               >
-                <div className="flex items-center gap-3 px-1 py-1 text-white/80">
-                  <AnimatedDots />
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isLoading) {
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder={composerPlaceholder}
-                    className="w-full bg-transparent text-[13px] text-zinc-300 outline-none placeholder:text-zinc-400 sm:text-[12px]"
-                    disabled={isLoading}
-                  />
+                <div className="space-y-2 px-1 py-1 text-white/80">
+                  {pendingImage ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2">
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-900/70">
+                        <img src={pendingImage.dataUrl} alt={pendingImage.fileName} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[12px] font-medium text-white">{pendingImage.fileName}</div>
+                        <div className="text-[11px] text-white/55">{copy.photoAttached}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPendingImage(null)}
+                        className="shrink-0 rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:bg-white/12 hover:text-white"
+                      >
+                        {copy.photoRemove}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="flex items-center gap-2 rounded-[22px] border border-white/10 bg-white/[0.04] px-2 py-2">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={isLoading}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 transition hover:border-[#39c6b8]/40 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label={copy.photoUpload}
+                      title={copy.photoUpload}
+                    >
+                      <UploadSimple size={18} weight="bold" />
+                    </button>
+                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoading) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder={composerPlaceholder}
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-zinc-300 outline-none placeholder:text-zinc-400 sm:text-[12px]"
+                      disabled={isLoading}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage()}
+                      disabled={isLoading || (!input.trim() && !pendingImage)}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#39c6b8]/30 bg-[#39c6b8]/12 text-[#9df0e7] transition hover:border-[#39c6b8]/60 hover:bg-[#39c6b8]/18 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label={locale === "az" ? "Göndər" : locale === "ru" ? "Отправить" : "Send"}
+                      title={locale === "az" ? "Göndər" : locale === "ru" ? "Отправить" : "Send"}
+                    >
+                      <ArrowUpRight size={18} weight="bold" className="-rotate-45" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

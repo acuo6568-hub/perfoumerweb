@@ -37,6 +37,7 @@ import {
   TextT,
   Trash,
   UploadSimple,
+  UserCircle,
   WarningCircle,
 } from "@phosphor-icons/react";
 
@@ -69,6 +70,7 @@ import {
 import { DEFAULT_PROMOTION_SETTINGS } from "@/lib/promotions";
 import type { Note, Perfume, PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AiChatInsights } from "@/components/admin/AiChatInsights";
 import { BrandSelector } from "@/components/admin/BrandSelector";
 import { SaveStatusPill } from "@/components/admin/SaveStatusPill";
 import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
@@ -84,7 +86,7 @@ type AdminPanelClientProps = {
 type PerfumeDraft = Perfume & { mediaScale?: number; mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number } };
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
-type AdminView = "dashboard" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
+type AdminView = "dashboard" | "aiChat" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "discounts" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
@@ -372,6 +374,9 @@ const adminCopy = {
     saving: "Saxlanılır...",
     logout: "Çıxış",
     dashboard: "İnformasiya Paneli",
+    aiChat: "AI chat",
+    aiChatDescription:
+      "Guest və giriş etmiş AI chat sessiyalarını, location məlumatını və tam yazışmaları bir paneldə izləyin.",
     perfumes: "Ətirlər",
     notes: "Notlar",
     linkedNotes: "Bağlı notlar",
@@ -710,6 +715,9 @@ const adminCopy = {
     saving: "Saving...",
     logout: "Log out",
     dashboard: "Dashboard",
+    aiChat: "AI chat",
+    aiChatDescription:
+      "Inspect guest and signed-in AI chat sessions, location metadata, and full transcripts from one panel.",
     perfumes: "Perfumes",
     notes: "Notes",
     linkedNotes: "Linked notes",
@@ -3594,6 +3602,15 @@ export function AdminPanelClient({
               {copy.dashboard}
             </TabButton>
             <TabButton
+              active={view === "aiChat"}
+              icon={<UserCircle size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("aiChat"));
+              }}
+            >
+              {copy.aiChat}
+            </TabButton>
+            <TabButton
               active={view === "perfumes"}
               icon={<SquaresFour size={15} weight="bold" />}
               onClick={() => {
@@ -3649,7 +3666,12 @@ export function AdminPanelClient({
             </TabButton>
           </div>
 
-          {view === "dashboard" ? null : view === "promotions" ? (
+          {view === "dashboard" ? null : view === "aiChat" ? (
+            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+              <p className="text-sm font-semibold text-zinc-900">{copy.aiChat}</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.aiChatDescription}</p>
+            </div>
+          ) : view === "promotions" ? (
             <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
               <p className="text-sm font-semibold text-zinc-900">{copy.promotions}</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.promotionsDescription}</p>
@@ -3868,6 +3890,10 @@ export function AdminPanelClient({
               <Suspense fallback={<div className="text-center text-sm text-zinc-500">Loading dashboard...</div>}>
                 <AdminDashboard locale={locale} />
               </Suspense>
+            </div>
+          ) : view === "aiChat" ? (
+            <div className={ui.card}>
+              <AiChatInsights locale={locale} />
             </div>
           ) : view === "brands" ? (
             <div className={ui.card}>
