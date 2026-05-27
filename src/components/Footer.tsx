@@ -632,7 +632,7 @@ export function Footer({ locale }: FooterProps) {
           </div>
 
           <div className="mt-5 overflow-hidden border-t border-zinc-200/65 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(248,248,246,0.72)_100%)] px-6 pt-2 pb-2 md:mt-6 md:px-10 md:pb-3 xl:px-12">
-            <div className="flex flex-col items-start gap-1 text-left">
+            <div className="flex w-full flex-col items-start gap-1 text-left">
               <div className="mb-1 flex items-center gap-4">
                 <span className="inline-flex items-center gap-1.5 transition-transform duration-300 hover:-translate-y-0.5">
                   <span className="relative h-4.5 w-7">
@@ -655,9 +655,19 @@ export function Footer({ locale }: FooterProps) {
                 </span>
               </div>
 
-              <div className="max-w-[68ch] space-y-1 text-sm leading-6 text-zinc-500">
+              <div className="flex w-full flex-col gap-1 text-sm leading-6 text-zinc-500 md:flex-row md:items-center md:justify-between md:gap-4">
                 <p>{legalDisclaimer[0]}</p>
-                <p>{siteSettings.siteDomain}</p>
+                <p className="text-zinc-500/90 md:ml-auto md:text-right">
+                  {t.footer.websiteCredit}{' '}
+                  <a
+                    href="https://wa.me/994555757777?text=Hi%20Bakhishov%20Brands%2C%20I%20found%20your%20website%20and%20want%20to%20contact%20you."
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-zinc-700 transition-colors hover:text-zinc-900"
+                  >
+                    Bakhishov Brands
+                  </a>{' '}
+                </p>
               </div>
               <p
                 className="footer-wordmark footer-wordmark-animated mt-2 select-none whitespace-nowrap leading-[0.78] text-zinc-800 will-change-transform"

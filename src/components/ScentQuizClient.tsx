@@ -287,7 +287,143 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
     sameResultNotice: "AI returned the same top picks for this profile.",
     failed: "Could not get AI recommendations. Please try again.",
     apiMissing: "AI is not configured. Add QOXUNU_OPENAI_API_KEY.",
-    questions: [],
+    questions: [
+      {
+        kind: "choice",
+        key: "gender",
+        title: "What category are you mainly looking for?",
+        description: "This helps group the right scents more accurately.",
+        options: [
+          { value: "all", label: "No preference", hint: "Women, men, and unisex together" },
+          { value: "unisex", label: "Unisex", hint: "Balanced and versatile" },
+          { value: "qadın", label: "Women", hint: "More soft and elegant" },
+          { value: "kişi", label: "Men", hint: "More deep and characterful" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "vibe",
+        title: "What overall vibe should the scent have?",
+        description: "Pick the mood you want to feel most.",
+        options: [
+          { value: "fresh", label: "Fresh and clean", hint: "Citrus, green, light" },
+          { value: "warm", label: "Warm and soft", hint: "Vanilla, amber, cozy" },
+          { value: "floral", label: "Floral and elegant", hint: "Rose, jasmine, powdery" },
+          { value: "bold", label: "Bold and strong", hint: "Oud, leather, spice" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "occasion",
+        title: "Where will you use it most?",
+        description: "The setting changes the right scent profile.",
+        options: [
+          { value: "daily", label: "Every day", hint: "Versatility matters most" },
+          { value: "office", label: "Office", hint: "Soft and polished" },
+          { value: "date", label: "Date", hint: "Pleasant at close range" },
+          { value: "evening", label: "Evening", hint: "Fuller and deeper" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "intensity",
+        title: "How noticeable should it be?",
+        description: "Choose the feel of the projection and longevity.",
+        options: [
+          { value: "soft", label: "Light", hint: "Quiet and close" },
+          { value: "balanced", label: "Balanced", hint: "Ideal for daily wear" },
+          { value: "strong", label: "Strong", hint: "More expressive and lasting" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "projection",
+        title: "How far should the scent trail carry?",
+        description: "How far do you want the scent to be noticed?",
+        options: [
+          { value: "skin", label: "Skin close", hint: "Only felt up close" },
+          { value: "close", label: "Close aura", hint: "Leaves a neat, subtle trail" },
+          { value: "moderate", label: "Moderate trail", hint: "The best balance for daily wear" },
+          { value: "bold", label: "Bold trail", hint: "A stronger aura on entry" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "sweetness",
+        title: "How sweet should it be?",
+        description: "Sweetness changes whether the scent feels dry, balanced, or rich.",
+        options: [
+          { value: "dry", label: "Dry and clean", hint: "Almost no sweetness" },
+          { value: "balanced", label: "Balanced", hint: "Soft and elegant sweetness" },
+          { value: "sweet", label: "Sweet", hint: "Softer and more attractive" },
+          { value: "rich", label: "Rich", hint: "Clear and dense sweetness" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "season",
+        title: "What is the main season?",
+        description: "Seasonal context helps AI rank the picks better.",
+        options: [
+          { value: "all", label: "All seasons", hint: "Universal use" },
+          { value: "summer", label: "Summer", hint: "Light and fresh" },
+          { value: "winter", label: "Winter", hint: "Warmer and fuller" },
+          { value: "spring", label: "Spring/Autumn", hint: "Balanced transition scents" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "profile",
+        title: "Which family are you closer to?",
+        description: "The main note family has a strong effect on the top result.",
+        options: [
+          { value: "citrus", label: "Citrus", hint: "Bergamot, lemon, neroli" },
+          { value: "floral", label: "Floral", hint: "Rose, jasmine, iris" },
+          { value: "woody", label: "Woody", hint: "Sandalwood, cedar, vetiver" },
+          { value: "amber", label: "Amber/Sweet", hint: "Vanilla, tonka, balsamic" },
+          { value: "oud", label: "Oud/Smoky", hint: "Leather, smoke, dark tones" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "longevity",
+        title: "What longevity do you want?",
+        description: "AI uses this as a ranking priority.",
+        options: [
+          { value: "moderate", label: "Medium", hint: "4-6 hours is enough" },
+          { value: "long", label: "Long", hint: "I want 8+ hours" },
+          { value: "beast", label: "Maximum", hint: "Make a strong lasting trail" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "budget",
+        title: "What is your starting budget range?",
+        description: "We prioritize results by your budget.",
+        options: [
+          { value: "all", label: "No preference", hint: "Any price range" },
+          { value: "under80", label: "Under 80 AZN", hint: "Affordable picks" },
+          { value: "80to140", label: "80-140 AZN", hint: "Balanced mid-range" },
+          { value: "140plus", label: "140+ AZN", hint: "Premium and niche" },
+        ],
+      },
+      {
+        kind: "text",
+        key: "favoriteNotes",
+        title: "Optional: do you have notes you love?",
+        description: "For example: bergamot, vanilla, oud, smoky, and more.",
+        label: "Favorite notes",
+        placeholder: "For example: bergamot, green tea, soft musk",
+      },
+      {
+        kind: "text",
+        key: "avoidNotes",
+        title: "Optional: any notes you want to avoid?",
+        description: "AI will move incompatible picks lower if you share this.",
+        label: "Notes to avoid",
+        placeholder: "For example: very sweet vanilla, heavy oud, smoke",
+      },
+    ],
   },
   ru: {
     eyebrow: "Подбор аромата",
@@ -320,22 +456,145 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
     sameResultNotice: "AI вернул те же топ-результаты для этого профиля.",
     failed: "Не удалось получить рекомендации AI. Попробуйте снова.",
     apiMissing: "AI не настроен. Добавьте QOXUNU_OPENAI_API_KEY.",
-    questions: [],
+    questions: [
+      {
+        kind: "choice",
+        key: "gender",
+        title: "Какую категорию вы ищете?",
+        description: "Это помогает точнее сгруппировать подходящие ароматы.",
+        options: [
+          { value: "all", label: "Без разницы", hint: "Женские, мужские и унисекс вместе" },
+          { value: "unisex", label: "Унисекс", hint: "Сбалансированный и универсальный" },
+          { value: "qadın", label: "Женские", hint: "Более мягкий и элегантный профиль" },
+          { value: "kişi", label: "Мужские", hint: "Более глубокий и характерный профиль" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "vibe",
+        title: "Какое общее настроение должен давать аромат?",
+        description: "Выберите настроение, которое хотите ощущать чаще всего.",
+        options: [
+          { value: "fresh", label: "Свежий и чистый", hint: "Цитрус, зелень, легкость" },
+          { value: "warm", label: "Теплый и мягкий", hint: "Ваниль, амбра, уют" },
+          { value: "floral", label: "Цветочный и элегантный", hint: "Роза, жасмин, пудровый" },
+          { value: "bold", label: "Смелый и мощный", hint: "Уд, кожа, специи" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "occasion",
+        title: "Где вы будете использовать его чаще всего?",
+        description: "Ситуация сильно влияет на правильный профиль аромата.",
+        options: [
+          { value: "daily", label: "Каждый день", hint: "Главное — универсальность" },
+          { value: "office", label: "Офис", hint: "Мягкий и аккуратный профиль" },
+          { value: "date", label: "Встреча", hint: "Приятен на близкой дистанции" },
+          { value: "evening", label: "Вечер", hint: "Более плотный и глубокий" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "intensity",
+        title: "Насколько заметным он должен быть?",
+        description: "Выберите ощущение шлейфа и стойкости.",
+        options: [
+          { value: "soft", label: "Легкий", hint: "Тихий и близкий" },
+          { value: "balanced", label: "Сбалансированный", hint: "Идеально для каждый день" },
+          { value: "strong", label: "Сильный", hint: "Более выразительный и стойкий" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "projection",
+        title: "На каком расстоянии должен ощущаться шлейф?",
+        description: "Насколько далеко вы хотите, чтобы аромат был заметен?",
+        options: [
+          { value: "skin", label: "Близко к коже", hint: "Чувствуется только рядом" },
+          { value: "close", label: "Близкая аура", hint: "Оставляет мягкий аккуратный след" },
+          { value: "moderate", label: "Средний шлейф", hint: "Лучший баланс для каждый день" },
+          { value: "bold", label: "Яркий шлейф", hint: "Более сильная аура при входе" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "sweetness",
+        title: "Насколько сладким он должен быть?",
+        description: "Сладость определяет сухое, сбалансированное или насыщенное звучание.",
+        options: [
+          { value: "dry", label: "Сухой и чистый", hint: "Сладость почти не ощущается" },
+          { value: "balanced", label: "Сбалансированный", hint: "Мягкая и элегантная сладость" },
+          { value: "sweet", label: "Сладкий", hint: "Более мягкий и привлекательный" },
+          { value: "rich", label: "Насыщенный", hint: "Явная и плотная сладость" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "season",
+        title: "Какой основной сезон?",
+        description: "Сезонность помогает AI точнее ранжировать варианты.",
+        options: [
+          { value: "all", label: "Круглый год", hint: "Универсальное использование" },
+          { value: "summer", label: "Лето", hint: "Легкий и свежий" },
+          { value: "winter", label: "Зима", hint: "Более теплый и плотный" },
+          { value: "spring", label: "Весна/осень", hint: "Сбалансированные переходные ароматы" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "profile",
+        title: "Какая группа вам ближе?",
+        description: "Главное семейство нот сильно влияет на итоговый результат.",
+        options: [
+          { value: "citrus", label: "Цитрусовые", hint: "Бергамот, лимон, нероли" },
+          { value: "floral", label: "Цветочные", hint: "Роза, жасмин, ирис" },
+          { value: "woody", label: "Древесные", hint: "Сандал, кедр, ветивер" },
+          { value: "amber", label: "Амбра/сладкие", hint: "Ваниль, тонка, бальзамические" },
+          { value: "oud", label: "Уд/дымные", hint: "Кожа, дым, темные оттенки" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "longevity",
+        title: "Какой стойкости вы ожидаете?",
+        description: "AI использует это как приоритет при ранжировании.",
+        options: [
+          { value: "moderate", label: "Средняя", hint: "4-6 часов достаточно" },
+          { value: "long", label: "Долгая", hint: "Хочу 8+ часов" },
+          { value: "beast", label: "Максимальная", hint: "Пусть оставляет сильный шлейф" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "budget",
+        title: "Какой у вас стартовый бюджет?",
+        description: "Ранжируем результаты с учетом бюджета.",
+        options: [
+          { value: "all", label: "Без разницы", hint: "Любой ценовой диапазон" },
+          { value: "under80", label: "До 80 AZN", hint: "Бюджетные варианты" },
+          { value: "80to140", label: "80-140 AZN", hint: "Сбалансированный средний сегмент" },
+          { value: "140plus", label: "140+ AZN", hint: "Премиальные и нишевые варианты" },
+        ],
+      },
+      {
+        kind: "text",
+        key: "favoriteNotes",
+        title: "По желанию: какие ноты вам нравятся?",
+        description: "Например: бергамот, ваниль, уд, дымные оттенки и т. д.",
+        label: "Любимые ноты",
+        placeholder: "Например: бергамот, зеленый чай, мягкий мускус",
+      },
+      {
+        kind: "text",
+        key: "avoidNotes",
+        title: "По желанию: какие ноты вы не любите?",
+        description: "Так AI отодвинет неподходящие варианты вниз.",
+        label: "Ноты, которых избегать",
+        placeholder: "Например: слишком сладкая ваниль, тяжелый уд, дым",
+      },
+    ],
   },
 };
-
-QUIZ_DICTIONARY.en.questions = QUIZ_DICTIONARY.az.questions.map((question) => {
-  if (question.kind === "choice") {
-    return { ...question };
-  }
-  return { ...question };
-});
-QUIZ_DICTIONARY.ru.questions = QUIZ_DICTIONARY.az.questions.map((question) => {
-  if (question.kind === "choice") {
-    return { ...question };
-  }
-  return { ...question };
-});
 
 const KEYWORDS = {
   vibe: {

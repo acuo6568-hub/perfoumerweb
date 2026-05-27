@@ -5,29 +5,53 @@ import { getNotes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { absoluteUrlForLocale, buildAzeriPageKeywords, buildLocaleAlternates } from "@/lib/seo";
 
-const qoxunuMetadata: Metadata = {
-  title: "Qoxunu Testi",
-  description:
-    "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
-  keywords: buildAzeriPageKeywords([
-    "qoxu testi",
-    "ətir testi",
-    "ai ətir tövsiyəsi",
-    "mənə uyğun ətir",
-    "notlara görə ətir tap",
-    "parfum test",
-  ]),
-};
+const qoxunuMetadataByLocale = {
+  az: {
+    title: "Qoxunu Testi",
+    description: "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
+    keywords: buildAzeriPageKeywords([
+      "qoxu testi",
+      "ətir testi",
+      "ai ətir tövsiyəsi",
+      "mənə uyğun ətir",
+      "notlara görə ətir tap",
+      "parfum test",
+    ]),
+  },
+  en: {
+    title: "Find Your Scent",
+    description: "Take a short scent quiz and find perfumes that match your taste with AI suggestions.",
+    keywords: buildAzeriPageKeywords([
+      "perfume quiz",
+      "find my scent",
+      "ai perfume recommendation",
+      "best perfume for me",
+      "scent finder",
+    ]),
+  },
+  ru: {
+    title: "Подбор аромата",
+    description: "Пройдите короткий тест и найдите ароматы по своему вкусу с помощью AI-рекомендаций.",
+    keywords: buildAzeriPageKeywords([
+      "тест на аромат",
+      "подбор парфюма",
+      "ai рекомендация парфюма",
+      "какой парфюм мне подходит",
+      "подбор аромата",
+    ]),
+  },
+} as const;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getCurrentLocale();
+  const metadata = qoxunuMetadataByLocale[locale];
 
   return {
-    ...qoxunuMetadata,
+    ...metadata,
     alternates: buildLocaleAlternates("/qoxunu", locale),
     openGraph: {
-      title: qoxunuMetadata.title ?? "Qoxunu Testi",
-      description: qoxunuMetadata.description ?? "Qısa qoxu testini keçin və zövqünüzə uyğun ətirləri AI əsaslı tövsiyə ilə tapın.",
+      title: metadata.title,
+      description: metadata.description,
       url: absoluteUrlForLocale("/qoxunu", locale),
       type: "website",
     },

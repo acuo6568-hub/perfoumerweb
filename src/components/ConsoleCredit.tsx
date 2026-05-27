@@ -10,43 +10,43 @@ type CreditLine = {
 const CREDIT_LINES: CreditLine[] = [
   {
     lang: "AZ",
-    text: "Bu vebsayt Bakhishov Brands tərəfindən hazırlanıb. Oğurluq qadağandır.",
+    text: "Bu vebsayt Bakhishov Brands tərəfindən hazırlanıb. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "EN",
-    text: "This website is made by Bakhishov Brands. Stealing is prohibited.",
+    text: "This website is made by Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "TR",
-    text: "Bu web sitesi Bakhishov Brands tarafından hazırlandı. Çalmak yasaktır.",
+    text: "Bu web sitesi Bakhishov Brands tarafından hazırlandı. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "RU",
-    text: "Этот сайт создан Bakhishov Brands. Копирование запрещено.",
+    text: "Этот сайт создан Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "ES",
-    text: "Este sitio fue creado por Bakhishov Brands. Robar esta prohibido.",
+    text: "Este sitio fue creado por Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "FR",
-    text: "Ce site est cree par Bakhishov Brands. Le vol est interdit.",
+    text: "Ce site est cree par Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "DE",
-    text: "Diese Website wurde von Bakhishov Brands erstellt. Diebstahl ist verboten.",
+    text: "Diese Website wurde von Bakhishov Brands erstellt. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "AR",
-    text: "تم إنشاء هذا الموقع بواسطة Bakhishov Brands. السرقة ممنوعة.",
+    text: "تم إنشاء هذا الموقع بواسطة Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "IT",
-    text: "Questo sito e stato creato da Bakhishov Brands. Rubare e vietato.",
+    text: "Questo sito e stato creato da Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
   {
     lang: "PT",
-    text: "Este site foi feito por Bakhishov Brands. Roubo e proibido.",
+    text: "Este site foi feito por Bakhishov Brands. WhatsApp: +994 55 575 77 77.",
   },
 ];
 
@@ -90,7 +90,7 @@ export function ConsoleCredit() {
     const printCredit = () => {
       console.log("%c ", imageBlockStyle);
       console.log("%cBAKHISHOV BRANDS", titleStyle);
-      console.log("%cORIGINAL WORK ONLY", subtitleStyle);
+      console.log("%cWEBSITE CREDIT + WHATSAPP", subtitleStyle);
 
       let index = 0;
       const intervalId = window.setInterval(() => {
@@ -118,7 +118,7 @@ export function ConsoleCredit() {
             "margin-top:4px",
           ].join(";");
 
-          console.log("%cProtected by Bakhishov Brands", lockStyle);
+          console.log("%cBakhishov Brands · +994 55 575 77 77", lockStyle);
         }
       }, 900);
 

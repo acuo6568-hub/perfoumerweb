@@ -28,7 +28,7 @@ function getCopy(locale: SupportedLocale, settings?: SiteSettings) {
       body:
         "Abunəliyiniz aktivdir. Sizə yalnız seçilmiş təkliflər, yeni ətirlər və vacib yeniliklər göndərəcəyik.",
       unsubscribeLabel: "Bu siz deyilsinizsə, bir kliklə abunəliyi ləğv edin",
-      footer: "Perfoumer.az",
+      footer: "Perfoumer",
     },
     en: {
       subject: "Perfoumer subscription confirmed",
@@ -36,7 +36,7 @@ function getCopy(locale: SupportedLocale, settings?: SiteSettings) {
       body:
         "Your subscription is active. We will only send selected offers, new scents, and important updates.",
       unsubscribeLabel: "If this was not you, unsubscribe instantly",
-      footer: "Perfoumer.az",
+      footer: "Perfoumer",
     },
     ru: {
       subject: "Подписка Perfoumer подтверждена",
@@ -44,7 +44,7 @@ function getCopy(locale: SupportedLocale, settings?: SiteSettings) {
       body:
         "Подписка активирована. Мы отправляем только избранные предложения, новинки ароматов и важные обновления.",
       unsubscribeLabel: "Если это не вы, отмените подписку одним нажатием",
-      footer: "Perfoumer.az",
+      footer: "Perfoumer",
     },
   } as const;
 

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import {
   ADMIN_SESSION_COOKIE,
@@ -65,7 +65,7 @@ async function ensureAuthorized() {
   return null;
 }
 
-async function listAllUsers(supabase: ReturnType<typeof createClient>) {
+async function listAllUsers(supabase: SupabaseClient) {
   const perPage = 1000;
   let page = 1;
   let users: AuthUserRow[] = [];
@@ -101,22 +101,22 @@ async function listAllUsers(supabase: ReturnType<typeof createClient>) {
 function sanitizeMessages(value: unknown): ChatMessageRow[] {
   if (!Array.isArray(value)) return [];
 
-  return value
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return null;
-      const raw = entry as Record<string, unknown>;
-      const role = raw.role === "assistant" ? "assistant" : raw.role === "user" ? "user" : null;
-      const text = typeof raw.text === "string" ? raw.text.trim() : "";
-      if (!role || !text) return null;
+  return value.reduce<ChatMessageRow[]>((accumulator, entry) => {
+    if (!entry || typeof entry !== "object") return accumulator;
+    const raw = entry as Record<string, unknown>;
+    const role = raw.role === "assistant" ? "assistant" : raw.role === "user" ? "user" : null;
+    const text = typeof raw.text === "string" ? raw.text.trim() : "";
+    if (!role || !text) return accumulator;
 
-      return {
-        role,
-        text,
-        followUp: raw.followUp,
-        actionSuggestions: raw.actionSuggestions,
-      } satisfies ChatMessageRow;
-    })
-    .filter((entry): entry is ChatMessageRow => entry !== null);
+    accumulator.push({
+      role,
+      text,
+      followUp: raw.followUp,
+      actionSuggestions: raw.actionSuggestions,
+    });
+
+    return accumulator;
+  }, []);
 }
 
 export async function GET(request: Request) {

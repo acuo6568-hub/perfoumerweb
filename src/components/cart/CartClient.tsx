@@ -24,6 +24,7 @@ type CartClientProps = {
 };
 
 type CartCopy = {
+  sectionLabel: string;
   loading: string;
   signInTitle: string;
   signInBody: string;
@@ -46,6 +47,7 @@ type CartCopy = {
 
 const copyByLocale: Record<Locale, CartCopy> = {
   az: {
+    sectionLabel: "Səbət",
     loading: "Yüklənir...",
     signInTitle: "Səbətə baxmaq üçün giriş et",
     signInBody: "Seçdiyin ətirləri saxlamaq və sifarişi tamamlamaq üçün hesabına daxil ol.",
@@ -66,6 +68,7 @@ const copyByLocale: Record<Locale, CartCopy> = {
     orderSummary: "Sifariş xülasəsi",
   },
   en: {
+    sectionLabel: "Cart",
     loading: "Loading...",
     signInTitle: "Sign in to view your cart",
     signInBody: "Log in to keep your selections and continue checkout.",
@@ -86,24 +89,25 @@ const copyByLocale: Record<Locale, CartCopy> = {
     orderSummary: "Order summary",
   },
   ru: {
-    loading: "Zagruzka...",
-    signInTitle: "Voidite, chtoby uvidet korzinu",
-    signInBody: "Voidite v akkaunt, chtoby sohranyat vybory i prodolzhit oplatu.",
-    signInAction: "Voiti",
-    emptyTitle: "Korzina poka pustaya",
-    emptyBody: "Vyberite aromaty v kataloge i soberite zakaz zdes.",
-    browseCatalog: "Pereiti v katalog",
-    each: "za shtuku",
-    subtotal: "Poditog",
-    shipping: "Dostavka",
-    shippingFree: "Besplatno",
-    total: "Itogo",
-    checkout: "Pereiti k oplate",
-    continueShopping: "Prodolzhit pokupki",
-    remove: "Udalit",
-    items: "poziciy",
+    sectionLabel: "Корзина",
+    loading: "Загрузка...",
+    signInTitle: "Войдите, чтобы увидеть корзину",
+    signInBody: "Войдите в аккаунт, чтобы сохранять выбор и продолжить оплату.",
+    signInAction: "Войти",
+    emptyTitle: "Корзина пока пустая",
+    emptyBody: "Выберите ароматы в каталоге и соберите заказ здесь.",
+    browseCatalog: "Перейти в каталог",
+    each: "за штуку",
+    subtotal: "Подитог",
+    shipping: "Доставка",
+    shippingFree: "Бесплатно",
+    total: "Итого",
+    checkout: "Перейти к оплате",
+    continueShopping: "Продолжить покупки",
+    remove: "Удалить",
+    items: "позиций",
     ml: "ml",
-    orderSummary: "Svodka zakaza",
+    orderSummary: "Сводка заказа",
   },
 };
 
@@ -383,7 +387,7 @@ export function CartClient({ perfumes, locale, supabase: supabaseConfig }: CartC
       <section className="relative overflow-hidden rounded-[2rem] border border-zinc-200/85 bg-[linear-gradient(160deg,#ffffff_0%,#f8f8f7_52%,#f1f1ef_100%)] p-7 shadow-[0_24px_58px_rgba(24,24,24,0.07)] md:p-10">
         <div className="pointer-events-none absolute -left-12 top-6 h-36 w-36 rounded-full bg-[radial-gradient(circle,#ededeb_0%,rgba(237,237,235,0)_72%)]" />
         <div className="relative">
-          <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Cart</p>
+          <p className="text-[0.72rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{copy.sectionLabel}</p>
           <h2 className="mt-2 text-[2rem] leading-[0.95] tracking-[-0.035em] text-zinc-900 md:text-[2.6rem]">{copy.emptyTitle}</h2>
           <p className="mt-3 max-w-2xl text-zinc-600">{copy.emptyBody}</p>
 
