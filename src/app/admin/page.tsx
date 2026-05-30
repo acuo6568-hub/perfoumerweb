@@ -51,7 +51,7 @@ export default async function AdminPage() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1820px] px-3 pb-10 pt-24 sm:px-5 sm:pt-28 lg:px-7 xl:px-9">
+    <main className="min-h-dvh w-full px-0 pb-0 pt-0">
       <AdminPanelClient
         configured={configured}
         initialAuthenticated={authenticated}

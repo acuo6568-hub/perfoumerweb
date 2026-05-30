@@ -24,7 +24,7 @@
       "en": "See offer",
       "ru": "Посмотреть предложение"
     },
-    "backgroundMode": "gradient",
+    "backgroundMode": "solid",
     "backgroundColor": "#111111",
     "gradientFrom": "#111111",
     "gradientTo": "#2d2d2d",
@@ -71,9 +71,39 @@
     "rotationMode": "selected",
     "slides": [
       {
-        "perfumeSlug": "cool-water",
-        "buttonLabel": "Cool Water",
-        "description": "Davidoff Cool Water"
+        "perfumeSlug": "sauvage",
+        "buttonLabel": "Sauvage",
+        "description": "C.Dior Sauvage"
+      },
+      {
+        "perfumeSlug": "aventus",
+        "buttonLabel": "Aventus",
+        "description": "Creed Aventus"
+      },
+      {
+        "perfumeSlug": "blue-hope",
+        "buttonLabel": "Blue Hope",
+        "description": "Xerjoff Blue Hope"
+      },
+      {
+        "perfumeSlug": "bleu-de-chanel-lexclusif",
+        "buttonLabel": "Bleu de Chanel L’Exclusif",
+        "description": "Chanel Bleu de Chanel L’Exclusif"
+      },
+      {
+        "perfumeSlug": "le-beau-paradise-garden",
+        "buttonLabel": "Le Beau Paradise Garden",
+        "description": "Jean Paul Gaultier Le Beau Paradise Garden"
+      },
+      {
+        "perfumeSlug": "baccarat-rouge-540",
+        "buttonLabel": "Baccarat Rouge 540",
+        "description": "MFK Baccarat Rouge 540"
+      },
+      {
+        "perfumeSlug": "delina",
+        "buttonLabel": "Delina",
+        "description": "Parfums de Marly Delina"
       }
     ]
   }
