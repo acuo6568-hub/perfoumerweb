@@ -145,6 +145,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const [isMobileLocaleMenuOpen, setIsMobileLocaleMenuOpen] = useState(false);
   const [isMobileCurrencyMenuOpen, setIsMobileCurrencyMenuOpen] = useState(false);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
+  const [currencyAnimationKey, setCurrencyAnimationKey] = useState(0);
   const [isBrandsMenuOpen, setIsBrandsMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
@@ -170,6 +171,9 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
   const brandsMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const menuCloseTimerRef = useRef<number | null>(null);
   const currencyPanelCloseTimerRef = useRef<number | null>(null);
+  const pulseCurrency = useCallback(() => {
+    setCurrencyAnimationKey((value) => value + 1);
+  }, []);
   // Per-letter magnetic hover: toggles 'brand-active' class on nearest letter for a snappy iPad-like feel
   useEffect(() => {
     const panel = brandsMenuPanelRef.current;
@@ -2034,7 +2038,10 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                     setIsCurrencyMenuOpen((s) => !s);
                   }}
                 >
-                  <span className="relative z-[1] block h-[18px] w-[18px] text-[0.95rem] font-semibold leading-none">
+                  <span
+                    key={`currency-symbol-${currencyAnimationKey}`}
+                    className="relative z-[1] block h-[18px] w-[18px] text-[0.95rem] font-semibold leading-none animate-currency-pop"
+                  >
                     {CURRENCY_META[selectedCurrency].symbol}
                   </span>
                 </button>
@@ -2071,6 +2078,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                           key={currency}
                           type="button"
                           onClick={() => {
+                            pulseCurrency();
                             setSelectedCurrency(currency);
                             setIsCurrencyMenuOpen(false);
                           }}
@@ -2757,7 +2765,15 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
               >
                 <span className="flex items-center gap-2">
                   <Coins size={18} weight="duotone" className="text-zinc-700" />
-                  <span>{copy[locale].currencyTag}: {currentCurrencyLabel}</span>
+                  <span>
+                    {copy[locale].currencyTag}:&nbsp;
+                    <span
+                      key={`mobile-currency-${currencyAnimationKey}`}
+                      className="inline-flex animate-currency-pop"
+                    >
+                      {currentCurrencyLabel}
+                    </span>
+                  </span>
                 </span>
                 <CaretDown
                   size={14}
@@ -2786,6 +2802,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
                       key={`mobile-currency-${currency}`}
                       type="button"
                       onClick={() => {
+                        pulseCurrency();
                         setSelectedCurrency(currency);
                         setIsMobileCurrencyMenuOpen(false);
                       }}

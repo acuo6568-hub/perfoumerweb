@@ -1,8 +1,10 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 
 import { getPerfumes } from "@/lib/catalog";
+import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
 type QuizAnswers = {
@@ -20,9 +22,26 @@ type QuizAnswers = {
 
 type RecommendRequest = {
   locale?: "az" | "en" | "ru";
+  timezone?: string;
+  userId?: string;
+  email?: string;
+  username?: string;
+  isSignedIn?: boolean;
+  isGuest?: boolean;
   answers?: QuizAnswers;
   freeText?: string;
   fallbackSlugs?: string[];
+};
+
+type QoxunuRecommendation = {
+  slug: string;
+  name: string;
+  brand: string;
+  gender: string;
+  top: string[];
+  heart: string[];
+  base: string[];
+  minPrice: number;
 };
 
 const SUMMARY_LANGUAGE: Record<NonNullable<RecommendRequest["locale"]>, string> = {
@@ -297,6 +316,93 @@ function getEnvValue(key: string) {
   return fromFiles.trim();
 }
 
+function sanitizeText(value: unknown, fallback = "", maxLength = 120) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  return trimmed.slice(0, maxLength);
+}
+
+function readHeader(headers: Headers, keys: string[]) {
+  for (const key of keys) {
+    const value = headers.get(key);
+    if (value && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function decodeHeaderValue(value: string) {
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value.replace(/\+/g, "%20"));
+  } catch {
+    return value;
+  }
+}
+
+async function logQoxunuResult(request: Request, payload: {
+  locale: string;
+  timezone: string;
+  userId: string | null;
+  email: string;
+  username: string;
+  isSignedIn: boolean;
+  isGuest: boolean;
+  answers: QuizAnswers;
+  freeText: string;
+  recommendations: QoxunuRecommendation[];
+  summary: string;
+  usedFallback: boolean;
+  warning: string;
+}) {
+  const config = getSupabaseServiceConfigFromServer();
+  if (!config) {
+    return;
+  }
+
+  const supabase = createClient(config.url, config.serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const countryCodeFromHeaders = readHeader(request.headers, ["x-vercel-ip-country", "cf-ipcountry", "x-country-code"]).toUpperCase();
+  const countryFromHeaders = readHeader(request.headers, ["x-vercel-ip-country-name", "cf-country-name"]);
+  const regionFromHeaders = readHeader(request.headers, ["x-vercel-ip-country-region", "x-vercel-ip-region", "cf-region"]);
+  const cityFromHeaders = readHeader(request.headers, ["x-vercel-ip-city", "cf-ipcity", "x-city"]);
+  const userAgent = sanitizeText(request.headers.get("user-agent") || "", "", 320);
+
+  const body = payload;
+
+  await supabase.from("qoxunu_quiz_logs").insert([
+    {
+      user_id: body.userId,
+      anonymous_id: body.userId || `guest-${Date.now().toString(36)}`,
+      is_signed_in: body.isSignedIn,
+      is_guest: body.isGuest,
+      email: sanitizeText(body.email, "", 255),
+      username: sanitizeText(body.username, "", 120),
+      locale: sanitizeText(body.locale, "az", 10),
+      page_path: "/qoxunu",
+      free_text: sanitizeText(body.freeText, "", 1200),
+      answers_json: body.answers,
+      recommendations_json: body.recommendations,
+      summary: sanitizeText(body.summary, "", 1200),
+      used_fallback: body.usedFallback,
+      warning: sanitizeText(body.warning, "", 180),
+      device_type: "",
+      browser: "",
+      os: "",
+      user_agent: userAgent,
+      country_code: sanitizeText(countryCodeFromHeaders, "", 4),
+      country: sanitizeText(decodeHeaderValue(countryFromHeaders), "", 120),
+      region: sanitizeText(decodeHeaderValue(regionFromHeaders), "", 120),
+      city: sanitizeText(decodeHeaderValue(cityFromHeaders), "", 120),
+      timezone: sanitizeText(body.timezone || request.headers.get("x-timezone") || "", "", 80),
+    },
+  ]);
+}
+
 export async function POST(request: Request) {
   const apiKey = getEnvValue("QOXUNU_OPENAI_API_KEY") || getEnvValue("OPENAI_API_KEY");
   if (!apiKey) {
@@ -308,6 +414,12 @@ export async function POST(request: Request) {
   const summaryLanguage = SUMMARY_LANGUAGE[locale];
   const answers = body.answers ?? {};
   const freeText = (body.freeText ?? "").trim();
+  const timezone = sanitizeText(body.timezone, "", 80);
+  const userId = typeof body.userId === "string" && body.userId.trim() ? body.userId.trim() : null;
+  const email = sanitizeText(body.email, "", 255);
+  const username = sanitizeText(body.username, "", 120);
+  const isSignedIn = Boolean(body.isSignedIn || userId);
+  const isGuest = typeof body.isGuest === "boolean" ? body.isGuest : !isSignedIn;
 
   const perfumes = dedupeRecommendationPerfumes(await getPerfumes());
   const candidates = [...perfumes]
@@ -386,10 +498,35 @@ export async function POST(request: Request) {
   const finalSlugs = [...uniqueSelected, ...fallback].slice(0, 3);
   const usedFallback = uniqueSelected.length === 0;
 
-  return NextResponse.json({
+  const responsePayload = {
     slugs: finalSlugs,
     summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",
     usedFallback,
     warning: usedFallback ? "no_ai_selection" : null,
+  };
+
+  void logQoxunuResult(request, {
+    locale,
+    timezone,
+    userId,
+    email,
+    username,
+    isSignedIn,
+    isGuest,
+    answers,
+    freeText,
+    recommendations: finalSlugs.map((slug) => {
+      const perfume = candidates.find((item) => item.slug === slug);
+      return perfume
+        ? perfume
+        : { slug, name: slug, brand: "", gender: "", top: [], heart: [], base: [], minPrice: 0 };
+    }),
+    summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",
+    usedFallback,
+    warning: usedFallback ? "no_ai_selection" : "",
+  }).catch((error) => {
+    console.error("Failed to store Qoxunu log:", error);
   });
+
+  return NextResponse.json(responsePayload);
 }

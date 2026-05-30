@@ -71,6 +71,7 @@ import { DEFAULT_PROMOTION_SETTINGS } from "@/lib/promotions";
 import type { Note, Perfume, PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AiChatInsights } from "@/components/admin/AiChatInsights";
+import { QoxunuInsights } from "@/components/admin/QoxunuInsights";
 import { BrandSelector } from "@/components/admin/BrandSelector";
 import { SaveStatusPill } from "@/components/admin/SaveStatusPill";
 import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
@@ -86,7 +87,7 @@ type AdminPanelClientProps = {
 type PerfumeDraft = Perfume & { mediaScale?: number; mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number } };
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
-type AdminView = "dashboard" | "aiChat" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
+type AdminView = "dashboard" | "aiChat" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
 type AdminLocale = "az" | "en";
 type PerfumeEditorTab = "basics" | "discounts" | "notes" | "media";
 type NoteEditorTab = "content" | "media";
@@ -377,6 +378,9 @@ const adminCopy = {
     aiChat: "AI chat",
     aiChatDescription:
       "Guest və giriş etmiş AI chat sessiyalarını, location məlumatını və tam yazışmaları bir paneldə izləyin.",
+    qoxunuLogs: "Qoxunu logları",
+    qoxunuLogsDescription:
+      "Qoxunu testini tamamlayan guest və giriş etmiş istifadəçilərin cavablarını, location məlumatını və son nəticələri izləyin.",
     perfumes: "Ətirlər",
     notes: "Notlar",
     linkedNotes: "Bağlı notlar",
@@ -718,6 +722,9 @@ const adminCopy = {
     aiChat: "AI chat",
     aiChatDescription:
       "Inspect guest and signed-in AI chat sessions, location metadata, and full transcripts from one panel.",
+    qoxunuLogs: "Qoxunu logs",
+    qoxunuLogsDescription:
+      "Inspect guest and signed-in users who completed the scent quiz, their location metadata, their input, and the final system picks.",
     perfumes: "Perfumes",
     notes: "Notes",
     linkedNotes: "Linked notes",
@@ -3611,6 +3618,15 @@ export function AdminPanelClient({
               {copy.aiChat}
             </TabButton>
             <TabButton
+              active={view === "qoxunuLogs"}
+              icon={<Sparkle size={15} weight="bold" />}
+              onClick={() => {
+                startTransition(() => setView("qoxunuLogs"));
+              }}
+            >
+              {copy.qoxunuLogs}
+            </TabButton>
+            <TabButton
               active={view === "perfumes"}
               icon={<SquaresFour size={15} weight="bold" />}
               onClick={() => {
@@ -3670,6 +3686,11 @@ export function AdminPanelClient({
             <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
               <p className="text-sm font-semibold text-zinc-900">{copy.aiChat}</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.aiChatDescription}</p>
+            </div>
+          ) : view === "qoxunuLogs" ? (
+            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+              <p className="text-sm font-semibold text-zinc-900">{copy.qoxunuLogs}</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.qoxunuLogsDescription}</p>
             </div>
           ) : view === "promotions" ? (
             <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
@@ -3894,6 +3915,10 @@ export function AdminPanelClient({
           ) : view === "aiChat" ? (
             <div className={ui.card}>
               <AiChatInsights locale={locale} />
+            </div>
+          ) : view === "qoxunuLogs" ? (
+            <div className={ui.card}>
+              <QoxunuInsights locale={locale} />
             </div>
           ) : view === "brands" ? (
             <div className={ui.card}>

@@ -192,6 +192,40 @@ create table if not exists public.perfume_summary_cache (
 create index if not exists perfume_summary_cache_slug_locale_idx
   on public.perfume_summary_cache (slug, locale);
 
+create table if not exists public.qoxunu_quiz_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  anonymous_id text not null default '' check (char_length(anonymous_id) between 6 and 128),
+  is_signed_in boolean not null default false,
+  is_guest boolean not null default true,
+  email text not null default '' check (char_length(email) <= 255),
+  username text not null default '' check (char_length(username) <= 120),
+  locale text not null default 'az' check (char_length(locale) between 2 and 10),
+  page_path text not null default '/qoxunu' check (char_length(page_path) <= 180),
+  free_text text not null default '' check (char_length(free_text) <= 1200),
+  answers_json jsonb not null default '{}'::jsonb,
+  recommendations_json jsonb not null default '[]'::jsonb,
+  summary text not null default '' check (char_length(summary) <= 1200),
+  used_fallback boolean not null default false,
+  warning text not null default '' check (char_length(warning) <= 180),
+  device_type text not null default '' check (char_length(device_type) <= 24),
+  browser text not null default '' check (char_length(browser) <= 48),
+  os text not null default '' check (char_length(os) <= 48),
+  user_agent text not null default '' check (char_length(user_agent) <= 320),
+  country_code text not null default '' check (char_length(country_code) <= 4),
+  country text not null default '' check (char_length(country) <= 120),
+  region text not null default '' check (char_length(region) <= 120),
+  city text not null default '' check (char_length(city) <= 120),
+  timezone text not null default '' check (char_length(timezone) <= 80),
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists qoxunu_quiz_logs_created_at_idx
+  on public.qoxunu_quiz_logs (created_at desc);
+
+create index if not exists qoxunu_quiz_logs_user_id_idx
+  on public.qoxunu_quiz_logs (user_id, created_at desc);
+
 create table if not exists public.newsletter_subscribers (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,

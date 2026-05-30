@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { humanizeNoteToken, localizeNoteLabel } from "@/lib/note-label";
 import type { Note, Perfume } from "@/types/catalog";
@@ -25,6 +26,14 @@ type QuizAnswers = {
 type TextAnswers = {
   favoriteNotes: string;
   avoidNotes: string;
+};
+
+type QuizUserContext = {
+  id: string;
+  email: string;
+  username: string;
+  isSignedIn: boolean;
+  isGuest: boolean;
 };
 
 type Option = {
@@ -941,10 +950,80 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
   const [hasGeneratedAi, setHasGeneratedAi] = useState(false);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  const [userContext, setUserContext] = useState<QuizUserContext | null>(null);
 
   const questionCardRef = useRef<HTMLDivElement | null>(null);
   const questionCardInnerRef = useRef<HTMLDivElement | null>(null);
   const lastGeneratedRef = useRef("");
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      return;
+    }
+
+    let cancelled = false;
+
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const user = data.user;
+        if (!user) {
+          setUserContext(null);
+          return;
+        }
+
+        const username =
+          typeof user.user_metadata?.username === "string"
+            ? user.user_metadata.username.trim()
+            : typeof user.user_metadata?.name === "string"
+              ? user.user_metadata.name.trim()
+              : "";
+
+        setUserContext({
+          id: user.id,
+          email: user.email?.trim() || "",
+          username,
+          isSignedIn: true,
+          isGuest: false,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUserContext(null);
+        }
+      });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      const user = session?.user ?? null;
+      if (!user) {
+        setUserContext(null);
+        return;
+      }
+
+      const username =
+        typeof user.user_metadata?.username === "string"
+          ? user.user_metadata.username.trim()
+          : typeof user.user_metadata?.name === "string"
+            ? user.user_metadata.name.trim()
+            : "";
+
+      setUserContext({
+        id: user.id,
+        email: user.email?.trim() || "",
+        username,
+        isSignedIn: true,
+        isGuest: false,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const choiceQuestions = useMemo(() => {
     const seen = new Set<string>();
@@ -1153,6 +1232,12 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           locale,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          userId: userContext?.id ?? "",
+          email: userContext?.email ?? "",
+          username: userContext?.username ?? "",
+          isSignedIn: userContext?.isSignedIn ?? false,
+          isGuest: userContext?.isGuest ?? true,
           answers,
           freeText: [
             likedNotes.length ? `favorite note slugs: ${likedNotes.join(", ")}` : "",

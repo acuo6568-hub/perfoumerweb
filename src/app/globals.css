@@ -137,6 +137,27 @@ body {
   }
 }
 
+@keyframes currencyPop {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.45;
+  }
+
+  45% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-currency-pop {
+  animation: currencyPop 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu-toggle-button .menu-toggle-line,
   .menu-toggle-button:hover:not([data-open="true"]) .menu-toggle-icon .menu-toggle-line--top,
@@ -144,6 +165,10 @@ body {
   .menu-toggle-button:hover:not([data-open="true"]) .menu-toggle-icon .menu-toggle-line--bottom {
     animation: none;
     transition-duration: 0ms;
+  }
+
+  .animate-currency-pop {
+    animation: none;
   }
 }
 
