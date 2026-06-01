@@ -3334,11 +3334,11 @@ export function AdminDashboard({
                   isUserItemsLoading ? (
                     <div className="h-24 animate-pulse rounded-[12px] bg-zinc-100" />
                   ) : userWishlist.length ? (
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-2">
                       {userWishlist.map((item) => (
-                        <div key={`${item.slug}-${item.created_at}`} className="flex items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
-                          {item.image ? <img src={item.image} alt={item.name} className="h-11 w-11 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
-                          <div className="min-w-0">
+                        <div key={`${item.slug}-${item.created_at}`} className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
+                          {item.image ? <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
+                          <div className="min-w-0 pr-1">
                             <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
                             <p className="truncate text-sm font-medium text-zinc-500">{item.brand}</p>
                           </div>
@@ -3354,14 +3354,17 @@ export function AdminDashboard({
                   isUserItemsLoading ? (
                     <div className="h-24 animate-pulse rounded-[12px] bg-zinc-100" />
                   ) : userCart.length ? (
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-2">
                       {userCart.map((item) => (
-                        <div key={`${item.slug}-${item.created_at}-${item.size_ml}`} className="flex items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
-                          {item.image ? <img src={item.image} alt={item.name} className="h-11 w-11 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
-                          <div className="min-w-0">
+                        <div key={`${item.slug}-${item.created_at}-${item.size_ml}`} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
+                          {item.image ? <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
+                          <div className="min-w-0 pr-1">
                             <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
                             <p className="truncate text-sm font-medium text-zinc-500">{item.size_ml} ml · x{item.quantity}</p>
                           </div>
+                          <span className="rounded-full border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-600">
+                            {item.quantity}
+                          </span>
                         </div>
                       ))}
                     </div>
