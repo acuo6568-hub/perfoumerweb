@@ -22339,6 +22339,18 @@
         "label": "50ML"
       }
     ],
+    "discount": {
+      "enabled": false,
+      "mode": "percent",
+      "value": 10,
+      "scope": {
+        "kind": "all"
+      },
+      "deadline": {
+        "kind": "none"
+      },
+      "showDeadline": false
+    },
     "noteSlugs": {
       "top": [
         "berqamot",
@@ -25063,6 +25075,12 @@
         "vanil",
         "nbr"
       ]
+    },
+    "mediaScale": 0.82,
+    "mediaScaleByDevice": {
+      "mobile": 0.82,
+      "laptop": 0.82,
+      "monitor": 0.82
     }
   },
   {

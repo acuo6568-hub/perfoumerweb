@@ -9,7 +9,7 @@
   "twitterTitle": "Perfoumer | Orijinal və Premium Ətirlər",
   "twitterDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
   "promotions": {
-    "enabled": false,
+    "enabled": true,
     "mode": "discount",
     "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille indi endirimdədir. Sevdiyiniz ətri seçin və fürsəti qaçırmayın.",
     "textByLocale": {
@@ -47,7 +47,7 @@
     "messages": []
   },
   "homeHeader": {
-    "mode": "rotating",
+    "mode": "video",
     "videoUrl": "/perfumevid.MP4",
     "videoTitle": "KAYALI Perfumes",
     "videoDescription": "Discover the full KAYALI collections.",

@@ -397,8 +397,8 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
 
               <Section title={copyText.recommendations}>
                 <div className="space-y-2">
-                  {selectedLog.recommendations.length ? selectedLog.recommendations.map((perfume) => (
-                    <div key={perfume.slug} className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-3 py-3">
+                  {selectedLog.recommendations.length ? selectedLog.recommendations.map((perfume, index) => (
+                    <div key={`${perfume.slug}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-3 py-3">
                       <div>
                         <p className="text-sm font-semibold text-zinc-950">{perfume.brand ? `${perfume.brand} ${perfume.name}` : perfume.name}</p>
                         <p className="mt-1 text-xs text-zinc-500">{perfume.slug}</p>

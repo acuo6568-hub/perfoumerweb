@@ -110,6 +110,42 @@ export function AppShell({ children, locale: _locale, settings }: AppShellProps)
               <Header floating locale={_locale} topOffsetStyle={{ top: "var(--promo-banner-height)" }} />
             </>
           )}
+          {/* Side ornaments (decorative) — hide on admin/staff routes */}
+          {!hideNavigationChrome ? (
+            <div className="site-side-ornaments" aria-hidden>
+              <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-a">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-b">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-c">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-d">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-e">
+                <span className="site-side-ornament-bloom" />
+              </div>
+
+              <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-a">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-b">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-c">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-d">
+                <span className="site-side-ornament-bloom" />
+              </div>
+              <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-e">
+                <span className="site-side-ornament-bloom" />
+              </div>
+            </div>
+          ) : null}
           <div
             key={pathname}
             className={[

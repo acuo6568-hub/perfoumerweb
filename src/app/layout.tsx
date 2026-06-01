@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Poppins } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -33,12 +33,12 @@ import "./globals.css";
 
 export const dynamic = "force-dynamic";
 
-const poppins = Poppins({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
   fallback: ["Avenir Next", "Segoe UI", "Helvetica", "Arial", "sans-serif"],
-  variable: "--font-poppins",
+  variable: "--font-inter",
 });
 
 const playfair = Playfair_Display({
@@ -333,10 +333,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html
-      lang={locale}
-      className={`${poppins.variable} ${playfair.variable} h-full antialiased`}
-    >
+    <html lang={locale} className={`${inter.variable} ${playfair.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <Script id="gtm-init" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -355,39 +352,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         <div className="site-sketch-layer" aria-hidden>
           <span className="site-sketch-wash" />
-        </div>
-        <div className="site-side-ornaments" aria-hidden>
-          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-a">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-b">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-c">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-d">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-left site-side-ornament-variant-e">
-            <span className="site-side-ornament-bloom" />
-          </div>
-
-          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-a">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-b">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-c">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-d">
-            <span className="site-side-ornament-bloom" />
-          </div>
-          <div className="site-side-ornament site-side-ornament-right site-side-ornament-variant-e">
-            <span className="site-side-ornament-bloom" />
-          </div>
         </div>
         <script
           type="application/ld+json"

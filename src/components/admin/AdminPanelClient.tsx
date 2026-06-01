@@ -23,6 +23,7 @@ import {
   Database,
   DownloadSimple,
   FloppyDisk,
+  Bell,
   ImageSquare,
   Link,
   MagnifyingGlass,
@@ -30,6 +31,8 @@ import {
   Package,
   Plus,
   Rows,
+  CaretLeft,
+  CaretRight,
   SignOut,
   Sparkle,
   SquaresFour,
@@ -70,6 +73,7 @@ import {
 import { DEFAULT_PROMOTION_SETTINGS } from "@/lib/promotions";
 import type { Note, Perfume, PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminCommandCenter } from "@/components/admin/AdminCommandCenter";
 import { AiChatInsights } from "@/components/admin/AiChatInsights";
 import { QoxunuInsights } from "@/components/admin/QoxunuInsights";
 import { BrandSelector } from "@/components/admin/BrandSelector";
@@ -87,86 +91,75 @@ type AdminPanelClientProps = {
 type PerfumeDraft = Perfume & { mediaScale?: number; mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number } };
 type NoteDraft = Note;
 type SiteSettingsDraft = SiteSettings;
-type AdminView = "dashboard" | "aiChat" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
 type AdminLocale = "az" | "en";
-type PerfumeEditorTab = "basics" | "discounts" | "notes" | "media";
-type NoteEditorTab = "content" | "media";
-type PerfumeListFilter = "all" | "missingImage" | "missingNotes";
-type NoteListFilter = "all" | "linked" | "unlinked" | "missingImage";
-type StatusTone = "neutral" | "success" | "error";
-type StatusState = {
-  tone: StatusTone;
-  message: string;
-};
-type SaveStatusTone = "idle" | "saving" | "success" | "error";
-type SaveStatusState = {
-  tone: SaveStatusTone;
-  message: string;
-};
-
-type PromoAnalyticsTopPromo = {
-  promoKey: string;
-  promoLabel: string;
-  promoTarget: string;
-  clicks: number;
-  uniqueUsers: number;
-  uniqueSessions: number;
-  lastClickedAt: string | null;
-};
-
-type PromoAnalyticsRecentClick = {
-  createdAt: string;
-  promoKey: string;
-  promoLabel: string;
-  promoTarget: string;
-  userId: string | null;
-  userEmail: string | null;
-  anonymousId: string;
-  sessionId: string;
-  country: string;
-  city: string;
-  deviceType: string;
-  browser: string;
-  os: string;
-  locale: string;
-};
-
-type PromoAnalyticsState = {
-  totalClicks: number;
-  uniqueClickers: number;
-  topPromos: PromoAnalyticsTopPromo[];
-  recentClicks: PromoAnalyticsRecentClick[];
-};
-
 type PromotionCopyPreset = {
   id: string;
   label: Record<SitePromotionLocale, string>;
   text: Record<SitePromotionLocale, string>;
 };
-
+type StatusTone = "success" | "error" | "neutral";
+type StatusState = {
+  tone: StatusTone;
+  message: string;
+};
+type SaveStatusState = {
+  tone: "idle" | "saving" | "success" | "error";
+  message: string;
+};
+type PerfumeEditorTab = "basics" | "notes" | "discounts" | "media";
+type NoteEditorTab = "content" | "media";
+type PerfumeListFilter = "all" | "missingImage" | "missingNotes";
+type NoteListFilter = "all" | "linked" | "unlinked" | "missingImage";
+type PromoAnalyticsState = {
+  totalClicks: number;
+  uniqueClickers: number;
+  topPromos: Array<{
+    promoKey: string;
+    promoLabel?: string;
+    promoTarget?: string;
+    clicks: number;
+    uniqueUsers: number;
+    uniqueSessions: number;
+    lastClickedAt?: string | null;
+  }>;
+  recentClicks: Array<{
+    sessionId: string;
+    createdAt: string;
+    userEmail?: string | null;
+    userId?: string | null;
+    anonymousId?: string | null;
+    promoKey: string;
+    promoLabel?: string | null;
+    country?: string | null;
+    city?: string | null;
+    deviceType?: string | null;
+    browser?: string | null;
+  }>;
+};
+type AdminView = "dashboard" | "assistant" | "aiChat" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
 const ui = {
   shell:
-    "overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-white/92 shadow-[0_24px_60px_rgba(17,24,39,0.08)] backdrop-blur",
+    "overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl",
   card:
-    "rounded-[1.6rem] border border-zinc-200/80 bg-white/96 p-5 shadow-[0_18px_40px_rgba(17,24,39,0.06)] sm:p-6",
+    "rounded-[24px] border border-[#E5E7EB] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.05)] sm:p-6",
   soft:
-    "rounded-[1.35rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(250,250,249,0.92)_0%,rgba(244,244,245,0.96)_100%)]",
+    "rounded-[20px] border border-[#E5E7EB] bg-[#FCFCFD] shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
   input:
-    "h-12 w-full rounded-2xl border border-zinc-300 bg-[#f7f7f5] px-4 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white",
+    "h-11 w-full rounded-[12px] border border-[#E5E7EB] bg-white px-3.5 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
   textarea:
-    "w-full rounded-[1.4rem] border border-zinc-300 bg-[#f7f7f5] px-4 py-3 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white",
+    "w-full rounded-[12px] border border-[#E5E7EB] bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
   primaryButton:
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+    "inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(99,102,241,0.22)] transition duration-200 hover:-translate-y-[1px] hover:bg-indigo-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   secondaryButton:
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-zinc-400 hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+    "inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-[#E5E7EB] bg-white px-4 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-[#D1D5DB] hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   compactButton:
-    "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-zinc-400 hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+    "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 text-sm font-semibold text-zinc-700 transition duration-200 hover:-translate-y-[1px] hover:border-[#D1D5DB] hover:bg-zinc-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   compactPrimaryButton:
-    "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold text-white transition duration-200 hover:-translate-y-[1px] hover:bg-zinc-800 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+    "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-indigo-600 px-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(99,102,241,0.2)] transition duration-200 hover:-translate-y-[1px] hover:bg-indigo-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   dangerButton:
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition duration-200 hover:-translate-y-[1px] hover:border-rose-300 hover:bg-rose-100 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
+    "inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition duration-200 hover:-translate-y-[1px] hover:border-red-300 hover:bg-red-100 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-55",
   tab:
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition duration-200",
+    "inline-flex h-10 items-center gap-2 border-b-2 px-1 pb-3 text-sm font-semibold transition duration-200",
   chip:
     "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
   compactChip:
@@ -217,6 +210,10 @@ function toDateTimeLocalInputValue(value: string) {
 
 function mapAdminLocaleToCopyLocale(locale: AdminLocale) {
   return locale === "az" ? "az" : "en";
+}
+
+function adminText(locale: AdminLocale, az: string, en: string) {
+  return locale === "az" ? az : en;
 }
 
 const PROMOTION_LOCALES: SitePromotionLocale[] = ["az", "en", "ru"];
@@ -1060,6 +1057,25 @@ function matchesSearchPool(pool: string, query: string) {
   return tokens.every((token) => pool.includes(token));
 }
 
+function tokenizeNormalizedWords(value: string) {
+  return tokenizeSearch(normalizeSearchText(value));
+}
+
+function matchesTokenPrefixPool(poolTokens: string[], normalizedPool: string, query: string) {
+  if (normalizedPool.includes(query)) {
+    return true;
+  }
+
+  const queryTokens = tokenizeNormalizedWords(query).filter((token) => token.length >= 2);
+  if (!queryTokens.length) {
+    return true;
+  }
+
+  return queryTokens.every((queryToken) =>
+    poolTokens.some((poolToken) => poolToken === queryToken || poolToken.startsWith(queryToken)),
+  );
+}
+
 function scorePerfumeSearch(item: PerfumeDraft, normalizedQuery: string) {
   if (!normalizedQuery) {
     return 0;
@@ -1469,8 +1485,6 @@ function WorkspaceStat({
           {label}
         </span>
       </div>
-      <p className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-zinc-950">{value}</p>
-      <p className="mt-1 text-sm text-zinc-500">{detail}</p>
     </div>
   );
 }
@@ -1513,10 +1527,112 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-zinc-700">{label}</span>
+      <span className="mb-2 block text-[13px] font-medium text-zinc-700">{label}</span>
       {children}
-      {hint ? <span className="mt-2 block text-xs text-zinc-500">{hint}</span> : null}
+      {hint ? <span className="mt-2 block text-xs leading-5 text-zinc-500">{hint}</span> : null}
     </label>
+  );
+}
+
+function DropdownShell({
+  value,
+  open,
+  onClick,
+  label,
+  summary,
+}: {
+  value: ReactNode;
+  open?: boolean;
+  onClick: () => void;
+  label?: string;
+  summary?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={cx(
+        "flex min-h-12 w-full items-center justify-between gap-3 rounded-[16px] border bg-white px-4 py-3 text-left transition-all duration-200",
+        open
+          ? "border-violet-300 shadow-[0_10px_24px_rgba(124,58,237,0.12)] ring-4 ring-violet-100"
+          : "border-zinc-200 hover:border-zinc-300 hover:shadow-[0_8px_18px_rgba(15,23,42,0.04)]",
+      )}
+      onClick={onClick}
+    >
+      <span className="min-w-0">
+        {label ? <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{label}</span> : null}
+        <span className={cx("mt-0.5 block truncate text-sm font-medium", summary ? "text-zinc-500" : "text-zinc-900")}>{summary || value}</span>
+      </span>
+      <span className={cx("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition", open ? "border-violet-200 bg-violet-50 text-violet-700" : "border-zinc-200 bg-zinc-50 text-zinc-500") }>
+        <CaretRight size={14} weight="bold" className={cx("transition-transform duration-200", open ? "rotate-90" : "")} />
+      </span>
+    </button>
+  );
+}
+
+function ModernDropdown({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node | null)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? placeholder;
+
+  return (
+    <div ref={rootRef} className="relative">
+      <DropdownShell value={selectedLabel} onClick={() => setOpen((current) => !current)} open={open} />
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-[16px] border border-zinc-200 bg-white shadow-[0_22px_48px_rgba(15,23,42,0.12)]">
+          <div className="max-h-64 overflow-y-auto p-2">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={cx(
+                  "flex h-11 w-full items-center justify-between rounded-[12px] px-3 text-left text-sm transition",
+                  option.value === value ? "bg-violet-50 text-violet-700" : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950",
+                )}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                <span>{option.label}</span>
+                {option.value === value ? <CheckCircle size={16} weight="fill" /> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1537,8 +1653,8 @@ function TabButton({
       className={cx(
         ui.tab,
         active
-          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_12px_26px_rgba(17,24,39,0.18)]"
-          : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50",
+          ? "border-indigo-600 text-indigo-600"
+          : "border-transparent text-zinc-500 hover:border-zinc-200 hover:text-zinc-900",
       )}
       onClick={onClick}
     >
@@ -1553,12 +1669,14 @@ function RecordButton({
   title,
   subtitle,
   meta,
+  src,
   onClick,
 }: {
   active: boolean;
   title: string;
   subtitle: string;
   meta: string;
+  src?: string;
   onClick: () => void;
 }) {
   return (
@@ -1566,31 +1684,324 @@ function RecordButton({
       type="button"
       onClick={onClick}
       className={cx(
-        "w-full rounded-[1.35rem] border p-4 text-left transition duration-200",
+        "group w-full rounded-[14px] border px-3 py-2.5 text-left transition duration-200",
         active
-          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_14px_28px_rgba(17,24,39,0.18)]"
-          : "border-zinc-200 bg-white hover:-translate-y-[1px] hover:border-zinc-300 hover:bg-zinc-50",
+          ? "border-indigo-500 bg-indigo-50/70 text-zinc-950 shadow-[0_8px_20px_rgba(99,102,241,0.08)]"
+          : "border-transparent bg-white hover:border-[#E5E7EB] hover:bg-[#FAFAFB]",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{title}</p>
-          <p className={cx("mt-1 truncate text-xs", active ? "text-zinc-300" : "text-zinc-500")}>
-            {subtitle}
-          </p>
+      <div className="flex items-center gap-2.5">
+        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-zinc-100">
+          {src ? (
+            <Image src={src} alt={title} fill sizes="40px" className="object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+              {title.slice(0, 2)}
+            </div>
+          )}
         </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-zinc-950">{title}</p>
+          <p className="mt-0.5 truncate text-[11px] text-zinc-500">{subtitle}</p>
+        </div>
+
         <span
           className={cx(
-            "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
-            active
-              ? "border-white/15 bg-white/10 text-white"
-              : "border-zinc-200 bg-zinc-50 text-zinc-500",
+            "shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
+            active ? "bg-white text-indigo-600" : "bg-zinc-100 text-zinc-600",
           )}
         >
           {meta}
         </span>
       </div>
     </button>
+  );
+}
+
+type PerfumePickerModalCopy = {
+  searchPerfumes: string;
+  all: string;
+  missingImage: string;
+  missingNotes: string;
+  perfumeList: string;
+  noPerfumesFound: string;
+  noPerfumesFoundDescription: string;
+};
+
+function PerfumePickerModal({
+  open,
+  entering,
+  perfumes,
+  selectedPerfume,
+  onSelectPerfume,
+  onClose,
+  initialQuery,
+  onQueryCommit,
+  copy,
+  priceCopy,
+  locale,
+}: {
+  open: boolean;
+  entering: boolean;
+  perfumes: PerfumeDraft[];
+  selectedPerfume: PerfumeDraft | null;
+  onSelectPerfume: (id: string) => void;
+  onClose: () => void;
+  initialQuery: string;
+  onQueryCommit: (query: string) => void;
+  copy: PerfumePickerModalCopy;
+  priceCopy: (typeof adminCopy)[AdminLocale];
+  locale: AdminLocale;
+}) {
+  const [query, setQuery] = useState(initialQuery);
+  const [filter, setFilter] = useState<PerfumeListFilter>("all");
+  const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery, open]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      onQueryCommit(query);
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [onQueryCommit, query]);
+
+  const normalizedQuery = tokenizeNormalizedWords(deferredQuery)
+    .filter((token) => token.length >= 2)
+    .join(" ");
+  const isFiltering = query.trim() !== deferredQuery.trim();
+
+  const perfumeSearchIndex = useMemo(
+    () =>
+      perfumes.map((item) => {
+        const pool = [
+          item.name,
+          item.slug,
+          item.brand,
+          item.gender,
+          item.noteSlugs.top.join(" "),
+          item.noteSlugs.heart.join(" "),
+          item.noteSlugs.base.join(" "),
+        ].join(" ");
+
+        return {
+          item,
+          normalizedPool: normalizeSearchText(pool),
+          tokens: tokenizeNormalizedWords(pool),
+        };
+      }),
+    [perfumes],
+  );
+
+  const filteredPerfumes = useMemo(() => {
+    const searchMatched = perfumeSearchIndex.filter((entry) =>
+      matchesTokenPrefixPool(entry.tokens, entry.normalizedPool, normalizedQuery),
+    );
+
+    const filtered = searchMatched.filter((item) => {
+      if (filter === "missingImage") {
+        return !item.item.image;
+      }
+
+      if (filter === "missingNotes") {
+        return item.item.noteSlugs.top.length + item.item.noteSlugs.heart.length + item.item.noteSlugs.base.length === 0;
+      }
+
+      return true;
+    });
+
+    if (normalizedQuery) {
+      filtered.sort((left, right) => {
+        const scoreRight = scorePerfumeSearch(right.item, normalizedQuery);
+        const scoreLeft = scorePerfumeSearch(left.item, normalizedQuery);
+        if (scoreRight !== scoreLeft) {
+          return scoreRight - scoreLeft;
+        }
+
+        return left.item.name.localeCompare(right.item.name);
+      });
+    }
+
+    return filtered.map((entry) => entry.item);
+  }, [filter, normalizedQuery, perfumeSearchIndex]);
+
+  const visiblePerfumes = filteredPerfumes.slice(0, 60);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cx(
+        "fixed inset-0 z-[70] flex items-center justify-center bg-zinc-950/35 px-4 py-6 backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        entering ? "opacity-100" : "opacity-0",
+      )}
+      onClick={onClose}
+    >
+      <div
+        className={cx(
+          "w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          entering ? "translate-y-0 scale-100 opacity-100 blur-0" : "translate-y-4 scale-[0.98] opacity-0 blur-sm",
+        )}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] px-5 py-4 sm:px-6">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{adminText(locale, "Ətir seçici", "Perfume picker")}</p>
+            <h3 className="mt-1 text-lg font-semibold tracking-[-0.04em] text-zinc-950">{adminText(locale, "Ətir seçin", "Select a perfume")}</h3>
+            <p className="mt-1 text-sm text-zinc-500">{adminText(locale, "Axtarın, önizləyin və iş sahəsindən çıxmadan dəyişin.", "Search, preview, and switch without leaving the workspace.")}</p>
+          </div>
+
+          <button type="button" className={ui.compactButton} onClick={onClose}>
+            {adminText(locale, "Bağla", "Close")}
+          </button>
+        </div>
+
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="border-b border-[#E5E7EB] p-5 lg:border-b-0 lg:border-r sm:p-6">
+            <label className="relative block">
+              <span className="sr-only">{adminText(locale, "Ətirləri axtar", "Search perfumes")}</span>
+              <MagnifyingGlass
+                size={15}
+                weight="bold"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+              />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={copy.searchPerfumes}
+                className={cx(
+                  "h-11 w-full rounded-[12px] border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
+                )}
+              />
+            </label>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {([
+                ["all", copy.all],
+                ["missingImage", copy.missingImage],
+                ["missingNotes", copy.missingNotes],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={cx(
+                    "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition",
+                    filter === value
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                  )}
+                  onClick={() => setFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+              <span>{copy.perfumeList}</span>
+              <span className="inline-flex items-center gap-2">
+                {isFiltering ? <ArrowsClockwise className="animate-spin text-indigo-500" size={13} weight="bold" /> : null}
+                {filteredPerfumes.length}
+              </span>
+            </div>
+
+            <div className="mt-3 max-h-[58vh] overflow-y-auto pr-1">
+              <div className={cx("grid gap-2 transition duration-200", isFiltering ? "opacity-60" : "opacity-100")}>
+                {visiblePerfumes.length ? (
+                  visiblePerfumes.map((item) => {
+                    const isSelected = selectedPerfume?.id === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          startTransition(() => {
+                            onSelectPerfume(item.id);
+                            onClose();
+                          });
+                        }}
+                        className={cx(
+                          "flex items-center gap-3 rounded-[16px] border px-3 py-2.5 text-left transition duration-200",
+                          isSelected
+                            ? "border-indigo-500 bg-indigo-50/70 shadow-[0_8px_20px_rgba(99,102,241,0.08)]"
+                            : "border-[#E5E7EB] bg-white hover:border-zinc-300 hover:bg-zinc-50",
+                        )}
+                      >
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[12px] border border-[#E5E7EB] bg-zinc-100">
+                          {item.image ? (
+                            <Image src={item.image} alt={item.name} fill sizes="48px" className="object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                              {item.name.slice(0, 2)}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
+                          <p className="truncate text-xs text-zinc-500">
+                            {item.brand} · {item.gender || "Unspecified"}
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+                          {formatStartingPrice(item, priceCopy)}
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-[18px] border border-dashed border-[#D1D5DB] bg-zinc-50 px-4 py-10 text-center">
+                    <p className="text-sm font-semibold text-zinc-800">{copy.noPerfumesFound}</p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.noPerfumesFoundDescription}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#FCFCFD] p-5 sm:p-6">
+            {selectedPerfume ? (
+              <div className="space-y-4">
+                <div className="rounded-[20px] border border-[#E5E7EB] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-[16px] border border-[#E5E7EB] bg-zinc-50">
+                    {selectedPerfume.image ? (
+                      <Image
+                        src={selectedPerfume.image}
+                        alt={selectedPerfume.name}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 320px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-semibold uppercase tracking-[0.1em] text-zinc-400">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold text-zinc-900">{selectedPerfume.name}</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {selectedPerfume.brand} · {selectedPerfume.gender || "Unspecified"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1639,7 +2050,7 @@ function ImagePreview({
 
   return (
     <div
-      className="overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-zinc-100"
+      className="overflow-hidden rounded-[18px] border border-[#E5E7EB] bg-[#F8FAFC] shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
       style={checkerboardStyle}
     >
       {src ? (
@@ -1691,6 +2102,7 @@ export function AdminPanelClient({
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AdminView>("perfumes");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [perfumeEditorTab, setPerfumeEditorTab] = useState<PerfumeEditorTab>("basics");
   const [resizeModalOpen, setResizeModalOpen] = useState(false);
   const [resizeScale, setResizeScale] = useState(1);
@@ -1740,6 +2152,10 @@ export function AdminPanelClient({
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [brandSearch, setBrandSearch] = useState("");
   const [search, setSearch] = useState("");
+  const [perfumePickerQuery, setPerfumePickerQuery] = useState("");
+  const [isPerfumePickerOpen, setIsPerfumePickerOpen] = useState(false);
+  const [isPerfumePickerMounted, setIsPerfumePickerMounted] = useState(false);
+  const [isPerfumePickerEntering, setIsPerfumePickerEntering] = useState(false);
   const [headerSlideSearches, setHeaderSlideSearches] = useState<Record<number, string>>({});
   const [status, setStatus] = useState<StatusState | null>(null);
   const [statusTimerId, setStatusTimerId] = useState<NodeJS.Timeout | null>(null);
@@ -1758,9 +2174,15 @@ export function AdminPanelClient({
   const noteImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const deferredSearch = useDeferredValue(search);
+  const deferredPerfumePickerQuery = useDeferredValue(perfumePickerQuery);
+  const deferredHeaderSlideSearches = useDeferredValue(headerSlideSearches);
   const normalizedSearch = normalizeSearchText(deferredSearch);
+  const normalizedPerfumePickerQuery = tokenizeNormalizedWords(deferredPerfumePickerQuery)
+    .filter((token) => token.length >= 2)
+    .join(" ");
   const isWorking = busy || uploading || importing !== null;
   const isFiltering = search.trim() !== deferredSearch.trim();
+  const isPerfumePickerFiltering = perfumePickerQuery.trim() !== deferredPerfumePickerQuery.trim();
   const copy = adminCopy[locale];
   const t = (key: keyof typeof copy, values: Record<string, string | number> = {}) =>
     interpolate(copy[key], values);
@@ -1805,6 +2227,29 @@ export function AdminPanelClient({
 
     init();
   }, [resizeModalOpen, deviceViewMode, syncScaleAcrossDevices, selectedPerfume]);
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let frameId: number | null = null;
+
+    if (isPerfumePickerOpen) {
+      setIsPerfumePickerMounted(true);
+      frameId = requestAnimationFrame(() => setIsPerfumePickerEntering(true));
+    } else {
+      setIsPerfumePickerEntering(false);
+      timeoutId = setTimeout(() => setIsPerfumePickerMounted(false), 220);
+    }
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isPerfumePickerOpen]);
   const selectedPerfumeProductUrl = selectedPerfume
     ? `https://perfoumer.az/perfumes/${selectedPerfume.slug}`
     : "";
@@ -2052,52 +2497,6 @@ export function AdminPanelClient({
     setPromotionEditorLocale(nextLocale);
   };
 
-  const filteredPerfumes = useMemo(() => {
-    const searchMatched = perfumes.filter((item) => {
-      const pool = normalizeSearchText(
-        [
-          item.name,
-          item.slug,
-          item.brand,
-          item.gender,
-          item.noteSlugs.top.join(" "),
-          item.noteSlugs.heart.join(" "),
-          item.noteSlugs.base.join(" "),
-        ].join(" "),
-      );
-
-      return matchesSearchPool(pool, normalizedSearch);
-    });
-
-    const filtered = searchMatched.filter((item) => {
-      if (perfumeListFilter === "missingImage") {
-        return !item.image;
-      }
-
-      if (perfumeListFilter === "missingNotes") {
-        return (
-          item.noteSlugs.top.length + item.noteSlugs.heart.length + item.noteSlugs.base.length === 0
-        );
-      }
-
-      return true;
-    });
-
-    if (normalizedSearch) {
-      filtered.sort((left, right) => {
-        const scoreRight = scorePerfumeSearch(right, normalizedSearch);
-        const scoreLeft = scorePerfumeSearch(left, normalizedSearch);
-        if (scoreRight !== scoreLeft) {
-          return scoreRight - scoreLeft;
-        }
-
-        return left.name.localeCompare(right.name);
-      });
-    }
-
-    return filtered;
-  }, [normalizedSearch, perfumeListFilter, perfumes]);
-
   const noteUsageCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -2206,6 +2605,28 @@ export function AdminPanelClient({
     }
   }, [dirty, saveStatus.tone, saveStatusTimerId]);
 
+  useEffect(() => {
+    if (!isPerfumePickerOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsPerfumePickerOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isPerfumePickerOpen]);
+
   const stats = useMemo(() => {
     const linkedNotes = new Set<string>();
     let perfumeImages = 0;
@@ -2238,6 +2659,35 @@ export function AdminPanelClient({
       assetCoverage: `${perfumeImages + noteImages}/${perfumes.length + notes.length || 0}`,
     };
   }, [notes, perfumes]);
+
+  const perfumePickerContent = (
+    <PerfumePickerModal
+      open={isPerfumePickerMounted}
+      entering={isPerfumePickerEntering}
+      perfumes={perfumes}
+      selectedPerfume={selectedPerfume}
+      onSelectPerfume={setSelectedPerfumeId}
+      onClose={() => setIsPerfumePickerOpen(false)}
+      initialQuery={perfumePickerQuery}
+      onQueryCommit={setPerfumePickerQuery}
+      locale={locale}
+      copy={{
+        searchPerfumes: copy.searchPerfumes,
+        all: copy.all,
+        missingImage: copy.missingImage,
+        missingNotes: copy.missingNotes,
+        perfumeList: copy.perfumeList,
+        noPerfumesFound: copy.noPerfumesFound,
+        noPerfumesFoundDescription: copy.noPerfumesFoundDescription,
+      }}
+      priceCopy={copy}
+    />
+  );
+
+  const perfumePickerModal =
+    isPerfumePickerMounted && typeof document !== "undefined"
+      ? createPortal(perfumePickerContent, document.body)
+      : null;
 
   useEffect(() => {
     const savedLocale = window.localStorage.getItem(ADMIN_LOCALE_STORAGE_KEY);
@@ -3389,351 +3839,147 @@ export function AdminPanelClient({
   }
 
   return (
-    <section className="space-y-6">
-      <div className={ui.shell}>
-        <div className="relative overflow-hidden px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.98),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,246,242,0.95)_100%)]" />
-
-          <div className="relative space-y-3">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 shadow-sm">
-                <Database size={14} weight="bold" />
-                {copy.professionalWorkspace}
-              </div>
-              <h1 className="mt-2 max-w-2xl text-[1.55rem] font-semibold leading-[1.03] tracking-[-0.06em] text-zinc-950 sm:text-[1.85rem] lg:text-[2rem]">
-                {copy.heroTitle}
-              </h1>
-              <p className="mt-2 max-w-2xl text-[0.9rem] leading-6 text-zinc-600 sm:text-[0.93rem]">
-                {copy.heroDescription}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 border-t border-zinc-200/70 pt-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1">
-                  <span className="px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                    {copy.localeLabel}
-                  </span>
-                  {(["az", "en"] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={cx(
-                        "h-8 rounded-full px-3 text-[11px] font-semibold uppercase tracking-[0.1em] transition",
-                        locale === option
-                          ? "bg-zinc-900 text-white shadow-sm"
-                          : "text-zinc-500 hover:bg-white hover:text-zinc-900",
-                      )}
-                      onClick={() => setLocale(option)}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <span
-                  className={cx(
-                    ui.compactChip,
-                    dirty
-                      ? "border-amber-200 bg-amber-50 text-amber-800"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700",
+    <section className="h-dvh overflow-hidden px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6 admin-page-enter">
+      <div className="flex h-full gap-6 overflow-visible">
+        <aside
+          className={cx(
+            ui.card,
+            "relative shrink-0 overflow-visible transition-[width,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            sidebarCollapsed ? "w-[72px] p-3 pt-3" : "w-[220px] p-3 pt-6",
+          )}
+        >
+          <div className={cx("flex h-full min-h-0 flex-col gap-4 overflow-visible admin-sidebar-enter transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]", sidebarCollapsed ? "-translate-x-0" : "translate-x-0")}>
+          <div className={cx("flex min-h-0 flex-1 flex-col", sidebarCollapsed ? "items-center" : "") }>
+            <div className={cx("flex items-start", sidebarCollapsed ? "justify-center" : "justify-end") }>
+              <button
+                type="button"
+                className={cx(
+                  "flex h-12 w-12 items-center justify-center rounded-full border border-white/80 bg-white shadow-sm transition-colors duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200",
+                  sidebarCollapsed ? "text-zinc-700 hover:bg-zinc-50" : "mr-[-10px] text-zinc-700 hover:bg-zinc-50",
+                )}
+                onClick={() => setSidebarCollapsed((current) => !current)}
+                aria-label={sidebarCollapsed ? (locale === "az" ? "Genişləndir" : "Expand sidebar") : (locale === "az" ? "Yığ" : "Collapse sidebar")}
+                title={sidebarCollapsed ? (locale === "az" ? "Genişləndir" : "Expand sidebar") : (locale === "az" ? "Yığ" : "Collapse sidebar")}
+              >
+                <span className="sr-only">{sidebarCollapsed ? (locale === "az" ? "Genişləndir" : "Expand sidebar") : (locale === "az" ? "Yığ" : "Collapse sidebar")}</span>
+                <span className="relative flex items-center justify-center">
+                  {sidebarCollapsed ? (
+                    <CaretRight className="sidebar-toggle-icon inline-flex transition-transform duration-200" size={18} weight="bold" />
+                  ) : (
+                    <Rows className="sidebar-toggle-icon inline-flex transition-transform duration-200" size={20} weight="bold" />
                   )}
-                >
-                  {dirty ? <WarningCircle size={13} weight="fill" /> : <CheckCircle size={13} weight="fill" />}
-                  {dirty ? copy.unsavedChanges : copy.everythingSaved}
                 </span>
+              </button>
+            </div>
 
-                <button type="button" className={ui.compactButton} onClick={onReload} disabled={isWorking}>
-                  <ArrowsClockwise size={15} weight="bold" />
-                  {copy.refresh}
-                </button>
-                <button type="button" className={ui.compactButton} onClick={cancelEditing} disabled={!dirty || isWorking}>
-                  <ClockCounterClockwise size={15} weight="bold" />
-                  {copy.reset}
-                </button>
-                <button type="button" className={ui.compactPrimaryButton} onClick={onSave} disabled={!dirty || isWorking}>
-                  <FloppyDisk size={15} weight="bold" />
-                  {busy ? copy.saving : copy.saveChanges}
-                </button>
-                <button type="button" className={ui.compactButton} onClick={onLogout} disabled={busy}>
-                  <SignOut size={15} weight="bold" />
-                  {copy.logout}
-                </button>
+            <div className={cx("mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain", sidebarCollapsed ? "pr-0" : "pr-1")}>
+              <div className="space-y-1">
+                {[
+                  { value: "dashboard", label: copy.dashboard, icon: <TrendUp size={16} weight="bold" /> },
+                  { value: "perfumes", label: copy.perfumes, icon: <SquaresFour size={16} weight="bold" /> },
+                  { value: "notes", label: copy.notes, icon: <Rows size={16} weight="bold" /> },
+                  { value: "brands", label: adminText(locale, "Brendlər", "Brands"), icon: <Package size={16} weight="bold" /> },
+                  { value: "promotions", label: copy.promotions, icon: <Sparkle size={16} weight="bold" /> },
+                  { value: "branding", label: copy.branding, icon: <TextT size={16} weight="bold" /> },
+                  { value: "aiChat", label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
+                  { value: "header", label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
+                  { value: "qoxunuLogs", label: adminText(locale, "İstifadəçilər", "Users"), icon: <UserCircle size={16} weight="bold" /> },
+                  { value: "assistant", label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: <Sparkle size={16} weight="bold" /> },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={cx(
+                      "group relative isolate flex items-center gap-2.5 overflow-hidden text-[13px] font-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      item.value === "assistant"
+                        ? view === item.value
+                          ? "border border-cyan-300/70 bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-white shadow-[0_10px_24px_rgba(14,165,233,0.28)]"
+                          : "border border-transparent bg-[linear-gradient(135deg,rgba(236,254,255,0.92),rgba(240,249,255,0.78),rgba(250,245,255,0.9))] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-cyan-200 hover:text-zinc-950 hover:shadow-[0_8px_22px_rgba(14,165,233,0.14)]"
+                        : view === item.value
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950",
+                      sidebarCollapsed
+                        ? "mx-auto h-10 w-10 justify-center rounded-[14px] px-0"
+                        : "h-9 w-full justify-start rounded-[11px] px-3",
+                    )}
+                    onClick={() => {
+                      startTransition(() => setView(item.value as AdminView));
+                    }}
+                    aria-label={item.label}
+                    title={item.label}
+                  >
+                    {item.value === "assistant" ? (
+                      <>
+                        <span
+                          className={cx(
+                            "pointer-events-none absolute bg-gradient-to-r from-cyan-400/0 via-white/45 to-fuchsia-400/0 bg-[length:220%_100%] opacity-70 blur-[1px] transition-opacity duration-300 group-hover:opacity-100 animate-shimmer",
+                            sidebarCollapsed ? "inset-1 rounded-[12px]" : "inset-0 rounded-[inherit]",
+                          )}
+                        />
+                        <span
+                          className={cx(
+                            "pointer-events-none absolute bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.65),rgba(255,255,255,0.16)_40%,rgba(255,255,255,0)_72%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100",
+                            sidebarCollapsed ? "inset-[2px] rounded-[10px]" : "inset-[1px] rounded-[inherit]",
+                          )}
+                        />
+                      </>
+                    ) : null}
+                    <span className={cx("relative z-[1] shrink-0 transition-transform duration-300", sidebarCollapsed ? "" : "group-hover:scale-110", item.value === "assistant" ? (view === item.value ? "text-white" : "text-cyan-600 group-hover:text-cyan-700") : view === item.value ? "text-indigo-600" : "text-zinc-400") }>
+                      {sidebarCollapsed ? (
+                        <span className={cx(
+                          "inline-flex h-10 w-10 items-center justify-center rounded-[12px] transition",
+                          view === item.value
+                            ? item.value === "assistant"
+                              ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-white"
+                              : "bg-indigo-50 text-indigo-600"
+                            : "bg-white text-zinc-400",
+                        )}>
+                          {item.icon}
+                        </span>
+                      ) : (
+                        item.icon
+                      )}
+                    </span>
+                    {!sidebarCollapsed ? <span className={cx("relative z-[1] truncate", item.value === "assistant" && view === item.value ? "drop-shadow-[0_1px_0_rgba(255,255,255,0.22)]" : "")}>{item.label}</span> : null}
+                  </button>
+                ))}
               </div>
-            </div>
-          </div>
 
-          <div className="relative mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceStat
-              icon={<Package size={18} weight="bold" />}
-              label={copy.perfumes}
-              value={String(stats.perfumes)}
-              detail={t("visibleInSearch", { count: filteredPerfumes.length })}
-            />
-            <WorkspaceStat
-              icon={<NotePencil size={18} weight="bold" />}
-              label={copy.notes}
-              value={String(stats.notes)}
-              detail={t("visibleInSearch", { count: filteredNotes.length })}
-            />
-            <WorkspaceStat
-              icon={<Tag size={18} weight="bold" />}
-              label={copy.linkedNotes}
-              value={String(stats.linkedNotes)}
-              detail={copy.linkedNoteDetail}
-            />
-            <WorkspaceStat
-              icon={<ImageSquare size={18} weight="bold" />}
-              label={copy.assets}
-              value={stats.assetCoverage}
-              detail={t("assetCoverageDetail", {
-                count: perfumes.filter((item) => item.image).length + notes.filter((item) => item.image).length,
-              })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className={ui.card}>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
-              {copy.dataOperations}
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              {copy.dataOperationsDescription}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              className={ui.secondaryButton}
-              type="button"
-              onClick={() => downloadCsv("perfumes")}
-              disabled={isWorking}
-            >
-              <DownloadSimple size={16} weight="bold" />
-              {copy.exportPerfumesCsv}
-            </button>
-            <button
-              className={ui.secondaryButton}
-              type="button"
-              onClick={() => downloadCsv("notes")}
-              disabled={isWorking}
-            >
-              <DownloadSimple size={16} weight="bold" />
-              {copy.exportNotesCsv}
-            </button>
-            <button
-              className={ui.secondaryButton}
-              type="button"
-              onClick={() => perfumeImportRef.current?.click()}
-              disabled={isWorking}
-            >
-              <UploadSimple size={16} weight="bold" />
-              {importing === "perfumes" ? copy.importingPerfumes : copy.importPerfumesCsv}
-            </button>
-            <button
-              className={ui.secondaryButton}
-              type="button"
-              onClick={() => noteImportRef.current?.click()}
-              disabled={isWorking}
-            >
-              <UploadSimple size={16} weight="bold" />
-              {importing === "notes" ? copy.importingNotes : copy.importNotesCsv}
-            </button>
-            <input
-              ref={perfumeImportRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) {
-                  void importCsv("perfumes", file);
-                }
-              }}
-            />
-            <input
-              ref={noteImportRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) {
-                  void importCsv("notes", file);
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {status ? (
-          <div
-            className={cx(
-              "mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium",
-              toneClasses(status.tone),
-            )}
-          >
-            <StatusIcon tone={status.tone} />
-            {status.message}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className={cx(ui.card, "xl:sticky xl:top-6 xl:h-[calc(100dvh-3rem)] xl:min-h-[40rem]")}> 
-          <div className="flex h-full min-h-0 flex-col">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
-                {copy.workspaceRecords}
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                {copy.workspaceRecordsDescription}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <TabButton
-              active={view === "dashboard"}
-              icon={<TrendUp size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("dashboard"));
-              }}
-            >
-              {copy.dashboard}
-            </TabButton>
-            <TabButton
-              active={view === "aiChat"}
-              icon={<UserCircle size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("aiChat"));
-              }}
-            >
-              {copy.aiChat}
-            </TabButton>
-            <TabButton
-              active={view === "qoxunuLogs"}
-              icon={<Sparkle size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("qoxunuLogs"));
-              }}
-            >
-              {copy.qoxunuLogs}
-            </TabButton>
-            <TabButton
-              active={view === "perfumes"}
-              icon={<SquaresFour size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("perfumes"));
-              }}
-            >
-              {copy.perfumes}
-            </TabButton>
-            <TabButton
-              active={view === "notes"}
-              icon={<Rows size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("notes"));
-              }}
-            >
-              {copy.notes}
-            </TabButton>
-            <TabButton
-              active={view === "brands"}
-              icon={<Package size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("brands"));
-              }}
-            >
-              Brands
-            </TabButton>
-            <TabButton
-              active={view === "branding"}
-              icon={<TextT size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("branding"));
-              }}
-            >
-              {copy.branding}
-            </TabButton>
-            <TabButton
-              active={view === "header"}
-              icon={<ImageSquare size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("header"));
-              }}
-            >
-              {copy.header}
-            </TabButton>
-            <TabButton
-              active={view === "promotions"}
-              icon={<Sparkle size={15} weight="bold" />}
-              onClick={() => {
-                startTransition(() => setView("promotions"));
-              }}
-            >
-              {copy.promotions}
-            </TabButton>
-          </div>
-
-          {view === "dashboard" ? null : view === "aiChat" ? (
-            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
-              <p className="text-sm font-semibold text-zinc-900">{copy.aiChat}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.aiChatDescription}</p>
-            </div>
-          ) : view === "qoxunuLogs" ? (
-            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
-              <p className="text-sm font-semibold text-zinc-900">{copy.qoxunuLogs}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.qoxunuLogsDescription}</p>
-            </div>
-          ) : view === "promotions" ? (
-            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
-              <p className="text-sm font-semibold text-zinc-900">{copy.promotions}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.promotionsDescription}</p>
-            </div>
-          ) : view === "header" ? (
-            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
-              <p className="text-sm font-semibold text-zinc-900">{copy.header}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.headerDescription}</p>
-            </div>
-          ) : view === "branding" ? (
-            <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
-              <p className="text-sm font-semibold text-zinc-900">{copy.branding}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.brandingDescription}</p>
-            </div>
-          ) : (
-            <>
-              <label className="relative mt-5 block">
-                <span className="sr-only">Search admin records</span>
-                <MagnifyingGlass
-                  size={16}
-                  weight="bold"
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
-                />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={view === "perfumes" ? copy.searchPerfumes : copy.searchNotes}
-                  className={cx(ui.input, "pl-11")}
-                />
-              </label>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {view === "perfumes" ? (
-                  <>
-                    <button type="button" className={ui.primaryButton} onClick={addPerfume}>
+              {!sidebarCollapsed ? (view === "dashboard" ? null : view === "aiChat" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{copy.aiChat}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.aiChatDescription}</p>
+                </div>
+              ) : view === "qoxunuLogs" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{copy.qoxunuLogs}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.qoxunuLogsDescription}</p>
+                </div>
+              ) : view === "promotions" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{copy.promotions}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.promotionsDescription}</p>
+                </div>
+              ) : view === "header" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{copy.header}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.headerDescription}</p>
+                </div>
+              ) : view === "branding" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{copy.branding}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.brandingDescription}</p>
+                </div>
+              ) : view === "perfumes" ? (
+                <>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <button type="button" className={cx(ui.primaryButton, "h-9 px-3 text-[13px]")} onClick={addPerfume}>
                       <Plus size={16} weight="bold" />
                       {copy.addPerfume}
                     </button>
                     <button
                       type="button"
-                      className={ui.secondaryButton}
+                      className={cx(ui.secondaryButton, "h-9 px-3 text-[13px]")}
                       onClick={duplicatePerfume}
                       disabled={!selectedPerfume}
                     >
@@ -3742,190 +3988,115 @@ export function AdminPanelClient({
                     </button>
                     <button
                       type="button"
-                      className={ui.dangerButton}
+                      className={cx(ui.dangerButton, "h-9 px-3 text-[13px]")}
                       onClick={deletePerfume}
                       disabled={!selectedPerfume}
                     >
                       <Trash size={16} weight="bold" />
                       {copy.delete}
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className={ui.primaryButton} onClick={addNote}>
-                      <Plus size={16} weight="bold" />
-                      {copy.addNote}
-                    </button>
-                    <button
-                      type="button"
-                      className={ui.secondaryButton}
-                      onClick={duplicateNote}
-                      disabled={!selectedNote}
-                    >
-                      <CopySimple size={16} weight="bold" />
-                      {copy.duplicate}
-                    </button>
-                    <button
-                      type="button"
-                      className={ui.dangerButton}
-                      onClick={deleteNote}
-                      disabled={!selectedNote}
-                    >
-                      <Trash size={16} weight="bold" />
-                      {copy.delete}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {view === "perfumes"
-                  ? ([
-                      ["all", copy.all],
-                      ["missingImage", copy.missingImage],
-                      ["missingNotes", copy.missingNotes],
-                    ] as const).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={cx(
-                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                          perfumeListFilter === value
-                            ? "border-zinc-900 bg-zinc-900 text-white"
-                            : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
-                        )}
-                        onClick={() => setPerfumeListFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))
-                  : ([
-                      ["all", copy.all],
-                      ["linked", copy.linked],
-                      ["unlinked", copy.unlinked],
-                      ["missingImage", copy.missingImage],
-                    ] as const).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={cx(
-                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                          noteListFilter === value
-                            ? "border-zinc-900 bg-zinc-900 text-white"
-                            : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
-                        )}
-                        onClick={() => setNoteListFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                <span>
-                  {view === "perfumes" ? copy.perfumeList : copy.noteList}
-                </span>
-                <span>
-                  {t("recordsShown", {
-                    shown: view === "perfumes" ? filteredPerfumes.length : filteredNotes.length,
-                    total: view === "perfumes" ? perfumes.length : notes.length,
-                  })}
-                  {isFiltering ? ` • ${copy.updating}` : ""}
-                </span>
-              </div>
-
-              <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-2">
-                <div className="mb-2 flex items-center justify-between px-2 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                  <span>{view === "perfumes" ? copy.perfumeList : copy.noteList}</span>
-                  <span>{view === "perfumes" ? filteredPerfumes.length : filteredNotes.length}</span>
-                </div>
-
-                <div className="h-[min(56vh,38rem)] space-y-2 overflow-y-auto pr-1 xl:h-[calc(100dvh-17rem)]">
-                  {view === "perfumes" ? (
-                    filteredPerfumes.length ? (
-                      filteredPerfumes.map((item) => (
-                        <RecordButton
-                          key={item.id}
-                          active={selectedPerfume?.id === item.id}
-                          title={item.name}
-                          subtitle={formatPerfumeMeta(item, copy)}
-                          meta={formatStartingPrice(item, copy)}
-                          onClick={() => {
-                            startTransition(() => {
-                              setView("perfumes");
-                              setSelectedPerfumeId(item.id);
-                            });
-                          }}
-                        />
-                      ))
-                    ) : (
-                      <EmptyState
-                        title={copy.noPerfumesFound}
-                        detail={copy.noPerfumesFoundDescription}
-                        action={
-                          <button type="button" className={ui.secondaryButton} onClick={addPerfume}>
-                            <Plus size={16} weight="bold" />
-                            {copy.addPerfume}
-                          </button>
-                        }
-                      />
-                    )
-                  ) : filteredNotes.length ? (
-                    filteredNotes.map((item) => (
-                      <RecordButton
-                        key={item.slug}
-                        active={selectedNote?.slug === item.slug}
-                        title={item.name}
-                        subtitle={item.slug}
-                        meta={t("usedByPerfumes", { count: noteUsageCounts.get(item.slug) || 0 })}
-                        onClick={() => {
-                          startTransition(() => {
-                            setView("notes");
-                            setSelectedNoteSlug(item.slug);
-                          });
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <EmptyState
-                      title={copy.noNotesFound}
-                      detail={copy.noNotesFoundDescription}
-                      action={
-                        <button type="button" className={ui.secondaryButton} onClick={addNote}>
-                          <Plus size={16} weight="bold" />
-                          {copy.addNote}
-                        </button>
-                      }
-                    />
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+                  </div>
+                </>
+              ) : null) : null}
+          </div>
+          </div>
           </div>
         </aside>
 
-        <div className="space-y-6 pb-32">
+        <div
+          key={view}
+          className={cx(
+            "flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6 pb-32 pt-0 pr-4 sm:pr-5 lg:pr-6",
+            "admin-section-stagger",
+          )}
+        >
+          <div
+            className="sticky top-0 z-20 flex flex-col gap-3 rounded-[18px] border border-[#E5E7EB] bg-white/95 px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+          >
+            <label className="relative block w-full max-w-2xl flex-1">
+              <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
+              <MagnifyingGlass
+                size={15}
+                weight="bold"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+              />
+              <input
+                value={view === "perfumes" ? perfumePickerQuery : search}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  if (view === "perfumes") {
+                    setPerfumePickerQuery(nextValue);
+                    setIsPerfumePickerOpen(true);
+                  } else {
+                    setSearch(nextValue);
+                  }
+                }}
+                onFocus={() => {
+                  if (view === "perfumes") {
+                    setIsPerfumePickerOpen(true);
+                  }
+                }}
+                placeholder={locale === "az" ? "Axtar..." : "Search..."}
+                className={cx(
+                  "h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
+                )}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
+                ⌘K
+              </span>
+            </label>
+
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              <button
+                type="button"
+                className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-zinc-600 transition hover:border-[#D1D5DB] hover:bg-zinc-50"
+                aria-label={locale === "az" ? "Bildirişlər" : "Notifications"}
+              >
+                <Bell size={16} weight="bold" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-indigo-500" />
+              </button>
+
+              <button
+                type="button"
+                className="flex items-center gap-3 rounded-full border border-[#E5E7EB] bg-white px-3 py-2 text-left transition hover:border-[#D1D5DB] hover:bg-zinc-50"
+                aria-label={locale === "az" ? "Hesab" : "Account"}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700">
+                  AA
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-sm font-semibold text-zinc-900">Admin</p>
+                  <p className="text-xs text-zinc-500">Super Admin</p>
+                </div>
+                <UserCircle size={16} weight="bold" className="text-zinc-400" />
+              </button>
+            </div>
+          </div>
+
           {view === "dashboard" ? (
-            <div className={ui.card}>
-              <Suspense fallback={<div className="text-center text-sm text-zinc-500">Loading dashboard...</div>}>
+            <div className="space-y-6">
+              <Suspense fallback={<div className="text-center text-sm text-zinc-500">{adminText(locale, "İdarəetmə paneli yüklənir...", "Loading dashboard...")}</div>}>
                 <AdminDashboard locale={locale} />
               </Suspense>
             </div>
+          ) : view === "assistant" ? (
+            <div className="space-y-6">
+              <AdminCommandCenter locale={locale} onRefresh={onReload} />
+            </div>
           ) : view === "aiChat" ? (
-            <div className={ui.card}>
+            <div className="space-y-6">
               <AiChatInsights locale={locale} />
             </div>
           ) : view === "qoxunuLogs" ? (
-            <div className={ui.card}>
+            <div className="space-y-6">
               <QoxunuInsights locale={locale} />
             </div>
           ) : view === "brands" ? (
-            <div className={ui.card}>
+            <div className="space-y-6">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <h2 className="text-3xl font-bold text-zinc-950">Brands</h2>
-                  <p className="mt-1 text-sm text-zinc-500">Manage {brandsWithStats.length} brand{brandsWithStats.length === 1 ? "" : "s"} across your catalog</p>
+                  <h2 className="text-3xl font-bold text-zinc-950">{adminText(locale, "Brendlər", "Brands")}</h2>
+                  <p className="mt-1 text-sm text-zinc-500">{adminText(locale, `Kataloq üzrə ${brandsWithStats.length} brendi idarə edin`, `Manage ${brandsWithStats.length} brand${brandsWithStats.length === 1 ? "" : "s"} across your catalog`)}</p>
                 </div>
               </div>
 
@@ -3939,9 +4110,9 @@ export function AdminPanelClient({
 
                   {brandsWithStats.length ? (
                     <div className="space-y-2">
-                      {brandsWithStats.map((brand) => (
+                      {brandsWithStats.map((brand, index) => (
                         <button
-                          key={brand.name}
+                          key={`${brand.name}-${index}`}
                           type="button"
                           onClick={() => setSelectedBrand(brand.name)}
                           className={cx(
@@ -3968,7 +4139,7 @@ export function AdminPanelClient({
                                   : "bg-zinc-100 text-zinc-600",
                               )}
                             >
-                              {brand.count} {brand.count === 1 ? "item" : "items"}
+                              {adminText(locale, `${brand.count} element`, `${brand.count} item${brand.count === 1 ? "" : "s"}`)}
                             </span>
                           </div>
                         </button>
@@ -3977,7 +4148,7 @@ export function AdminPanelClient({
                   ) : (
                     <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50/50 px-4 py-8 text-center">
                       <Package size={24} weight="bold" className="mx-auto mb-2 text-zinc-400" />
-                      <p className="text-sm text-zinc-500">No brands yet</p>
+                      <p className="text-sm text-zinc-500">{adminText(locale, "Hələ brend yoxdur", "No brands yet")}</p>
                     </div>
                   )}
                 </div>
@@ -3985,12 +4156,12 @@ export function AdminPanelClient({
                 {/* Edit Panel */}
                 <div>
                   {selectedBrand ? (
-                    <div className="rounded-xl border-2 border-zinc-200 bg-gradient-to-br from-white to-zinc-50/50 p-5 shadow-sm">
+                    <div className="rounded-xl border-2 border-zinc-200 bg-gradient-to-br from-white to-zinc-50/50 p-5 shadow-sm admin-page-enter">
                       <div className="mb-5 flex items-start justify-between">
                         <div className="min-w-0 flex-1">
-                          <h3 className="truncate font-semibold text-zinc-900">Edit: {selectedBrand}</h3>
+                          <h3 className="truncate font-semibold text-zinc-900">{adminText(locale, "Redaktə et", "Edit")}: {selectedBrand}</h3>
                           <p className="mt-1 text-sm text-zinc-500">
-                            {getBrandStats.get(selectedBrand) || 0} perfume{(getBrandStats.get(selectedBrand) || 0) === 1 ? "" : "s"}
+                            {adminText(locale, `${getBrandStats.get(selectedBrand) || 0} ətir`, `${getBrandStats.get(selectedBrand) || 0} perfume${(getBrandStats.get(selectedBrand) || 0) === 1 ? "" : "s"}`)}
                           </p>
                         </div>
                         <button
@@ -4004,7 +4175,7 @@ export function AdminPanelClient({
                       <div className="space-y-3">
                         <div>
                           <label className="block text-xs font-semibold uppercase tracking-[0.5px] text-zinc-600 mb-2">
-                            Brand Name
+                            {adminText(locale, "Brend adı", "Brand Name")}
                           </label>
                           <input
                             className={cx(
@@ -4015,7 +4186,7 @@ export function AdminPanelClient({
                             type="text"
                             id="brand-name-input"
                             defaultValue={selectedBrand}
-                            placeholder="Enter brand name"
+                            placeholder={adminText(locale, "Brend adını daxil edin", "Enter brand name")}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 const newBrand = (e.target as HTMLInputElement).value.trim();
@@ -4043,7 +4214,7 @@ export function AdminPanelClient({
                           }}
                         >
                           <FloppyDisk size={16} weight="bold" className="mr-1.5 inline" />
-                          Save Changes
+                          {adminText(locale, "Dəyişiklikləri saxla", "Save Changes")}
                         </button>
 
                         <button
@@ -4051,22 +4222,22 @@ export function AdminPanelClient({
                           className="w-full rounded-lg border-2 border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-600 transition-all duration-150 hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98]"
                           onClick={() => setSelectedBrand("")}
                         >
-                          Cancel
+                          {adminText(locale, "Ləğv et", "Cancel")}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50/50 px-4 py-12 text-center">
                       <Package size={32} weight="bold" className="mx-auto mb-3 text-zinc-300" />
-                      <p className="text-sm font-medium text-zinc-600">Select a brand to edit</p>
-                      <p className="mt-1 text-xs text-zinc-500">Click any brand from the list</p>
+                      <p className="text-sm font-medium text-zinc-600">{adminText(locale, "Brendi redaktə etmək üçün seçin", "Select a brand to edit")}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{adminText(locale, "Siyahıdakı istənilən brendi klikləyin", "Click any brand from the list")}</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
           ) : view === "promotions" ? (
-            <div className={ui.card}>
+            <div className="space-y-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
@@ -4348,7 +4519,7 @@ export function AdminPanelClient({
                                         setEditingMessageValue("");
                                       }}
                                     >
-                                      Cancel
+                                      {adminText(locale, "Ləğv et", "Cancel")}
                                     </button>
                                   </div>
                                 </div>
@@ -4517,14 +4688,14 @@ export function AdminPanelClient({
                         </Field>
                       </div>
                           <div className="mt-6">
-                            <h3 className="text-sm font-semibold text-zinc-900">Translations</h3>
-                            <p className="mt-1 text-xs text-zinc-500">Provide localized text for title, description and CTA label.</p>
+                            <h3 className="text-sm font-semibold text-zinc-900">{adminText(locale, "Tərcümələr", "Translations")}</h3>
+                            <p className="mt-1 text-xs text-zinc-500">{adminText(locale, "Başlıq, təsvir və CTA üçün lokal mətn verin.", "Provide localized text for title, description and CTA label.")}</p>
                             <div className="mt-3 grid gap-3">
                               <div className="grid gap-2 sm:grid-cols-4 sm:items-center">
-                                <label className="text-xs font-medium text-zinc-700">Locale</label>
-                                <label className="text-xs font-medium text-zinc-700">Title</label>
-                                <label className="text-xs font-medium text-zinc-700">Description</label>
-                                <label className="text-xs font-medium text-zinc-700">CTA label</label>
+                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "Dil", "Locale")}</label>
+                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "Başlıq", "Title")}</label>
+                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "Təsvir", "Description")}</label>
+                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "CTA yazısı", "CTA label")}</label>
                               </div>
                               {(["az", "en", "ru"] as const).map((loc) => (
                                 <div key={loc} className="grid gap-2 sm:grid-cols-4 sm:items-center">
@@ -4579,20 +4750,20 @@ export function AdminPanelClient({
                                       const json = await res.json();
                                       if (!res.ok) {
                                         console.error("Git push failed", json);
-                                        alert("Git push failed: " + (json?.error || JSON.stringify(json)));
+                                          alert(adminText(locale, "Git göndərişi alınmadı: ", "Git push failed: ") + (json?.error || JSON.stringify(json)));
                                       } else {
-                                        alert("Git push succeeded.");
+                                          alert(adminText(locale, "Git göndərişi uğurlu oldu.", "Git push succeeded."));
                                       }
                                     } catch (err) {
                                       console.error(err);
-                                      alert("Git push failed. See console for details.");
+                                        alert(adminText(locale, "Git göndərişi alınmadı. Təfərrüatlar üçün konsola baxın.", "Git push failed. See console for details."));
                                     }
                                   }}
                                 >
                                   <ArrowsClockwise size={14} />
-                                  <span className="ml-2">Commit & Push</span>
+                                  <span className="ml-2">{adminText(locale, "Commit və Push", "Commit & Push")}</span>
                                 </button>
-                                <div className="text-sm text-zinc-500">Commits data/admin and perfm77.csv to git (server must allow git).</div>
+                                <div className="text-sm text-zinc-500">{adminText(locale, "data/admin və perfm77.csv fayllarını git-ə göndərir (server git icazəsi verməlidir).", "Commits data/admin and perfm77.csv to git (server must allow git).")}</div>
                               </div>
                             </div>
                           </div>
@@ -4848,7 +5019,7 @@ export function AdminPanelClient({
               </div>
             </div>
           ) : view === "header" ? (
-            <div className={ui.card}>
+            <div className="space-y-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
@@ -4891,12 +5062,12 @@ export function AdminPanelClient({
 
                   {settings.homeHeader.mode === "video" ? (
                     <div className="mt-5 grid gap-4">
-                      <Field label={copy.headerVideoUrl} hint="Use an mp4 URL or a public file path like /perfumevid.MP4">
+                      <Field label={copy.headerVideoUrl} hint={adminText(locale, "Mp4 URL və ya /perfumevid.MP4 kimi açıq fayl yolu istifadə edin.", "Use an mp4 URL or a public file path like /perfumevid.MP4")}>
                         <input
                           className={ui.input}
                           value={settings.homeHeader.videoUrl}
                           onChange={(event) => setHomeHeaderField("videoUrl", event.target.value)}
-                          placeholder="/perfumevid.MP4"
+                          placeholder={adminText(locale, "/perfumevid.MP4", "/perfumevid.MP4")}
                         />
                       </Field>
                       <Field label={copy.headerVideoTitle}>
@@ -4904,7 +5075,7 @@ export function AdminPanelClient({
                           className={ui.input}
                           value={settings.homeHeader.videoTitle}
                           onChange={(event) => setHomeHeaderField("videoTitle", event.target.value)}
-                          placeholder="KAY ALI Perfumes"
+                          placeholder={adminText(locale, "KAY ALI Ətirləri", "KAY ALI Perfumes")}
                         />
                       </Field>
                       <Field label={copy.headerVideoDescription}>
@@ -4913,7 +5084,7 @@ export function AdminPanelClient({
                           value={settings.homeHeader.videoDescription}
                           onChange={(event) => setHomeHeaderField("videoDescription", event.target.value)}
                           rows={3}
-                          placeholder="Discover the full KAY ALI collection."
+                          placeholder={adminText(locale, "Bütün KAY ALI kolleksiyasını kəşf edin.", "Discover the full KAY ALI collection.")}
                         />
                       </Field>
                       <div className="grid gap-4 md:grid-cols-2">
@@ -4922,7 +5093,7 @@ export function AdminPanelClient({
                             className={ui.input}
                             value={settings.homeHeader.videoCtaLabel}
                             onChange={(event) => setHomeHeaderField("videoCtaLabel", event.target.value)}
-                            placeholder="View all brands"
+                            placeholder={adminText(locale, "Bütün brendlərə bax", "View all brands")}
                           />
                         </Field>
                         <Field label={copy.headerVideoCtaHref}>
@@ -5069,7 +5240,7 @@ export function AdminPanelClient({
                                         const selectedPickerPerfume = perfumePickerOptions.find(
                                           (item) => item.slug === normalizeSlug(slide.perfumeSlug),
                                         ) || null;
-                                        const slideSearch = headerSlideSearches[index] ?? "";
+                                        const slideSearch = deferredHeaderSlideSearches[index] ?? "";
                                         const normalizedSlideSearch = normalizeSearchText(slideSearch);
                                         const slideSearchTokens = tokenizeSearch(normalizedSlideSearch);
                                         const slidePerfumeResults = perfumePickerOptions
@@ -5152,7 +5323,7 @@ export function AdminPanelClient({
 
                                                     return (
                                                       <button
-                                                        key={item.slug}
+                                                        key={`${item.slug}-${index}`}
                                                         type="button"
                                                         onClick={() => chooseHomeHeaderSlidePerfume(index, matchingPerfume)}
                                                         className={cx(
@@ -5313,7 +5484,7 @@ export function AdminPanelClient({
               </div>
             </div>
           ) : view === "branding" ? (
-            <div className={ui.card}>
+            <div className="space-y-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
@@ -5515,53 +5686,140 @@ export function AdminPanelClient({
                     </p>
                   </div>
                 </div>
+
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <SectionLabel
+                    icon={<DownloadSimple size={16} weight="bold" />}
+                    title={copy.dataOperations}
+                    detail={copy.dataOperationsDescription}
+                  />
+
+                  <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <button
+                      className={cx(ui.secondaryButton, "w-full justify-start")}
+                      type="button"
+                      onClick={() => downloadCsv("perfumes")}
+                      disabled={isWorking}
+                    >
+                      <DownloadSimple size={16} weight="bold" />
+                      {copy.exportPerfumesCsv}
+                    </button>
+                    <button
+                      className={cx(ui.secondaryButton, "w-full justify-start")}
+                      type="button"
+                      onClick={() => downloadCsv("notes")}
+                      disabled={isWorking}
+                    >
+                      <DownloadSimple size={16} weight="bold" />
+                      {copy.exportNotesCsv}
+                    </button>
+                    <button
+                      className={cx(ui.secondaryButton, "w-full justify-start")}
+                      type="button"
+                      onClick={() => perfumeImportRef.current?.click()}
+                      disabled={isWorking}
+                    >
+                      <UploadSimple size={16} weight="bold" />
+                      {importing === "perfumes" ? copy.importingPerfumes : copy.importPerfumesCsv}
+                    </button>
+                    <button
+                      className={cx(ui.secondaryButton, "w-full justify-start")}
+                      type="button"
+                      onClick={() => noteImportRef.current?.click()}
+                      disabled={isWorking}
+                    >
+                      <UploadSimple size={16} weight="bold" />
+                      {importing === "notes" ? copy.importingNotes : copy.importNotesCsv}
+                    </button>
+                    <input
+                      ref={perfumeImportRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) {
+                          void importCsv("perfumes", file);
+                        }
+                      }}
+                    />
+                    <input
+                      ref={noteImportRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) {
+                          void importCsv("notes", file);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           ) : view === "perfumes" ? (
             selectedPerfume ? (
-              <div className={ui.card}>
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                      <Package size={14} weight="bold" />
-                      Perfume editor
+              <div className="space-y-6">
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                      {copy.perfumes} / {selectedPerfume.brand || "Unbranded"}
                     </div>
-                    <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                    <h2 className="mt-3 text-[clamp(2rem,2.6vw,2.8rem)] font-semibold tracking-[-0.06em] text-zinc-950">
                       {selectedPerfume.name}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      {formatPerfumeMeta(selectedPerfume, copy)} •{" "}
-                      {t("sizeCount", { count: selectedPerfume.sizes.length })} •{" "}
-                      {t("noteLinksCount", {
-                        count:
-                          selectedPerfume.noteSlugs.top.length +
-                          selectedPerfume.noteSlugs.heart.length +
-                          selectedPerfume.noteSlugs.base.length,
-                      })}
-                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {[
+                        selectedPerfume.brand || "Unbranded",
+                        selectedPerfume.gender || "Unspecified",
+                        t("sizeCount", { count: selectedPerfume.sizes.length }),
+                        t("noteLinksCount", {
+                          count:
+                            selectedPerfume.noteSlugs.top.length +
+                            selectedPerfume.noteSlugs.heart.length +
+                            selectedPerfume.noteSlugs.base.length,
+                        }),
+                      ].map((item) => (
+                        <span
+                          key={item}
+                          className="inline-flex items-center rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-xs font-medium text-zinc-600"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                     <button
                       type="button"
                       className={ui.secondaryButton}
-                      onClick={() => void copyToClipboard(selectedPerfume.slug, copy.slug)}
-                    >
-                      <CopySimple size={16} weight="bold" />
-                      {copy.copySlug}
-                    </button>
-                    <button
-                      type="button"
-                      className={ui.secondaryButton}
-                      onClick={() => void copyToClipboard(selectedPerfume.image, copy.imageUrl)}
+                      onClick={() => window.open(selectedPerfume.image || selectedPerfumeProductUrl, "_blank", "noopener,noreferrer")}
                     >
                       <ImageSquare size={16} weight="bold" />
-                      {copy.copyImageUrl}
+                      Preview
+                    </button>
+                    <a
+                      className={ui.secondaryButton}
+                      href={selectedPerfumeProductUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Link size={16} weight="bold" />
+                      {adminText(locale, "Məhsulu aç", "Open Product")}
+                    </a>
+                    <button type="button" className={ui.primaryButton} onClick={onSave} disabled={busy}>
+                      <FloppyDisk size={16} weight="bold" />
+                      {adminText(locale, "Dəyişiklikləri saxla", "Save Changes")}
                     </button>
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-2">
+                <div className="mt-6 flex flex-wrap gap-2 border-b border-[#E5E7EB] pb-1">
                   <TabButton
                     active={perfumeEditorTab === "basics"}
                     icon={<TextT size={15} weight="bold" />}
@@ -5593,111 +5851,190 @@ export function AdminPanelClient({
                 </div>
 
                 {perfumeEditorTab === "basics" ? (
-                  <div className="mt-6 space-y-6">
-                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
-                      <SectionLabel
-                        icon={<TextT size={16} weight="bold" />}
-                        title="Core details"
-                        detail="Keep the main catalog identity clean and consistent across the storefront."
-                      />
+                  <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <div className="space-y-6">
+                      <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                        <SectionLabel
+                          icon={<TextT size={16} weight="bold" />}
+                          title="Core details"
+                          detail="Keep the main catalog identity clean and consistent across the storefront."
+                        />
 
-                      <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        <Field label="Perfume name">
-                          <input
-                            className={ui.input}
-                            value={selectedPerfume.name}
-                            onChange={(event) => setPerfumeField("name", event.target.value)}
-                            placeholder="Maison Francis Kurkdjian Baccarat Rouge 540"
-                          />
-                        </Field>
-                        <Field label="Brand">
-                          <BrandSelector
-                            value={selectedPerfume.brand}
-                            onChange={(brand) => setPerfumeField("brand", brand)}
-                            brands={getAllBrands()}
-                            placeholder="Select or type brand name"
-                          />
-                        </Field>
-                        <Field label="Slug" hint="Lowercase URL key used across the site">
-                          <input
-                            className={ui.input}
-                            value={selectedPerfume.slug}
-                            onChange={(event) =>
-                              setPerfumeField("slug", normalizeSlug(event.target.value))
-                            }
-                            placeholder="baccarat-rouge-540"
-                          />
-                        </Field>
-                        <Field label="Gender">
-                          <input
-                            className={ui.input}
-                            value={selectedPerfume.gender}
-                            onChange={(event) => setPerfumeField("gender", event.target.value)}
-                            placeholder="Unisex"
-                          />
-                        </Field>
+                        <div className="mt-5 grid gap-4 md:grid-cols-2">
+                          <Field label="Perfume name">
+                            <input
+                              className={ui.input}
+                              value={selectedPerfume.name}
+                              onChange={(event) => setPerfumeField("name", event.target.value)}
+                              placeholder="Maison Francis Kurkdjian Baccarat Rouge 540"
+                            />
+                          </Field>
+                          <Field label={copy.brand}>
+                            <BrandSelector
+                              value={selectedPerfume.brand}
+                              onChange={(brand) => setPerfumeField("brand", brand)}
+                              brands={getAllBrands()}
+                              placeholder={adminText(locale, "Brend seçin və ya yazın", "Select or type brand name")}
+                            />
+                          </Field>
+                          <Field label={copy.slug} hint={adminText(locale, "Sayt üzrə istifadə olunan kiçik hərfli URL açarı", "Lowercase URL key used across the site")}>
+                            <input
+                              className={ui.input}
+                              value={selectedPerfume.slug}
+                              onChange={(event) =>
+                                setPerfumeField("slug", normalizeSlug(event.target.value))
+                              }
+                              placeholder="baccarat-rouge-540"
+                            />
+                          </Field>
+                          <Field label="Gender">
+                            <input
+                              className={ui.input}
+                              value={selectedPerfume.gender}
+                              onChange={(event) => setPerfumeField("gender", event.target.value)}
+                              placeholder="Unisex"
+                            />
+                          </Field>
+                        </div>
+
+                        <div className="mt-4">
+                          <Field label="External link">
+                            <input
+                              className={ui.input}
+                              value={selectedPerfume.externalLink}
+                              onChange={(event) =>
+                                setPerfumeField("externalLink", event.target.value)
+                              }
+                              placeholder="https://..."
+                            />
+                          </Field>
+                        </div>
                       </div>
 
-                      <div className="mt-4">
-                        <Field label="External link">
-                          <input
-                            className={ui.input}
-                            value={selectedPerfume.externalLink}
-                            onChange={(event) =>
-                              setPerfumeField("externalLink", event.target.value)
-                            }
-                            placeholder="https://..."
-                          />
-                        </Field>
-                        <div className="mt-3">
-                          <a
-                            className={ui.secondaryButton}
-                            href={selectedPerfumeProductUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <Link size={16} weight="bold" />
-                            {copy.openProductPage}
-                          </a>
-                          <p className="mt-2 text-xs leading-5 text-zinc-500">
-                            {copy.productPageHint}
-                          </p>
+                      <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                        <SectionLabel
+                          icon={<Rows size={16} weight="bold" />}
+                          title="Size matrix"
+                          detail="Standard sizes: 15ML, 30ML, 50ML. Edit prices only."
+                        />
+
+                        <div className="mt-5 space-y-3">
+                          {selectedPerfume.sizes.map((size, index) => (
+                            <div
+                              key={`${size.label}-${index}`}
+                              className="grid gap-3 rounded-[16px] border border-[#E5E7EB] bg-white p-3.5 md:grid-cols-[auto_1fr]"
+                            >
+                              <Field label="Size">
+                                <div className="flex h-11 items-center rounded-[12px] border border-[#E5E7EB] bg-zinc-50 px-3 font-mono text-sm font-semibold text-zinc-700">
+                                  {size.label}
+                                </div>
+                              </Field>
+                              <Field label="Price">
+                                <input
+                                  type="number"
+                                  className={ui.input}
+                                  value={size.price}
+                                  onChange={(event) =>
+                                    setPerfumeSizeField(index, "price", event.target.value)
+                                  }
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </Field>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
 
-                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
-                      <SectionLabel
-                        icon={<Rows size={16} weight="bold" />}
-                        title="Size matrix"
-                        detail="Standard sizes: 15ML, 30ML, 50ML. Edit prices only."
-                      />
+                    <div className="space-y-4">
+                      <div className={cx(ui.soft, "p-4 sm:p-5") }>
+                        <SectionLabel
+                          icon={<ImageSquare size={16} weight="bold" />}
+                          title="Image preview"
+                          detail="Large preview with replace and delete actions."
+                        />
 
-                      <div className="mt-5 space-y-3">
-                        {selectedPerfume.sizes.map((size, index) => (
-                          <div
-                            key={`${size.label}-${index}`}
-                            className="grid gap-3 rounded-[1.2rem] border border-zinc-200 bg-white p-4 md:grid-cols-[auto_1fr]"
-                          >
-                            <Field label="Size">
-                              <div className="flex items-center rounded-lg bg-zinc-100 px-3 py-2 font-mono text-sm font-semibold text-zinc-700">
-                                {size.label}
-                              </div>
-                            </Field>
-                            <Field label="Price">
+                        <div className="mt-5 space-y-4">
+                          <ImagePreview
+                            src={selectedPerfume.image}
+                            alt={selectedPerfume.imageAlt || selectedPerfume.name}
+                            emptyLabel={copy.uploadPerfumePreview}
+                          />
+
+                          <div className="rounded-[18px] border border-dashed border-[#D1D5DB] bg-white p-4">
+                            <p className="text-sm font-semibold text-zinc-900">{adminText(locale, "Şəkli buraya atın və ya yenisi ilə dəyişin", "Drop image or replace it")}</p>
+                            <p className="mt-1 text-xs leading-5 text-zinc-500">{adminText(locale, "Tövsiyə: 1200x1200px JPG və ya PNG, maksimum 2 MB.", "Recommended: 1200x1200px JPG or PNG, max 2MB.")}</p>
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className={ui.primaryButton}
+                                onClick={() => perfumeImageInputRef.current?.click()}
+                                disabled={uploading}
+                              >
+                                <UploadSimple size={16} weight="bold" />
+                                {selectedPerfume.image ? copy.replaceImage : copy.uploadImage}
+                              </button>
+                              <button
+                                type="button"
+                                className={ui.secondaryButton}
+                                onClick={() => void copyToClipboard(selectedPerfume.image, copy.imageUrl)}
+                              >
+                                <CopySimple size={16} weight="bold" />
+                                {copy.copyImageUrl}
+                              </button>
+                              <button
+                                type="button"
+                                className={ui.secondaryButton}
+                                onClick={() => void onRemoveBackgroundPerfume()}
+                                disabled={!selectedPerfume.image || removingBg}
+                                title={copy.removeBgTooltip}
+                              >
+                                <Sparkle size={16} weight="bold" />
+                                {removingBg ? copy.removeBgProcessing : copy.removeBg}
+                              </button>
+                              <button
+                                type="button"
+                                className={ui.secondaryButton}
+                                onClick={() => {
+                                  setResizeScale(1);
+                                  setResizeModalOpen(true);
+                                }}
+                                disabled={!selectedPerfume.image}
+                              >
+                                <MagnifyingGlass size={16} weight="bold" />
+                                Resize preview
+                              </button>
                               <input
-                                type="number"
-                                className={ui.input}
-                                value={size.price}
-                                onChange={(event) =>
-                                  setPerfumeSizeField(index, "price", event.target.value)
-                                }
-                                min="0"
-                                step="0.01"
+                                ref={perfumeImageInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="hidden"
+                                onChange={(event) => {
+                                  void onUploadPerfumeImage(event);
+                                }}
                               />
-                            </Field>
+                            </div>
+
+                            <div className="mt-4 grid gap-2 text-xs text-zinc-500">
+                              <p>Image URL: {selectedPerfume.image || "Not set"}</p>
+                              <p>Alt text: {selectedPerfume.imageAlt || "Not set"}</p>
+                            </div>
                           </div>
-                        ))}
+
+                          <Field label={adminText(locale, "Məhsul səhifəsini aç", "Open product page")}>
+                            <a
+                              className={ui.secondaryButton}
+                              href={selectedPerfumeProductUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <Link size={16} weight="bold" />
+                              {copy.openProductPage}
+                            </a>
+                          </Field>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -6143,12 +6480,12 @@ export function AdminPanelClient({
                                 onClick={() => removeTokenFromGroup(group, token)}
                               >
                                 <span>{token}</span>
-                                <span className="text-zinc-400">Remove</span>
+                                <span className="text-zinc-400">{adminText(locale, "Sil", "Remove")}</span>
                               </button>
                             ))
                           ) : (
                             <span className="text-sm text-zinc-500">
-                              No {group} notes linked yet.
+                              {adminText(locale, `Hələ bağlı ${group} notu yoxdur.`, `No ${group} notes linked yet.`)}
                             </span>
                           )}
                         </div>
@@ -6297,11 +6634,11 @@ export function AdminPanelClient({
                     </div>
                   </div>
 
-                  
-                ) : null}
-              </div>
+                
+                    ) : null}
+                </div>
             ) : (
-              <div className={ui.card}>
+              <div className="space-y-6">
                 <EmptyState
                   title="No perfume selected"
                   detail="Pick a perfume from the list or create a new one to start editing."
@@ -6314,8 +6651,127 @@ export function AdminPanelClient({
                 />
               </div>
             )
-          ) : selectedNote ? (
-            <div className={ui.card}>
+          ) : view === "notes" ? (
+            <div className="space-y-6">
+              <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <SectionLabel
+                    icon={<Rows size={16} weight="bold" />}
+                    title={copy.noteList}
+                    detail={t("recordsShown", {
+                      shown: filteredNotes.length,
+                      total: notes.length,
+                    })}
+                  />
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className={ui.primaryButton} onClick={addNote}>
+                      <Plus size={16} weight="bold" />
+                      {copy.addNote}
+                    </button>
+                    <button
+                      type="button"
+                      className={ui.secondaryButton}
+                      onClick={duplicateNote}
+                      disabled={!selectedNote}
+                    >
+                      <CopySimple size={16} weight="bold" />
+                      {copy.duplicate}
+                    </button>
+                    <button
+                      type="button"
+                      className={ui.dangerButton}
+                      onClick={deleteNote}
+                      disabled={!selectedNote}
+                    >
+                      <Trash size={16} weight="bold" />
+                      {copy.delete}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(260px,0.42fr)_minmax(0,1fr)]">
+                  <div className="space-y-3">
+                    <label className="relative block">
+                      <span className="sr-only">{copy.searchNotes}</span>
+                      <MagnifyingGlass
+                        size={15}
+                        weight="bold"
+                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                      />
+                      <input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder={copy.searchNotes}
+                        className="h-11 w-full rounded-[12px] border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                      />
+                    </label>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {([
+                        ["all", copy.all],
+                        ["linked", copy.linked],
+                        ["unlinked", copy.unlinked],
+                        ["missingImage", copy.missingImage],
+                      ] as const).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={cx(
+                            "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition",
+                            noteListFilter === value
+                              ? "border-zinc-900 bg-zinc-900 text-white"
+                              : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                          )}
+                          onClick={() => setNoteListFilter(value)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="min-h-0 rounded-[16px] border border-[#E5E7EB] bg-white p-2">
+                    <div className="max-h-[288px] overflow-y-auto pr-1">
+                      <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+                        {filteredNotes.length ? (
+                          filteredNotes.map((item, index) => (
+                            <RecordButton
+                              key={`${item.slug}-${index}`}
+                              active={selectedNote?.slug === item.slug}
+                              title={item.name}
+                              subtitle={item.slug}
+                              meta={t("usedByPerfumes", { count: noteUsageCounts.get(item.slug) || 0 })}
+                              src={item.image || undefined}
+                              onClick={() => {
+                                startTransition(() => {
+                                  setSelectedNoteSlug(item.slug);
+                                });
+                              }}
+                            />
+                          ))
+                        ) : (
+                          <div className="md:col-span-2 2xl:col-span-3">
+                            <EmptyState
+                              title={copy.noNotesFound}
+                              detail={copy.noNotesFoundDescription}
+                              action={
+                                <button type="button" className={ui.secondaryButton} onClick={addNote}>
+                                  <Plus size={16} weight="bold" />
+                                  {copy.addNote}
+                                </button>
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {selectedNote ? (
+                <>
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
@@ -6533,9 +6989,8 @@ export function AdminPanelClient({
                   </div>
                 </div>
               ) : null}
-            </div>
-          ) : (
-            <div className={ui.card}>
+                </>
+              ) : (
               <EmptyState
                 title="No note selected"
                 detail="Pick a note from the list or create a new one to start editing."
@@ -6546,8 +7001,9 @@ export function AdminPanelClient({
                   </button>
                 }
               />
+              )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -6558,16 +7014,17 @@ export function AdminPanelClient({
         isDirty={dirty}
         isSaving={busy}
       />
+      {perfumePickerModal}
       {resizeModalOpen && (() => {
         const modal = (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setResizeModalOpen(false)}>
             <div className="w-full max-w-[1200px] p-6" onClick={(e) => e.stopPropagation()}>
               <div className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-lg">
                 <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-lg font-semibold">Resize perfume preview</h3>
+                  <h3 className="text-lg font-semibold">{adminText(locale, "Ətir önizləməsini ölçüləndir", "Resize perfume preview")}</h3>
                   <div className="flex items-center gap-2">
                     <button type="button" className={ui.compactButton} onClick={() => setResizeModalOpen(false)}>
-                      Close
+                      {adminText(locale, "Bağla", "Close")}
                     </button>
                   </div>
                 </div>
@@ -6580,27 +7037,27 @@ export function AdminPanelClient({
                         className={cx("px-3 py-1 rounded-full text-sm", deviceViewMode === "mobile" ? "bg-zinc-900 text-white" : "text-zinc-600")}
                         onClick={() => setDeviceViewMode("mobile")}
                       >
-                        Mobile
+                        {adminText(locale, "Mobil", "Mobile")}
                       </button>
                       <button
                         type="button"
                         className={cx("px-3 py-1 rounded-full text-sm", deviceViewMode === "laptop" ? "bg-zinc-900 text-white" : "text-zinc-600")}
                         onClick={() => setDeviceViewMode("laptop")}
                       >
-                        Laptop
+                        {adminText(locale, "Noutbuk", "Laptop")}
                       </button>
                       <button
                         type="button"
                         className={cx("px-3 py-1 rounded-full text-sm", deviceViewMode === "monitor" ? "bg-zinc-900 text-white" : "text-zinc-600")}
                         onClick={() => setDeviceViewMode("monitor")}
                       >
-                        Monitor
+                        {adminText(locale, "Monitor", "Monitor")}
                       </button>
                     </div>
 
                     <label className="inline-flex items-center gap-2 text-sm text-zinc-600">
                       <input type="checkbox" checked={syncScaleAcrossDevices} onChange={(e) => setSyncScaleAcrossDevices(e.target.checked)} />
-                      <span>Apply to all devices</span>
+                      <span>{adminText(locale, "Bütün cihazlara tətbiq et", "Apply to all devices")}</span>
                     </label>
                   </div>
                   <div className="mx-auto flex w-full items-center justify-center">
@@ -6627,7 +7084,7 @@ export function AdminPanelClient({
 
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-full">
-                      <label className="block text-sm font-medium text-zinc-700">Scale</label>
+                      <label className="block text-sm font-medium text-zinc-700">{adminText(locale, "Ölçü", "Scale")}</label>
                       <input type="range" min={resizeMin} max={resizeMax} step={0.01} value={resizeScale} onChange={(e) => setResizeScale(Number((e.target as HTMLInputElement).value))} className="mt-2 w-full" />
                       <div className="mt-2 text-sm text-zinc-500">{Math.round(resizeScale * 100)}%</div>
                     </div>
@@ -6656,7 +7113,7 @@ export function AdminPanelClient({
                         } catch (err) {
                           // onSave will set status; swallow here
                         }
-                      }}>Done</button>
+                      }}>{adminText(locale, "Bitdi", "Done")}</button>
                     </div>
                   </div>
                 </div>

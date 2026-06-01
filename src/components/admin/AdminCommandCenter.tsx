@@ -1,7 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ArrowClockwise, CheckCircle, Image, PaperPlaneRight, Sparkle, X } from "@phosphor-icons/react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  ArrowClockwise,
+  CaretRight,
+  CheckCircle,
+  CircleNotch,
+  Image,
+  PaperPlaneRight,
+  Sparkle,
+  Trash,
+  UploadSimple,
+  X,
+} from "@phosphor-icons/react";
 
 type AdminLocale = "az" | "en";
 
@@ -54,6 +65,8 @@ type AssistantMessage = {
   role: "user" | "assistant";
   text: string;
 };
+
+type FlowState = "idle" | "sending" | "ready" | "applying" | "applied" | "error";
 
 type AttachmentState = {
   file: File;
@@ -168,6 +181,192 @@ function hasAnswer(value: string | undefined) {
   return Boolean(value && value.trim());
 }
 
+function useOutsideDismiss(
+  refs: Array<RefObject<HTMLElement | null>>,
+  onDismiss: () => void,
+  active: boolean,
+) {
+  useEffect(() => {
+    if (!active) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (refs.some((ref) => ref.current?.contains(target))) return;
+      onDismiss();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onDismiss();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [active, onDismiss, refs]);
+}
+
+function QuestionCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-[20px] border border-zinc-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+      {children}
+    </div>
+  );
+}
+
+function CustomSelectQuestion({
+  question,
+  value,
+  onChange,
+  locale,
+}: {
+  question: AssistantQuestion;
+  value: string;
+  onChange: (value: string) => void;
+  locale: AdminLocale;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useOutsideDismiss([wrapperRef], () => setOpen(false), open);
+
+  const selectedLabel = value || (locale === "az" ? "Seçin" : "Select");
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        className={cx(
+          "group flex h-12 w-full items-center justify-between gap-3 rounded-[16px] border px-4 text-left text-sm transition-all duration-200",
+          open
+            ? "border-violet-300 bg-white shadow-[0_10px_24px_rgba(124,58,237,0.12)] ring-4 ring-violet-100"
+            : "border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-[0_8px_18px_rgba(15,23,42,0.04)]",
+        )}
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className={cx("truncate", value ? "text-zinc-900" : "text-zinc-400")}>{selectedLabel}</span>
+        <span className={cx("inline-flex h-7 w-7 items-center justify-center rounded-full border transition", open ? "border-violet-200 bg-violet-50 text-violet-700" : "border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:bg-white")}>
+          <CaretRight size={14} weight="bold" className={cx("transition-transform duration-200", open ? "rotate-90" : "")} />
+        </span>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-[16px] border border-zinc-200 bg-white shadow-[0_22px_48px_rgba(15,23,42,0.12)]">
+          <div className="border-b border-zinc-100 bg-zinc-50 px-4 py-3">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">{question.label}</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">{question.question}</p>
+          </div>
+          <div className="max-h-64 overflow-y-auto p-2">
+            <button
+              type="button"
+              className={cx(
+                "flex h-11 w-full items-center justify-between rounded-[12px] px-3 text-left text-sm transition",
+                !value ? "bg-violet-50 text-violet-700" : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950",
+              )}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              <span>{locale === "az" ? "Seçin" : "Select"}</span>
+              {!value ? <CheckCircle size={16} weight="fill" /> : null}
+            </button>
+            {question.options?.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={cx(
+                  "flex h-11 w-full items-center justify-between rounded-[12px] px-3 text-left text-sm transition",
+                  value === option ? "bg-violet-50 text-violet-700" : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950",
+                )}
+                onClick={() => {
+                  onChange(option);
+                  setOpen(false);
+                }}
+              >
+                <span>{option}</span>
+                {value === option ? <CheckCircle size={16} weight="fill" /> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function QuestionInput({
+  question,
+  value,
+  onChange,
+  locale,
+}: {
+  question: AssistantQuestion;
+  value: string;
+  onChange: (value: string) => void;
+  locale: AdminLocale;
+}) {
+  const shell =
+    "w-full rounded-[16px] border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100";
+
+  if (question.type === "select") {
+    return <CustomSelectQuestion question={question} value={value} onChange={onChange} locale={locale} />;
+  }
+
+  if (question.type === "textarea") {
+    return (
+      <textarea
+        rows={4}
+        className={cx(shell, "min-h-[120px] resize-y")}
+        value={value}
+        placeholder={question.placeholder}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  }
+
+  if (question.type === "toggle") {
+    const isOn = value === "true";
+    return (
+      <button
+        type="button"
+        className={cx(
+          "inline-flex h-12 items-center gap-3 rounded-[16px] border px-4 text-sm font-semibold transition-all duration-200",
+          isOn
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-[0_8px_18px_rgba(16,185,129,0.12)]"
+            : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+        )}
+        onClick={() => onChange(isOn ? "false" : "true")}
+      >
+        <span className={cx("inline-flex h-7 w-12 items-center rounded-full px-1 transition", isOn ? "bg-emerald-500" : "bg-zinc-200") }>
+          <span className={cx("h-5 w-5 rounded-full bg-white shadow transition-transform", isOn ? "translate-x-5" : "translate-x-0")} />
+        </span>
+        {isOn ? (locale === "az" ? "Açıq" : "On") : locale === "az" ? "Söndürülüb" : "Off"}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      className={shell}
+      value={value}
+      type={question.type === "number" ? "number" : "text"}
+      placeholder={question.placeholder}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
 function coerceAnswer(question: AssistantQuestion, value: string) {
   if (question.type === "number") {
     const parsed = Number(value);
@@ -198,82 +397,22 @@ function mergeActionWithAnswers(
   return { ...action, payload };
 }
 
-function renderQuestionInput(
-  question: AssistantQuestion,
-  value: string,
-  onChange: (value: string) => void,
-  locale: AdminLocale,
-) {
-  const base =
-    "w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-4 focus:ring-zinc-100";
-
-  if (question.type === "select") {
-    return (
-      <select className={base} value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">{locale === "az" ? "Seçin" : "Select"}</option>
-        {question.options?.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (question.type === "textarea") {
-    return (
-      <textarea
-        rows={4}
-        className={base}
-        value={value}
-        placeholder={question.placeholder}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    );
-  }
-
-  if (question.type === "toggle") {
-    return (
-      <button
-        type="button"
-        className={cx(
-          "inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition",
-          value === "true"
-            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-            : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-        )}
-        onClick={() => onChange(value === "true" ? "false" : "true")}
-      >
-        <span className="inline-flex h-5 w-9 items-center rounded-full bg-zinc-900 px-1">
-          <span className={cx("h-3.5 w-3.5 rounded-full bg-white transition", value === "true" ? "translate-x-3.5" : "")}></span>
-        </span>
-        {value === "true" ? (locale === "az" ? "Açıq" : "On") : locale === "az" ? "Söndürülüb" : "Off"}
-      </button>
-    );
-  }
-
-  return (
-    <input
-      className={base}
-      value={value}
-      type={question.type === "number" ? "number" : "text"}
-      placeholder={question.placeholder}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  );
-}
-
 function ActionPreview({ plan, locale }: { plan: AssistantPlan; locale: AdminLocale }) {
   const text = copy[locale];
 
   if (!plan.preview) {
     return (
-      <div className="rounded-[1.6rem] border border-zinc-200 bg-white p-5 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-          <Sparkle size={16} weight="bold" />
-          {text.noPlan}
+      <div className="rounded-[16px] border border-zinc-200 bg-white p-4">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.previewTitle}</p>
+        <div className="mt-3 flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-violet-100 bg-violet-50 text-violet-600">
+            <Sparkle size={16} weight="bold" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">{text.noPlan}</p>
+            <p className="mt-1 text-sm leading-6 text-zinc-500">{text.description}</p>
+          </div>
         </div>
-        <p className="mt-2 text-sm leading-6 text-zinc-500">{text.description}</p>
       </div>
     );
   }
@@ -281,15 +420,15 @@ function ActionPreview({ plan, locale }: { plan: AssistantPlan; locale: AdminLoc
   const { preview } = plan;
 
   return (
-    <div className="rounded-[1.6rem] border border-zinc-200 bg-white p-5 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
+    <div className="rounded-[16px] border border-zinc-200 bg-white p-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.previewTitle}</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-zinc-950">{preview.title}</h3>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.previewTitle}</p>
+          <h3 className="mt-2 text-base font-semibold text-zinc-950">{preview.title}</h3>
         </div>
         <span
           className={cx(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]",
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold",
             plan.mode === "ready"
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border-amber-200 bg-amber-50 text-amber-700",
@@ -300,32 +439,32 @@ function ActionPreview({ plan, locale }: { plan: AssistantPlan; locale: AdminLoc
         </span>
       </div>
 
-      <p className="mt-3 text-sm leading-7 text-zinc-600">{preview.description}</p>
+      <p className="mt-3 text-sm leading-6 text-zinc-600">{preview.description}</p>
 
       {preview.imageUrl ? (
-        <div className="mt-4 overflow-hidden rounded-[1.2rem] border border-zinc-200 bg-zinc-50">
-          <img src={preview.imageUrl} alt={preview.title} className="h-48 w-full object-cover" />
+        <div className="mt-4 overflow-hidden rounded-[12px] border border-zinc-200 bg-zinc-50">
+          <img src={preview.imageUrl} alt={preview.title} className="h-40 w-full object-cover" />
         </div>
       ) : null}
 
       {preview.meta?.length ? (
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {preview.meta.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-              <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">{item.label}</dt>
+            <div key={item.label} className="rounded-[12px] border border-zinc-200 bg-zinc-50 p-3">
+              <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">{item.label}</dt>
               <dd className="mt-1 text-sm font-medium text-zinc-900">{item.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
 
-      <div className="mt-4 grid gap-3 rounded-[1.2rem] border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 rounded-[12px] border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2">
         <div>
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">Intent</p>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">Intent</p>
           <p className="mt-1 text-sm font-medium text-zinc-900">{plan.intent}</p>
         </div>
         <div>
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">Confidence</p>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">Confidence</p>
           <p className="mt-1 text-sm font-medium text-zinc-900">{formatConfidence(plan.confidence)}</p>
         </div>
       </div>
@@ -336,11 +475,9 @@ function ActionPreview({ plan, locale }: { plan: AssistantPlan; locale: AdminLoc
 export function AdminCommandCenter({
   locale = "en",
   onRefresh,
-  onOpenView,
 }: {
   locale?: AdminLocale;
-  onRefresh: () => void;
-  onOpenView?: (view: "perfumes" | "promotions" | "header") => void;
+  onRefresh: () => Promise<void> | void;
 }) {
   const text = copy[locale];
   const [prompt, setPrompt] = useState("");
@@ -351,6 +488,12 @@ export function AdminCommandCenter({
   const [isApplying, setIsApplying] = useState(false);
   const [status, setStatus] = useState<{ tone: "success" | "error" | "neutral"; message: string } | null>(null);
   const [attachment, setAttachment] = useState<AttachmentState | null>(null);
+  const [flowState, setFlowState] = useState<FlowState>("idle");
+  const [lastCommand, setLastCommand] = useState("");
+  const [lastAssistantReply, setLastAssistantReply] = useState("");
+  const [motionKey, setMotionKey] = useState(0);
+  const [showConfirmApplyAll, setShowConfirmApplyAll] = useState(false);
+  const [pendingForceApplyAction, setPendingForceApplyAction] = useState<AssistantAction | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resolvedAction = useMemo(
@@ -363,6 +506,45 @@ export function AdminCommandCenter({
   );
 
   const questionCount = plan?.questions?.length ?? 0;
+  const statusCopy = {
+    idle: locale === "az" ? "Əmr gözləyir" : "Waiting for a command",
+    sending: locale === "az" ? "AI plan hazırlayır" : "AI is preparing a plan",
+    ready: locale === "az" ? "Plan hazırdır" : "Plan is ready",
+    applying: locale === "az" ? "Dəyişiklik tətbiq olunur" : "Applying changes",
+    applied: locale === "az" ? "Dəyişiklik tətbiq olundu" : "Changes applied",
+    error: locale === "az" ? "Yoxlama lazımdır" : "Needs attention",
+  } satisfies Record<FlowState, string>;
+  const statusDetail = {
+    idle: locale === "az" ? "Komanda yazın və göndərin. AI əvvəlcə plan hazırlayacaq." : "Send a command. AI will prepare the plan first.",
+    sending: locale === "az" ? "Komanda analiz olunur. Bu kart plan gələndə yenilənəcək." : "Your command is being analyzed. This card updates when the plan arrives.",
+    ready: locale === "az" ? "Plan hazırdır. Tətbiq et düyməsi faktiki dəyişiklikləri edəcək." : "The plan is ready. Apply will make the actual changes.",
+    applying: locale === "az" ? "Admin məlumatları yenilənir. Pəncərəni bağlamayın." : "Admin data is being updated. Keep this window open.",
+    applied: locale === "az" ? "AI əmri icra etdi. Lazımdırsa aşağıdakı saxla statusunu yoxlayın." : "The AI command has been executed. Check the save status below if needed.",
+    error: locale === "az" ? "Əməliyyat tamamlanmadı. Mesajı yoxlayıb yenidən cəhd edin." : "The operation did not finish. Review the message and try again.",
+  } satisfies Record<FlowState, string>;
+  const flowToneClass =
+    flowState === "applied"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : flowState === "error"
+        ? "border-rose-200 bg-rose-50 text-rose-700"
+        : flowState === "sending" || flowState === "applying"
+          ? "border-violet-200 bg-violet-50 text-violet-700"
+          : flowState === "ready"
+            ? "border-amber-200 bg-amber-50 text-amber-700"
+            : "border-zinc-200 bg-zinc-50 text-zinc-600";
+  const emptyPlan: AssistantPlan = {
+    mode: "clarify",
+    title: text.title,
+    summary: text.noPlan,
+    reply: text.noPlan,
+    intent: "idle",
+    confidence: 0,
+    needsMoreContext: true,
+    questions: [],
+    action: null,
+    preview: null,
+    suggestedReplies: [],
+  };
 
   const appendMessage = (role: AssistantMessage["role"], textValue: string) => {
     setHistory((current) => [...current, { role, text: textValue }].slice(-12));
@@ -374,8 +556,8 @@ export function AdminCommandCenter({
     setAttachment({ file, dataUrl, mimeType: file.type, name: file.name });
   };
 
-  const handleAnalyze = async () => {
-    const trimmed = prompt.trim();
+  const handleAnalyze = async (promptOverride?: string) => {
+    const trimmed = (promptOverride ?? prompt).trim();
     if (!trimmed && !attachment) {
       setStatus({ tone: "error", message: text.noPlan });
       return;
@@ -386,6 +568,10 @@ export function AdminCommandCenter({
 
     setIsThinking(true);
     setStatus(null);
+    setFlowState("sending");
+    setLastCommand(userText);
+    setLastAssistantReply("");
+    setMotionKey((current) => current + 1);
     appendMessage("user", userText);
 
     try {
@@ -409,6 +595,35 @@ export function AdminCommandCenter({
       }
 
       setPlan(body);
+      // If assistant suggests setting a perfume discount but did not include explicit targets,
+      // add a clarifying question so the user can specify a target perfume or explicitly confirm "ALL".
+      try {
+        const action = body.action;
+        const hasTargets = Boolean(
+          action?.payload && (action.payload.perfumeId || action.payload.perfumeSlug || action.payload.perfumeSlugs || action.payload.productId || action.payload.targetPerfume),
+        );
+        if (action?.type === "set_perfume_discount" && !hasTargets) {
+          const clarifyingQuestion: AssistantQuestion = {
+            key: "targetPerfume",
+            label: locale === "az" ? "Hədəf ətir" : "Target perfume",
+            question:
+              locale === "az"
+                ? "Hədəf ətiri daxil edin (slug və ya ad). 'ALL' daxil etsəniz hər şeyə tətbiq olunacaq."
+                : "Enter the target perfume slug or name. Type 'ALL' to apply to all perfumes.",
+            type: "text",
+            required: true,
+            uiHint: "perfume",
+          };
+
+          setPlan((current) => ({ ...(current ?? body), questions: [...(body.questions ?? []), clarifyingQuestion], needsMoreContext: true }));
+          setAnswers((current) => ({ ...current, [clarifyingQuestion.key]: "" }));
+        }
+      } catch {
+        // noop
+      }
+      setFlowState(body.mode === "ready" ? "ready" : "idle");
+      setLastAssistantReply(body.reply);
+      setMotionKey((current) => current + 1);
       setAnswers((current) =>
         Object.fromEntries(
           body.questions.map((question) => [question.key, current[question.key] ?? (question.type === "toggle" ? "false" : "")]),
@@ -419,6 +634,7 @@ export function AdminCommandCenter({
         setStatus({ tone: "neutral", message: body.suggestedReplies[0] });
       }
     } catch (error) {
+      setFlowState("error");
       setStatus({ tone: "error", message: error instanceof Error ? error.message : text.error });
     } finally {
       setIsThinking(false);
@@ -429,9 +645,25 @@ export function AdminCommandCenter({
     if (!plan?.action) return;
 
     setIsApplying(true);
+    setFlowState("applying");
+    setMotionKey((current) => current + 1);
     setStatus({ tone: "neutral", message: text.thinking });
 
     try {
+      // Safety: if discount action has no explicit targets, open a confirmation modal
+      const actionToApply = resolvedAction ?? plan.action;
+      const payload = (actionToApply && (actionToApply as AssistantAction).payload) || {};
+      if (actionToApply?.type === "set_perfume_discount") {
+        const hasTarget = Boolean(
+          payload.perfumeId || payload.perfumeSlug || payload.perfumeSlugs || payload.targetPerfume || payload.productId,
+        );
+        if (!hasTarget) {
+          setPendingForceApplyAction(actionToApply ?? null);
+          setShowConfirmApplyAll(true);
+          setIsApplying(false);
+          return;
+        }
+      }
       let imageUrl = "";
       if (attachment && plan.action.type === "create_perfume_draft") {
         const uploadFormData = new FormData();
@@ -454,7 +686,7 @@ export function AdminCommandCenter({
       const response = await fetch("/api/admin/assistant/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: resolvedAction, answers, imageUrl }),
+        body: JSON.stringify({ action: resolvedAction, answers, imageUrl, forceApplyAll: false }),
       });
 
       const body = (await response.json()) as { error?: string };
@@ -463,238 +695,430 @@ export function AdminCommandCenter({
       }
 
       setStatus({ tone: "success", message: text.success });
+      setFlowState("applied");
+      setLastAssistantReply(text.success);
+      setMotionKey((current) => current + 1);
       appendMessage("assistant", text.success);
-      onRefresh();
-
-      if (plan.intent.includes("discount") || plan.intent.includes("price") || plan.intent.includes("perfume")) {
-        onOpenView?.("perfumes");
-      } else if (plan.intent.includes("banner")) {
-        onOpenView?.("promotions");
-      } else if (plan.intent.includes("header")) {
-        onOpenView?.("header");
-      }
+      await onRefresh();
 
       setPlan(null);
       setPrompt("");
       setAttachment(null);
       setAnswers({});
     } catch (error) {
+      setFlowState("error");
       setStatus({ tone: "error", message: error instanceof Error ? error.message : text.error });
     } finally {
       setIsApplying(false);
     }
   };
 
+  const handleConfirmForceApply = async () => {
+    setShowConfirmApplyAll(false);
+    if (!pendingForceApplyAction) return;
+
+    setIsApplying(true);
+    setFlowState("applying");
+    setStatus({ tone: "neutral", message: text.thinking });
+
+    try {
+      const response = await fetch("/api/admin/assistant/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: pendingForceApplyAction, answers, imageUrl: "", forceApplyAll: true }),
+      });
+
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(body.error || text.error);
+      }
+
+      setStatus({ tone: "success", message: text.success });
+      setFlowState("applied");
+      setLastAssistantReply(text.success);
+      setMotionKey((current) => current + 1);
+      appendMessage("assistant", text.success);
+      await onRefresh();
+
+      setPlan(null);
+      setPrompt("");
+      setAttachment(null);
+      setAnswers({});
+    } catch (error) {
+      setFlowState("error");
+      setStatus({ tone: "error", message: error instanceof Error ? error.message : text.error });
+    } finally {
+      setIsApplying(false);
+      setPendingForceApplyAction(null);
+    }
+  };
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-6 rounded-[1.8rem] border border-zinc-200 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.98),rgba(247,247,245,0.96))] p-5 shadow-[0_16px_50px_rgba(0,0,0,0.04)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              <Sparkle size={14} weight="bold" />
-              {text.title}
+    <>
+    <section className="rounded-[24px] border border-zinc-200 bg-white p-5 shadow-[0_18px_54px_rgba(15,23,42,0.05)] lg:p-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0] || null;
+          event.target.value = "";
+          void handleAttach(file);
+        }}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
+        <div className="min-w-0 space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-400">
+                <span>Settings</span>
+                <CaretRight size={12} weight="bold" />
+                <span className="text-zinc-500">{text.title}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <h2 className="text-3xl font-semibold tracking-[-0.03em] text-zinc-950">{text.title}</h2>
+                <span
+                  className={cx(
+                    "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
+                    plan?.mode === "ready" ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-600",
+                  )}
+                >
+                  <span className={cx("h-2 w-2 rounded-full", plan?.mode === "ready" ? "bg-emerald-500" : "bg-zinc-400")} />
+                  {plan?.mode === "ready" ? text.ready : text.clarify}
+                </span>
+              </div>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">{text.description}</p>
             </div>
-            <h2 className="mt-4 text-[1.9rem] font-semibold tracking-[-0.05em] text-zinc-950">{text.title}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-600">{text.description}</p>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Image size={16} weight="bold" />
+                {text.upload}
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                onClick={() => {
+                  setPlan(null);
+                  setHistory([]);
+                  setAnswers({});
+                  setPrompt("");
+                  setAttachment(null);
+                  setStatus(null);
+                  setFlowState("idle");
+                  setLastCommand("");
+                  setLastAssistantReply("");
+                  setMotionKey((current) => current + 1);
+                }}
+              >
+                <ArrowClockwise size={16} weight="bold" />
+                {text.reset}
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              {locale === "az" ? "Sürətli əmrlər" : "Quick commands"}
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {text.quickActions.map((item, index) => (
+                <button
+                  key={`${item}-${index}`}
+                  type="button"
+                  className="group min-h-[86px] rounded-[12px] border border-zinc-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_12px_26px_rgba(15,23,42,0.06)]"
+                  onClick={() => {
+                    setPrompt(item);
+                    void handleAnalyze(item);
+                  }}
+                >
+                  <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-violet-50 text-violet-600 transition group-hover:bg-violet-600 group-hover:text-white">
+                    <Sparkle size={15} weight="bold" />
+                  </span>
+                  <span className="mt-3 block text-sm font-semibold leading-5 text-zinc-900">{item}</span>
+                  <span className="mt-1 block text-xs leading-5 text-zinc-500">{text.examples[index] ?? text.promptLabel}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.promptLabel}</label>
+            <div className="mt-3 rounded-[16px] border border-zinc-200 bg-white p-3 shadow-[0_8px_28px_rgba(15,23,42,0.04)]">
+              <textarea
+                rows={5}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder={text.promptPlaceholder}
+                className="min-h-[126px] w-full resize-y border-none bg-transparent px-1 py-1 text-sm leading-6 text-zinc-900 outline-none placeholder:text-zinc-400"
+              />
+              <div className="mt-3 flex flex-col gap-3 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <UploadSimple size={16} weight="bold" />
+                  {text.upload}
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                    onClick={() => setPrompt("")}
+                  >
+                    <X size={15} weight="bold" />
+                    {text.clear}
+                  </button>
+                  <button
+                    type="button"
+                    className={cx(
+                      "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(124,58,237,0.22)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60",
+                      isThinking ? "scale-[0.98] shadow-[0_6px_16px_rgba(124,58,237,0.18)]" : "",
+                    )}
+                    onClick={() => void handleAnalyze()}
+                    disabled={isThinking || isApplying}
+                  >
+                    {isThinking ? <CircleNotch className="animate-spin" size={16} weight="bold" /> : <PaperPlaneRight size={16} weight="bold" />}
+                    {isThinking ? text.thinking : text.send}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 flex items-start gap-2 text-xs leading-6 text-zinc-500">
+              <Sparkle className="mt-1 shrink-0 text-violet-500" size={14} weight="fill" />
+              {text.uploadHint}
+            </p>
+          </div>
+
+          {status ? (
+            <div
+              className={cx(
+                "inline-flex max-w-full items-center gap-2 rounded-[12px] border px-3 py-2 text-sm font-medium",
+                status.tone === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : status.tone === "error"
+                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-600",
+              )}
+            >
+              {status.tone === "success" ? <CheckCircle size={16} weight="fill" /> : null}
+              <span className="min-w-0 truncate">{status.message}</span>
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div key={`flow-${motionKey}`} className="admin-ios-rise rounded-[16px] border border-zinc-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                    {locale === "az" ? "İcra statusu" : "Execution status"}
+                  </p>
+                  <h3 className="mt-2 text-base font-semibold text-zinc-950">{statusCopy[flowState]}</h3>
+                </div>
+                <span className={cx("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border", flowToneClass)}>
+                  {flowState === "sending" || flowState === "applying" ? (
+                    <CircleNotch className="animate-spin" size={16} weight="bold" />
+                  ) : (
+                    <CheckCircle size={16} weight="fill" />
+                  )}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">{statusDetail[flowState]}</p>
+
+              <div className="mt-4 space-y-3">
+                <div className="rounded-[12px] border border-zinc-100 bg-zinc-50 px-3 py-2">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    {locale === "az" ? "Son əmr" : "Last command"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-800">{lastCommand || text.noPlan}</p>
+                </div>
+                <div className="rounded-[12px] border border-zinc-100 bg-zinc-50 px-3 py-2">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    {locale === "az" ? "AI cavabı" : "AI response"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-800">
+                    {lastAssistantReply || (locale === "az" ? "Plan gələndə burada görünəcək." : "The plan response will appear here.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[16px] border border-zinc-200 bg-white p-4">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.questionsTitle}</p>
+              <div className="mt-3 space-y-3">
+                {questionCount ? (
+                  plan?.questions.map((question) => (
+                    <QuestionCard key={question.key}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-950">{question.label}</p>
+                          <p className="mt-1 text-sm leading-6 text-zinc-600">{question.question}</p>
+                        </div>
+                        <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-zinc-500 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">
+                          {question.type}
+                        </span>
+                      </div>
+                      <div className="mt-4">
+                        <QuestionInput
+                          question={question}
+                          value={answers[question.key] ?? ""}
+                          onChange={(value) => {
+                            setAnswers((current) => ({ ...current, [question.key]: value }));
+                          }}
+                          locale={locale}
+                        />
+                      </div>
+                      {question.helper ? <p className="mt-3 text-xs leading-5 text-zinc-500">{question.helper}</p> : null}
+                    </QuestionCard>
+                  ))
+                ) : (
+                  <QuestionCard>
+                    <p className="text-sm leading-6 text-zinc-500">{text.noPlan}</p>
+                  </QuestionCard>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-[16px] border border-zinc-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.attached}</p>
+              {attachment ? (
+                <button
+                  type="button"
+                  aria-label={text.clear}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] bg-zinc-50 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
+                  onClick={() => setAttachment(null)}
+                >
+                  <X size={15} weight="bold" />
+                </button>
+              ) : null}
+            </div>
+
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
+              className={cx(
+                "mt-3 block w-full overflow-hidden rounded-[14px] border bg-zinc-50 text-left transition hover:border-zinc-300",
+                attachment ? "border-zinc-200" : "border-dashed border-zinc-300",
+              )}
               onClick={() => fileInputRef.current?.click()}
             >
-              <Image size={16} weight="bold" />
-              {text.upload}
+              {attachment ? (
+                <img src={attachment.dataUrl} alt={attachment.name} className="h-56 w-full object-cover" />
+              ) : (
+                <span className="grid h-56 place-items-center px-6 text-center">
+                  <span>
+                    <span className="mx-auto grid h-11 w-11 place-items-center rounded-[12px] border border-zinc-200 bg-white text-violet-600">
+                      <Image size={20} weight="bold" />
+                    </span>
+                    <span className="mt-3 block text-sm font-semibold text-zinc-900">{text.upload}</span>
+                    <span className="mt-1 block text-xs leading-5 text-zinc-500">JPG, PNG, WEBP, GIF</span>
+                  </span>
+                </span>
+              )}
             </button>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <UploadSimple size={15} weight="bold" />
+                {text.upload}
+              </button>
+              <button
+                type="button"
+                aria-label={text.clear}
+                className="grid h-10 w-10 place-items-center rounded-[10px] border border-zinc-200 bg-white text-zinc-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => setAttachment(null)}
+                disabled={!attachment}
+              >
+                <Trash size={15} weight="bold" />
+              </button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-zinc-500">{text.uploadHint}</p>
+          </div>
+
+          <ActionPreview plan={plan ?? emptyPlan} locale={locale} />
+
+          <div className="rounded-[16px] border border-zinc-200 bg-white p-4">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              {locale === "az" ? "Nə etməyi təklif edirik?" : "Suggested actions"}
+            </p>
+            <div className="mt-3 space-y-2">
+              {(plan?.suggestedReplies.length ? plan.suggestedReplies : text.examples).map((item, index) => (
+                <button
+                  key={`${item}-${index}`}
+                  type="button"
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-[10px] border border-zinc-200 bg-white px-3 py-2 text-left text-sm leading-5 text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                  onClick={() => {
+                    setPrompt(item);
+                    void handleAnalyze(item);
+                  }}
+                >
+                  <span>{item}</span>
+                  <CaretRight className="shrink-0 text-zinc-400" size={14} weight="bold" />
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
+              className={cx(
+                "mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-800 px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50",
+                isApplying ? "scale-[0.98] bg-violet-700" : "",
+              )}
+              onClick={() => void handleApply()}
+              disabled={!canApply || isApplying}
+            >
+              {isApplying ? <CircleNotch className="animate-spin" size={16} weight="bold" /> : <CheckCircle size={16} weight="bold" />}
+              {isApplying ? text.thinking : text.apply}
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+    {showConfirmApplyAll ? (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
+        <div className="w-[min(640px,92%)] rounded-[14px] bg-white p-6 shadow-[0_14px_40px_rgba(2,6,23,0.32)]">
+          <h3 className="text-lg font-semibold text-zinc-900">{locale === "az" ? "Əməliyyatı təsdiqləyin" : "Confirm action"}</h3>
+          <p className="mt-2 text-sm text-zinc-600">
+            {locale === "az"
+              ? "AI hədəf ətir seçməyib — bununla bütün ətirlərə endirim tətbiq olunacaq. Davam etmək istədiyinizə əminsiniz?"
+              : "The assistant didn't specify a target perfume — this will apply the discount to all perfumes. Are you sure you want to proceed?"}
+          </p>
+          <div className="mt-4 flex justify-end gap-3">
+            <button
+              type="button"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
               onClick={() => {
-                setPlan(null);
-                setHistory([]);
-                setAnswers({});
-                setPrompt("");
-                setAttachment(null);
-                setStatus(null);
+                setShowConfirmApplyAll(false);
+                setPendingForceApplyAction(null);
               }}
             >
-              <ArrowClockwise size={16} weight="bold" />
-              {text.reset}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {text.quickActions.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900"
-              onClick={() => setPrompt(item)}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.promptLabel}</label>
-            <textarea
-              rows={4}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              placeholder={text.promptPlaceholder}
-              className="mt-2 w-full rounded-[1.35rem] border border-zinc-200 bg-white px-4 py-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-4 focus:ring-zinc-100"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="inline-flex h-12 items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
-              onClick={() => setPrompt("")}
-            >
-              <X size={16} weight="bold" />
-              {text.clear}
+              {locale === "az" ? "Ləğv et" : "Cancel"}
             </button>
             <button
               type="button"
-              className="inline-flex h-12 items-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={() => void handleAnalyze()}
-              disabled={isThinking || isApplying}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-rose-600 px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(239,68,68,0.14)] transition hover:bg-rose-500"
+              onClick={() => void handleConfirmForceApply()}
             >
-              <PaperPlaneRight size={16} weight="bold" />
-              {isThinking ? text.thinking : text.send}
+              {locale === "az" ? "Bəli, tətbiq et" : "Yes, apply"}
             </button>
-          </div>
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0] || null;
-            event.target.value = "";
-            void handleAttach(file);
-          }}
-        />
-
-        {attachment ? (
-          <div className="overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-white">
-            <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.attached}</p>
-                <p className="mt-1 text-sm font-medium text-zinc-900">{attachment.name}</p>
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-600 transition hover:border-zinc-300"
-                onClick={() => setAttachment(null)}
-              >
-                <X size={14} weight="bold" />
-                {text.clear}
-              </button>
-            </div>
-            <div className="grid gap-4 p-4 lg:grid-cols-[220px_1fr]">
-              <img src={attachment.dataUrl} alt={attachment.name} className="h-44 w-full rounded-[1rem] object-cover lg:h-36" />
-              <div className="flex items-start">
-                <p className="max-w-xl text-sm leading-7 text-zinc-600">{text.uploadHint}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-[1.35rem] border border-dashed border-zinc-200 bg-white p-4 text-sm leading-7 text-zinc-500">
-            {text.uploadHint}
-          </div>
-        )}
-
-        {status ? (
-          <div
-            className={cx(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium",
-              status.tone === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : status.tone === "error"
-                  ? "border-rose-200 bg-rose-50 text-rose-700"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-600",
-            )}
-          >
-            {status.tone === "success" ? <CheckCircle size={16} weight="fill" /> : null}
-            {status.message}
-          </div>
-        ) : null}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[1.35rem] border border-zinc-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.historyTitle}</p>
-            <div className="mt-3 space-y-3">
-              {history.length ? history.map((item, index) => (
-                <div key={`${item.role}-${index}`} className={cx("rounded-2xl px-3 py-2 text-sm leading-6", item.role === "user" ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-800")}>
-                  {item.text}
-                </div>
-              )) : <p className="text-sm leading-7 text-zinc-500">{text.noPlan}</p>}
-            </div>
-          </div>
-
-          <div className="rounded-[1.35rem] border border-zinc-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.questionsTitle}</p>
-            <div className="mt-3 space-y-4">
-              {questionCount ? plan?.questions.map((question) => (
-                <div key={question.key} className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-900">{question.label}</p>
-                      <p className="mt-1 text-sm leading-6 text-zinc-600">{question.question}</p>
-                    </div>
-                    <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                      {question.type}
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    {renderQuestionInput(question, answers[question.key] ?? "", (value) => {
-                      setAnswers((current) => ({ ...current, [question.key]: value }));
-                    }, locale)}
-                  </div>
-                  {question.helper ? <p className="mt-2 text-xs leading-6 text-zinc-500">{question.helper}</p> : null}
-                </div>
-              )) : <p className="text-sm leading-7 text-zinc-500">{text.noPlan}</p>}
-            </div>
           </div>
         </div>
       </div>
-
-      <div className="space-y-6">
-        <ActionPreview plan={plan ?? { mode: "clarify", title: text.title, summary: text.noPlan, reply: text.noPlan, intent: "idle", confidence: 0, needsMoreContext: true, questions: [], action: null, preview: null, suggestedReplies: [] }} locale={locale} />
-
-        <div className="rounded-[1.6rem] border border-zinc-200 bg-white p-5 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.examples[0] ? text.promptLabel : text.title}</p>
-          <div className="mt-3 space-y-3">
-            {text.examples.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className="block w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm leading-6 text-zinc-700 transition hover:border-zinc-300 hover:bg-white"
-                onClick={() => setPrompt(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void handleApply()}
-            disabled={!canApply || isApplying}
-          >
-            {isApplying ? text.thinking : text.apply}
-          </button>
-        </div>
-      </div>
-    </div>
+    ) : null}
+    </>
   );
 }

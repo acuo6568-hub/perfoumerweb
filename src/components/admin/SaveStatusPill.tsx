@@ -42,18 +42,18 @@ export function SaveStatusPill({
   const isVisible = isDirty || status !== "idle";
 
   return createPortal(
-    <div className="fixed inset-x-0 bottom-0 z-[9999] pointer-events-none flex justify-center px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+    <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none flex justify-end px-4 pb-[calc(env(safe-area-inset-bottom))]">
       <div
         className={cx(
-          "pointer-events-auto max-w-[calc(100vw-2rem)] rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform will-change-transform",
+          "pointer-events-auto w-[min(100vw-2rem,26rem)] rounded-[18px] border px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform will-change-transform",
           isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-5",
           status === "success"
-            ? "bg-gradient-to-r from-emerald-50 to-green-50/80 border-emerald-200/60 text-emerald-900"
+            ? "bg-white/95 border-emerald-200/70 text-emerald-900"
             : status === "error"
-              ? "bg-gradient-to-r from-red-50 to-rose-50/80 border-red-200/60 text-red-900"
+              ? "bg-white/95 border-red-200/70 text-red-900"
               : status === "saving"
-                ? "bg-gradient-to-r from-blue-50 to-cyan-50/80 border-blue-200/60 text-blue-900"
-                : "bg-gradient-to-r from-zinc-50 to-neutral-50/80 border-zinc-200/60 text-zinc-900",
+                ? "bg-white/95 border-indigo-200/70 text-indigo-900"
+                : "bg-white/95 border-[#E5E7EB] text-zinc-900",
         )}
       >
         <div className="flex items-center justify-between gap-4 min-w-0">
@@ -80,10 +80,10 @@ export function SaveStatusPill({
               onClick={onSave}
               disabled={isSaving}
               className={cx(
-                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0",
+                "flex flex-shrink-0 items-center gap-2 rounded-[12px] px-3.5 py-2 text-sm font-semibold transition-all whitespace-nowrap",
                 isSaving
-                  ? "bg-zinc-200 text-zinc-500 cursor-not-allowed"
-                  : "bg-zinc-900 text-white hover:bg-zinc-800 active:scale-95",
+                  ? "cursor-not-allowed bg-zinc-200 text-zinc-500"
+                  : "bg-indigo-600 text-white hover:bg-indigo-500 active:scale-95",
               )}
             >
               <FloppyDisk size={16} weight="bold" />

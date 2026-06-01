@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { ADMIN_SESSION_COOKIE, isAdminConfigured, validateAdminSessionToken } from "@/lib/admin-auth";
 import { getAdminData, saveAdminData } from "@/lib/admin-data";
@@ -330,6 +331,11 @@ async function applyAction(action: AssistantAction, imageUrl: string | undefined
   }
 
   const result = await saveAdminData({ perfumes, notes, settings });
+  revalidateTag("catalog", { expire: 0 });
+  revalidateTag("perfumes", { expire: 0 });
+  revalidateTag("notes", { expire: 0 });
+  revalidatePath("/", "layout");
+
   return NextResponse.json({
     ok: true,
     action: action.type,
