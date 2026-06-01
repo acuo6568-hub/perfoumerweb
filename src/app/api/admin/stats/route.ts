@@ -128,10 +128,10 @@ export async function GET(request: Request) {
       .select("user_id")
       .order("last_message_at", { ascending: false });
 
-    const userComments = new Set(comments?.map((c) => c.user_id) || []);
-    const userWishlists = new Set(wishlists?.map((w) => w.user_id) || []);
-    const userCarts = new Set(cartItems?.map((c) => c.user_id) || []);
-    const userChats = new Set(chatSessions?.map((c) => c.user_id) || []);
+    const userComments = new Set((comments ?? []).map((c) => c.user_id).filter(Boolean));
+    const userWishlists = new Set((wishlists ?? []).map((w) => w.user_id).filter(Boolean));
+    const userCarts = new Set((cartItems ?? []).map((c) => c.user_id).filter(Boolean));
+    const userChats = new Set((chatSessions ?? []).map((c) => c.user_id).filter(Boolean));
 
     const sessionsQuery = supabase
       .from("website_live_sessions")
@@ -147,7 +147,11 @@ export async function GET(request: Request) {
 
     const { data: liveSessions } = await sessionsQuery;
     const sessions = liveSessions ?? [];
-    const uniqueVisitors = new Set(sessions.map((session) => session.anonymous_id)).size;
+    const uniqueVisitors = new Set(
+      sessions
+        .map((session) => session.user_id || session.anonymous_id || session.session_id)
+        .filter(Boolean),
+    ).size;
     const totalSessions = sessions.length;
     const totalPageViewsFromSessions = sessions.reduce(
       (sum, session) => sum + Math.max(0, Number(session.page_views ?? 0)),
@@ -269,6 +273,7 @@ export async function GET(request: Request) {
       usersWithCart: userCarts.size,
       usersWithChats: userChats.size,
       topCountries,
+      generatedAt: now.toISOString(),
     };
 
     return Response.json(stats);

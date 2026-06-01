@@ -2186,6 +2186,7 @@ export function AdminPanelClient({
   const copy = adminCopy[locale];
   const t = (key: keyof typeof copy, values: Record<string, string | number> = {}) =>
     interpolate(copy[key], values);
+  const showTopSearch = view === "perfumes";
   const siteName = settings.siteName || DEFAULT_SITE_NAME;
   const effectiveMetaKeywords = useMemo(
     () => resolveSiteMetaKeywords(settings.metaKeywords, siteName),
@@ -4013,38 +4014,33 @@ export function AdminPanelClient({
           <div
             className="sticky top-0 z-20 flex flex-col gap-3 rounded-[18px] border border-[#E5E7EB] bg-white/95 px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] backdrop-blur sm:flex-row sm:items-center sm:justify-between"
           >
-            <label className="relative block w-full max-w-2xl flex-1">
-              <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
-              <MagnifyingGlass
-                size={15}
-                weight="bold"
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
-              />
-              <input
-                value={view === "perfumes" ? perfumePickerQuery : search}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  if (view === "perfumes") {
-                    setPerfumePickerQuery(nextValue);
+            {showTopSearch ? (
+              <label className="relative block w-full max-w-2xl flex-1">
+                <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
+                <MagnifyingGlass
+                  size={15}
+                  weight="bold"
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                />
+                <input
+                  value={perfumePickerQuery}
+                  onChange={(event) => {
+                    setPerfumePickerQuery(event.target.value);
                     setIsPerfumePickerOpen(true);
-                  } else {
-                    setSearch(nextValue);
-                  }
-                }}
-                onFocus={() => {
-                  if (view === "perfumes") {
-                    setIsPerfumePickerOpen(true);
-                  }
-                }}
-                placeholder={locale === "az" ? "Axtar..." : "Search..."}
-                className={cx(
-                  "h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
-                )}
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
-                ⌘K
-              </span>
-            </label>
+                  }}
+                  onFocus={() => setIsPerfumePickerOpen(true)}
+                  placeholder={locale === "az" ? "Axtar..." : "Search..."}
+                  className={cx(
+                    "h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
+                  )}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
+                  ⌘K
+                </span>
+              </label>
+            ) : (
+              <div className="hidden flex-1 sm:block" />
+            )}
 
             <div className="flex items-center gap-3 self-end sm:self-auto">
               <button
@@ -4253,73 +4249,103 @@ export function AdminPanelClient({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                <div className={cx(ui.soft, "space-y-5 overflow-visible rounded-[24px] bg-white p-5 sm:p-6")}>
                   <SectionLabel
                     icon={<Sparkle size={16} weight="bold" />}
-                    title={copy.promotionsPreview}
-                    detail={copy.promotionsPreviewDetail}
+                    title={copy.promotions}
+                    detail={copy.promotionsDescription}
                   />
 
-                  <div className="mt-5 grid gap-4">
-                    <Field label={copy.promotionsEnable} hint={copy.promotionsEnableHint}>
-                      <button
-                        type="button"
-                        onClick={() => updatePromotionSettings({ enabled: !settings.promotions.enabled })}
-                        className={cx(
-                          "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
-                          settings.promotions.enabled
-                            ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                        )}
-                      >
-                        {settings.promotions.enabled ? copy.promotionsEnabled : copy.promotionsDisabled}
-                      </button>
-                    </Field>
+                  <div className="grid gap-4">
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                      <label className="flex min-h-[76px] cursor-pointer items-center justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] px-4 py-3 transition hover:border-zinc-300 hover:bg-white hover:shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                        <span>
+                          <span className="block text-sm font-semibold text-zinc-900">{copy.promotionsEnable}</span>
+                          <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                            {settings.promotions.enabled ? copy.promotionsEnabled : copy.promotionsDisabled}
+                          </span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={settings.promotions.enabled}
+                          onChange={(event) => updatePromotionSettings({ enabled: event.target.checked })}
+                        />
+                        <span className="relative inline-flex h-7 w-12 shrink-0 rounded-full border border-zinc-300 bg-white p-1 transition after:h-5 after:w-5 after:rounded-full after:bg-zinc-300 after:shadow-sm after:transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:after:translate-x-5 peer-checked:after:bg-white" />
+                      </label>
 
-                    <Field label={copy.promotionsMode}>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {(["manual", "discount"] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            onClick={() => updatePromotionSettings({ mode })}
-                            className={cx(
-                              "rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition",
-                              settings.promotions.mode === mode
-                                ? "border-zinc-900 bg-zinc-900 text-white"
-                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                            )}
-                          >
-                            {mode === "manual" ? copy.promotionsManual : copy.promotionsDiscount}
-                          </button>
-                        ))}
+                      <div className="rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] p-2">
+                        <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                          {copy.promotionsMode}
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {(["manual", "discount"] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => updatePromotionSettings({ mode })}
+                              className={cx(
+                                "rounded-[14px] border px-4 py-3 text-left text-sm font-semibold transition",
+                                settings.promotions.mode === mode
+                                  ? "border-indigo-600 bg-indigo-600 text-white shadow-[0_10px_22px_rgba(79,70,229,0.18)]"
+                                  : "border-transparent bg-white text-zinc-600 hover:border-zinc-200 hover:text-zinc-950",
+                              )}
+                            >
+                              {mode === "manual" ? copy.promotionsManual : copy.promotionsDiscount}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </Field>
+                    </div>
 
                     <Field label={copy.promotionsSourcePerfume} hint={copy.promotionsSourcePerfumeHint}>
-                      <div className="rounded-[1.2rem] border border-zinc-200 bg-white p-3">
-                        <select
-                          multiple
-                          size={8}
-                          className="h-44 w-full rounded-[1rem] border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none"
-                          value={settings.promotions.sourcePerfumeSlugs}
-                          onChange={(event) => {
-                            const selectedSlugs = Array.from(event.target.selectedOptions).map((option) => option.value);
-                            updatePromotionSettings({
-                              sourcePerfumeSlugs: selectedSlugs,
-                              sourcePerfumeSlug: selectedSlugs[0] || "",
-                            });
-                          }}
-                        >
-                          {promotionTargetPerfumes.map((perfume) => (
-                            <option key={perfume.id} value={perfume.slug}>
-                              {perfume.brand} {perfume.name}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] p-3">
+                        <div className="max-h-72 overflow-y-auto pr-1">
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {promotionTargetPerfumes.map((perfume) => {
+                              const selected = settings.promotions.sourcePerfumeSlugs.includes(perfume.slug);
 
-                        <div className="mt-3 flex flex-wrap gap-2">
+                              return (
+                                <button
+                                  key={perfume.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const nextSlugs = selected
+                                      ? settings.promotions.sourcePerfumeSlugs.filter((slug) => slug !== perfume.slug)
+                                      : [...settings.promotions.sourcePerfumeSlugs, perfume.slug];
+
+                                    updatePromotionSettings({
+                                      sourcePerfumeSlugs: nextSlugs,
+                                      sourcePerfumeSlug: nextSlugs[0] || "",
+                                    });
+                                  }}
+                                  className={cx(
+                                    "flex min-h-[72px] items-center gap-3 rounded-[16px] border px-3 py-2 text-left transition",
+                                    selected
+                                      ? "border-indigo-500 bg-indigo-50 text-indigo-900 shadow-[0_10px_22px_rgba(79,70,229,0.1)]"
+                                      : "border-transparent bg-white text-zinc-700 hover:border-zinc-200 hover:text-zinc-950",
+                                  )}
+                                >
+                                  <span
+                                    className={cx(
+                                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+                                      selected ? "border-indigo-200 bg-white text-indigo-700" : "border-zinc-200 bg-zinc-50 text-zinc-400",
+                                    )}
+                                  >
+                                    {selected ? <CheckCircle size={15} weight="fill" /> : perfume.name.slice(0, 1)}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm font-semibold">{perfume.name}</span>
+                                    <span className="mt-0.5 block truncate text-xs text-zinc-500">{perfume.brand}</span>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
                           <button
                             type="button"
                             className={ui.secondaryButton}
@@ -4401,25 +4427,32 @@ export function AdminPanelClient({
                       </Field>
                     </div>
 
-                    <Field label={copy.promotionsText} hint={copy.promotionsTextHint}>
-                      <div className="flex flex-wrap gap-2">
-                        {PROMOTION_LOCALES.map((promoLocale) => (
-                          <button
-                            key={promoLocale}
-                            type="button"
-                            onClick={() => updatePromotionLocale(promoLocale)}
-                            className={cx(
-                              "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
-                              promotionEditorLocale === promoLocale
-                                ? "border-zinc-900 bg-zinc-900 text-white"
-                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                            )}
-                          >
-                            {promoLocale}
-                          </button>
-                        ))}
+                    <div className="rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-900">{copy.promotionsText}</p>
+                          <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.promotionsTextHint}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PROMOTION_LOCALES.map((promoLocale) => (
+                            <button
+                              key={promoLocale}
+                              type="button"
+                              onClick={() => updatePromotionLocale(promoLocale)}
+                              className={cx(
+                                "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
+                                promotionEditorLocale === promoLocale
+                                  ? "border-indigo-600 bg-indigo-600 text-white"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                              )}
+                            >
+                              {promoLocale}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
+
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
                         <div className="flex flex-wrap gap-2">
                           {PROMOTION_COPY_PRESETS.map((preset) => (
                             <button
@@ -4433,7 +4466,7 @@ export function AdminPanelClient({
                                 );
                                 updatePromotionTextForLocale(text);
                               }}
-                              className="rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] bg-white hover:bg-zinc-50"
+                              className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
                             >
                               {preset.label[promotionEditorLocale]}
                             </button>
@@ -4453,7 +4486,7 @@ export function AdminPanelClient({
                         <span className="text-xs text-zinc-500">{copy.promotionsTranslateHint}</span>
                       </div>
                       <textarea
-                        className={ui.textarea}
+                        className={cx(ui.textarea, "mt-4 bg-white")}
                         value={promotionTextValue}
                         onChange={(event) => updatePromotionTextForLocale(event.target.value)}
                         rows={3}
@@ -4559,119 +4592,181 @@ export function AdminPanelClient({
                           ))}
                         </div>
                       ) : null}
-                    </Field>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label={locale === "az" ? "Açılma vaxtı" : "Schedule start"} hint={locale === "az" ? "Banner bu vaxtdan sonra avtomatik görünür." : "The banner becomes active after this time."}>
-                        <input
-                          type="datetime-local"
-                          className={ui.input}
-                          value={toDateTimeLocalInputValue(settings.promotions.scheduleStartAt)}
-                          onChange={(event) => updatePromotionSettings({ scheduleStartAt: event.target.value })}
-                        />
-                      </Field>
-
-                      <Field label={locale === "az" ? "Bitmə vaxtı" : "Schedule end"} hint={locale === "az" ? "Bu vaxtdan sonra banner bağlanır." : "The banner hides automatically after this time."}>
-                        <input
-                          type="datetime-local"
-                          className={ui.input}
-                          value={toDateTimeLocalInputValue(settings.promotions.scheduleEndAt)}
-                          onChange={(event) => updatePromotionSettings({ scheduleEndAt: event.target.value })}
-                        />
-                      </Field>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label={locale === "az" ? "Sayım" : "Countdown"} hint={locale === "az" ? "Bitmə vaxtı görünəcək sayım kimi göstərilir." : "Show a timer until the end time."}>
-                        <button
-                          type="button"
-                          onClick={() => updatePromotionSettings({ countdownEnabled: !settings.promotions.countdownEnabled })}
-                          className={cx(
-                            "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
-                            settings.promotions.countdownEnabled
-                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                          )}
-                        >
-                          {settings.promotions.countdownEnabled ? (locale === "az" ? "Aktiv" : "On") : (locale === "az" ? "Söndürülüb" : "Off")}
-                        </button>
-                      </Field>
-
-                      <Field label={locale === "az" ? "Mobil görünüş" : "Mobile styling"} hint={locale === "az" ? "Kiçik ekranlar üçün daha sıx ölçülər." : "Tighter spacing for small screens."}>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updatePromotionSettings({ backgroundMode: "solid" })}
-                            className={cx(
-                              "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
-                              settings.promotions.backgroundMode === "solid"
-                                ? "border-zinc-900 bg-zinc-900 text-white"
-                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                            )}
-                          >
-                            {locale === "az" ? "Sadə" : "Solid"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updatePromotionSettings({ backgroundMode: "gradient" })}
-                            className={cx(
-                              "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition",
-                              settings.promotions.backgroundMode === "gradient"
-                                ? "border-zinc-900 bg-zinc-900 text-white"
-                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                            )}
-                          >
-                            {locale === "az" ? "Qradient" : "Gradient"}
-                          </button>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-zinc-900">{locale === "az" ? "Yayım vaxtı" : "Schedule"}</p>
+                            <p className="mt-1 text-xs leading-5 text-zinc-500">
+                              {locale === "az" ? "Bannerin nə vaxt görünüb gizlənəcəyini seçin." : "Choose when the banner appears and hides."}
+                            </p>
+                          </div>
+                          <ClockCounterClockwise size={18} weight="bold" className="text-zinc-400" />
                         </div>
-                      </Field>
+                        <div className="mt-4 grid gap-3">
+                          <Field label={locale === "az" ? "Başlanğıc" : "Start"}>
+                            <input
+                              type="datetime-local"
+                              className={ui.input}
+                              value={toDateTimeLocalInputValue(settings.promotions.scheduleStartAt)}
+                              onChange={(event) => updatePromotionSettings({ scheduleStartAt: event.target.value })}
+                            />
+                          </Field>
+                          <Field label={locale === "az" ? "Bitmə" : "End"}>
+                            <input
+                              type="datetime-local"
+                              className={ui.input}
+                              value={toDateTimeLocalInputValue(settings.promotions.scheduleEndAt)}
+                              onChange={(event) => updatePromotionSettings({ scheduleEndAt: event.target.value })}
+                            />
+                          </Field>
+                          <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-[14px] border border-zinc-200 bg-white px-3 py-2">
+                            <span>
+                              <span className="block text-sm font-semibold text-zinc-800">{locale === "az" ? "Sayım" : "Countdown"}</span>
+                              <span className="mt-0.5 block text-xs text-zinc-500">
+                                {settings.promotions.countdownEnabled ? (locale === "az" ? "Aktivdir" : "On") : (locale === "az" ? "Söndürülüb" : "Off")}
+                              </span>
+                            </span>
+                            <input
+                              type="checkbox"
+                              className="peer sr-only"
+                              checked={settings.promotions.countdownEnabled}
+                              onChange={(event) => updatePromotionSettings({ countdownEnabled: event.target.checked })}
+                            />
+                            <span className="relative inline-flex h-7 w-12 shrink-0 rounded-full border border-zinc-300 bg-white p-1 transition after:h-5 after:w-5 after:rounded-full after:bg-zinc-300 after:shadow-sm after:transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:after:translate-x-5 peer-checked:after:bg-white" />
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-zinc-900">{locale === "az" ? "Görünüş" : "Appearance"}</p>
+                            <p className="mt-1 text-xs leading-5 text-zinc-500">
+                              {locale === "az" ? "Əsas rəngləri və fon tipini seçin." : "Choose the core colors and background type."}
+                            </p>
+                          </div>
+                          <Sparkle size={18} weight="bold" className="text-zinc-400" />
+                        </div>
+
+                        <div className="mt-4 rounded-[14px] border border-zinc-200 bg-white p-1">
+                          <div className="grid grid-cols-2 gap-1">
+                            {(["solid", "gradient"] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => updatePromotionSettings({ backgroundMode: mode })}
+                                className={cx(
+                                  "h-10 rounded-[11px] text-xs font-semibold uppercase tracking-[0.12em] transition",
+                                  settings.promotions.backgroundMode === mode
+                                    ? "bg-indigo-600 text-white shadow-[0_8px_18px_rgba(79,70,229,0.18)]"
+                                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900",
+                                )}
+                              >
+                                {mode === "solid"
+                                  ? locale === "az" ? "Sadə" : "Solid"
+                                  : locale === "az" ? "Qradient" : "Gradient"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {settings.promotions.backgroundMode === "gradient" ? (
+                            <>
+                              <Field label={locale === "az" ? "Başlanğıc rəng" : "Gradient from"}>
+                                <input
+                                  type="color"
+                                  className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white p-1"
+                                  value={settings.promotions.gradientFrom}
+                                  onChange={(event) => updatePromotionSettings({ gradientFrom: event.target.value })}
+                                />
+                              </Field>
+                              <Field label={locale === "az" ? "Son rəng" : "Gradient to"}>
+                                <input
+                                  type="color"
+                                  className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white p-1"
+                                  value={settings.promotions.gradientTo}
+                                  onChange={(event) => updatePromotionSettings({ gradientTo: event.target.value })}
+                                />
+                              </Field>
+                            </>
+                          ) : (
+                            <Field label={locale === "az" ? "Arxa fon" : "Background"}>
+                              <div className="flex items-center gap-2 rounded-[12px] border border-zinc-200 bg-white p-1.5">
+                                <input
+                                  type="color"
+                                  className="h-8 w-10 rounded-[9px] border-0 bg-transparent p-0"
+                                  value={settings.promotions.backgroundColor}
+                                  onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
+                                />
+                                <input
+                                  className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-medium text-zinc-800 outline-none"
+                                  value={settings.promotions.backgroundColor}
+                                  onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
+                                />
+                              </div>
+                            </Field>
+                          )}
+                          <Field label={copy.promotionsTextColor}>
+                            <div className="flex items-center gap-2 rounded-[12px] border border-zinc-200 bg-white p-1.5">
+                              <input
+                                type="color"
+                                className="h-8 w-10 rounded-[9px] border-0 bg-transparent p-0"
+                                value={settings.promotions.textColor}
+                                onChange={(event) => updatePromotionSettings({ textColor: event.target.value })}
+                              />
+                              <input
+                                className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-medium text-zinc-800 outline-none"
+                                value={settings.promotions.textColor}
+                                onChange={(event) => updatePromotionSettings({ textColor: event.target.value })}
+                              />
+                            </div>
+                          </Field>
+                        </div>
+                      </div>
                     </div>
 
-                    {settings.promotions.backgroundMode === "gradient" ? (
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <Field label={locale === "az" ? "Başlanğıc rəng" : "Gradient from"}>
-                          <input
-                            type="color"
-                            className="h-12 w-full rounded-2xl border border-zinc-300 bg-white p-1"
-                            value={settings.promotions.gradientFrom}
-                            onChange={(event) => updatePromotionSettings({ gradientFrom: event.target.value })}
-                          />
-                        </Field>
-                        <Field label={locale === "az" ? "Son rəng" : "Gradient to"}>
-                          <input
-                            type="color"
-                            className="h-12 w-full rounded-2xl border border-zinc-300 bg-white p-1"
-                            value={settings.promotions.gradientTo}
-                            onChange={(event) => updatePromotionSettings({ gradientTo: event.target.value })}
-                          />
-                        </Field>
-                        <Field label={locale === "az" ? "Bucaq" : "Angle"}>
+                    <details className="group rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD]">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
+                        <span>
+                          <span className="block text-sm font-semibold text-zinc-900">{locale === "az" ? "Əlavə görünüş ayarları" : "Advanced display"}</span>
+                          <span className="mt-0.5 block text-xs text-zinc-500">
+                            {settings.promotions.speed}s / loop · {settings.promotions.mobileHeight}px · {settings.promotions.mobileTextScale.toFixed(2)}x
+                          </span>
+                        </span>
+                        <CaretRight size={16} weight="bold" className="text-zinc-400 transition group-open:rotate-90" />
+                      </summary>
+                      <div className="grid gap-4 border-t border-[#E5E7EB] p-4 md:grid-cols-2">
+                        {settings.promotions.backgroundMode === "gradient" ? (
+                          <Field label={locale === "az" ? "Qradient bucağı" : "Gradient angle"}>
+                            <input
+                              type="range"
+                              min={0}
+                              max={180}
+                              className="w-full accent-indigo-600"
+                              value={settings.promotions.gradientAngle}
+                              onChange={(event) => updatePromotionSettings({ gradientAngle: Number(event.target.value) || 110 })}
+                            />
+                            <div className="mt-1 text-xs text-zinc-500">{settings.promotions.gradientAngle}°</div>
+                          </Field>
+                        ) : null}
+
+                        <Field label={copy.promotionsSpeed} hint={copy.promotionsSpeedHint}>
                           <input
                             type="range"
-                            min={0}
-                            max={180}
-                            className="w-full accent-zinc-900"
-                            value={settings.promotions.gradientAngle}
-                            onChange={(event) => updatePromotionSettings({ gradientAngle: Number(event.target.value) || 110 })}
+                            min={8}
+                            max={120}
+                            className="w-full accent-indigo-600"
+                            value={settings.promotions.speed}
+                            onChange={(event) => updatePromotionSettings({ speed: Number(event.target.value) || 28 })}
                           />
-                          <div className="mt-1 text-xs text-zinc-500">{settings.promotions.gradientAngle}°</div>
-                        </Field>
-                      </div>
-                    ) : (<>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <Field label={locale === "az" ? "Arxa fon rəngi" : "Background color"}>
-                          <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
-                            <input
-                              type="color"
-                              className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
-                              value={settings.promotions.backgroundColor}
-                              onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
-                            />
-                            <input
-                              className={ui.input}
-                              value={settings.promotions.backgroundColor}
-                              onChange={(event) => updatePromotionSettings({ backgroundColor: event.target.value })}
-                            />
+                          <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
+                            <span>8s</span>
+                            <span>{settings.promotions.speed}s</span>
+                            <span>120s</span>
                           </div>
                         </Field>
 
@@ -4680,181 +4775,55 @@ export function AdminPanelClient({
                             type="range"
                             min={40}
                             max={84}
-                            className="w-full accent-zinc-900"
+                            className="w-full accent-indigo-600"
                             value={settings.promotions.mobileHeight}
                             onChange={(event) => updatePromotionSettings({ mobileHeight: Number(event.target.value) || 52 })}
                           />
                           <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileHeight}px</div>
                         </Field>
-                      </div>
-                          <div className="mt-6">
-                            <h3 className="text-sm font-semibold text-zinc-900">{adminText(locale, "Tərcümələr", "Translations")}</h3>
-                            <p className="mt-1 text-xs text-zinc-500">{adminText(locale, "Başlıq, təsvir və CTA üçün lokal mətn verin.", "Provide localized text for title, description and CTA label.")}</p>
-                            <div className="mt-3 grid gap-3">
-                              <div className="grid gap-2 sm:grid-cols-4 sm:items-center">
-                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "Dil", "Locale")}</label>
-                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "Başlıq", "Title")}</label>
-                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "Təsvir", "Description")}</label>
-                                <label className="text-xs font-medium text-zinc-700">{adminText(locale, "CTA yazısı", "CTA label")}</label>
-                              </div>
-                              {(["az", "en", "ru"] as const).map((loc) => (
-                                <div key={loc} className="grid gap-2 sm:grid-cols-4 sm:items-center">
-                                  <div className="text-sm font-medium text-zinc-800">{loc.toUpperCase()}</div>
-                                  <input
-                                    className={ui.input}
-                                    value={((settings.homeHeader.videoTitleByLocale ?? {}) as any)[loc] ?? ""}
-                                    onChange={(e) =>
-                                      setHomeHeader((current) => ({
-                                        ...current,
-                                        videoTitleByLocale: { ...(current.videoTitleByLocale ?? {}), [loc]: e.target.value } as any,
-                                      } as any))
-                                    }
-                                    placeholder="KAY ALI"
-                                  />
-                                  <input
-                                    className={ui.input}
-                                    value={((settings.homeHeader.videoDescriptionByLocale ?? {}) as any)[loc] ?? ""}
-                                    onChange={(e) =>
-                                      setHomeHeader((current) => ({
-                                        ...current,
-                                        videoDescriptionByLocale: { ...(current.videoDescriptionByLocale ?? {}), [loc]: e.target.value } as any,
-                                      } as any))
-                                    }
-                                    placeholder="Discover the full KAY ALI collection."
-                                  />
-                                  <input
-                                    className={ui.input}
-                                    value={((settings.homeHeader.videoCtaLabelByLocale ?? {}) as any)[loc] ?? ""}
-                                    onChange={(e) =>
-                                      setHomeHeader((current) => ({
-                                        ...current,
-                                        videoCtaLabelByLocale: { ...(current.videoCtaLabelByLocale ?? {}), [loc]: e.target.value } as any,
-                                      } as any))
-                                    }
-                                    placeholder="View all brands"
-                                  />
-                                </div>
-                              ))}
 
-                              <div className="mt-2 flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  className={cx(ui.compactButton, "border-zinc-300 bg-white text-zinc-700")}
-                                  onClick={async () => {
-                                    try {
-                                      const res = await fetch("/api/admin/git", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ message: "admin: update homeHeader translations" }),
-                                      });
-                                      const json = await res.json();
-                                      if (!res.ok) {
-                                        console.error("Git push failed", json);
-                                          alert(adminText(locale, "Git göndərişi alınmadı: ", "Git push failed: ") + (json?.error || JSON.stringify(json)));
-                                      } else {
-                                          alert(adminText(locale, "Git göndərişi uğurlu oldu.", "Git push succeeded."));
-                                      }
-                                    } catch (err) {
-                                      console.error(err);
-                                        alert(adminText(locale, "Git göndərişi alınmadı. Təfərrüatlar üçün konsola baxın.", "Git push failed. See console for details."));
-                                    }
-                                  }}
-                                >
-                                  <ArrowsClockwise size={14} />
-                                  <span className="ml-2">{adminText(locale, "Commit və Push", "Commit & Push")}</span>
-                                </button>
-                                <div className="text-sm text-zinc-500">{adminText(locale, "data/admin və perfm77.csv fayllarını git-ə göndərir (server git icazəsi verməlidir).", "Commits data/admin and perfm77.csv to git (server must allow git).")}</div>
-                              </div>
-                            </div>
-                          </div>
-                    </>)
-                    }
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label={locale === "az" ? "Mobil mətn ölçüsü" : "Mobile text scale"}>
-                        <input
-                          type="range"
-                          min={0.8}
-                          max={1.25}
-                          step={0.01}
-                          className="w-full accent-zinc-900"
-                          value={settings.promotions.mobileTextScale}
-                          onChange={(event) => updatePromotionSettings({ mobileTextScale: Number(event.target.value) || 0.94 })}
-                        />
-                        <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileTextScale.toFixed(2)}x</div>
-                      </Field>
-
-                      <Field label={locale === "az" ? "Mobil yan boşluq" : "Mobile side padding"}>
-                        <input
-                          type="range"
-                          min={8}
-                          max={28}
-                          className="w-full accent-zinc-900"
-                          value={settings.promotions.mobilePaddingX}
-                          onChange={(event) => updatePromotionSettings({ mobilePaddingX: Number(event.target.value) || 16 })}
-                        />
-                        <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobilePaddingX}px</div>
-                      </Field>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label={copy.promotionsTextColor}>
-                        <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-2">
+                        <Field label={locale === "az" ? "Mobil mətn ölçüsü" : "Mobile text scale"}>
                           <input
-                            type="color"
-                            className="h-10 w-12 rounded-xl border-0 bg-transparent p-0"
-                            value={settings.promotions.textColor}
-                            onChange={(event) => updatePromotionSettings({ textColor: event.target.value })}
+                            type="range"
+                            min={0.8}
+                            max={1.25}
+                            step={0.01}
+                            className="w-full accent-indigo-600"
+                            value={settings.promotions.mobileTextScale}
+                            onChange={(event) => updatePromotionSettings({ mobileTextScale: Number(event.target.value) || 0.94 })}
                           />
+                          <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobileTextScale.toFixed(2)}x</div>
+                        </Field>
+
+                        <Field label={locale === "az" ? "Mobil yan boşluq" : "Mobile side padding"}>
                           <input
-                            className={ui.input}
-                            value={settings.promotions.textColor}
-                            onChange={(event) => updatePromotionSettings({ textColor: event.target.value })}
+                            type="range"
+                            min={8}
+                            max={28}
+                            className="w-full accent-indigo-600"
+                            value={settings.promotions.mobilePaddingX}
+                            onChange={(event) => updatePromotionSettings({ mobilePaddingX: Number(event.target.value) || 16 })}
                           />
-                        </div>
-                      </Field>
-                    </div>
-
-                    <Field label={copy.promotionsSpeed} hint={copy.promotionsSpeedHint}>
-                      <input
-                        type="range"
-                        min={8}
-                        max={120}
-                        className="w-full accent-zinc-900"
-                        value={settings.promotions.speed}
-                        onChange={(event) => updatePromotionSettings({ speed: Number(event.target.value) || 28 })}
-                      />
-                      <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
-                        <span>8s</span>
-                        <span>{settings.promotions.speed}s / loop</span>
-                        <span>120s</span>
+                          <div className="mt-1 text-xs text-zinc-500">{settings.promotions.mobilePaddingX}px</div>
+                        </Field>
                       </div>
-                    </Field>
+                    </details>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label={copy.promotionsClosable} hint={copy.promotionsClosableHint}>
-                        <button
-                          type="button"
-                          onClick={() => updatePromotionSettings({ closable: !settings.promotions.closable })}
-                          className={cx(
-                            "inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
-                            settings.promotions.closable
-                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-                          )}
-                        >
-                          {settings.promotions.closable ? copy.promotionsYes : copy.promotionsNo}
-                        </button>
-                      </Field>
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                      <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] px-4 py-3">
+                        <span>
+                          <span className="block text-sm font-semibold text-zinc-900">{copy.promotionsClosable}</span>
+                          <span className="mt-0.5 block text-xs text-zinc-500">{copy.promotionsClosableHint}</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={settings.promotions.closable}
+                          onChange={(event) => updatePromotionSettings({ closable: event.target.checked })}
+                        />
+                        <span className="relative inline-flex h-7 w-12 shrink-0 rounded-full border border-zinc-300 bg-white p-1 transition after:h-5 after:w-5 after:rounded-full after:bg-zinc-300 after:shadow-sm after:transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:after:translate-x-5 peer-checked:after:bg-white" />
+                      </label>
 
-                      <Field label={copy.promotionsOpenLink}>
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
-                          {settings.promotions.linkHref ? settings.promotions.linkHref : copy.promotionsNoLink}
-                        </div>
-                      </Field>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         className={ui.secondaryButton}
@@ -4862,6 +4831,11 @@ export function AdminPanelClient({
                       >
                         {copy.promotionsReset}
                       </button>
+                    </div>
+
+                    <div className="rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] px-4 py-3 text-sm text-zinc-600">
+                      <span className="font-semibold text-zinc-900">{copy.promotionsOpenLink}:</span>{" "}
+                      {settings.promotions.linkHref ? settings.promotions.linkHref : copy.promotionsNoLink}
                     </div>
                   </div>
                 </div>
@@ -6042,22 +6016,22 @@ export function AdminPanelClient({
 
                 {perfumeEditorTab === "discounts" ? (
                   <div className="mt-6 space-y-6">
-                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                    <div className={cx(ui.soft, "overflow-visible rounded-[24px] bg-white p-5 sm:p-6")}>
                       <SectionLabel
                         icon={<TrendUp size={16} weight="bold" />}
                         title={copy.discountControls}
                         detail={copy.discountControlsDescription}
                       />
 
-                      <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        <label className="flex min-h-12 items-center justify-between gap-4 rounded-2xl border border-zinc-300 bg-white px-4 py-3">
+                      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                        <label className="group flex min-h-[72px] items-center justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] px-4 py-3 transition hover:border-zinc-300 hover:bg-white hover:shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                           <span>
                             <span className="block text-sm font-semibold text-zinc-800">{copy.discountActive}</span>
                             <span className="mt-1 block text-xs text-zinc-500">{copy.discountActiveHint}</span>
                           </span>
                           <input
                             type="checkbox"
-                            className="h-5 w-5 accent-zinc-900"
+                            className="peer sr-only"
                             checked={selectedPerfumeDiscount.enabled}
                             onChange={(event) =>
                               updateSelectedPerfumeDiscount((discount) => ({
@@ -6066,26 +6040,28 @@ export function AdminPanelClient({
                               }))
                             }
                           />
+                          <span className="relative inline-flex h-7 w-12 shrink-0 rounded-full border border-zinc-300 bg-white p-1 transition after:h-5 after:w-5 after:rounded-full after:bg-zinc-300 after:shadow-sm after:transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:after:translate-x-5 peer-checked:after:bg-white" />
                         </label>
 
                         <Field label={copy.discountType}>
-                          <select
-                            className={ui.input}
+                          <ModernDropdown
                             value={selectedPerfumeDiscount.mode}
-                            onChange={(event) =>
+                            placeholder={copy.discountPercentOption}
+                            onChange={(value) =>
                               updateSelectedPerfumeDiscount((discount) => ({
                                 ...discount,
-                                mode: event.target.value === "fixed" ? "fixed" : "percent",
+                                mode: value === "fixed" ? "fixed" : "percent",
                                 value:
-                                  event.target.value === "fixed"
+                                  value === "fixed"
                                     ? selectedPerfume.sizes[0]?.price ?? 0
                                     : Math.min(discount.value || 10, 95),
                               }))
                             }
-                          >
-                            <option value="percent">{copy.discountPercentOption}</option>
-                            <option value="fixed">{copy.discountFixedOption}</option>
-                          </select>
+                            options={[
+                              { value: "percent", label: copy.discountPercentOption },
+                              { value: "fixed", label: copy.discountFixedOption },
+                            ]}
+                          />
                         </Field>
 
                         <Field
@@ -6110,11 +6086,10 @@ export function AdminPanelClient({
                         </Field>
 
                         <Field label={copy.discountAppliesTo}>
-                          <select
-                            className={ui.input}
+                          <ModernDropdown
                             value={selectedPerfumeDiscount.scope.kind}
-                            onChange={(event) => {
-                              const kind = event.target.value;
+                            placeholder={copy.discountAllSizes}
+                            onChange={(kind) => {
                               updateSelectedPerfumeDiscount((discount) => {
                                 if (kind === "size") {
                                   return {
@@ -6133,41 +6108,39 @@ export function AdminPanelClient({
                                 return { ...discount, scope: { kind: "all" } };
                               });
                             }}
-                          >
-                            <option value="all">{copy.discountAllSizes}</option>
-                            <option value="size">{copy.discountOneSize}</option>
-                            <option value="custom">{copy.discountCustomSizes}</option>
-                          </select>
+                            options={[
+                              { value: "all", label: copy.discountAllSizes },
+                              { value: "size", label: copy.discountOneSize },
+                              { value: "custom", label: copy.discountCustomSizes },
+                            ]}
+                          />
                         </Field>
 
                         {selectedPerfumeDiscount.scope.kind === "size" ? (
                           <Field label={copy.discountedSize}>
-                            <select
-                              className={ui.input}
-                              value={selectedPerfumeDiscount.scope.ml}
-                              onChange={(event) => {
-                                const ml = Number(event.target.value);
+                            <ModernDropdown
+                              value={String(selectedPerfumeDiscount.scope.ml)}
+                              placeholder={selectedPerfume.sizes[0]?.label ?? copy.discountOneSize}
+                              onChange={(value) => {
+                                const ml = Number(value);
                                 updateSelectedPerfumeDiscount((discount) => ({
                                   ...discount,
                                   scope: { kind: "size", ml: Number.isFinite(ml) ? ml : selectedPerfume.sizes[0]?.ml ?? 15 },
                                 }));
                               }}
-                            >
-                              {selectedPerfume.sizes.map((size) => (
-                                <option key={size.ml} value={size.ml}>
-                                  {size.label}
-                                </option>
-                              ))}
-                            </select>
+                              options={selectedPerfume.sizes.map((size) => ({
+                                value: String(size.ml),
+                                label: size.label,
+                              }))}
+                            />
                           </Field>
                         ) : null}
 
                         <Field label={copy.discountDeadline}>
-                          <select
-                            className={ui.input}
+                          <ModernDropdown
                             value={selectedPerfumeDiscount.deadline.kind}
-                            onChange={(event) => {
-                              const kind = event.target.value;
+                            placeholder={copy.discountNoDeadline}
+                            onChange={(kind) => {
                               updateSelectedPerfumeDiscount((discount) => {
                                 if (kind === "date") {
                                   return {
@@ -6199,12 +6172,13 @@ export function AdminPanelClient({
                                 return { ...discount, showDeadline: false, deadline: { kind: "none" } };
                               });
                             }}
-                          >
-                            <option value="none">{copy.discountNoDeadline}</option>
-                            <option value="date">{copy.discountCustomDate}</option>
-                            <option value="duration">{copy.discountCustomDuration}</option>
-                            <option value="endOfMonth">{copy.discountEndOfMonth}</option>
-                          </select>
+                            options={[
+                              { value: "none", label: copy.discountNoDeadline },
+                              { value: "date", label: copy.discountCustomDate },
+                              { value: "duration", label: copy.discountCustomDuration },
+                              { value: "endOfMonth", label: copy.discountEndOfMonth },
+                            ]}
+                          />
                         </Field>
 
                         {selectedPerfumeDiscount.deadline.kind === "date" ? (
@@ -6260,13 +6234,13 @@ export function AdminPanelClient({
                             </Field>
 
                             <Field label={copy.discountDurationUnit}>
-                              <select
-                                className={ui.input}
+                              <ModernDropdown
                                 value={selectedPerfumeDiscount.deadline.unit}
-                                onChange={(event) => {
+                                placeholder={copy.discountDays}
+                                onChange={(value) => {
                                   const unit =
-                                    event.target.value === "weeks" || event.target.value === "months"
-                                      ? event.target.value
+                                    value === "weeks" || value === "months"
+                                      ? value
                                       : "days";
                                   updateSelectedPerfumeDiscount((discount) => {
                                     const current =
@@ -6290,11 +6264,12 @@ export function AdminPanelClient({
                                     };
                                   });
                                 }}
-                              >
-                                <option value="days">{copy.discountDays}</option>
-                                <option value="weeks">{copy.discountWeeks}</option>
-                                <option value="months">{copy.discountMonths}</option>
-                              </select>
+                                options={[
+                                  { value: "days", label: copy.discountDays },
+                                  { value: "weeks", label: copy.discountWeeks },
+                                  { value: "months", label: copy.discountMonths },
+                                ]}
+                              />
                             </Field>
 
                             <Field label={copy.discountStartsOn}>
@@ -6350,7 +6325,7 @@ export function AdminPanelClient({
                       </div>
 
                       {selectedPerfumeDiscount.deadline.kind !== "none" ? (
-                        <label className="mt-5 flex min-h-12 items-center justify-between gap-4 rounded-2xl border border-zinc-300 bg-white px-4 py-3">
+                        <label className="mt-5 flex min-h-[72px] items-center justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] px-4 py-3 transition hover:border-zinc-300 hover:bg-white hover:shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                           <span>
                             <span className="block text-sm font-semibold text-zinc-800">{copy.discountShowDeadline}</span>
                             <span className="mt-1 block text-xs text-zinc-500">
@@ -6359,7 +6334,7 @@ export function AdminPanelClient({
                           </span>
                           <input
                             type="checkbox"
-                            className="h-5 w-5 accent-zinc-900"
+                            className="peer sr-only"
                             checked={Boolean(selectedPerfumeDiscount.showDeadline)}
                             onChange={(event) =>
                               updateSelectedPerfumeDiscount((discount) => ({
@@ -6368,11 +6343,12 @@ export function AdminPanelClient({
                               }))
                             }
                           />
+                          <span className="relative inline-flex h-7 w-12 shrink-0 rounded-full border border-zinc-300 bg-white p-1 transition after:h-5 after:w-5 after:rounded-full after:bg-zinc-300 after:shadow-sm after:transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:after:translate-x-5 peer-checked:after:bg-white" />
                         </label>
                       ) : null}
 
                       {selectedPerfumeDiscount.scope.kind === "custom" ? (
-                        <div className="mt-5">
+                        <div className="mt-5 rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] p-4">
                           <p className="mb-2 text-sm font-medium text-zinc-700">{copy.discountCustomSizePicker}</p>
                           <div className="flex flex-wrap gap-2">
                             {selectedPerfume.sizes.map((size) => {
@@ -6382,10 +6358,10 @@ export function AdminPanelClient({
                                 <label
                                   key={size.ml}
                                   className={cx(
-                                    ui.chip,
+                                    "inline-flex h-10 cursor-pointer items-center rounded-full border px-3.5 text-xs font-semibold transition",
                                     checked
-                                      ? "border-zinc-900 bg-zinc-900 text-white"
-                                      : "border-zinc-300 bg-white text-zinc-700",
+                                      ? "border-indigo-600 bg-indigo-600 text-white shadow-[0_10px_20px_rgba(79,70,229,0.18)]"
+                                      : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400",
                                   )}
                                 >
                                   <input
@@ -6415,7 +6391,7 @@ export function AdminPanelClient({
                       ) : null}
                     </div>
 
-                    <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                    <div className={cx(ui.soft, "overflow-hidden rounded-[24px] bg-white p-5 sm:p-6")}>
                       <SectionLabel
                         icon={<Rows size={16} weight="bold" />}
                         title={copy.discountPreview}
@@ -6430,10 +6406,25 @@ export function AdminPanelClient({
                           return (
                             <div
                               key={size.ml}
-                              className="rounded-[1.2rem] border border-zinc-200 bg-white p-4"
+                              className={cx(
+                                "rounded-[18px] border p-4 transition",
+                                hasSavings
+                                  ? "border-indigo-200 bg-indigo-50/60 shadow-[0_14px_28px_rgba(79,70,229,0.08)]"
+                                  : "border-[#E5E7EB] bg-[#FCFCFD]",
+                              )}
                             >
-                              <p className="text-sm font-semibold text-zinc-900">{size.label}</p>
-                              <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-semibold text-zinc-900">{size.label}</p>
+                                <span
+                                  className={cx(
+                                    "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                                    hasSavings ? "bg-white text-indigo-700" : "bg-zinc-100 text-zinc-500",
+                                  )}
+                                >
+                                  {hasSavings ? `-${Math.round(pricing.savingsPercent)}%` : copy.discountNoSavings}
+                                </span>
+                              </div>
+                              <div className="mt-4 flex flex-wrap items-baseline gap-2">
                                 {hasSavings ? (
                                   <span className="text-sm text-zinc-400 line-through">
                                     {pricing.originalPrice} AZN
@@ -6443,15 +6434,15 @@ export function AdminPanelClient({
                                   {pricing.finalPrice} AZN
                                 </span>
                               </div>
-                              {hasSavings ? (
-                                <span className="mt-3 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600">
-                                  -{Math.round(pricing.savingsPercent)}%
-                                </span>
-                              ) : (
-                                <span className="mt-3 inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-500">
-                                  {copy.discountNoSavings}
-                                </span>
-                              )}
+                              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-200">
+                                <div
+                                  className={cx(
+                                    "h-full rounded-full transition-all",
+                                    hasSavings ? "bg-indigo-600" : "bg-zinc-300",
+                                  )}
+                                  style={{ width: `${hasSavings ? Math.min(100, Math.max(8, pricing.savingsPercent)) : 0}%` }}
+                                />
+                              </div>
                             </div>
                           );
                         })}
