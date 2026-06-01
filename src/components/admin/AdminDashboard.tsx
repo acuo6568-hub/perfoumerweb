@@ -37,6 +37,7 @@ type Stats = {
   usersWithCart?: number;
   usersWithChats?: number;
   topCountries?: Array<{ country: string; count: number }>;
+  generatedAt?: string;
 };
 
 type AdminUserSummary = {
@@ -126,6 +127,13 @@ const dashboardCopy = {
     wishlistTitle: "Wishlist",
     cartTitle: "Səbət",
     itemCount: "{count} məhsul",
+    updated: "Yeniləndi",
+    engagement: "Aktivlik",
+    comments: "Şərhlər",
+    wishlists: "Wishlist",
+    cart: "Səbət",
+    topCountries: "Top ölkələr",
+    noCountryData: "Ölkə məlumatı yoxdur.",
   },
   en: {
     dashboard: "Dashboard",
@@ -170,6 +178,13 @@ const dashboardCopy = {
     wishlistTitle: "Wishlist",
     cartTitle: "Cart",
     itemCount: "{count} items",
+    updated: "Updated",
+    engagement: "Engagement",
+    comments: "Comments",
+    wishlists: "Wishlists",
+    cart: "Cart",
+    topCountries: "Top countries",
+    noCountryData: "No country data yet.",
   },
 };
 
@@ -178,25 +193,58 @@ type MetricProps = {
   icon: React.ReactNode;
   label: string;
   value: string | number;
-  color: "blue" | "green" | "purple" | "amber" | "rose";
+  detail?: string;
+  tone?: "indigo" | "emerald" | "sky" | "amber" | "rose" | "zinc";
 };
 
-function Metric({ icon, label, value, color }: MetricProps) {
+function MetricCard({ icon, label, value, detail, tone = "zinc" }: MetricProps) {
   const colors = {
-    blue: "text-blue-600",
-    green: "text-green-600",
-    purple: "text-purple-600",
-    amber: "text-amber-600",
-    rose: "text-rose-600",
+    indigo: "border-indigo-100 bg-indigo-50 text-indigo-700",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    sky: "border-sky-100 bg-sky-50 text-sky-700",
+    amber: "border-amber-100 bg-amber-50 text-amber-700",
+    rose: "border-rose-100 bg-rose-50 text-rose-700",
+    zinc: "border-zinc-100 bg-zinc-50 text-zinc-700",
   };
 
   return (
-    <div className="flex items-start gap-3">
-      <div className={`${colors[color]} mt-0.5`}>{icon}</div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-zinc-500 font-medium">{label}</p>
-        <p className="mt-1 text-sm sm:text-base font-bold text-zinc-900">{value}</p>
+    <div className="rounded-[20px] border border-[#E5E7EB] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{label}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-zinc-950">{value}</p>
+          {detail ? <p className="mt-1 text-xs leading-5 text-zinc-500">{detail}</p> : null}
+        </div>
+        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border ${colors[tone]}`}>
+          {icon}
+        </span>
       </div>
+    </div>
+  );
+}
+
+function MiniMetric({
+  label,
+  value,
+  tone = "zinc",
+}: {
+  label: string;
+  value: string | number;
+  tone?: "indigo" | "emerald" | "sky" | "amber" | "rose" | "zinc";
+}) {
+  const tones = {
+    indigo: "border-indigo-100 bg-indigo-50 text-indigo-800",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-800",
+    sky: "border-sky-100 bg-sky-50 text-sky-800",
+    amber: "border-amber-100 bg-amber-50 text-amber-800",
+    rose: "border-rose-100 bg-rose-50 text-rose-800",
+    zinc: "border-zinc-100 bg-zinc-50 text-zinc-800",
+  };
+
+  return (
+    <div className={`rounded-[16px] border px-4 py-3 ${tones[tone]}`}>
+      <p className="text-xs font-medium opacity-75">{label}</p>
+      <p className="mt-1 text-xl font-semibold tracking-[-0.04em]">{value}</p>
     </div>
   );
 }
@@ -233,7 +281,7 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
       if (start) params.append("startDate", start);
       if (end) params.append("endDate", end);
 
-      const response = await fetch(`/api/admin/stats?${params}`);
+      const response = await fetch(`/api/admin/stats?${params}`, { cache: "no-store" });
       if (!response.ok) {
         throw new Error("Failed to fetch stats");
       }
@@ -259,7 +307,7 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
     setUsersError(null);
 
     try {
-      const response = await fetch("/api/admin/users?perPage=60");
+      const response = await fetch("/api/admin/users?perPage=60", { cache: "no-store" });
       if (!response.ok) {
         throw new Error("Failed to fetch users");
       }
@@ -282,6 +330,20 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (dateFilter === "custom" && (!startDate || !endDate)) {
+        return;
+      }
+      void fetchStats(dateFilter, startDate, endDate);
+      void fetchUsers();
+    }, 60000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [dateFilter, endDate, fetchStats, fetchUsers, startDate]);
 
   useEffect(() => {
     if (!supabase) {
@@ -552,38 +614,38 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
           {/* Main Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<Users size={16} weight="duotone" />}
                 label={copy.totalUsers}
                 value={stats.totalUsers.toLocaleString()}
-                color="blue"
+                tone="sky"
               />
             </div>
 
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<Eye size={16} weight="duotone" />}
                 label={copy.onlineUsers}
                 value={stats.onlineUsers}
-                color="green"
+                tone="emerald"
               />
             </div>
 
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<EnvelopeOpen size={16} weight="duotone" />}
                 label={copy.newsletterSubscribers}
                 value={stats.newsletterSubscribed}
-                color="purple"
+                tone="indigo"
               />
             </div>
 
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<Eye size={16} weight="duotone" />}
                 label={copy.uniqueVisitors}
                 value={stats.uniqueVisitors.toLocaleString()}
-                color="amber"
+                tone="amber"
               />
             </div>
           </div>
@@ -613,38 +675,38 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
           {/* Performance Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<Eye size={16} weight="duotone" />}
                 label={copy.pageViews}
                 value={stats.pageViews.toLocaleString()}
-                color="blue"
+                tone="sky"
               />
             </div>
 
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<Clock size={16} weight="duotone" />}
                 label={copy.avgSessionDuration}
                 value={formatDuration(stats.avgSessionDuration)}
-                color="purple"
+                tone="indigo"
               />
             </div>
 
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<Warning size={16} weight="duotone" />}
                 label={copy.bounceRate}
                 value={`${stats.bounceRate}%`}
-                color="rose"
+                tone="rose"
               />
             </div>
 
             <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-              <Metric
+              <MetricCard
                 icon={<TrendUp size={16} weight="duotone" />}
                 label={copy.conversionRate}
                 value={`${stats.conversionRate.toFixed(2)}%`}
-                color="green"
+                tone="emerald"
               />
             </div>
           </div>
@@ -671,245 +733,305 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
           )}
 
           {/* Users List */}
-          <div className="rounded-[1.2rem] border border-zinc-200 bg-zinc-50/50 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
-                  <UserCircle size={16} weight="duotone" />
-                  {copy.usersTitle}
-                </h3>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {copy.usersSubtitle}: {usersMeta.total.toLocaleString()}
-                </p>
+          <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] px-4 py-4 sm:px-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-zinc-200 bg-white text-zinc-700 shadow-sm">
+                  <UserCircle size={19} weight="duotone" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-semibold text-zinc-950">{copy.usersTitle}</h3>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {copy.usersSubtitle}: {usersMeta.total.toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-zinc-500">
-                {copy.onlineNow}: {(users.length ? onlineUsersCount : usersMeta.online).toLocaleString()}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  {copy.onlineNow}: {(users.length ? onlineUsersCount : usersMeta.online).toLocaleString()}
+                </span>
+                {usersMeta.generatedAt ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-500">
+                    <Clock size={13} weight="bold" />
+                    {copy.updated}: {formatDateTime(usersMeta.generatedAt)}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             {usersError && (
-              <div className="mt-3 rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">
+              <div className="m-4 rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
                 {usersError}
               </div>
             )}
 
             {isUsersLoading && (
-              <div className="mt-3 rounded-lg border border-zinc-200 bg-white/70 p-3 text-xs text-zinc-600">
+              <div className="m-4 rounded-[16px] border border-zinc-200 bg-zinc-50 px-4 py-6 text-center text-xs font-medium text-zinc-500">
                 {copy.loadingUsers}
               </div>
             )}
 
             {!isUsersLoading && users.length === 0 && (
-              <div className="mt-3 rounded-lg border border-zinc-200 bg-white/70 p-3 text-xs text-zinc-600">
+              <div className="m-4 rounded-[16px] border border-zinc-200 bg-zinc-50 px-4 py-6 text-center text-xs font-medium text-zinc-500">
                 {copy.noUsers}
               </div>
             )}
 
             {!isUsersLoading && users.length > 0 && (
-              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
-                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              <div className="grid gap-0 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]">
+                <div className="max-h-[520px] space-y-2 overflow-y-auto border-b border-zinc-100 bg-zinc-50/60 p-3 pr-2 lg:border-b-0 lg:border-r">
                   {users.map((user) => (
                     <button
                       key={user.id}
                       type="button"
                       onClick={() => handleSelectUser(user.id)}
                       className={[
-                        "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition",
+                        "group flex w-full items-start gap-3 rounded-[18px] border p-3 text-left transition duration-200",
                         selectedUserId === user.id
-                          ? "border-zinc-300 bg-white"
-                          : "border-zinc-100 bg-white/70 hover:border-zinc-200",
+                          ? "border-zinc-900 bg-zinc-950 text-white shadow-[0_18px_35px_rgba(15,23,42,0.18)]"
+                          : "border-zinc-200 bg-white text-zinc-900 shadow-sm hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_14px_28px_rgba(15,23,42,0.07)]",
                       ].join(" ")}
                     >
                       <span
                         className={[
-                          "mt-1 h-2 w-2 shrink-0 rounded-full",
-                          user.is_online ? "bg-emerald-500" : "bg-zinc-300",
+                          "mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] border text-xs font-bold uppercase",
+                          selectedUserId === user.id
+                            ? "border-white/15 bg-white/10 text-white"
+                            : "border-zinc-200 bg-zinc-50 text-zinc-600",
                         ].join(" ")}
-                      />
+                      >
+                        {user.email.slice(0, 1)}
+                      </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-xs font-semibold text-zinc-900 truncate">{user.email}</p>
-                          {user.is_deleted && (
-                            <span className="text-[10px] rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">
-                              {copy.deleted}
-                            </span>
-                          )}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span
+                            className={[
+                              "h-2 w-2 shrink-0 rounded-full",
+                              user.is_online ? "bg-emerald-400" : selectedUserId === user.id ? "bg-white/35" : "bg-zinc-300",
+                            ].join(" ")}
+                          />
+                          <p
+                            className={[
+                              "truncate text-xs font-semibold",
+                              selectedUserId === user.id ? "text-white" : "text-zinc-950",
+                            ].join(" ")}
+                          >
+                            {user.email}
+                          </p>
                         </div>
-                        <p className="mt-1 text-[11px] text-zinc-500">
-                          {copy.lastSignIn}: {formatDateTime(user.last_sign_in_at)}
-                        </p>
-                        <p className="text-[11px] text-zinc-500">
-                          {copy.lastSeen}: {formatDateTime(user.last_seen_at)}
-                        </p>
+                        <div
+                          className={[
+                            "mt-2 grid gap-1 text-[11px] leading-4",
+                            selectedUserId === user.id ? "text-white/65" : "text-zinc-500",
+                          ].join(" ")}
+                        >
+                          <p>{copy.lastSignIn}: {formatDateTime(user.last_sign_in_at)}</p>
+                          <p>{copy.lastSeen}: {formatDateTime(user.last_seen_at)}</p>
+                        </div>
+                        {user.is_deleted && (
+                          <span
+                            className={[
+                              "mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                              selectedUserId === user.id
+                                ? "border-white/20 bg-white/10 text-white"
+                                : "border-rose-200 bg-rose-50 text-rose-700",
+                            ].join(" ")}
+                          >
+                            {copy.deleted}
+                          </span>
+                        )}
                       </div>
                     </button>
                   ))}
                 </div>
 
-                <div className="rounded-xl border border-zinc-200 bg-white/80 p-4">
+                <div className="min-h-[520px] bg-white p-4 sm:p-5">
                   {selectedUser ? (
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold text-zinc-900">{selectedUser.email}</p>
-                          <p className="mt-1 text-[11px] text-zinc-500">
-                            {copy.lastSignIn}: {formatDateTime(selectedUser.last_sign_in_at)}
-                          </p>
-                          <p className="text-[11px] text-zinc-500">
-                            {copy.lastSeen}: {formatDateTime(selectedUser.last_seen_at)}
-                          </p>
-                        </div>
+                    <div className="flex h-full min-h-0 flex-col gap-4">
+                      <div className="rounded-[22px] border border-zinc-200 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] p-4 shadow-sm">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] border border-zinc-200 bg-zinc-950 text-sm font-bold uppercase text-white shadow-sm">
+                              {selectedUser.email.slice(0, 1)}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-zinc-950">{selectedUser.email}</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <span
+                                  className={[
+                                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                                    selectedUser.is_online
+                                      ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                                      : "border-zinc-200 bg-zinc-50 text-zinc-500",
+                                  ].join(" ")}
+                                >
+                                  <span className={["h-1.5 w-1.5 rounded-full", selectedUser.is_online ? "bg-emerald-500" : "bg-zinc-300"].join(" ")} />
+                                  {selectedUser.is_online ? copy.onlineUsers : copy.lastSeen}
+                                </span>
+                                {selectedUser.is_deleted ? (
+                                  <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                                    {copy.deleted}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="mt-3 grid gap-1 text-[11px] leading-5 text-zinc-500 sm:grid-cols-2">
+                                <p>{copy.lastSignIn}: {formatDateTime(selectedUser.last_sign_in_at)}</p>
+                                <p>{copy.lastSeen}: {formatDateTime(selectedUser.last_seen_at)}</p>
+                              </div>
+                            </div>
+                          </div>
                         <button
                           type="button"
                           onClick={() => handleDeleteUser(selectedUser.id)}
-                          className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
+                          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={selectedUser.is_deleted}
                         >
-                          <Trash size={12} weight="bold" />
+                          <Trash size={13} weight="bold" />
                           {copy.deleteUser}
                         </button>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleChangeDetailTab("sessions")}
-                          className={[
-                            "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-                            userDetailTab === "sessions"
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-                          ].join(" ")}
-                        >
-                          {copy.viewSessions}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleChangeDetailTab("wishlist")}
-                          className={[
-                            "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-                            userDetailTab === "wishlist"
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-                          ].join(" ")}
-                        >
-                          {copy.viewWishlist}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleChangeDetailTab("cart")}
-                          className={[
-                            "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-                            userDetailTab === "cart"
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-                          ].join(" ")}
-                        >
-                          {copy.viewCart}
-                        </button>
+                      <div className="inline-flex w-fit rounded-full border border-zinc-200 bg-zinc-100 p-1">
+                        {[
+                          ["sessions", copy.viewSessions],
+                          ["wishlist", copy.viewWishlist],
+                          ["cart", copy.viewCart],
+                        ].map(([tab, label]) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => handleChangeDetailTab(tab as "sessions" | "wishlist" | "cart")}
+                            className={[
+                              "rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
+                              userDetailTab === tab
+                                ? "bg-white text-zinc-950 shadow-sm"
+                                : "text-zinc-500 hover:text-zinc-900",
+                            ].join(" ")}
+                          >
+                            {label}
+                          </button>
+                        ))}
                       </div>
 
                       {sessionsError && (
-                        <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
+                        <div className="rounded-[16px] border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-medium text-rose-700">
                           {sessionsError}
                         </div>
                       )}
 
                       {userDetailTab === "sessions" ? (
-                        <>
-                          <div>
-                            <p className="text-xs font-semibold text-zinc-900">{copy.sessionsTitle}</p>
-                            <p className="text-[11px] text-zinc-500">{copy.sessionViewsHelp}</p>
+                        <div className="min-h-0 flex-1 rounded-[22px] border border-zinc-200 bg-zinc-50/70 p-3">
+                          <div className="mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
+                            <div>
+                              <p className="text-xs font-semibold text-zinc-950">{copy.sessionsTitle}</p>
+                              <p className="mt-1 text-[11px] text-zinc-500">{copy.sessionViewsHelp}</p>
+                            </div>
+                            <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
+                              {copy.sessionsTitle}: {userSessions.length.toLocaleString()}
+                            </span>
                           </div>
 
                           {isSessionsLoading && (
-                            <div className="rounded-lg border border-zinc-200 bg-white/70 p-2 text-[11px] text-zinc-600">
+                            <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-[11px] font-medium text-zinc-500">
                               {copy.loadingStats}
                             </div>
                           )}
 
                           {!isSessionsLoading && userSessions.length === 0 && (
-                            <div className="rounded-lg border border-zinc-200 bg-white/70 p-2 text-[11px] text-zinc-600">
+                            <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-[11px] font-medium text-zinc-500">
                               {copy.noSessions}
                             </div>
                           )}
 
                           {userSessions.length > 0 && (
-                            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                            <div className="max-h-[315px] space-y-2 overflow-y-auto pr-1">
                               {userSessions.map((session) => (
-                                <div key={session.session_id} className="rounded-lg border border-zinc-100 bg-white p-2">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="text-[11px] font-semibold text-zinc-800">
-                                      {formatDateTime(session.last_seen)}
-                                    </p>
-                                    <span className="text-[10px] text-zinc-500">
+                                <div key={session.session_id} className="rounded-[16px] border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-semibold text-zinc-950">
+                                        {formatDateTime(session.last_seen)}
+                                      </p>
+                                      <p className="mt-1 truncate text-[11px] text-zinc-500">
+                                        {session.device_type || "-"} · {session.browser || "-"} · {session.os || "-"}
+                                      </p>
+                                    </div>
+                                    <span className="shrink-0 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-semibold text-zinc-500">
                                       {formatSessionViews(session.page_views)}
                                     </span>
                                   </div>
-                                  <p className="mt-1 text-[11px] text-zinc-500">
-                                    {session.device_type} · {session.browser} · {session.os}
+                                  <p className="mt-2 truncate rounded-[10px] bg-zinc-50 px-2 py-1.5 text-[11px] text-zinc-500">
+                                    {session.path || "-"}
                                   </p>
-                                  <p className="text-[11px] text-zinc-500 truncate">{session.path}</p>
                                 </div>
                               ))}
                             </div>
                           )}
-                        </>
+                        </div>
                       ) : null}
 
                       {userDetailTab !== "sessions" ? (
-                        <>
-                          <div>
-                            <p className="text-xs font-semibold text-zinc-900">
-                              {userDetailTab === "wishlist" ? copy.wishlistTitle : copy.cartTitle}
-                            </p>
-                            <p className="text-[11px] text-zinc-500">
-                              {formatItemCount(
-                                userDetailTab === "wishlist" ? userWishlist.length : userCart.length,
-                              )}
-                            </p>
+                        <div className="min-h-0 flex-1 rounded-[22px] border border-zinc-200 bg-zinc-50/70 p-3">
+                          <div className="mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
+                            <div>
+                              <p className="text-xs font-semibold text-zinc-950">
+                                {userDetailTab === "wishlist" ? copy.wishlistTitle : copy.cartTitle}
+                              </p>
+                              <p className="mt-1 text-[11px] text-zinc-500">
+                                {formatItemCount(
+                                  userDetailTab === "wishlist" ? userWishlist.length : userCart.length,
+                                )}
+                              </p>
+                            </div>
                           </div>
 
                           {userItemsError && (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
+                            <div className="rounded-[16px] border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-medium text-rose-700">
                               {userItemsError}
                             </div>
                           )}
 
                           {isUserItemsLoading && (
-                            <div className="rounded-lg border border-zinc-200 bg-white/70 p-2 text-[11px] text-zinc-600">
+                            <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-[11px] font-medium text-zinc-500">
                               {copy.loadingStats}
                             </div>
                           )}
 
                           {!isUserItemsLoading && userDetailTab === "wishlist" && userWishlist.length === 0 && (
-                            <div className="rounded-lg border border-zinc-200 bg-white/70 p-2 text-[11px] text-zinc-600">
+                            <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-[11px] font-medium text-zinc-500">
                               {copy.emptyWishlist}
                             </div>
                           )}
 
                           {!isUserItemsLoading && userDetailTab === "cart" && userCart.length === 0 && (
-                            <div className="rounded-lg border border-zinc-200 bg-white/70 p-2 text-[11px] text-zinc-600">
+                            <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-[11px] font-medium text-zinc-500">
                               {copy.emptyCart}
                             </div>
                           )}
 
                           {userDetailTab === "wishlist" && userWishlist.length > 0 && (
-                            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                            <div className="max-h-[315px] space-y-2 overflow-y-auto pr-1">
                               {userWishlist.map((item) => (
-                                <div key={`${item.slug}-${item.created_at}`} className="rounded-lg border border-zinc-100 bg-white p-2">
-                                  <div className="flex items-center gap-2">
+                                <div key={`${item.slug}-${item.created_at}`} className="rounded-[16px] border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300">
+                                  <div className="flex items-center gap-3">
                                     {item.image ? (
                                       <img
                                         src={item.image}
                                         alt={item.name}
-                                        className="h-10 w-10 rounded-md border border-zinc-200 object-cover"
+                                        className="h-12 w-12 rounded-[14px] border border-zinc-200 object-cover"
                                       />
-                                    ) : null}
+                                    ) : (
+                                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase text-zinc-400">
+                                        {item.name.slice(0, 1)}
+                                      </span>
+                                    )}
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-[11px] font-semibold text-zinc-800 truncate">{item.name}</p>
-                                      <p className="text-[11px] text-zinc-500 truncate">{item.brand}</p>
+                                      <p className="truncate text-xs font-semibold text-zinc-950">{item.name}</p>
+                                      <p className="mt-1 truncate text-[11px] text-zinc-500">{item.brand}</p>
                                     </div>
-                                    <span className="text-[10px] text-zinc-500">
+                                    <span className="shrink-0 text-[10px] font-medium text-zinc-400">
                                       {formatDateTime(item.created_at)}
                                     </span>
                                   </div>
@@ -919,25 +1041,29 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
                           )}
 
                           {userDetailTab === "cart" && userCart.length > 0 && (
-                            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                            <div className="max-h-[315px] space-y-2 overflow-y-auto pr-1">
                               {userCart.map((item) => (
-                                <div key={`${item.slug}-${item.created_at}-${item.size_ml}`} className="rounded-lg border border-zinc-100 bg-white p-2">
-                                  <div className="flex items-center gap-2">
+                                <div key={`${item.slug}-${item.created_at}-${item.size_ml}`} className="rounded-[16px] border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300">
+                                  <div className="flex items-center gap-3">
                                     {item.image ? (
                                       <img
                                         src={item.image}
                                         alt={item.name}
-                                        className="h-10 w-10 rounded-md border border-zinc-200 object-cover"
+                                        className="h-12 w-12 rounded-[14px] border border-zinc-200 object-cover"
                                       />
-                                    ) : null}
+                                    ) : (
+                                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase text-zinc-400">
+                                        {item.name.slice(0, 1)}
+                                      </span>
+                                    )}
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-[11px] font-semibold text-zinc-800 truncate">{item.name}</p>
-                                      <p className="text-[11px] text-zinc-500 truncate">{item.brand}</p>
-                                      <p className="text-[11px] text-zinc-500">
+                                      <p className="truncate text-xs font-semibold text-zinc-950">{item.name}</p>
+                                      <p className="mt-1 truncate text-[11px] text-zinc-500">{item.brand}</p>
+                                      <p className="mt-1 text-[11px] font-medium text-zinc-500">
                                         {item.size_ml} ml · x{item.quantity}
                                       </p>
                                     </div>
-                                    <span className="text-[10px] text-zinc-500">
+                                    <span className="shrink-0 text-[10px] font-medium text-zinc-400">
                                       {formatDateTime(item.created_at)}
                                     </span>
                                   </div>
@@ -945,11 +1071,11 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
                               ))}
                             </div>
                           )}
-                        </>
+                        </div>
                       ) : null}
                     </div>
                   ) : (
-                    <div className="text-[11px] text-zinc-500">
+                    <div className="flex h-full min-h-[420px] items-center justify-center rounded-[22px] border border-dashed border-zinc-200 bg-zinc-50 text-[11px] font-medium text-zinc-500">
                       {copy.sessionsSubtitle}
                     </div>
                   )}
