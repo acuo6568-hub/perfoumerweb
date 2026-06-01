@@ -50,8 +50,9 @@ export async function GET(
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data: sessions } = await supabase
       .from("website_live_sessions")
-      .select("session_id, first_seen, last_seen, page_views, device_type, browser, os, path, country, city")
+      .select("session_id, first_seen, last_seen, page_views, device_type, browser, os, path, country, country_code, city")
       .eq("user_id", id)
+      .like("session_id", "v2_%")
       .order("last_seen", { ascending: false })
       .limit(50);
 

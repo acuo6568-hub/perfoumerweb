@@ -29,7 +29,8 @@ type SendRequest = {
   customHtml?: string;
   templateMode?: "preset" | "custom";
   deliveryMode?: "newsletter" | "direct";
-  recipients?: "subscribed" | "all";
+  recipients?: "subscribed" | "all" | "selected";
+  selectedEmails?: string[];
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -223,7 +224,10 @@ export async function POST(request: Request) {
   const customHtml = normalizeText(payload.customHtml, "", 60_000);
   const templateMode = payload.templateMode === "custom" ? "custom" : "preset";
   const deliveryMode = payload.deliveryMode === "direct" ? "direct" : "newsletter";
-  const recipients = payload.recipients === "all" ? "all" : "subscribed";
+  const recipients = payload.recipients === "all" || payload.recipients === "selected" ? payload.recipients : "subscribed";
+  const selectedEmails = Array.isArray(payload.selectedEmails)
+    ? Array.from(new Set(payload.selectedEmails.map(normalizeEmail).filter((email) => EMAIL_PATTERN.test(email))))
+    : [];
 
   if (!subject) {
     return Response.json({ error: "Subject is required." }, { status: 400 });
@@ -252,8 +256,23 @@ export async function POST(request: Request) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const contacts = await getNewsletterContacts();
-    const targetContacts = contacts.filter((item) => recipients === "all" || item.status === "subscribed");
-    const activeTargets = targetContacts.filter((item) => item.status === "subscribed" && EMAIL_PATTERN.test(item.email));
+    const contactsByEmail = new Map(contacts.map((contact) => [contact.email, contact]));
+    const targetContacts =
+      recipients === "selected"
+        ? selectedEmails.map((email) => contactsByEmail.get(email) || {
+            email,
+            locale: "az" as const,
+            source: "admin_selection",
+            status: "subscribed" as const,
+            createdAt: "",
+            unsubscribedAt: "",
+          })
+        : contacts.filter((item) => recipients === "all" || item.status === "subscribed");
+    const activeTargets = targetContacts.filter((item) =>
+      recipients === "selected"
+        ? EMAIL_PATTERN.test(item.email)
+        : item.status === "subscribed" && EMAIL_PATTERN.test(item.email),
+    );
 
     if (!activeTargets.length) {
       return Response.json({ error: "No subscribed recipients to send to." }, { status: 400 });

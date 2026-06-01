@@ -43,6 +43,22 @@ function normalizeSearchQuery(rawPath: string | null | undefined) {
   }
 }
 
+function parseResultCount(rawPath: string | null | undefined) {
+  const value = String(rawPath || "").trim();
+  if (!value) return null;
+
+  try {
+    const normalized = value.startsWith("http")
+      ? value
+      : `https://${SITE_HOST}${value.startsWith("/") ? value : `/${value}`}`;
+    const url = new URL(normalized);
+    const count = Number(url.searchParams.get("result_count"));
+    return Number.isFinite(count) ? count : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   const authError = await ensureAuthorized();
   if (authError) {
@@ -71,6 +87,8 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("website_analytics_events")
       .select("path,created_at")
+      .eq("event_type", "v2_page_view")
+      .like("session_id", "v2_%")
       .gte("created_at", since.toISOString())
       .order("created_at", { ascending: false })
       .limit(2000);
@@ -80,10 +98,16 @@ export async function GET(request: Request) {
     }
 
     const counts = new Map<string, number>();
+    const noResultsCounts = new Map<string, number>();
     (data ?? []).forEach((row) => {
-      const q = normalizeSearchQuery((row as { path?: string | null }).path);
+      const path = (row as { path?: string | null }).path;
+      const q = normalizeSearchQuery(path);
       if (!q) return;
       counts.set(q, (counts.get(q) || 0) + 1);
+      const resultCount = parseResultCount(path);
+      if (resultCount === 0) {
+        noResultsCounts.set(q, (noResultsCounts.get(q) || 0) + 1);
+      }
     });
 
     const topSearches = Array.from(counts.entries())
@@ -91,9 +115,15 @@ export async function GET(request: Request) {
       .slice(0, 8)
       .map(([query, count]) => ({ query, count }));
 
+    const noResults = Array.from(noResultsCounts.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
+      .map(([query, count]) => ({ query, count }));
+
     return Response.json({
       generatedAt: new Date().toISOString(),
       topSearches,
+      noResults,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch search analytics.";

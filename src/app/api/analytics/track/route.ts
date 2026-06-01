@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 type TrackPayload = {
+  eventType?: string;
   sessionId?: string;
   anonymousId?: string;
   userId?: string | null;
@@ -66,9 +67,13 @@ function detectSuspiciousTraffic(params: {
   userId: string | null;
 }): BotDetection {
   const ua = params.userAgent.toLowerCase();
-  const botUaPattern = /bot|crawler|spider|headless|lighthouse|uptime|monitor|curl|wget|python-requests|node-fetch|axios|postman/;
+  const botUaPattern = /bot|crawler|spider|headless|lighthouse|uptime|monitor|curl|wget|python-requests|node-fetch|axios|postman|ahrefs|semrush|bytespider|facebookexternalhit|preview|validator|scrapy|go-http-client|java\//;
   if (botUaPattern.test(ua)) {
     return { isSuspectedBot: true, reason: "bot-like user agent" };
+  }
+
+  if (!ua || ua.length < 18) {
+    return { isSuspectedBot: true, reason: "missing or very short user agent" };
   }
 
   const cityLower = params.city.toLowerCase();
@@ -97,7 +102,9 @@ export async function POST(request: Request) {
 
   const sessionId = sanitizeText(body.sessionId, "", 96);
   const anonymousId = sanitizeText(body.anonymousId, "", 96);
-  if (!sessionId || !anonymousId) {
+  const requestedEventType = sanitizeText(body.eventType, "v2_page_view", 32);
+  const eventType = requestedEventType === "v2_heartbeat" ? "v2_heartbeat" : "v2_page_view";
+  if (!sessionId || !anonymousId || !sessionId.startsWith("v2_") || !anonymousId.startsWith("v2_")) {
     return NextResponse.json({ error: "sessionId and anonymousId are required." }, { status: 400 });
   }
 
@@ -155,6 +162,7 @@ export async function POST(request: Request) {
     anonymous_id: anonymousId,
     user_id: sanitizeText(body.userId ?? "", "", 64) || null,
     is_logged_in: toBool(body.isLoggedIn),
+    event_type: eventType,
     device_type: sanitizeText(body.deviceType, "unknown", 24),
     os: sanitizeText(body.os, "", 48),
     browser: sanitizeText(body.browser, "", 48),
@@ -170,6 +178,7 @@ export async function POST(request: Request) {
     is_suspected_bot: botDetection.isSuspectedBot,
     traffic_reason: botDetection.reason,
   };
+  const { event_type: _eventType, ...sessionPayload } = payload;
 
   const { data: existing } = await supabase
     .from("website_live_sessions")
@@ -178,47 +187,64 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existing) {
-    await supabase
+    const nextPageViews =
+      eventType === "v2_page_view"
+        ? Number(existing.page_views ?? 0) + 1
+        : Number(existing.page_views ?? 0);
+
+    const { error: updateError } = await supabase
       .from("website_live_sessions")
       .update({
-        anonymous_id: payload.anonymous_id,
-        user_id: payload.user_id,
-        is_logged_in: payload.is_logged_in,
-        device_type: payload.device_type,
-        os: payload.os,
-        browser: payload.browser,
-        locale: payload.locale,
-        path: payload.path,
-        referrer: payload.referrer,
-        timezone: payload.timezone,
-        country_code: payload.country_code,
-        country: payload.country,
-        region: payload.region,
-        city: payload.city,
+        anonymous_id: sessionPayload.anonymous_id,
+        user_id: sessionPayload.user_id,
+        is_logged_in: sessionPayload.is_logged_in,
+        device_type: sessionPayload.device_type,
+        os: sessionPayload.os,
+        browser: sessionPayload.browser,
+        locale: sessionPayload.locale,
+        path: sessionPayload.path,
+        referrer: sessionPayload.referrer,
+        timezone: sessionPayload.timezone,
+        country_code: sessionPayload.country_code,
+        country: sessionPayload.country,
+        region: sessionPayload.region,
+        city: sessionPayload.city,
+        user_agent: sessionPayload.user_agent,
+        is_suspected_bot: sessionPayload.is_suspected_bot,
+        traffic_reason: sessionPayload.traffic_reason,
         last_seen: new Date().toISOString(),
-        page_views: Number(existing.page_views ?? 0) + 1,
+        page_views: nextPageViews,
       })
       .eq("session_id", sessionId);
+    if (updateError) {
+      return NextResponse.json({ error: "Failed to update analytics session." }, { status: 500 });
+    }
   } else {
-    await supabase
+    const { error: insertSessionError } = await supabase
       .from("website_live_sessions")
       .insert([
         {
-          ...payload,
+          ...sessionPayload,
           first_seen: new Date().toISOString(),
           last_seen: new Date().toISOString(),
-          page_views: 1,
+          page_views: eventType === "v2_page_view" ? 1 : 0,
         },
       ]);
+    if (insertSessionError) {
+      return NextResponse.json({ error: "Failed to create analytics session." }, { status: 500 });
+    }
   }
 
-  await supabase
+  const { error: insertEventError } = await supabase
     .from("website_analytics_events")
     .insert([
       {
         ...payload,
       },
     ]);
+  if (insertEventError) {
+    return NextResponse.json({ error: "Failed to record analytics event." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true }, { status: 200 });
 }

@@ -9,6 +9,17 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
+type AnalyticsEventRow = {
+  id: string;
+  session_id: string | null;
+  anonymous_id: string | null;
+  user_id: string | null;
+  country_code: string | null;
+  country: string | null;
+  is_suspected_bot: boolean | null;
+  created_at: string | null;
+};
+
 function parseDateInput(value: string | null, endOfDay = false) {
   if (!value) return null;
   const [year, month, day] = value.split("-").map((part) => Number(part));
@@ -64,6 +75,58 @@ async function listAllUsers(supabase: SupabaseClient) {
   }
 
   return users;
+}
+
+async function listAnalyticsEvents(
+  supabase: SupabaseClient,
+  rangeStart: Date | null,
+  rangeEnd: Date | null,
+) {
+  const pageSize = 1000;
+  let from = 0;
+  let rows: AnalyticsEventRow[] = [];
+
+  while (true) {
+    let query = supabase
+      .from("website_analytics_events")
+      .select("id, session_id, anonymous_id, user_id, country_code, country, is_suspected_bot, created_at")
+      .eq("event_type", "v2_page_view")
+      .like("session_id", "v2_%")
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (rangeStart) {
+      query = query.gte("created_at", rangeStart.toISOString());
+    }
+
+    if (rangeEnd) {
+      query = query.lte("created_at", rangeEnd.toISOString());
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw new Error("Failed to fetch analytics events");
+    }
+
+    const pageRows = (data ?? []) as AnalyticsEventRow[];
+    rows = rows.concat(pageRows);
+
+    if (pageRows.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return rows;
+}
+
+function normalizeCountryLabel(country: unknown, countryCode: unknown) {
+  const direct = String(country || "").trim();
+  if (direct) return direct;
+
+  const code = String(countryCode || "").trim().toUpperCase();
+  return code || "";
 }
 
 async function ensureAuthorized() {
@@ -135,7 +198,8 @@ export async function GET(request: Request) {
 
     const sessionsQuery = supabase
       .from("website_live_sessions")
-      .select("session_id, anonymous_id, user_id, first_seen, last_seen, page_views, country, city");
+      .select("session_id, anonymous_id, user_id, first_seen, last_seen, page_views, country, city, is_suspected_bot")
+      .like("session_id", "v2_%");
 
     if (rangeStart) {
       sessionsQuery.gte("last_seen", rangeStart.toISOString());
@@ -145,31 +209,43 @@ export async function GET(request: Request) {
       sessionsQuery.lte("last_seen", rangeEnd.toISOString());
     }
 
-    const { data: liveSessions } = await sessionsQuery;
+    const [{ data: liveSessions }, analyticsEvents] = await Promise.all([
+      sessionsQuery,
+      listAnalyticsEvents(supabase, rangeStart, rangeEnd),
+    ]);
     const sessions = liveSessions ?? [];
+    const humanSessions = sessions.filter((session) => !Boolean(session.is_suspected_bot));
+    const humanEvents = analyticsEvents.filter((event) => !Boolean(event.is_suspected_bot));
     const uniqueVisitors = new Set(
-      sessions
-        .map((session) => session.user_id || session.anonymous_id || session.session_id)
+      humanEvents
+        .map((event) => event.anonymous_id || event.user_id || event.session_id || event.id)
         .filter(Boolean),
     ).size;
-    const totalSessions = sessions.length;
-    const totalPageViewsFromSessions = sessions.reduce(
-      (sum, session) => sum + Math.max(0, Number(session.page_views ?? 0)),
-      0,
-    );
-
+    const totalSessions = new Set(
+      humanEvents
+        .map((event) => event.session_id || event.anonymous_id || event.id)
+        .filter(Boolean),
+    ).size || sessions.length;
     const countryMap = new Map<string, number>();
-    sessions.forEach((session) => {
-      if (session.country) {
-        countryMap.set(session.country, (countryMap.get(session.country) || 0) + 1);
+    const countryVisitors = new Map<string, Set<string>>();
+    humanEvents.forEach((event) => {
+      const country = normalizeCountryLabel(event.country, event.country_code);
+      const visitorId = event.anonymous_id || event.user_id || event.session_id || event.id;
+      if (country && visitorId) {
+        const visitors = countryVisitors.get(country) || new Set<string>();
+        visitors.add(visitorId);
+        countryVisitors.set(country, visitors);
       }
+    });
+    countryVisitors.forEach((visitors, country) => {
+      countryMap.set(country, visitors.size);
     });
     const topCountries = Array.from(countryMap.entries())
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([country, count]) => ({ country, count }));
 
-    const totalDurationSeconds = sessions.reduce((sum, session) => {
+    const totalDurationSeconds = humanSessions.reduce((sum, session) => {
       const start = new Date(session.first_seen).getTime();
       const end = new Date(session.last_seen).getTime();
       if (!Number.isFinite(start) || !Number.isFinite(end)) {
@@ -178,22 +254,10 @@ export async function GET(request: Request) {
       return sum + Math.max(0, Math.round((end - start) / 1000));
     }, 0);
     const avgSessionDuration = totalSessions ? Math.round(totalDurationSeconds / totalSessions) : 0;
-    const singlePageSessions = sessions.filter((session) => Number(session.page_views) <= 1).length;
+    const singlePageSessions = humanSessions.filter((session) => Number(session.page_views) <= 1).length;
     const bounceRate = totalSessions ? Math.round((singlePageSessions / totalSessions) * 100) : 0;
 
-    const eventsQuery = supabase
-      .from("website_analytics_events")
-      .select("id", { count: "exact", head: true });
-
-    if (rangeStart) {
-      eventsQuery.gte("created_at", rangeStart.toISOString());
-    }
-
-    if (rangeEnd) {
-      eventsQuery.lte("created_at", rangeEnd.toISOString());
-    }
-
-    const { count: pageViews } = await eventsQuery;
+    const pageViews = humanEvents.length;
 
     const ordersQuery = supabase
       .from("orders")
@@ -237,6 +301,7 @@ export async function GET(request: Request) {
       .from("website_live_sessions")
       .select("user_id, last_seen")
       .not("user_id", "is", null)
+      .like("session_id", "v2_%")
       .gte("last_seen", onlineThreshold);
     const onlineUserIds = new Set(
       (onlineSessions ?? [])
@@ -258,8 +323,8 @@ export async function GET(request: Request) {
       onlineUsers: onlineUserIds.size,
       newsletterSubscribed: newsletterSubscribed ?? 0,
       newsletterSubscribedInRange: newsletterSubscribedInRange ?? 0,
-      pageViews: pageViews ?? totalPageViewsFromSessions,
-      pageViewsInRange: pageViews ?? totalPageViewsFromSessions,
+      pageViews,
+      pageViewsInRange: pageViews,
       uniqueVisitors,
       uniqueVisitorsInRange: uniqueVisitors,
       avgSessionDuration,

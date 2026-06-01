@@ -5,13 +5,15 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const ANALYTICS_VERSION = "v2";
+
 function getOrCreateStorageId(key: string, storage: Storage): string {
   const existing = storage.getItem(key);
-  if (existing && existing.trim()) {
+  if (existing && existing.trim().startsWith(`${ANALYTICS_VERSION}_`)) {
     return existing;
   }
 
-  const next = crypto.randomUUID();
+  const next = `${ANALYTICS_VERSION}_${crypto.randomUUID()}`;
   storage.setItem(key, next);
   return next;
 }
@@ -48,6 +50,7 @@ export function SiteTracker() {
   const searchParams = useSearchParams();
   const supabase = getSupabaseBrowserClient();
   const lastSentRef = useRef(0);
+  const lastPageViewPathRef = useRef("");
 
   const fullPath = useMemo(() => {
     const query = searchParams?.toString() || "";
@@ -57,19 +60,25 @@ export function SiteTracker() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const anonymousId = getOrCreateStorageId("perfoumer.analytics.anonymous-id", window.localStorage);
-    const sessionId = getOrCreateStorageId("perfoumer.analytics.session-id", window.sessionStorage);
+    const anonymousId = getOrCreateStorageId("perfoumer.analytics.v2.anonymous-id", window.localStorage);
+    const sessionId = getOrCreateStorageId("perfoumer.analytics.v2.session-id", window.sessionStorage);
     const userAgent = window.navigator.userAgent || "";
     let heartbeatId: number | ReturnType<typeof setInterval> | null = null;
     let idleCallbackId: number | null = null;
     let fallbackTimeoutId: number | ReturnType<typeof setTimeout> | null = null;
 
-    const send = async () => {
+    const send = async (eventType: "v2_page_view" | "v2_heartbeat") => {
       const now = Date.now();
-      if (now - lastSentRef.current < 6000) {
+      if (eventType === "v2_page_view" && lastPageViewPathRef.current === fullPath) {
+        return;
+      }
+      if (eventType === "v2_heartbeat" && now - lastSentRef.current < 20000) {
         return;
       }
       lastSentRef.current = now;
+      if (eventType === "v2_page_view") {
+        lastPageViewPathRef.current = fullPath;
+      }
 
       const session = await supabase?.auth.getSession();
       const user = session?.data?.session?.user ?? null;
@@ -86,6 +95,7 @@ export function SiteTracker() {
         deviceType: detectDeviceType(userAgent),
         os: detectOs(userAgent),
         browser: detectBrowser(userAgent),
+        eventType,
       };
 
       void fetch("/api/analytics/track", {
@@ -99,9 +109,9 @@ export function SiteTracker() {
     };
 
     const scheduleInitialSend = () => {
-      void send();
+      void send("v2_page_view");
       heartbeatId = window.setInterval(() => {
-        void send();
+        void send("v2_heartbeat");
       }, 30000);
     };
 
@@ -113,7 +123,7 @@ export function SiteTracker() {
 
     const visibilityHandler = () => {
       if (document.visibilityState === "visible") {
-        void send();
+        void send("v2_heartbeat");
       }
     };
 

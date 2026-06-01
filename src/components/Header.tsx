@@ -90,6 +90,51 @@ function slugToName(slug: string): string {
     .join(" ");
 }
 
+function getOrCreateStorageId(key: string, storage: Storage): string {
+  const existing = storage.getItem(key);
+  if (existing && existing.trim()) {
+    return existing;
+  }
+
+  const next = crypto.randomUUID();
+  storage.setItem(key, next);
+  return next;
+}
+
+async function trackHeaderSearch(params: {
+  query: string;
+  tab: HeaderSearchTab;
+  resultCount: number;
+  session: Session | null;
+}) {
+  if (typeof window === "undefined") return;
+
+  const anonymousId = getOrCreateStorageId("perfoumer.analytics.anonymous-id", window.localStorage);
+  const sessionId = getOrCreateStorageId("perfoumer.analytics.session-id", window.sessionStorage);
+  const path = `/search?q=${encodeURIComponent(params.query)}&tab=${encodeURIComponent(params.tab)}&limit=16&result_count=${params.resultCount}`;
+
+  void fetch("/api/analytics/track", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sessionId,
+      anonymousId,
+      userId: params.session?.user?.id ?? null,
+      isLoggedIn: Boolean(params.session?.user),
+      locale: document.documentElement.lang || "az",
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      path,
+      referrer: window.location.href,
+      deviceType: "desktop",
+      os: "",
+      browser: "",
+    }),
+    keepalive: true,
+  });
+}
+
 function HoverMorphIcon({ icon: Icon }: { icon: any }) {
   return (
     <span className="relative grid h-5 w-5 shrink-0 place-items-center motion-safe:group-hover:animate-header-icon-bounce" aria-hidden="true">
@@ -1158,8 +1203,15 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
           return;
         }
 
-        setSearchResults(Array.isArray(data.items) ? data.items : []);
+        const items = Array.isArray(data.items) ? data.items : [];
+        setSearchResults(items);
         setSearchBrandResults(Array.isArray(data.brands) ? data.brands : []);
+        void trackHeaderSearch({
+          query,
+          tab: searchTab,
+          resultCount: items.length,
+          session,
+        });
       } catch {
         if (requestId === searchRequestRef.current) {
           setSearchResults([]);
@@ -1176,7 +1228,7 @@ export function Header({ floating = false, locale, topOffsetStyle }: HeaderProps
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [isSearchDrawerOpen, searchQuery, searchTab]);
+  }, [isSearchDrawerOpen, searchQuery, searchTab, session]);
 
   useEffect(() => {
     if (!Object.keys(brokenSearchImages).length) {

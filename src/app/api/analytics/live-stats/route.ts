@@ -353,15 +353,22 @@ export async function GET(request: Request) {
       .from("website_live_sessions")
       .select(
         "session_id,anonymous_id,user_id,is_logged_in,device_type,browser,os,path,referrer,last_seen,first_seen,page_views,country_code,country,region,city,timezone,is_suspected_bot,traffic_reason",
-      ),
+      )
+      .like("session_id", "v2_%"),
     supabase
       .from("website_analytics_events")
       .select(
         "session_id,anonymous_id,user_id,is_logged_in,device_type,browser,os,path,referrer,created_at,country_code,country,region,city,timezone,is_suspected_bot",
       )
+      .eq("event_type", "v2_page_view")
+      .like("session_id", "v2_%")
       .gte("created_at", recentStart)
       .order("created_at", { ascending: true }),
-    supabase.from("website_analytics_events").select("id", { count: "exact", head: true }),
+    supabase
+      .from("website_analytics_events")
+      .select("id", { count: "exact", head: true })
+      .eq("event_type", "v2_page_view")
+      .like("session_id", "v2_%"),
   ]);
 
   const sessionRows = (sessions || []) as SessionRow[];
@@ -377,15 +384,16 @@ export async function GET(request: Request) {
   const currentHumanRows = currentRows.filter((row) => !Boolean(row.is_suspected_bot));
   const currentLoggedIn = currentHumanRows.filter((row) => Boolean(row.user_id) || Boolean(row.is_logged_in));
   const currentGuests = currentHumanRows.filter((row) => !row.user_id && !row.is_logged_in);
+  const humanSessionRows = sessionRows.filter((row) => !Boolean(row.is_suspected_bot));
 
-  const uniqueVisitors = new Set(sessionRows.map((row) => row.anonymous_id).filter(Boolean));
-  const uniqueRegistered = new Set(sessionRows.map((row) => row.user_id || "").filter(Boolean));
-  const sessionsByAnonymous = countBy(sessionRows.map((row) => row.anonymous_id).filter(Boolean));
+  const uniqueVisitors = new Set(humanSessionRows.map((row) => row.anonymous_id).filter(Boolean));
+  const uniqueRegistered = new Set(humanSessionRows.map((row) => row.user_id || "").filter(Boolean));
+  const sessionsByAnonymous = countBy(humanSessionRows.map((row) => row.anonymous_id).filter(Boolean));
   const returningVisitors = Object.values(sessionsByAnonymous).filter((count) => count > 1).length;
 
   const dayStart = startOfUtcDay(new Date()).getTime();
   const todaysUniqueVisitors = new Set(
-    sessionRows
+    humanSessionRows
       .filter((row) => {
         const firstSeen = safeTimestamp(row.first_seen);
         return firstSeen > 0 && firstSeen >= dayStart;
@@ -394,9 +402,9 @@ export async function GET(request: Request) {
       .filter(Boolean),
   );
 
-  const totalPageViews = sessionRows.reduce((sum, row) => sum + Number(row.page_views || 0), 0);
-  const singlePageSessions = sessionRows.filter((row) => Number(row.page_views || 0) <= 1).length;
-  const avgPageViewsPerSession = sessionRows.length ? totalPageViews / sessionRows.length : 0;
+  const totalPageViews = humanSessionRows.reduce((sum, row) => sum + Number(row.page_views || 0), 0);
+  const singlePageSessions = humanSessionRows.filter((row) => Number(row.page_views || 0) <= 1).length;
+  const avgPageViewsPerSession = humanSessionRows.length ? totalPageViews / humanSessionRows.length : 0;
   const loggedInRate = uniqueVisitors.size ? uniqueRegistered.size / uniqueVisitors.size : 0;
 
   const currentDeviceBreakdown = countBy(
@@ -411,7 +419,7 @@ export async function GET(request: Request) {
     .map(([path, count]) => ({ path, count }));
 
   const visitorsPerCountry = new Map<string, Set<string>>();
-  for (const row of sessionRows) {
+  for (const row of humanSessionRows) {
     const country = normalizeCountryLabel(row.country, row.country_code);
     incrementUnique(visitorsPerCountry, country, row.anonymous_id);
   }
@@ -717,7 +725,7 @@ export async function GET(request: Request) {
         totalRegisteredSeen: uniqueRegistered.size,
       },
       live: {
-        currentOnline: currentRows.length,
+        currentOnline: currentHumanRows.length,
         currentLikelyHumans: currentHumanRows.length,
         currentSuspectedBots: currentRows.filter((row) => Boolean(row.is_suspected_bot)).length,
         currentLoggedIn: currentLoggedIn.length,
@@ -725,11 +733,11 @@ export async function GET(request: Request) {
         retargetableNow,
       },
       engagement: {
-        totalSessions: sessionRows.length,
+        totalSessions: humanSessionRows.length,
         totalEvents: totalEvents ?? 0,
         totalPageViews,
         avgPageViewsPerSession,
-        singlePageSessionRate: sessionRows.length ? singlePageSessions / sessionRows.length : 0,
+        singlePageSessionRate: humanSessionRows.length ? singlePageSessions / humanSessionRows.length : 0,
         loggedInRate,
       },
       trends,
