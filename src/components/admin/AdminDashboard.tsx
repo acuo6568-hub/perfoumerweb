@@ -3,16 +3,32 @@
 import {
   Users,
   Eye,
+  ArrowClockwise,
+  CopySimple,
   EnvelopeOpen,
   Clock,
   Code,
+  FacebookLogo,
+  Globe,
+  GoogleLogo,
   MagnifyingGlass,
   Heart,
+  InstagramLogo,
+  LinkSimple,
+  MetaLogo,
   CheckCircle,
   PaperPlaneRight,
+  PinterestLogo,
+  RedditLogo,
+  SnapchatLogo,
+  TiktokLogo,
   Warning,
   TrendUp,
+  TwitterLogo,
   UserCircle,
+  WhatsappLogo,
+  YoutubeLogo,
+  XLogo,
   Trash,
   X,
 } from "@phosphor-icons/react";
@@ -308,6 +324,37 @@ type ActivityOverview = {
   }>;
 };
 
+type MarketingTrackerOverview = {
+  generatedAt: string;
+  days: number;
+  customTrackers: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    targetPath: string;
+    url: string;
+    clicks: number;
+    visitors: number;
+    sessions: number;
+    signups: number;
+    earlyExits: number;
+    conversionRate: number;
+    earlyExitRate: number;
+    lastClickedAt: string | null;
+  }>;
+  topSources: Array<{
+    source: string;
+    clicks: number;
+    visitors: number;
+    sessions: number;
+    signups: number;
+    earlyExits: number;
+    conversionRate: number;
+    earlyExitRate: number;
+    lastClickedAt: string | null;
+  }>;
+};
+
 const dashboardCopy = {
   az: {
     dashboard: "İnformasiya Paneli",
@@ -461,6 +508,27 @@ const dashboardCopy = {
     newsletterSendConfirm: "Newsletter göndərilsin?",
     newsletterSentToast: "Newsletter göndərildi.",
     unknown: "Naməlum",
+    marketingTrackers: "Reklam linkləri",
+    marketingTrackersSubtitle: "Instagram, Google və fərdi kampaniya linklərinin nəticələri",
+    trackerName: "Link adı",
+    trackerSlug: "Kod",
+    trackerTarget: "Hədəf səhifə",
+    createTracker: "Link yarat",
+    copied: "Kopyalandı",
+    clicks: "Kliklər",
+    signups: "Qeydiyyat",
+    earlyExits: "Tez çıxış",
+    conversion: "Konversiya",
+    topSourcesLabel: "Top mənbələr",
+    customLinks: "Fərdi linklər",
+    refreshAll: "Yenilə",
+    refreshing: "Yenilənir",
+    trackerBuilderTitle: "Yeni reklam linki",
+    trackerNamePlaceholder: "Instagram yay kampaniyası",
+    trackerSlugPlaceholder: "instagram-yay",
+    trackerTargetPlaceholder: "/catalog",
+    trackerPreview: "Hazır link",
+    sourcePreview: "Mənbə",
   },
   en: {
     dashboard: "Dashboard",
@@ -614,6 +682,27 @@ const dashboardCopy = {
     newsletterSendConfirm: "Send newsletter?",
     newsletterSentToast: "Newsletter sent.",
     unknown: "Unknown",
+    marketingTrackers: "Ad tracker links",
+    marketingTrackersSubtitle: "Instagram, Google, and custom campaign link performance",
+    trackerName: "Link name",
+    trackerSlug: "Code",
+    trackerTarget: "Target page",
+    createTracker: "Create link",
+    copied: "Copied",
+    clicks: "Clicks",
+    signups: "Signups",
+    earlyExits: "Early exits",
+    conversion: "Conversion",
+    topSourcesLabel: "Top sources",
+    customLinks: "Custom links",
+    refreshAll: "Refresh",
+    refreshing: "Refreshing",
+    trackerBuilderTitle: "New ad link",
+    trackerNamePlaceholder: "Instagram summer campaign",
+    trackerSlugPlaceholder: "instagram-summer",
+    trackerTargetPlaceholder: "/catalog",
+    trackerPreview: "Ready link",
+    sourcePreview: "Source",
   },
 };
 
@@ -762,6 +851,61 @@ function formatPercent(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
+function formatRatioPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function normalizeTrackerSlugInput(value: string) {
+  return value
+    .replace(/^@+/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+function getTrackerPreviewUrl(origin: string, targetPath: string, slug: string) {
+  const safePath = targetPath.trim().startsWith("/") ? targetPath.trim() : "/";
+  const safeSlug = normalizeTrackerSlugInput(slug);
+  try {
+    const url = new URL(safePath || "/", origin || "https://perfoumer.az");
+    if (safeSlug) {
+      url.searchParams.set("perf_track", safeSlug);
+    }
+    return url.toString();
+  } catch {
+    return `${origin || "https://perfoumer.az"}/?perf_track=${safeSlug}`;
+  }
+}
+
+function getSourceMeta(source: string) {
+  const normalized = source.toLowerCase();
+  if (normalized.includes("instagram")) return { Icon: InstagramLogo, tone: "border-pink-100 bg-pink-50 text-pink-700" };
+  if (normalized.includes("tiktok")) return { Icon: TiktokLogo, tone: "border-zinc-200 bg-zinc-950 text-white" };
+  if (normalized.includes("facebook") || normalized.includes("fb.")) return { Icon: FacebookLogo, tone: "border-blue-100 bg-blue-50 text-blue-700" };
+  if (normalized.includes("meta")) return { Icon: MetaLogo, tone: "border-blue-100 bg-blue-50 text-blue-700" };
+  if (normalized.includes("google")) return { Icon: GoogleLogo, tone: "border-emerald-100 bg-emerald-50 text-emerald-700" };
+  if (normalized.includes("youtube") || normalized.includes("youtu")) return { Icon: YoutubeLogo, tone: "border-red-100 bg-red-50 text-red-700" };
+  if (normalized === "x" || normalized.includes("twitter")) return { Icon: normalized === "x" ? XLogo : TwitterLogo, tone: "border-zinc-200 bg-zinc-50 text-zinc-900" };
+  if (normalized.includes("whatsapp")) return { Icon: WhatsappLogo, tone: "border-emerald-100 bg-emerald-50 text-emerald-700" };
+  if (normalized.includes("pinterest")) return { Icon: PinterestLogo, tone: "border-red-100 bg-red-50 text-red-700" };
+  if (normalized.includes("snapchat")) return { Icon: SnapchatLogo, tone: "border-yellow-100 bg-yellow-50 text-yellow-700" };
+  if (normalized.includes("reddit")) return { Icon: RedditLogo, tone: "border-orange-100 bg-orange-50 text-orange-700" };
+  return { Icon: Globe, tone: "border-zinc-200 bg-zinc-50 text-zinc-600" };
+}
+
+function SourceBadge({ source }: { source: string }) {
+  const { Icon, tone } = getSourceMeta(source || "Direct");
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border", tone)}>
+        <Icon size={18} weight="fill" />
+      </span>
+      <span className="truncate">{source || "Direct"}</span>
+    </span>
+  );
+}
+
 function buildSparklinePath(values: number[], width = 96, height = 32) {
   if (!values.length) return "";
   const min = Math.min(...values);
@@ -885,6 +1029,7 @@ export function AdminDashboard({
   const [wishlistOverview, setWishlistOverview] = useState<WishlistOverview | null>(null);
   const [searchOverview, setSearchOverview] = useState<SearchOverview | null>(null);
   const [activityOverview, setActivityOverview] = useState<ActivityOverview | null>(null);
+  const [marketingOverview, setMarketingOverview] = useState<MarketingTrackerOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStatsRefreshing, setIsStatsRefreshing] = useState(false);
   const [isLiveLoading, setIsLiveLoading] = useState(true);
@@ -937,6 +1082,12 @@ export function AdminDashboard({
       ? "<h1>Perfoumer yenilikləri</h1><p>Fərdi HTML mətninizi burada yazın.</p><p><a href=\"{{unsubscribeUrl}}\">Abunəlikdən çıx</a></p>"
       : "<h1>Perfoumer updates</h1><p>Write your custom HTML here.</p><p><a href=\"{{unsubscribeUrl}}\">Unsubscribe</a></p>",
   );
+  const [trackerName, setTrackerName] = useState("");
+  const [trackerSlug, setTrackerSlug] = useState("");
+  const [trackerTargetPath, setTrackerTargetPath] = useState("/");
+  const [isTrackerSaving, setIsTrackerSaving] = useState(false);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+  const siteOrigin = "https://perfoumer.az";
   const supabase = getSupabaseBrowserClient();
   const copy = dashboardCopy[locale];
   const hasLoadedStatsRef = useRef(false);
@@ -1068,6 +1219,21 @@ export function AdminDashboard({
     }
   }, []);
 
+  const fetchMarketingOverview = useCallback(async (days: number) => {
+    try {
+      const response = await fetch(`/api/admin/marketing-trackers?days=${days}`, { cache: "no-store" });
+      const data = (await response.json()) as MarketingTrackerOverview & { error?: string };
+
+      if (!response.ok) {
+        throw new Error("Marketing trackers unavailable");
+      }
+
+      setMarketingOverview(data);
+    } catch {
+      setMarketingOverview(null);
+    }
+  }, []);
+
   const applyOverviewRange = useCallback((range: "today" | "7" | "30" | "90") => {
     setOverviewRange(range);
 
@@ -1098,7 +1264,8 @@ export function AdminDashboard({
     void fetchWishlistOverview(days);
     void fetchSearchOverview(days);
     void fetchActivityOverview(days);
-  }, [fetchActivityOverview, fetchLiveStats, fetchSearchOverview, fetchWishlistOverview, overviewRange]);
+    void fetchMarketingOverview(days);
+  }, [fetchActivityOverview, fetchLiveStats, fetchMarketingOverview, fetchSearchOverview, fetchWishlistOverview, overviewRange]);
 
   const fetchUsers = useCallback(async () => {
     setIsUsersLoading(true);
@@ -1204,6 +1371,83 @@ export function AdminDashboard({
     selectedUserEmails,
   ]);
 
+  const handleCreateTracker = useCallback(async () => {
+    const name = trackerName.trim();
+    const slug = normalizeTrackerSlugInput(trackerSlug || trackerName);
+    if (!name || !slug) return;
+
+    setIsTrackerSaving(true);
+    try {
+      const response = await fetch("/api/admin/marketing-trackers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          slug,
+          targetPath: trackerTargetPath || "/",
+        }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error || "Tracker could not be created.");
+      }
+
+      setTrackerName("");
+      setTrackerSlug("");
+      setTrackerTargetPath("/");
+      setToastMessage(copy.createTracker);
+      const days = overviewRange === "today" ? 1 : Number(overviewRange);
+      void fetchMarketingOverview(days);
+    } catch (err) {
+      setError((current) => current || (err instanceof Error ? err.message : "Tracker could not be created."));
+    } finally {
+      setIsTrackerSaving(false);
+    }
+  }, [copy.createTracker, fetchMarketingOverview, overviewRange, trackerName, trackerSlug, trackerTargetPath]);
+
+  const copyTrackerUrl = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setToastMessage(copy.copied);
+    } catch {
+      setToastMessage(url);
+    }
+  }, [copy.copied]);
+
+  const handleRefreshAll = useCallback(async () => {
+    setIsRefreshingAll(true);
+    const days = overviewRange === "today" ? 1 : Number(overviewRange);
+    try {
+      await Promise.allSettled([
+        dateFilter === "custom" && (!startDate || !endDate)
+          ? Promise.resolve()
+          : fetchStats(dateFilter, startDate, endDate),
+        fetchLiveStats(days),
+        fetchWishlistOverview(days),
+        fetchSearchOverview(days),
+        fetchActivityOverview(days),
+        fetchMarketingOverview(days),
+        fetchUsers(),
+        fetchNewsletterSubscribers(),
+      ]);
+    } finally {
+      setIsRefreshingAll(false);
+    }
+  }, [
+    dateFilter,
+    endDate,
+    fetchActivityOverview,
+    fetchLiveStats,
+    fetchMarketingOverview,
+    fetchNewsletterSubscribers,
+    fetchSearchOverview,
+    fetchStats,
+    fetchUsers,
+    fetchWishlistOverview,
+    overviewRange,
+    startDate,
+  ]);
+
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
@@ -1233,12 +1477,13 @@ export function AdminDashboard({
       void fetchWishlistOverview(days);
       void fetchSearchOverview(days);
       void fetchActivityOverview(days);
+      void fetchMarketingOverview(days);
     }, 30000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [fetchActivityOverview, fetchLiveStats, fetchSearchOverview, fetchWishlistOverview, overviewRange]);
+  }, [fetchActivityOverview, fetchLiveStats, fetchMarketingOverview, fetchSearchOverview, fetchWishlistOverview, overviewRange]);
 
   useEffect(() => {
     if (!supabase) {
@@ -1597,6 +1842,13 @@ export function AdminDashboard({
   }, [copy.directMode, copy.newsletterMode, locale, newsletterBody, newsletterDeliveryMode, newsletterHtml, newsletterTemplateMode, newsletterTitle]);
 
   const chartSeries = liveStats?.trends ?? [];
+  const trackerPreviewSlug = normalizeTrackerSlugInput(trackerSlug || trackerName);
+  const trackerPreviewUrl = getTrackerPreviewUrl(siteOrigin, trackerTargetPath, trackerPreviewSlug);
+  const trackerExamples = [
+    { name: "Instagram story", slug: "instagram-story", target: "/catalog", source: "Instagram" },
+    { name: "TikTok bio", slug: "tiktok-bio", target: "/offers", source: "TikTok" },
+    { name: "Google ads", slug: "google-ads", target: "/catalog", source: "Google" },
+  ];
   const chartValues = chartSeries.map((point) => point[chartMetric] || 0);
   const chartHasData = chartValues.some((value) => value > 0);
   const chartRenderSeries = chartSeries;
@@ -1817,6 +2069,15 @@ export function AdminDashboard({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRefreshAll}
+                disabled={isRefreshingAll}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-70"
+              >
+                <ArrowClockwise size={16} weight="bold" className={isRefreshingAll ? "animate-spin" : ""} />
+                {isRefreshingAll ? copy.refreshing : copy.refreshAll}
+              </button>
               {rangeButtons.map((item) => {
                 const label =
                   locale === "az"
@@ -2110,6 +2371,180 @@ export function AdminDashboard({
 
             <div className="mt-5 border-t border-zinc-100 pt-4 text-sm font-medium text-zinc-500">
               {copy.totalSources}: {trafficHasData ? trafficSegments.length.toLocaleString() : "0"}
+            </div>
+          </div>
+        </section>
+
+        <section className={panelClass}>
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold text-zinc-950">{copy.marketingTrackers}</h3>
+              <p className="mt-1 text-sm font-medium text-zinc-500">{copy.marketingTrackersSubtitle}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {trackerExamples.map((example) => (
+                  <button
+                    key={example.slug}
+                    type="button"
+                    onClick={() => {
+                      setTrackerName(example.name);
+                      setTrackerSlug(example.slug);
+                      setTrackerTargetPath(example.target);
+                    }}
+                    className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-white"
+                  >
+                    <SourceBadge source={example.source} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="w-full rounded-[18px] border border-zinc-200 bg-zinc-50/70 p-4 xl:w-[720px]">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-indigo-100 bg-indigo-50 text-indigo-700">
+                  <LinkSimple size={18} weight="bold" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-950">{copy.trackerBuilderTitle}</p>
+                  <p className="mt-0.5 text-xs font-medium text-zinc-500">{copy.trackerPreview}: {trackerPreviewSlug ? `?perf_track=${trackerPreviewSlug}` : "?perf_track="}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-[1fr_0.78fr]">
+                <label className="block">
+                  <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-zinc-500">
+                    <Code size={14} weight="bold" />
+                    {copy.trackerName}
+                  </span>
+                  <input
+                    value={trackerName}
+                    onChange={(event) => {
+                      setTrackerName(event.target.value);
+                      if (!trackerSlug) {
+                        setTrackerSlug(normalizeTrackerSlugInput(event.target.value));
+                      }
+                    }}
+                    placeholder={copy.trackerNamePlaceholder}
+                    className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-zinc-500">
+                    <LinkSimple size={14} weight="bold" />
+                    {copy.trackerSlug}
+                  </span>
+                  <div className="flex h-11 overflow-hidden rounded-[12px] border border-zinc-200 bg-white focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-50">
+                    <span className="grid w-10 place-items-center border-r border-zinc-100 bg-zinc-50 text-sm font-bold text-zinc-400">@</span>
+                    <input
+                      value={trackerSlug}
+                      onChange={(event) => setTrackerSlug(normalizeTrackerSlugInput(event.target.value))}
+                      placeholder={copy.trackerSlugPlaceholder}
+                      className="min-w-0 flex-1 bg-transparent px-3 text-sm font-medium text-zinc-900 outline-none placeholder:text-zinc-400"
+                    />
+                  </div>
+                </label>
+
+                <label className="block md:col-span-2">
+                  <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-zinc-500">
+                    <Globe size={14} weight="bold" />
+                    {copy.trackerTarget}
+                  </span>
+                  <input
+                    value={trackerTargetPath}
+                    onChange={(event) => setTrackerTargetPath(event.target.value)}
+                    placeholder={copy.trackerTargetPlaceholder}
+                    className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <button
+                  type="button"
+                  onClick={() => copyTrackerUrl(trackerPreviewUrl)}
+                  className="flex min-w-0 items-center gap-2 rounded-[12px] border border-zinc-200 bg-white px-3 py-2.5 text-left text-xs font-semibold text-zinc-600 transition hover:border-indigo-200 hover:text-indigo-700"
+                >
+                  <CopySimple size={15} weight="bold" className="shrink-0" />
+                  <span className="min-w-0 truncate">{trackerPreviewUrl}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCreateTracker}
+                  disabled={isTrackerSaving || !trackerName.trim() || !trackerPreviewSlug}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <PaperPlaneRight size={15} weight="bold" className={isTrackerSaving ? "animate-pulse" : ""} />
+                  {copy.createTracker}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+            <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-zinc-950">{copy.customLinks}</p>
+                <span className="text-sm font-medium text-zinc-500">{marketingOverview?.days ?? (overviewRange === "today" ? 1 : Number(overviewRange))}d</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {(marketingOverview?.customTrackers ?? []).length ? (
+                  (marketingOverview?.customTrackers ?? []).slice(0, 8).map((tracker) => (
+                    <div key={tracker.id} className="grid gap-3 rounded-[14px] border border-zinc-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-zinc-950">{tracker.name}</p>
+                          <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">@{tracker.slug}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyTrackerUrl(tracker.url)}
+                          className="mt-2 block max-w-full truncate text-left text-xs font-medium text-zinc-500 transition hover:text-indigo-600"
+                        >
+                          {tracker.url}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-right">
+                        <MiniMetric label={copy.clicks} value={formatCompactNumber(tracker.clicks)} tone="sky" />
+                        <MiniMetric label={copy.signups} value={formatCompactNumber(tracker.signups)} tone="emerald" />
+                        <MiniMetric label={copy.conversion} value={formatRatioPercent(tracker.conversionRate)} tone="indigo" />
+                        <MiniMetric label={copy.earlyExits} value={formatRatioPercent(tracker.earlyExitRate)} tone="amber" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState label={copy.notEnoughData} />
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/60 p-4">
+              <p className="text-sm font-semibold text-zinc-950">{copy.topSourcesLabel}</p>
+              <div className="mt-3 space-y-2">
+                {(marketingOverview?.topSources ?? []).length ? (
+                  (marketingOverview?.topSources ?? []).slice(0, 7).map((source) => (
+                    <div key={source.source} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border border-zinc-200 bg-white px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="min-w-0 text-sm font-semibold text-zinc-950">
+                          <SourceBadge source={source.source} />
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-zinc-500">
+                          {formatCompactNumber(source.visitors)} {copy.uniqueVisitors.toLowerCase()} · {formatCompactNumber(source.clicks)} {copy.clicks.toLowerCase()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                          {source.signups} {copy.signups}
+                        </span>
+                        <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                          {formatRatioPercent(source.earlyExitRate)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState label={copy.notEnoughData} />
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -2804,9 +3239,9 @@ export function AdminDashboard({
           document.body,
         ) : null}
 
-        {newsletterConfirmTarget ? (
-          <div className={cx("fixed inset-0 z-[110] flex items-center justify-center bg-zinc-950/45 px-4 backdrop-blur-sm", containedScrollClass)}>
-            <div className="w-[min(420px,100%)] rounded-[20px] border border-zinc-200 bg-white p-5 shadow-[0_26px_90px_rgba(2,6,23,0.28)]">
+        {newsletterConfirmTarget && mounted ? createPortal(
+          <div className={cx("fixed inset-0 z-[140] grid min-h-dvh place-items-center overflow-y-auto bg-zinc-950/55 p-4 backdrop-blur-sm", containedScrollClass)}>
+            <div className="my-auto w-[min(420px,100%)] rounded-[20px] border border-zinc-200 bg-white p-5 shadow-[0_26px_90px_rgba(2,6,23,0.28)]">
               <h3 className="text-lg font-semibold text-zinc-950">{copy.newsletterSendConfirm}</h3>
               <p className="mt-3 text-sm font-medium text-zinc-500">
                 {copy.selectedUsers}: {(newsletterConfirmTarget === "selected" ? selectedUserEmails.length : newsletterSubscribedCount).toLocaleString()}
@@ -2832,7 +3267,8 @@ export function AdminDashboard({
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
         ) : null}
       </div>
     );
