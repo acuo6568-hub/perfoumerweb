@@ -4140,7 +4140,7 @@ export function AdminPanelClient({
           {view === "dashboard" ? (
             <div className="space-y-6">
               <Suspense fallback={<div className="text-center text-sm text-zinc-500">{adminText(locale, "İdarəetmə paneli yüklənir...", "Loading dashboard...")}</div>}>
-                <AdminDashboard locale={locale} />
+                <AdminDashboard locale={locale} perfumes={perfumes} />
               </Suspense>
             </div>
           ) : view === "assistant" ? (

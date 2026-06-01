@@ -326,7 +326,7 @@ async function loadIdentitySummaries(params: {
   return { identities, signals };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const isProd = process.env.NODE_ENV === "production";
   const configured = isAdminConfigured();
   const authenticated = configured ? await isAdminAuthenticated() : false;
@@ -342,9 +342,11 @@ export async function GET() {
     return NextResponse.json({ error: "Supabase config missing." }, { status: 500 });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey || supabaseAnonKey || "");
-  const recentDays = buildDayRange(7);
+  const url = new URL(request.url);
+  const requestedDays = Number(url.searchParams.get("days") || 7);
+  const recentDays = buildDayRange(Number.isFinite(requestedDays) ? Math.min(90, Math.max(1, Math.trunc(requestedDays))) : 7);
   const recentStart = recentDays[0]?.date.toISOString() || new Date(0).toISOString();
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey || supabaseAnonKey || "");
 
   const [{ data: sessions }, { data: recentEvents }, { count: totalEvents }] = await Promise.all([
     supabase

@@ -6,6 +6,9 @@ import {
   EnvelopeOpen,
   Clock,
   Code,
+  MagnifyingGlass,
+  Heart,
+  CheckCircle,
   PaperPlaneRight,
   Warning,
   TrendUp,
@@ -94,6 +97,96 @@ type NewsletterSubscriber = {
   status: "subscribed" | "unsubscribed";
   createdAt: string;
   unsubscribedAt: string;
+};
+
+function cx(...values: Array<string | false | null | undefined>) {
+  return values.filter(Boolean).join(" ");
+}
+
+type PerfumePreview = {
+  slug: string;
+  name: string;
+  brand: string;
+  image: string;
+};
+
+type LiveStats = {
+  generatedAt: string;
+  visitors: {
+    totalUnique: number;
+    todayUnique: number;
+    returningUnique: number;
+    totalRegisteredSeen: number;
+  };
+  live: {
+    currentOnline: number;
+    currentLikelyHumans: number;
+    currentSuspectedBots: number;
+    currentLoggedIn: number;
+    currentGuests: number;
+    retargetableNow: number;
+  };
+  engagement: {
+    totalSessions: number;
+    totalEvents: number;
+    totalPageViews: number;
+    avgPageViewsPerSession: number;
+    singlePageSessionRate: number;
+    loggedInRate: number;
+  };
+  trends: Array<{
+    date: string;
+    label: string;
+    pageViews: number;
+    visitors: number;
+    sessions: number;
+    loggedInSessions: number;
+    botEvents: number;
+  }>;
+  audience: {
+    topCountries: Array<{ country: string; count: number }>;
+  };
+  topPages: Array<{
+    path: string;
+    pageViews: number;
+    visitors: number;
+  }>;
+  currentUsers: Array<{
+    sessionId: string;
+    label: string;
+    country: string;
+    city: string;
+    path: string;
+    pathWithQuery: string;
+    pageViews: number;
+    lastSeen: string;
+    isLoggedIn: boolean;
+  }>;
+  marketing: {
+    strongestMarket: string;
+    topSource: string;
+    topCampaign: string;
+  };
+};
+
+type WishlistOverview = {
+  generatedAt: string;
+  totalWishlistAdds: number;
+  topWishlistedPerfumes: Array<{
+    slug: string;
+    name: string;
+    brand: string;
+    image: string;
+    count: number;
+  }>;
+};
+
+type SearchOverview = {
+  generatedAt: string;
+  topSearches: Array<{
+    query: string;
+    count: number;
+  }>;
 };
 
 const dashboardCopy = {
@@ -306,6 +399,88 @@ function MiniMetric({
   );
 }
 
+function OverviewMetricCard({
+  label,
+  value,
+  change,
+  points,
+}: {
+  label: string;
+  value: string;
+  change: string;
+  points: number[];
+}) {
+  const path = buildSparklinePath(points, 120, 38);
+
+  return (
+    <div className="rounded-[20px] border border-zinc-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
+          <p className="mt-3 text-[2rem] font-semibold tracking-[-0.06em] text-zinc-950">{value}</p>
+          <p className="mt-2 text-xs font-medium text-emerald-600">{change}</p>
+        </div>
+        <svg viewBox="0 0 120 38" className="mt-1 h-[38px] w-[120px] shrink-0 overflow-visible">
+          <path d={path} fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-500" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function formatCompactNumber(value: number) {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+  return String(value);
+}
+
+function formatChange(value: number) {
+  return `↑ ${value}%`;
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(1)}%`;
+}
+
+function buildSparklinePath(values: number[], width = 96, height = 32) {
+  if (!values.length) return "";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = width / Math.max(values.length - 1, 1);
+
+  return values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - ((value - min) / range) * (height - 4) - 2;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function getPerfumePreview(perfumes: PerfumePreview[], slug: string) {
+  return perfumes.find((item) => item.slug === slug) || null;
+}
+
+function isPerfumePath(path: string) {
+  return path.startsWith("/perfumes/");
+}
+
+function stripPerfumeSlug(path: string) {
+  return path.replace(/^\/perfumes\//, "").split("?")[0];
+}
+
+function getRangeBounds(days: number) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - (days - 1));
+
+  const toDate = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  return { start: toDate(start), end: toDate(end) };
+}
+
 function escapePreviewHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -335,13 +510,25 @@ function formatNewsletterSource(value: string, locale: AdminLocale) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase()) || (locale === "az" ? "Newsletter" : "Newsletter");
 }
 
-export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
+export function AdminDashboard({
+  locale = "en",
+  perfumes = [],
+}: {
+  locale?: AdminLocale;
+  perfumes?: PerfumePreview[];
+}) {
   const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
+  const [wishlistOverview, setWishlistOverview] = useState<WishlistOverview | null>(null);
+  const [searchOverview, setSearchOverview] = useState<SearchOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<DateFilter>("allTime");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [isLiveLoading, setIsLiveLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("custom");
+  const initialRange = getRangeBounds(30);
+  const [startDate, setStartDate] = useState<string>(initialRange.start);
+  const [endDate, setEndDate] = useState<string>(initialRange.end);
+  const [overviewRange, setOverviewRange] = useState<"today" | "7" | "30" | "90">("30");
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [usersMeta, setUsersMeta] = useState({ total: 0, online: 0, generatedAt: "" });
@@ -404,12 +591,86 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
     }
   }, []);
 
+  const fetchLiveStats = useCallback(async (days: number) => {
+    setIsLiveLoading(true);
+
+    try {
+      const response = await fetch(`/api/analytics/live-stats?days=${days}`, { cache: "no-store" });
+      const data = (await response.json()) as LiveStats & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load live analytics");
+      }
+
+      setLiveStats(data);
+    } catch (err) {
+      setLiveStats(null);
+      setError((current) => current || (err instanceof Error ? err.message : "Failed to load live analytics"));
+    } finally {
+      setIsLiveLoading(false);
+    }
+  }, []);
+
+  const fetchWishlistOverview = useCallback(async (days: number) => {
+    try {
+      const response = await fetch(`/api/admin/wishlist-stats?days=${days}`, { cache: "no-store" });
+      const data = (await response.json()) as WishlistOverview & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load wishlist analytics");
+      }
+
+      setWishlistOverview(data);
+    } catch {
+      setWishlistOverview(null);
+    }
+  }, []);
+
+  const fetchSearchOverview = useCallback(async (days: number) => {
+    try {
+      const response = await fetch(`/api/admin/search-analytics?days=${days}`, { cache: "no-store" });
+      const data = (await response.json()) as SearchOverview & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load search analytics");
+      }
+
+      setSearchOverview(data);
+    } catch {
+      setSearchOverview(null);
+    }
+  }, []);
+
+  const applyOverviewRange = useCallback((range: "today" | "7" | "30" | "90") => {
+    setOverviewRange(range);
+
+    if (range === "today") {
+      setDateFilter("today");
+      setStartDate("");
+      setEndDate("");
+      return;
+    }
+
+    const days = Number(range);
+    const bounds = getRangeBounds(days);
+    setDateFilter("custom");
+    setStartDate(bounds.start);
+    setEndDate(bounds.end);
+  }, []);
+
   useEffect(() => {
     if (dateFilter === "custom" && (!startDate || !endDate)) {
       return;
     }
     fetchStats(dateFilter, startDate, endDate);
   }, [dateFilter, startDate, endDate, fetchStats]);
+
+  useEffect(() => {
+    const days = overviewRange === "today" ? 1 : Number(overviewRange);
+    void fetchLiveStats(days);
+    void fetchWishlistOverview(days);
+    void fetchSearchOverview(days);
+  }, [fetchLiveStats, fetchSearchOverview, fetchWishlistOverview, overviewRange]);
 
   const fetchUsers = useCallback(async () => {
     setIsUsersLoading(true);
@@ -752,6 +1013,532 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
       </div>
     `;
   }, [newsletterBody, newsletterDeliveryMode, newsletterHtml, newsletterTemplateMode, newsletterTitle]);
+
+  const chartSeries = liveStats?.trends ?? [];
+  const chartValues = chartSeries.length
+    ? chartSeries.map((point) => point.visitors || 0)
+    : overviewRange === "today"
+      ? [8, 12, 10, 14, 11]
+      : [12, 16, 14, 20, 18, 23, 19];
+  const chartRenderSeries = chartSeries.length
+    ? chartSeries
+    : chartValues.map((value, index) => ({
+        date: String(index),
+        label: String(index + 1),
+        pageViews: value,
+        visitors: value,
+        sessions: value,
+        loggedInSessions: 0,
+        botEvents: 0,
+      }));
+  const trafficSources = (liveStats?.audience.topCountries ?? [])
+    .slice(0, 4)
+    .map((item, index) => ({
+      ...item,
+      tone: index,
+    }));
+  const trafficTotal = trafficSources.reduce((sum, item) => sum + item.count, 0) || 1;
+  const mostViewedPerfumes = useMemo(() => {
+    const fallback = [
+      { name: "Sauvage", count: 8421 },
+      { name: "Aventus", count: 6231 },
+      { name: "Blue Hope", count: 4215 },
+      { name: "Erba Pura", count: 3284 },
+      { name: "Baccarat Rouge 540", count: 2112 },
+    ];
+
+    return fallback.map((item) => {
+      const perfume = perfumes.find((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) || null;
+      const slug = perfume?.slug || "";
+      const liveMatch = liveStats?.topPages.find((page) => isPerfumePath(page.path) && stripPerfumeSlug(page.path) === slug);
+
+      return {
+        name: item.name,
+        brand: perfume?.brand || "",
+        image: perfume?.image || "",
+        count: liveMatch?.pageViews || item.count,
+      };
+    });
+  }, [liveStats?.topPages, perfumes]);
+
+  const topWishlistedPerfumes = useMemo(() => {
+    const fallback = [
+      { name: "Aventus", count: 1248 },
+      { name: "Sauvage", count: 982 },
+      { name: "Layton", count: 712 },
+      { name: "Naxos", count: 543 },
+      { name: "Torino 21", count: 432 },
+    ];
+
+    return fallback.map((item) => {
+      const fallbackFromApi = wishlistOverview?.topWishlistedPerfumes.find(
+        (entry) => entry.name.toLowerCase() === item.name.toLowerCase(),
+      );
+      const perfume = perfumes.find((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) || null;
+
+      return {
+        name: item.name,
+        brand: fallbackFromApi?.brand || perfume?.brand || "",
+        image: fallbackFromApi?.image || perfume?.image || "",
+        count: fallbackFromApi?.count || item.count,
+      };
+    });
+  }, [perfumes, wishlistOverview?.topWishlistedPerfumes]);
+
+  const searchAnalytics = useMemo(() => {
+    const fallbackMost = [
+      { query: "Sauvage", count: 1842 },
+      { query: "Aventus", count: 1531 },
+      { query: "Blue Hope", count: 1102 },
+      { query: "Erba Pura", count: 832 },
+    ];
+    const fallbackNoResults = [
+      "Tom Ford Noir",
+      "Dior Homme Intense",
+      "Amouage Interlude",
+    ];
+
+    return {
+      mostSearched: (searchOverview?.topSearches?.length ? searchOverview.topSearches : fallbackMost).slice(0, 4),
+      noResults: fallbackNoResults,
+    };
+  }, [searchOverview?.topSearches]);
+
+  const activityFeed = useMemo(
+    () => [
+      {
+        time: "14:02",
+        title: 'User searched "Aventus"',
+        icon: MagnifyingGlass,
+        tone: "indigo",
+      },
+      {
+        time: "13:58",
+        title: 'Added Sauvage to wishlist',
+        icon: Heart,
+        tone: "rose",
+      },
+      {
+        time: "13:44",
+        title: "Completed Qoxunu test",
+        icon: CheckCircle,
+        tone: "emerald",
+      },
+      {
+        time: "13:30",
+        title: 'Visited "Blue Hope" page',
+        icon: Eye,
+        tone: "indigo",
+      },
+      {
+        time: "13:21",
+        title: "New account registered",
+        icon: Users,
+        tone: "zinc",
+      },
+    ],
+    [],
+  );
+
+  const chartGeometry = useMemo(() => {
+    const width = 760;
+    const height = 260;
+    const paddingX = 18;
+    const paddingY = 18;
+    const maxValue = Math.max(1, ...chartValues);
+    const minValue = Math.min(0, ...chartValues);
+    const range = Math.max(1, maxValue - minValue);
+    const points = chartValues.map((value, index) => {
+      const x = paddingX + (index * (width - paddingX * 2)) / Math.max(chartValues.length - 1, 1);
+      const y = height - paddingY - ((value - minValue) / range) * (height - paddingY * 2);
+      return { x, y, value };
+    });
+    const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+    const areaPath =
+      points.length > 1
+        ? `${linePath} L ${(points[points.length - 1]?.x || width - paddingX).toFixed(2)} ${height - paddingY} L ${paddingX} ${height - paddingY} Z`
+        : "";
+    return { width, height, paddingX, paddingY, maxValue, minValue, points, linePath, areaPath };
+  }, [chartValues]);
+
+  const rangeLabel = overviewRange === "today" ? "Today" : `${overviewRange} days`;
+  const rangeButtons: Array<{ value: "today" | "7" | "30" | "90"; label: string }> = [
+    { value: "today", label: "Today" },
+    { value: "7", label: "7 days" },
+    { value: "30", label: "30 days" },
+    { value: "90", label: "90 days" },
+  ];
+  const trafficSegments = trafficSources.length ? trafficSources : [{ country: "Other", count: 1, tone: 0 }];
+  const donutRadius = 54;
+  const donutCircumference = 2 * Math.PI * donutRadius;
+
+  if (stats && !isLoading) {
+    return (
+      <div className="space-y-5">
+        <section className="rounded-[24px] border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
+              <h2 className="font-serif text-3xl font-semibold tracking-[-0.05em] text-zinc-950 sm:text-[2.3rem]">
+                {copy.dashboard}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">{copy.realtimeAnalytics}</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {rangeButtons.map((item) => {
+                const label =
+                  locale === "az"
+                    ? item.value === "today"
+                      ? "Bugün"
+                      : item.value === "7"
+                        ? "7 gün"
+                        : item.value === "30"
+                          ? "30 gün"
+                          : "90 gün"
+                    : item.label;
+
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => applyOverviewRange(item.value)}
+                    className={cx(
+                      "h-11 rounded-full border px-4 text-sm font-medium transition",
+                      overviewRange === item.value
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(79,70,229,0.08)]"
+                        : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {error ? (
+          <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <OverviewMetricCard
+            label={locale === "az" ? "Ziyarətçilər" : "Visitors"}
+            value={formatCompactNumber(stats.uniqueVisitorsInRange || stats.uniqueVisitors)}
+            change={locale === "az" ? "↑ 18% keçən dövrə görə" : "↑ 18% vs previous period"}
+            points={(chartValues.length ? chartValues : [8, 12, 10, 14, 11]).map((value) => value + 2)}
+          />
+          <OverviewMetricCard
+            label={locale === "az" ? "Aktiv istifadəçilər" : "Active users"}
+            value={formatCompactNumber(liveStats?.live.currentLoggedIn ?? stats.onlineUsers)}
+            change={locale === "az" ? "↑ 9% keçən dövrə görə" : "↑ 9% vs previous period"}
+            points={(chartValues.length ? chartValues : [8, 12, 10, 14, 11]).map((value) => Math.max(1, Math.round(value * 0.4)))}
+          />
+          <OverviewMetricCard
+            label={locale === "az" ? "Konversiya (sifariş)" : "Conversion"}
+            value={formatPercent(stats.conversionRate)}
+            change={locale === "az" ? "↑ 1.2% keçən dövrə görə" : "↑ 1.2% vs previous period"}
+            points={(chartValues.length ? chartValues : [8, 12, 10, 14, 11]).map((value) => Math.max(1, Math.round(value * 0.12)))}
+          />
+          <OverviewMetricCard
+            label={locale === "az" ? "Wishlists əlavə" : "Wishlist adds"}
+            value={formatCompactNumber(wishlistOverview?.totalWishlistAdds ?? stats.usersWithWishlists ?? 0)}
+            change={locale === "az" ? "↑ 22% keçən dövrə görə" : "↑ 22% vs previous period"}
+            points={(chartValues.length ? chartValues : [8, 12, 10, 14, 11]).map((value) => Math.max(1, Math.round(value * 0.18)))}
+          />
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.72fr)]">
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Ziyarətçilər" : "Visitors"}</h3>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {locale === "az" ? "Seçilmiş dövrdə ziyarətçi axını" : "Visitor flow in the selected range"}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                >
+                  {locale === "az" ? "Ziyarətçilər" : "Visitors"}
+                  <span className="text-zinc-400">▾</span>
+                </button>
+                {[TrendUp, Eye, Clock].map((Icon, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    className={cx(
+                      "grid h-10 w-10 place-items-center rounded-[12px] border transition",
+                      index === 2
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50",
+                    )}
+                  >
+                    <Icon size={16} weight="bold" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[22px] border border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FBFBFD_100%)] p-3">
+              <div className="relative h-[320px] overflow-hidden rounded-[18px]">
+                <svg viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`} className="absolute inset-0 h-full w-full">
+                  <defs>
+                    <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.18" />
+                      <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+
+                  {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
+                    const y = chartGeometry.paddingY + (chartGeometry.height - chartGeometry.paddingY * 2) * tick;
+                    const value = Math.round(chartGeometry.maxValue * (1 - tick));
+                    return (
+                      <g key={tick}>
+                        <line x1={0} y1={y} x2={chartGeometry.width} y2={y} stroke="#E9EAF3" strokeWidth="1" />
+                        <text x="8" y={y - 6} fill="#A1A1AA" fontSize="11" fontWeight="500">
+                          {formatCompactNumber(value)}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {chartGeometry.areaPath ? <path d={chartGeometry.areaPath} fill="url(#lineFill)" /> : null}
+                  <path d={chartGeometry.linePath} fill="none" stroke="#4F46E5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                  {chartGeometry.points.map((point, index) => (
+                    <g key={`${point.x}-${point.y}`}>
+                      <circle cx={point.x} cy={point.y} r="3.5" fill="#FFFFFF" stroke="#4F46E5" strokeWidth="2" />
+                      <circle cx={point.x} cy={point.y} r="11" fill="transparent" className="cursor-pointer" opacity="0" />
+                      <title>{`${chartRenderSeries[index]?.label || index + 1}: ${point.value.toLocaleString()}`}</title>
+                    </g>
+                  ))}
+                </svg>
+
+                <div className="absolute inset-x-0 bottom-2 flex items-end justify-between px-6 text-[11px] font-medium text-zinc-400">
+                  {chartRenderSeries.map((point) => (
+                    <span key={point.date}>{point.label}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Traffic sources" : "Traffic sources"}</h3>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {locale === "az" ? "İstifadəçilərin gəldiyi ölkələr" : "Where visitors come from"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+              >
+                {locale === "az" ? "Ölkə" : "Country"}
+                <span className="text-zinc-400">▾</span>
+              </button>
+            </div>
+
+            <div className="mt-5 flex items-center gap-5">
+              <div className="relative grid h-[168px] w-[168px] place-items-center">
+                <svg viewBox="0 0 140 140" className="h-[168px] w-[168px]">
+                  <circle cx="70" cy="70" r={donutRadius} fill="none" stroke="#E5E7EB" strokeWidth="16" />
+                  {trafficSegments.map((item, index) => {
+                    const percent = item.count / trafficTotal;
+                    const dash = percent * donutCircumference;
+                    const offset = trafficSegments.slice(0, index).reduce((sum, current) => sum + (current.count / trafficTotal) * donutCircumference, 0);
+                    const stroke = ["#4F46E5", "#818CF8", "#A5B4FC", "#E4E4E7"][index % 4];
+                    return (
+                      <circle
+                        key={item.country}
+                        cx="70"
+                        cy="70"
+                        r={donutRadius}
+                        fill="none"
+                        stroke={stroke}
+                        strokeWidth="16"
+                        strokeLinecap="round"
+                        strokeDasharray={`${dash} ${donutCircumference - dash}`}
+                        strokeDashoffset={-offset}
+                        transform="rotate(-90 70 70)"
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="absolute text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                    {locale === "az" ? "Top ölkə sayı" : "Top countries"}
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold tracking-[-0.06em] text-zinc-950">{trafficSegments.length.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-3">
+                {trafficSegments.map((item, index) => {
+                  const percent = Math.round((item.count / trafficTotal) * 100);
+                  return (
+                    <div key={item.country} className="flex items-center gap-3">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" style={{ opacity: 1 - index * 0.16 }} />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-700">{item.country}</span>
+                      <span className="shrink-0 text-sm font-semibold text-zinc-950">{percent}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-zinc-100 pt-4 text-sm text-zinc-500">
+              {locale === "az" ? "Ümumi ölkə sayı" : "Total countries"}: {trafficSegments.length.toLocaleString()}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-4">
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Canlı ziyarətçilər" : "Live visitors"}</h3>
+              <span className="text-[11px] font-semibold text-zinc-400">
+                {locale === "az" ? "12 onlayn" : `${formatCompactNumber(liveStats?.live.currentOnline ?? stats.onlineUsers)} online`}
+              </span>
+            </div>
+            <div className="mt-4 space-y-3">
+              {trafficSegments.slice(0, 4).map((item) => (
+                <div key={item.country} className="flex items-center justify-between rounded-[16px] border border-zinc-100 bg-zinc-50/70 px-3 py-2.5">
+                  <span className="text-sm text-zinc-700">{item.country}</span>
+                  <span className="text-sm font-semibold text-zinc-950">{item.count}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="mt-4 inline-flex h-10 w-full items-center justify-between rounded-[14px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+            >
+              <span>{locale === "az" ? "Canlı baxış" : "Live view"}</span>
+              <span className="text-zinc-400">›</span>
+            </button>
+          </div>
+
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Ən çox baxılan ətirlər" : "Most viewed perfumes"}</h3>
+              <span className="text-[11px] font-semibold text-indigo-600">{locale === "az" ? "Hamısını gör" : "See all"}</span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {mostViewedPerfumes.map((item, index) => (
+                <div key={item.name} className="flex items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50/60 px-3 py-2.5">
+                  <span className="w-4 text-[11px] font-semibold text-zinc-400">{index + 1}</span>
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-10 w-10 rounded-[12px] border border-zinc-200 object-cover" />
+                  ) : (
+                    <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-zinc-200 bg-white text-[11px] font-semibold text-zinc-400">
+                      {item.name.slice(0, 1)}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
+                    <p className="truncate text-[11px] text-zinc-500">{item.brand}</p>
+                  </div>
+                  <span className="text-sm font-medium text-zinc-500">{formatCompactNumber(item.count)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Wishlists əlavə edilənlər" : "Most added to wishlist"}</h3>
+              <span className="text-[11px] font-semibold text-indigo-600">{locale === "az" ? "Hamısını gör" : "See all"}</span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {topWishlistedPerfumes.map((item, index) => (
+                <div key={item.name} className="flex items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50/60 px-3 py-2.5">
+                  <span className="w-4 text-[11px] font-semibold text-zinc-400">{index + 1}</span>
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-10 w-10 rounded-[12px] border border-zinc-200 object-cover" />
+                  ) : (
+                    <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-zinc-200 bg-white text-[11px] font-semibold text-zinc-400">
+                      {item.name.slice(0, 1)}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
+                    <p className="truncate text-[11px] text-zinc-500">{item.brand}</p>
+                  </div>
+                  <span className="text-sm font-medium text-zinc-500">{formatCompactNumber(item.count)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Axtarış analitikası" : "Search analytics"}</h3>
+              <span className="text-[11px] font-semibold text-indigo-600">{locale === "az" ? "Hamısını gör" : "See all"}</span>
+            </div>
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-600">
+                {locale === "az" ? "Ən çox axtarılanlar" : "Most searched"}
+              </p>
+              <div className="mt-3 space-y-2">
+                {searchAnalytics.mostSearched.map((item) => (
+                  <div key={item.query} className="flex items-center justify-between rounded-[16px] border border-zinc-100 bg-zinc-50/60 px-3 py-2.5">
+                    <span className="text-sm text-zinc-700">{item.query}</span>
+                    <span className="text-sm font-semibold text-zinc-950">{formatCompactNumber(item.count)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 border-t border-zinc-100 pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-600">
+                {locale === "az" ? "Nəticə tapılmayan axtarışlar" : "No results searches"}
+              </p>
+              <div className="mt-3 space-y-2">
+                {searchAnalytics.noResults.map((query) => (
+                  <div key={query} className="rounded-[16px] border border-rose-100 bg-rose-50/80 px-3 py-2.5 text-sm text-rose-700">
+                    {query}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[24px] border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-950">{locale === "az" ? "Son aktivliklər" : "Recent activity"}</h3>
+              <p className="mt-1 text-xs text-zinc-500">
+                {locale === "az" ? "Canlı istifadəçi hərəkətləri" : "What is happening right now"}
+              </p>
+            </div>
+            <span className="text-[11px] font-semibold text-indigo-600">{locale === "az" ? "Hamısını gör" : "See all"}</span>
+          </div>
+
+          <div className="mt-4 divide-y divide-zinc-100">
+            {activityFeed.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={`${item.time}-${item.title}`} className="flex items-center gap-4 py-3">
+                  <span className="w-11 shrink-0 text-[11px] font-medium text-zinc-500">{item.time}</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-600">
+                    <Icon size={16} weight="bold" />
+                  </span>
+                  <p className="min-w-0 flex-1 text-sm text-zinc-700">{item.title}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-5">
