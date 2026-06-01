@@ -6,6 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const ANALYTICS_VERSION = "v2";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const SESSION_LAST_SEEN_KEY = "perfoumer.analytics.v2.session-last-seen";
 
 function getOrCreateStorageId(key: string, storage: Storage): string {
   const existing = storage.getItem(key);
@@ -15,6 +17,22 @@ function getOrCreateStorageId(key: string, storage: Storage): string {
 
   const next = `${ANALYTICS_VERSION}_${crypto.randomUUID()}`;
   storage.setItem(key, next);
+  return next;
+}
+
+function getOrCreateSessionId(storage: Storage): string {
+  const existing = storage.getItem("perfoumer.analytics.v2.session-id") || "";
+  const lastSeen = Number(storage.getItem(SESSION_LAST_SEEN_KEY) || 0);
+  const now = Date.now();
+
+  if (existing.startsWith(`${ANALYTICS_VERSION}_`) && Number.isFinite(lastSeen) && now - lastSeen < SESSION_TIMEOUT_MS) {
+    storage.setItem(SESSION_LAST_SEEN_KEY, String(now));
+    return existing;
+  }
+
+  const next = `${ANALYTICS_VERSION}_${crypto.randomUUID()}`;
+  storage.setItem("perfoumer.analytics.v2.session-id", next);
+  storage.setItem(SESSION_LAST_SEEN_KEY, String(now));
   return next;
 }
 
@@ -61,7 +79,7 @@ export function SiteTracker() {
     if (typeof window === "undefined") return;
 
     const anonymousId = getOrCreateStorageId("perfoumer.analytics.v2.anonymous-id", window.localStorage);
-    const sessionId = getOrCreateStorageId("perfoumer.analytics.v2.session-id", window.sessionStorage);
+    const sessionId = getOrCreateSessionId(window.localStorage);
     const userAgent = window.navigator.userAgent || "";
     let heartbeatId: number | ReturnType<typeof setInterval> | null = null;
     let idleCallbackId: number | null = null;

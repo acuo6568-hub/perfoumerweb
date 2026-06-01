@@ -92,11 +92,11 @@ function slugToName(slug: string): string {
 
 function getOrCreateStorageId(key: string, storage: Storage): string {
   const existing = storage.getItem(key);
-  if (existing && existing.trim()) {
+  if (existing && existing.trim().startsWith("v2_")) {
     return existing;
   }
 
-  const next = crypto.randomUUID();
+  const next = `v2_${crypto.randomUUID()}`;
   storage.setItem(key, next);
   return next;
 }
@@ -109,8 +109,8 @@ async function trackHeaderSearch(params: {
 }) {
   if (typeof window === "undefined") return;
 
-  const anonymousId = getOrCreateStorageId("perfoumer.analytics.anonymous-id", window.localStorage);
-  const sessionId = getOrCreateStorageId("perfoumer.analytics.session-id", window.sessionStorage);
+  const anonymousId = getOrCreateStorageId("perfoumer.analytics.v2.anonymous-id", window.localStorage);
+  const sessionId = getOrCreateStorageId("perfoumer.analytics.v2.session-id", window.localStorage);
   const path = `/search?q=${encodeURIComponent(params.query)}&tab=${encodeURIComponent(params.tab)}&limit=16&result_count=${params.resultCount}`;
 
   void fetch("/api/analytics/track", {
@@ -121,6 +121,7 @@ async function trackHeaderSearch(params: {
     body: JSON.stringify({
       sessionId,
       anonymousId,
+      eventType: "v2_page_view",
       userId: params.session?.user?.id ?? null,
       isLoggedIn: Boolean(params.session?.user),
       locale: document.documentElement.lang || "az",

@@ -419,9 +419,15 @@ export async function GET(request: Request) {
     .map(([path, count]) => ({ path, count }));
 
   const visitorsPerCountry = new Map<string, Set<string>>();
+  const firstSeenByAnonymous = new Map<string, number>();
   for (const row of humanSessionRows) {
     const country = normalizeCountryLabel(row.country, row.country_code);
     incrementUnique(visitorsPerCountry, country, row.anonymous_id);
+    const firstSeen = safeTimestamp(row.first_seen);
+    const currentFirstSeen = firstSeenByAnonymous.get(row.anonymous_id) || Number.POSITIVE_INFINITY;
+    if (row.anonymous_id && firstSeen > 0 && firstSeen < currentFirstSeen) {
+      firstSeenByAnonymous.set(row.anonymous_id, firstSeen);
+    }
   }
 
   const liveCountries = Object.entries(
@@ -456,6 +462,8 @@ export async function GET(request: Request) {
       pageViews: number;
       botEvents: number;
       visitors: Set<string>;
+      newVisitors: Set<string>;
+      returningVisitors: Set<string>;
       sessions: Set<string>;
       loggedInSessions: Set<string>;
     }
@@ -465,6 +473,8 @@ export async function GET(request: Request) {
       pageViews: 0,
       botEvents: 0,
       visitors: new Set<string>(),
+      newVisitors: new Set<string>(),
+      returningVisitors: new Set<string>(),
       sessions: new Set<string>(),
       loggedInSessions: new Set<string>(),
     });
@@ -495,16 +505,24 @@ export async function GET(request: Request) {
     const isLoggedIn = Boolean(row.user_id) || Boolean(row.is_logged_in);
 
     if (dayBucket) {
-      dayBucket.pageViews += 1;
-      dayBucket.sessions.add(row.session_id);
-      if (row.anonymous_id) {
-        dayBucket.visitors.add(row.anonymous_id);
-      }
-      if (isLoggedIn) {
-        dayBucket.loggedInSessions.add(row.session_id);
-      }
       if (isBot) {
         dayBucket.botEvents += 1;
+      } else {
+        dayBucket.pageViews += 1;
+        dayBucket.sessions.add(row.session_id);
+        if (row.anonymous_id) {
+          dayBucket.visitors.add(row.anonymous_id);
+          const firstSeen = firstSeenByAnonymous.get(row.anonymous_id) || safeTimestamp(row.created_at);
+          const dayStart = new Date(`${dayKey}T00:00:00.000Z`).getTime();
+          if (firstSeen > 0 && firstSeen < dayStart) {
+            dayBucket.returningVisitors.add(row.anonymous_id);
+          } else {
+            dayBucket.newVisitors.add(row.anonymous_id);
+          }
+        }
+        if (isLoggedIn) {
+          dayBucket.loggedInSessions.add(row.session_id);
+        }
       }
     }
 
@@ -667,6 +685,8 @@ export async function GET(request: Request) {
       label: day.label,
       pageViews: bucket?.pageViews || 0,
       visitors: bucket?.visitors.size || 0,
+      newVisitors: bucket?.newVisitors.size || 0,
+      returningVisitors: bucket?.returningVisitors.size || 0,
       sessions: bucket?.sessions.size || 0,
       loggedInSessions: bucket?.loggedInSessions.size || 0,
       botEvents: bucket?.botEvents || 0,

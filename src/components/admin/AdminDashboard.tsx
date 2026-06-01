@@ -23,6 +23,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type DateFilter = "today" | "thisMonth" | "thisYear" | "allTime" | "custom";
 type AdminLocale = "az" | "en";
+type ChartMetric = "visitors" | "newVisitors" | "returningVisitors" | "pageViews" | "sessions";
 
 type Stats = {
   totalUsers: number;
@@ -230,6 +231,8 @@ type LiveStats = {
     label: string;
     pageViews: number;
     visitors: number;
+    newVisitors: number;
+    returningVisitors: number;
     sessions: number;
     loggedInSessions: number;
     botEvents: number;
@@ -321,7 +324,9 @@ const dashboardCopy = {
     totalUsers: "İstifadəçilər",
     onlineUsers: "Onlayn istifadəçilər",
     newsletterSubscribers: "Abonelər",
-    uniqueVisitors: "Ziyarətçilər",
+    uniqueVisitors: "Unikal ziyarətçilər",
+    newVisitors: "Yeni ziyarətçilər",
+    returningVisitors: "Qayıdan ziyarətçilər",
     pageViews: "Səhifə baxışları",
     avgSessionDuration: "Sessiya",
     bounceRate: "Tərk etmə",
@@ -472,8 +477,10 @@ const dashboardCopy = {
     totalUsers: "Users",
     onlineUsers: "Online",
     newsletterSubscribers: "Subscribers",
-    uniqueVisitors: "Visitors",
-    pageViews: "Pages",
+    uniqueVisitors: "Unique visitors",
+    newVisitors: "New visitors",
+    returningVisitors: "Returning visitors",
+    pageViews: "Page views",
     avgSessionDuration: "Sessions",
     bounceRate: "Bounce",
     conversionRate: "Conversion",
@@ -886,7 +893,7 @@ export function AdminDashboard({
   const [startDate, setStartDate] = useState<string>(initialRange.start);
   const [endDate, setEndDate] = useState<string>(initialRange.end);
   const [overviewRange, setOverviewRange] = useState<"today" | "7" | "30" | "90">("30");
-  const [chartMetric, setChartMetric] = useState<"visitors" | "pageViews" | "sessions">("visitors");
+  const [chartMetric, setChartMetric] = useState<ChartMetric>("visitors");
   const [trafficDimension, setTrafficDimension] = useState<"country" | "recentCountry" | "device" | "referrer">("country");
   const [activeChartIndex, setActiveChartIndex] = useState<number | null>(null);
   const [liveVisitorsExpanded, setLiveVisitorsExpanded] = useState(false);
@@ -943,6 +950,10 @@ export function AdminDashboard({
     const timeoutId = window.setTimeout(() => setToastMessage(null), 3600);
     return () => window.clearTimeout(timeoutId);
   }, [toastMessage]);
+
+  useEffect(() => {
+    setActiveChartIndex(null);
+  }, [chartMetric, overviewRange]);
 
   useEffect(() => {
     if (!newsletterOpen && !newsletterConfirmTarget) {
@@ -1690,7 +1701,7 @@ export function AdminDashboard({
     const points = renderValues.map((value, index) => {
       const x = paddingX + (index * (width - paddingX * 2)) / Math.max(renderValues.length - 1, 1);
       const y = height - paddingY - ((value - minValue) / range) * (height - paddingY * 2);
-      return { x, y, value };
+      return { x, y, value, isActive: value > 0 };
     });
     const linePath = points.reduce((path, point, index) => {
       if (index === 0) return `M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
@@ -1742,6 +1753,8 @@ export function AdminDashboard({
   const isInitialDashboardLoading = !stats && isLoading;
   const chartMetricOptions = [
     { value: "visitors", label: copy.uniqueVisitors, icon: TrendUp },
+    { value: "newVisitors", label: copy.newVisitors, icon: Users },
+    { value: "returningVisitors", label: copy.returningVisitors, icon: UserCircle },
     { value: "pageViews", label: copy.pageViews, icon: Eye },
     { value: "sessions", label: copy.sessionsTitle, icon: Clock },
   ] as const;
@@ -1751,6 +1764,20 @@ export function AdminDashboard({
       label: copy.uniqueVisitors,
       metric: formatCompactNumber(dashboardStats.uniqueVisitorsInRange || dashboardStats.uniqueVisitors),
       change: "+18%",
+      tone: "emerald",
+    },
+    {
+      value: "newVisitors",
+      label: copy.newVisitors,
+      metric: formatCompactNumber(chartSeries.reduce((sum, point) => sum + (point.newVisitors || 0), 0)),
+      change: "+10%",
+      tone: "emerald",
+    },
+    {
+      value: "returningVisitors",
+      label: copy.returningVisitors,
+      metric: formatCompactNumber(liveStats?.visitors.returningUnique ?? chartSeries.reduce((sum, point) => sum + (point.returningVisitors || 0), 0)),
+      change: "+6%",
       tone: "emerald",
     },
     {
@@ -1768,6 +1795,8 @@ export function AdminDashboard({
       tone: "emerald",
     },
   ] as const;
+  const chartMetricLabel = chartMetricOptions.find((option) => option.value === chartMetric)?.label ?? copy.uniqueVisitors;
+  const activeChartPoint = activeChartIndex !== null ? chartGeometry.points[activeChartIndex] : null;
   const trafficDimensionOptions = [
     { value: "country", label: copy.country },
     { value: "recentCountry", label: copy.recentCountry },
@@ -1828,10 +1857,10 @@ export function AdminDashboard({
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <OverviewMetricCard
-            label={locale === "az" ? "Ziyarətçilər" : "Visitors"}
+            label={copy.uniqueVisitors}
             value={formatCompactNumber(dashboardStats.uniqueVisitorsInRange || dashboardStats.uniqueVisitors)}
             change={`↑ 18% ${copy.comparedPrevious}`}
-            points={chartValues}
+            points={chartSeries.map((point) => point.visitors || 0)}
             icon={<Users size={17} weight="bold" />}
             emptyLabel={copy.notEnoughData}
             loading={isOverviewRefreshing}
@@ -1867,7 +1896,7 @@ export function AdminDashboard({
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.72fr)]">
           <div className={cx(panelClass, "overflow-hidden p-0")}>
-            <div className="grid border-b border-zinc-200 bg-zinc-50/50 sm:grid-cols-3">
+            <div className="grid border-b border-zinc-200 bg-zinc-50/50 sm:grid-cols-5">
               {analyticsMetricTabs.map((item) => {
                 const Icon = chartMetricOptions.find((option) => option.value === item.value)?.icon ?? TrendUp;
                 const active = chartMetric === item.value;
@@ -1878,15 +1907,15 @@ export function AdminDashboard({
                     type="button"
                     onClick={() => setChartMetric(item.value)}
                     className={cx(
-                      "group relative flex min-h-[102px] items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 text-left transition sm:border-b-0 sm:border-r last:sm:border-r-0",
+                      "group relative flex min-h-[102px] items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 text-left transition sm:border-b-0 sm:border-r last:sm:border-r-0",
                       active ? "bg-white" : "bg-transparent hover:bg-white/80",
                     )}
                   >
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-zinc-500">{item.label}</span>
                       <span className="mt-3 flex items-end gap-3">
-                        <span className="text-[34px] font-bold leading-none text-zinc-950">{item.metric}</span>
-                        <span className="mb-1 rounded-[8px] border border-emerald-100 bg-emerald-50 px-2 py-1 text-sm font-semibold text-emerald-700">
+                        <span className="text-[28px] font-bold leading-none text-zinc-950">{item.metric}</span>
+                        <span className="mb-1 rounded-[8px] border border-emerald-100 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
                           {item.change}
                         </span>
                       </span>
@@ -1906,14 +1935,14 @@ export function AdminDashboard({
             <div className="px-5 pb-5 pt-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-950">{chartMetric === "visitors" ? copy.uniqueVisitors : chartMetric === "pageViews" ? copy.pageViews : copy.sessionsTitle}</h3>
+                  <h3 className="text-lg font-semibold text-zinc-950">{chartMetricLabel}</h3>
                   <p className="mt-1 text-sm font-medium text-zinc-500">{copy.visitorsFlow}</p>
                 </div>
               </div>
 
               <div className="relative h-[360px] overflow-hidden rounded-[18px] border border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFA_100%)]">
                 {chartHasData ? (
-                <svg viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`} className={cx("absolute inset-0 h-full w-full transition-opacity duration-300", isOverviewRefreshing ? "opacity-35" : "opacity-100")}>
+                <svg key={chartMetric} viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`} className={cx("absolute inset-0 h-full w-full transition-opacity duration-300", isOverviewRefreshing ? "opacity-35" : "opacity-100")}>
                   <defs>
                     <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor="#0070F3" stopOpacity="0.18" />
@@ -1944,25 +1973,28 @@ export function AdminDashboard({
                     <animate attributeName="stroke-dashoffset" from="1000" to="0" dur="760ms" fill="freeze" calcMode="spline" keySplines="0.22 1 0.36 1" />
                   </path>
 
-                  {chartGeometry.points.map((point, index) => (
+                  {chartGeometry.points.filter((point) => point.isActive).map((point) => {
+                    const index = chartGeometry.points.indexOf(point);
+                    return (
                     <g key={`${point.x}-${point.y}`} onMouseEnter={() => setActiveChartIndex(index)} onMouseLeave={() => setActiveChartIndex(null)}>
                       <line x1={point.x} y1={chartGeometry.paddingY} x2={point.x} y2={chartGeometry.height - chartGeometry.paddingY} stroke="#0070F3" strokeWidth="1" opacity={activeChartIndex === index ? 0.35 : 0} />
                       <circle cx={point.x} cy={point.y} r={activeChartIndex === index ? "5" : "2.5"} fill="#FFFFFF" stroke="#0070F3" strokeWidth="2" className="transition-all duration-200" />
                       <circle cx={point.x} cy={point.y} r="16" fill="transparent" className="cursor-pointer" opacity="0" />
                     </g>
-                  ))}
+                    );
+                  })}
                 </svg>
                 ) : (
                   <EmptyState label={copy.notEnoughData} />
                 )}
 
-                {activeChartIndex !== null && chartRenderSeries[activeChartIndex] && chartHasData ? (
+                {activeChartIndex !== null && activeChartPoint?.isActive && chartRenderSeries[activeChartIndex] && chartHasData ? (
                   <div
                     className="absolute top-4 rounded-[12px] border border-zinc-200 bg-white/95 px-3 py-2 text-sm font-medium text-zinc-700 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur"
-                    style={{ left: `${Math.min(78, Math.max(4, (chartGeometry.points[activeChartIndex]?.x || 0) / chartGeometry.width * 100))}%` }}
+                    style={{ left: `${Math.min(78, Math.max(4, (activeChartPoint.x || 0) / chartGeometry.width * 100))}%` }}
                   >
                     <span className="block text-zinc-500">{chartRenderSeries[activeChartIndex]?.label}</span>
-                    <span className="text-zinc-950">{chartGeometry.points[activeChartIndex]?.value.toLocaleString()}</span>
+                    <span className="text-zinc-950">{activeChartPoint.value.toLocaleString()}</span>
                   </div>
                 ) : null}
 
@@ -2387,14 +2419,13 @@ export function AdminDashboard({
             </div>
 
             <div className={cx("overflow-x-auto rounded-[18px] border border-zinc-200 bg-white", containedScrollClass)}>
-              <div className="grid min-w-[860px] grid-cols-[48px_minmax(240px,1fr)_140px_150px_150px_90px_170px] items-center border-b border-zinc-100 bg-white px-5 py-4 text-sm font-semibold text-zinc-500">
+              <div className="grid min-w-[720px] grid-cols-[48px_minmax(260px,1fr)_140px_150px_150px_110px] items-center border-b border-zinc-100 bg-white px-5 py-4 text-sm font-semibold text-zinc-500">
                 <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAllUsers} className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500" />
                 <span>{copy.userColumn}</span>
                 <span>{copy.lastLogin}</span>
                 <span>{copy.lastSeen}</span>
                 <span>{copy.newsletterButton}</span>
                 <span>{copy.countryLabel}</span>
-                <span>{copy.actions}</span>
               </div>
               {isUsersLoading ? (
                 <div className="space-y-2 p-3">
@@ -2403,7 +2434,7 @@ export function AdminDashboard({
                   ))}
                 </div>
               ) : filteredUsers.length ? (
-                <div className={cx("max-h-[560px] min-w-[860px] divide-y divide-zinc-100 overflow-y-auto", containedScrollClass)}>
+                <div className={cx("max-h-[560px] min-w-[720px] divide-y divide-zinc-100 overflow-y-auto", containedScrollClass)}>
                   {filteredUsers.map((user) => {
                     const email = user.email.toLowerCase();
                     const subscribed = newsletterStatusByEmail.get(email) === "subscribed";
@@ -2414,24 +2445,37 @@ export function AdminDashboard({
                     const checked = selectedUserSet.has(user.email);
 
                     return (
-                      <div key={user.id} className="grid grid-cols-[48px_minmax(240px,1fr)_140px_150px_150px_90px_170px] items-center px-5 py-4">
+                      <div
+                        key={user.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleSelectUser(user.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleSelectUser(user.id);
+                          }
+                        }}
+                        className={cx(
+                          "grid cursor-pointer grid-cols-[48px_minmax(260px,1fr)_140px_150px_150px_110px] items-center px-5 py-4 transition hover:bg-zinc-50 focus:bg-indigo-50/60 focus:outline-none",
+                          selectedUserId === user.id && "bg-indigo-50/60",
+                        )}
+                      >
                         <input
                           type="checkbox"
                           checked={checked}
+                          onClick={(event) => event.stopPropagation()}
                           onChange={() => toggleUserSelection(user.email)}
                           className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="grid h-10 w-10 place-items-center rounded-full border border-zinc-200 bg-zinc-50 text-sm font-bold uppercase text-zinc-600">
+                          <span className={cx(
+                            "grid h-10 w-10 place-items-center rounded-full border text-sm font-bold uppercase",
+                            selectedUserId === user.id ? "border-indigo-200 bg-white text-indigo-700" : "border-zinc-200 bg-zinc-50 text-zinc-600",
+                          )}>
                             {user.email.slice(0, 1)}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectUser(user.id)}
-                            className="truncate text-left text-sm font-semibold text-zinc-950 transition hover:text-indigo-700"
-                          >
-                            {user.email}
-                          </button>
+                          <span className="min-w-0 truncate text-sm font-semibold text-zinc-950">{user.email}</span>
                         </div>
                         <span className="text-sm font-medium text-zinc-600">{formatDateTime(user.last_sign_in_at)}</span>
                         <span className="text-sm font-medium text-zinc-600">{formatDateTime(user.last_seen_at)}</span>
@@ -2443,21 +2487,6 @@ export function AdminDashboard({
                         <span className="min-w-0 text-sm font-semibold text-zinc-700">
                           <CountryWithFlag country={country.country} countryCode={country.countryCode} />
                         </span>
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={`mailto:${user.email}`}
-                            className="inline-flex h-9 items-center rounded-[11px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
-                          >
-                            {copy.sendEmail}
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectUser(user.id)}
-                            className="inline-flex h-9 items-center rounded-[11px] bg-zinc-950 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
-                          >
-                            {copy.details}
-                          </button>
-                        </div>
                       </div>
                     );
                   })}

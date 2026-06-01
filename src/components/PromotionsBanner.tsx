@@ -38,11 +38,11 @@ function getTrackItems(text: string, linkLabel: string) {
 
 function getOrCreateStorageId(key: string, storage: Storage) {
   const existing = storage.getItem(key);
-  if (existing && existing.trim()) {
+  if (existing && existing.trim().startsWith("v2_")) {
     return existing;
   }
 
-  const next = crypto.randomUUID();
+  const next = `v2_${crypto.randomUUID()}`;
   storage.setItem(key, next);
   return next;
 }
@@ -126,8 +126,8 @@ export function PromotionsBanner({ locale, visible, onClose }: PromotionsBannerP
     event.preventDefault();
 
     try {
-      const anonymousId = typeof window !== "undefined" ? getOrCreateStorageId("perfoumer.analytics.anonymous-id", window.localStorage) : "";
-      const sessionId = typeof window !== "undefined" ? getOrCreateStorageId("perfoumer.analytics.session-id", window.sessionStorage) : "";
+      const anonymousId = typeof window !== "undefined" ? getOrCreateStorageId("perfoumer.analytics.v2.anonymous-id", window.localStorage) : "";
+      const sessionId = typeof window !== "undefined" ? getOrCreateStorageId("perfoumer.analytics.v2.session-id", window.localStorage) : "";
       const session = await supabase?.auth.getSession();
       const user = session?.data?.session?.user ?? null;
 
