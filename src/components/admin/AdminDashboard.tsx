@@ -5,12 +5,16 @@ import {
   Eye,
   EnvelopeOpen,
   Clock,
+  Code,
+  PaperPlaneRight,
   Warning,
   TrendUp,
   UserCircle,
   Trash,
+  X,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -83,6 +87,15 @@ type AdminUserCartItem = {
   created_at: string;
 };
 
+type NewsletterSubscriber = {
+  email: string;
+  locale: "az" | "en" | "ru";
+  source: string;
+  status: "subscribed" | "unsubscribed";
+  createdAt: string;
+  unsubscribedAt: string;
+};
+
 const dashboardCopy = {
   az: {
     dashboard: "İnformasiya Paneli",
@@ -134,6 +147,28 @@ const dashboardCopy = {
     cart: "Səbət",
     topCountries: "Top ölkələr",
     noCountryData: "Ölkə məlumatı yoxdur.",
+    newsletterButton: "Newsletter",
+    newsletterTitle: "Newsletter abunələri",
+    newsletterSubtitle: "Abunə olanları və çıxanları idarə edin",
+    subscribed: "Abunədir",
+    unsubscribed: "Çıxıb",
+    sendNewsletter: "Göndər",
+    emailSubject: "Email başlığı",
+    emailTitle: "Məktub başlığı",
+    emailBody: "Məktub mətni",
+    emailHtml: "Custom HTML",
+    presetTemplate: "Hazır şablon",
+    customTemplate: "Custom HTML",
+    newsletterMode: "Newsletter",
+    directMode: "Main inbox",
+    loadSubscribers: "Abunələr yüklənir...",
+    noSubscribers: "Newsletter abunəsi yoxdur.",
+    subscribedOnlyHint: "Göndərim yalnız aktiv abunələrə gedəcək. Çıxanlar siyahıda görünür, amma email almır.",
+    emailSendSuccess: "{count} email göndərildi.",
+    emailSendError: "Email göndərilmədi.",
+    close: "Bağla",
+    emailPreview: "Canlı önizləmə",
+    emailPreviewHint: "HTML burada email kimi göstərilir. {{unsubscribeUrl}} göndərim zamanı real linklə əvəz olunacaq.",
   },
   en: {
     dashboard: "Dashboard",
@@ -185,6 +220,28 @@ const dashboardCopy = {
     cart: "Cart",
     topCountries: "Top countries",
     noCountryData: "No country data yet.",
+    newsletterButton: "Newsletter",
+    newsletterTitle: "Newsletter subscribers",
+    newsletterSubtitle: "Manage subscribed and unsubscribed contacts",
+    subscribed: "Subscribed",
+    unsubscribed: "Unsubscribed",
+    sendNewsletter: "Send",
+    emailSubject: "Email subject",
+    emailTitle: "Email title",
+    emailBody: "Email body",
+    emailHtml: "Custom HTML",
+    presetTemplate: "Preset template",
+    customTemplate: "Custom HTML",
+    newsletterMode: "Newsletter",
+    directMode: "Main inbox",
+    loadSubscribers: "Loading subscribers...",
+    noSubscribers: "No newsletter subscribers yet.",
+    subscribedOnlyHint: "Sending goes only to active subscribers. Unsubscribed contacts stay visible but will not receive email.",
+    emailSendSuccess: "{count} emails sent.",
+    emailSendError: "Email could not be sent.",
+    close: "Close",
+    emailPreview: "Live preview",
+    emailPreviewHint: "HTML renders here like an email. {{unsubscribeUrl}} is replaced with a real link when sent.",
   },
 };
 
@@ -249,7 +306,37 @@ function MiniMetric({
   );
 }
 
+function escapePreviewHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatNewsletterSource(value: string, locale: AdminLocale) {
+  const normalized = value.trim().toLowerCase();
+  const sourceLabels: Record<string, { az: string; en: string }> = {
+    footer_style: { az: "Sayt footer forması", en: "Website footer form" },
+    footer: { az: "Sayt footer forması", en: "Website footer form" },
+    unsubscribe_history: { az: "Abunəlikdən çıxma tarixçəsi", en: "Unsubscribe history" },
+    newsletter: { az: "Newsletter", en: "Newsletter" },
+  };
+
+  if (sourceLabels[normalized]) {
+    return sourceLabels[normalized][locale];
+  }
+
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase()) || (locale === "az" ? "Newsletter" : "Newsletter");
+}
+
 export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("allTime");
@@ -269,8 +356,30 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
   const [userDetailTab, setUserDetailTab] = useState<"sessions" | "wishlist" | "cart">("sessions");
   const [isUserItemsLoading, setIsUserItemsLoading] = useState(false);
   const [userItemsError, setUserItemsError] = useState<string | null>(null);
+  const [newsletterOpen, setNewsletterOpen] = useState(false);
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
+  const [isNewsletterLoading, setIsNewsletterLoading] = useState(false);
+  const [newsletterError, setNewsletterError] = useState<string | null>(null);
+  const [newsletterStatus, setNewsletterStatus] = useState<string | null>(null);
+  const [isNewsletterSending, setIsNewsletterSending] = useState(false);
+  const [newsletterTemplateMode, setNewsletterTemplateMode] = useState<"preset" | "custom">("preset");
+  const [newsletterDeliveryMode, setNewsletterDeliveryMode] = useState<"newsletter" | "direct">("newsletter");
+  const [newsletterSubject, setNewsletterSubject] = useState(locale === "az" ? "Perfoumer yenilikləri" : "Perfoumer updates");
+  const [newsletterTitle, setNewsletterTitle] = useState(locale === "az" ? "Yeni təkliflər sizi gözləyir" : "New offers are waiting");
+  const [newsletterBody, setNewsletterBody] = useState(
+    locale === "az"
+      ? "Salam! Perfoumer-də seçilmiş ətirlər və yeni kampaniyalar hazırdır."
+      : "Hi! Selected perfumes and new campaigns are ready at Perfoumer.",
+  );
+  const [newsletterHtml, setNewsletterHtml] = useState(
+    "<h1>Perfoumer updates</h1><p>Write your custom HTML here.</p><p><a href=\"{{unsubscribeUrl}}\">Unsubscribe</a></p>",
+  );
   const supabase = getSupabaseBrowserClient();
   const copy = dashboardCopy[locale];
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchStats = useCallback(async (filter: DateFilter, start?: string, end?: string) => {
     setIsLoading(true);
@@ -326,6 +435,79 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
       setIsUsersLoading(false);
     }
   }, []);
+
+  const fetchNewsletterSubscribers = useCallback(async () => {
+    setIsNewsletterLoading(true);
+    setNewsletterError(null);
+
+    try {
+      const response = await fetch("/api/admin/newsletter", { cache: "no-store" });
+      const data = await response.json() as {
+        subscribers?: NewsletterSubscriber[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch newsletter subscribers");
+      }
+
+      setNewsletterSubscribers(data.subscribers ?? []);
+    } catch (err) {
+      setNewsletterError(err instanceof Error ? err.message : "Failed to load newsletter subscribers");
+    } finally {
+      setIsNewsletterLoading(false);
+    }
+  }, []);
+
+  const openNewsletterPanel = useCallback(() => {
+    setNewsletterOpen(true);
+    setNewsletterStatus(null);
+    void fetchNewsletterSubscribers();
+  }, [fetchNewsletterSubscribers]);
+
+  const handleSendNewsletter = useCallback(async () => {
+    setIsNewsletterSending(true);
+    setNewsletterError(null);
+    setNewsletterStatus(null);
+
+    try {
+      const response = await fetch("/api/admin/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: newsletterSubject,
+          title: newsletterTitle,
+          body: newsletterBody,
+          customHtml: newsletterHtml,
+          templateMode: newsletterTemplateMode,
+          deliveryMode: newsletterDeliveryMode,
+          recipients: "subscribed",
+        }),
+      });
+      const data = await response.json() as { sent?: number; error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || copy.emailSendError);
+      }
+
+      setNewsletterStatus(copy.emailSendSuccess.replace("{count}", String(data.sent ?? 0)));
+      void fetchNewsletterSubscribers();
+    } catch (err) {
+      setNewsletterError(err instanceof Error ? err.message : copy.emailSendError);
+    } finally {
+      setIsNewsletterSending(false);
+    }
+  }, [
+    copy.emailSendError,
+    copy.emailSendSuccess,
+    fetchNewsletterSubscribers,
+    newsletterBody,
+    newsletterDeliveryMode,
+    newsletterHtml,
+    newsletterSubject,
+    newsletterTemplateMode,
+    newsletterTitle,
+  ]);
 
   useEffect(() => {
     void fetchUsers();
@@ -542,6 +724,34 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
     () => users.filter((user) => user.is_online).length,
     [users],
   );
+  const newsletterSubscribedCount = useMemo(
+    () => newsletterSubscribers.filter((subscriber) => subscriber.status === "subscribed").length,
+    [newsletterSubscribers],
+  );
+  const newsletterUnsubscribedCount = newsletterSubscribers.length - newsletterSubscribedCount;
+  const newsletterPreviewHtml = useMemo(() => {
+    if (newsletterTemplateMode === "custom") {
+      return newsletterHtml.replace(
+        /\{\{\s*unsubscribeUrl\s*\}\}/gi,
+        "#unsubscribe-preview",
+      );
+    }
+
+    return `
+      <div style="font-family:Arial,sans-serif;background:#f4f4f2;padding:24px;">
+        <div style="max-width:660px;margin:0 auto;background:#ffffff;border:1px solid #e8e5df;border-radius:18px;padding:30px;">
+          <p style="margin:0 0 14px;font-size:12px;letter-spacing:0.16em;color:#6b7280;text-transform:uppercase;">Perfoumer ${newsletterDeliveryMode === "newsletter" ? "Newsletter" : "Message"}</p>
+          <h1 style="margin:0 0 14px;font-size:30px;line-height:1.14;color:#111827;">${escapePreviewHtml(newsletterTitle)}</h1>
+          <div style="font-size:16px;line-height:1.75;color:#374151;white-space:pre-line;">${escapePreviewHtml(newsletterBody)}</div>
+          ${
+            newsletterDeliveryMode === "newsletter"
+              ? '<div style="border-top:1px solid #ebe8e2;margin-top:26px;padding-top:18px;"><p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:#6b7280;">Bu məktubu Perfoumer newsletter abunəliyinizə görə aldınız.</p><a href="#unsubscribe-preview" style="display:inline-block;padding:10px 16px;border:1px solid #d6d3ce;border-radius:999px;color:#111827;text-decoration:none;font-size:13px;">Unsubscribe</a></div>'
+              : ""
+          }
+        </div>
+      </div>
+    `;
+  }, [newsletterBody, newsletterDeliveryMode, newsletterHtml, newsletterTemplateMode, newsletterTitle]);
 
   return (
     <div className="w-full space-y-5">
@@ -757,6 +967,14 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
                     {copy.updated}: {formatDateTime(usersMeta.generatedAt)}
                   </span>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={openNewsletterPanel}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-100"
+                >
+                  <EnvelopeOpen size={14} weight="bold" />
+                  {copy.newsletterButton}
+                </button>
               </div>
             </div>
 
@@ -1085,6 +1303,221 @@ export function AdminDashboard({ locale = "en" }: { locale?: AdminLocale }) {
           </div>
         </div>
       )}
+
+      {newsletterOpen && mounted ? createPortal(
+        <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm">
+          <div className="flex h-[min(92dvh,900px)] w-[min(1180px,100%)] flex-col overflow-hidden rounded-[22px] border border-zinc-200 bg-white shadow-[0_26px_90px_rgba(2,6,23,0.28)]">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                  {copy.newsletterButton}
+                </p>
+                <h3 className="mt-2 text-lg font-semibold text-zinc-950">{copy.newsletterTitle}</h3>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">{copy.newsletterSubtitle}</p>
+              </div>
+              <button
+                type="button"
+                aria-label={copy.close}
+                className="grid h-9 w-9 place-items-center rounded-[10px] border border-zinc-200 bg-white text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950"
+                onClick={() => setNewsletterOpen(false)}
+              >
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.25fr)]">
+              <div className="min-h-0 border-b border-zinc-100 bg-zinc-50/70 p-4 lg:border-b-0 lg:border-r">
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  <MiniMetric label={copy.subscribed} value={newsletterSubscribedCount} tone="emerald" />
+                  <MiniMetric label={copy.unsubscribed} value={newsletterUnsubscribedCount} tone="rose" />
+                </div>
+                <p className="mb-3 rounded-[14px] border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                  {copy.subscribedOnlyHint}
+                </p>
+
+                {newsletterError ? (
+                  <div className="mb-3 rounded-[14px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                    {newsletterError}
+                  </div>
+                ) : null}
+
+                {newsletterStatus ? (
+                  <div className="mb-3 rounded-[14px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                    {newsletterStatus}
+                  </div>
+                ) : null}
+
+                <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+                  {isNewsletterLoading ? (
+                    <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-xs font-medium text-zinc-500">
+                      {copy.loadSubscribers}
+                    </div>
+                  ) : null}
+
+                  {!isNewsletterLoading && newsletterSubscribers.length === 0 ? (
+                    <div className="rounded-[16px] border border-zinc-200 bg-white px-4 py-6 text-center text-xs font-medium text-zinc-500">
+                      {copy.noSubscribers}
+                    </div>
+                  ) : null}
+
+                  {newsletterSubscribers.map((subscriber) => (
+                    <div key={subscriber.email} className="rounded-[16px] border border-zinc-200 bg-white p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-zinc-950">{subscriber.email}</p>
+                          <p className="mt-1 text-[11px] text-zinc-500">
+                            {formatNewsletterSource(subscriber.source, locale)} · {subscriber.locale.toUpperCase()}
+                          </p>
+                        </div>
+                        <span
+                          className={[
+                            "shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold",
+                            subscriber.status === "subscribed"
+                              ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                              : "border-rose-100 bg-rose-50 text-rose-700",
+                          ].join(" ")}
+                        >
+                          {subscriber.status === "subscribed" ? copy.subscribed : copy.unsubscribed}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[10px] text-zinc-400">
+                        {subscriber.status === "unsubscribed" && subscriber.unsubscribedAt
+                          ? `${copy.unsubscribed}: ${formatDateTime(subscriber.unsubscribedAt)}`
+                          : subscriber.createdAt
+                            ? `${copy.updated}: ${formatDateTime(subscriber.createdAt)}`
+                            : copy.newsletterButton}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+                <div className="grid gap-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-1">
+                      {[
+                        ["preset", copy.presetTemplate, <EnvelopeOpen key="preset" size={15} weight="bold" />],
+                        ["custom", copy.customTemplate, <Code key="custom" size={15} weight="bold" />],
+                      ].map(([mode, label, icon]) => (
+                        <button
+                          key={String(mode)}
+                          type="button"
+                          onClick={() => setNewsletterTemplateMode(mode as "preset" | "custom")}
+                          className={[
+                            "inline-flex h-10 w-1/2 items-center justify-center gap-2 rounded-[12px] text-xs font-semibold transition",
+                            newsletterTemplateMode === mode ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900",
+                          ].join(" ")}
+                        >
+                          {icon}
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-1">
+                      {[
+                        ["newsletter", copy.newsletterMode],
+                        ["direct", copy.directMode],
+                      ].map(([mode, label]) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setNewsletterDeliveryMode(mode as "newsletter" | "direct")}
+                          className={[
+                            "inline-flex h-10 w-1/2 items-center justify-center rounded-[12px] text-xs font-semibold transition",
+                            newsletterDeliveryMode === mode ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900",
+                          ].join(" ")}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <label className="block">
+                    <span className="text-xs font-semibold text-zinc-600">{copy.emailSubject}</span>
+                    <input
+                      className="mt-2 h-11 w-full rounded-[14px] border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                      value={newsletterSubject}
+                      onChange={(event) => setNewsletterSubject(event.target.value)}
+                    />
+                  </label>
+
+                  {newsletterTemplateMode === "preset" ? (
+                    <>
+                      <label className="block">
+                        <span className="text-xs font-semibold text-zinc-600">{copy.emailTitle}</span>
+                        <input
+                          className="mt-2 h-11 w-full rounded-[14px] border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                          value={newsletterTitle}
+                          onChange={(event) => setNewsletterTitle(event.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-semibold text-zinc-600">{copy.emailBody}</span>
+                        <textarea
+                          rows={9}
+                          className="mt-2 w-full resize-y rounded-[14px] border border-zinc-200 bg-white px-3 py-3 text-sm leading-6 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                          value={newsletterBody}
+                          onChange={(event) => setNewsletterBody(event.target.value)}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-600">{copy.emailHtml}</span>
+                      <textarea
+                        rows={14}
+                        spellCheck={false}
+                        className="mt-2 w-full resize-y rounded-[14px] border border-zinc-200 bg-zinc-950 px-3 py-3 font-mono text-xs leading-6 text-zinc-50 outline-none transition placeholder:text-zinc-500 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                        value={newsletterHtml}
+                        onChange={(event) => setNewsletterHtml(event.target.value)}
+                      />
+                    </label>
+                  )}
+
+                  <div className="rounded-[18px] border border-zinc-200 bg-zinc-50 p-3">
+                    <div className="mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
+                      <div>
+                        <p className="text-xs font-semibold text-zinc-950">{copy.emailPreview}</p>
+                        <p className="mt-1 text-[11px] leading-5 text-zinc-500">{copy.emailPreviewHint}</p>
+                      </div>
+                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-500">
+                        {newsletterTemplateMode === "custom" ? copy.customTemplate : copy.presetTemplate}
+                      </span>
+                    </div>
+                    <div className="overflow-hidden rounded-[14px] border border-zinc-200 bg-white">
+                      <iframe
+                        title={copy.emailPreview}
+                        sandbox=""
+                        srcDoc={newsletterPreviewHtml}
+                        className="h-[320px] w-full bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-zinc-500">
+                      {copy.subscribed}: {newsletterSubscribedCount.toLocaleString()} · {copy.unsubscribed}: {newsletterUnsubscribedCount.toLocaleString()}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void handleSendNewsletter()}
+                      disabled={isNewsletterSending || newsletterSubscribedCount === 0}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-[14px] bg-zinc-900 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <PaperPlaneRight size={16} weight="bold" />
+                      {isNewsletterSending ? copy.loadingStats : copy.sendNewsletter}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 }

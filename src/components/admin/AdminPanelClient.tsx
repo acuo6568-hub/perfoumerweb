@@ -3942,7 +3942,7 @@ export function AdminPanelClient({
                   { value: "branding", label: copy.branding, icon: <TextT size={16} weight="bold" /> },
                   { value: "aiChat", label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
                   { value: "header", label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
-                  { value: "qoxunuLogs", label: adminText(locale, "İstifadəçilər", "Users"), icon: <UserCircle size={16} weight="bold" /> },
+                  { value: "qoxunuLogs", label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: <Sparkle size={16} weight="bold" /> },
                   { value: "assistant", label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: <Sparkle size={16} weight="bold" /> },
                 ].map((item) => (
                   <button
@@ -4065,7 +4065,8 @@ export function AdminPanelClient({
         <div
           key={view}
           className={cx(
-            "flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6 pb-32 pt-0 pr-4 sm:pr-5 lg:pr-6",
+            "flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6 pt-0 pr-4 sm:pr-5 lg:pr-6",
+            view === "dashboard" ? "pb-6" : "pb-32",
             "admin-section-stagger",
           )}
         >

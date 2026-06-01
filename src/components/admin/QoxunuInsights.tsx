@@ -45,7 +45,8 @@ type QoxunuLogsResponse = {
 const copy = {
   az: {
     title: "Qoxunu logları",
-    description: "Qoxunu testini tamamlayan istifadəçiləri, guest və giriş etmiş halları, məkanı, vaxtı və nəticələri izləyin.",
+    eyebrow: "Qoxunu tap",
+    description: "Qoxunu testini tamamlayan ziyarətçiləri, giriş etmiş profilləri, məkan siqnallarını və tövsiyə nəticələrini izləyin.",
     refresh: "Yenilə",
     loading: "Qoxunu logları yüklənir...",
     empty: "Hələ Qoxunu logu yoxdur.",
@@ -71,10 +72,13 @@ const copy = {
     warning: "Xəbərdarlıq",
     session: "Sessiya",
     language: "Dil",
+    recentActivity: "Yaxın aktivlik",
+    selectedResult: "Seçilmiş nəticə",
   },
   en: {
     title: "Qoxunu logs",
-    description: "Track who completed the scent quiz, whether they were a guest or signed in, their location, time, inputs, and final system results.",
+    eyebrow: "Qoxunu Tap",
+    description: "Track scent-quiz visitors, signed-in profiles, location signals, and the recommendations returned by the system.",
     refresh: "Refresh",
     loading: "Loading Qoxunu logs...",
     empty: "No Qoxunu logs yet.",
@@ -100,6 +104,8 @@ const copy = {
     warning: "Warning",
     session: "Session",
     language: "Language",
+    recentActivity: "Recent activity",
+    selectedResult: "Selected result",
   },
 } satisfies Record<AdminLocale, Record<string, string>>;
 
@@ -141,15 +147,42 @@ function formatDateTime(value: string) {
   return date.toLocaleString();
 }
 
-function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
+function displayLogName(log: QoxunuLog) {
+  return log.email || log.username || log.anonymousId || "Unknown";
+}
+
+function locationLabel(log: QoxunuLog) {
+  return [log.country || log.countryCode, log.city].filter(Boolean).join(" · ") || "Unknown";
+}
+
+function MetricCard({
+  label,
+  value,
+  icon,
+  tone = "zinc",
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  tone?: "zinc" | "emerald" | "indigo" | "amber";
+}) {
+  const toneClass = {
+    zinc: "border-zinc-200 bg-white text-zinc-600",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    indigo: "border-indigo-100 bg-indigo-50 text-indigo-700",
+    amber: "border-amber-100 bg-amber-50 text-amber-700",
+  };
+
   return (
-    <div className="rounded-[1.25rem] border border-zinc-200 bg-white px-4 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 text-zinc-500">{icon}</div>
-        <div>
-          <p className="text-xs font-medium text-zinc-500">{label}</p>
-          <p className="mt-1 text-lg font-semibold tracking-[-0.03em] text-zinc-950">{value}</p>
+    <div className="rounded-[20px] border border-zinc-200 bg-white p-4 shadow-[0_12px_32px_rgba(15,23,42,0.045)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-zinc-500">{label}</p>
+          <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-zinc-950">{value}</p>
         </div>
+        <span className={cx("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border", toneClass[tone])}>
+          {icon}
+        </span>
       </div>
     </div>
   );
@@ -236,38 +269,41 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-[linear-gradient(180deg,#FFFFFF_0%,#F7F7F5_100%)] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.055)] sm:p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 shadow-sm">
             <Sparkle size={14} weight="bold" />
-            {copyText.title}
+            {copyText.eyebrow}
           </div>
-          <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">{copyText.title}</h2>
+          <h2 className="mt-4 font-serif text-[2rem] font-semibold tracking-[-0.05em] text-zinc-950 sm:text-[2.4rem]">{copyText.title}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">{copyText.description}</p>
         </div>
 
-        <button type="button" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50" onClick={() => void fetchLogs()}>
+        <button type="button" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50" onClick={() => void fetchLogs()}>
           <Clock size={16} weight="bold" />
           {copyText.refresh}
         </button>
       </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label={copyText.total} value={data?.totalLogs ?? 0} icon={<Users size={18} weight="bold" />} />
-        <MetricCard label={copyText.guestCount} value={data?.guestLogs ?? 0} icon={<UserCircle size={18} weight="bold" />} />
-        <MetricCard label={copyText.signedInCount} value={data?.signedInLogs ?? 0} icon={<Users size={18} weight="bold" />} />
-        <MetricCard label={copyText.topCountries} value={data?.topCountries?.[0] ? `${data.topCountries[0].country} (${data.topCountries[0].count})` : "-"} icon={<Clock size={18} weight="bold" />} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="rounded-[1.4rem] border border-zinc-200 bg-white p-4">
-          <label className="relative block">
-            <span className="sr-only">{copyText.search}</span>
-            <MagnifyingGlass size={16} weight="bold" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input className="h-11 w-full rounded-2xl border border-zinc-300 bg-[#f7f7f5] px-4 pl-11 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={copyText.search} />
-          </label>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label={copyText.total} value={data?.totalLogs ?? 0} icon={<Users size={18} weight="bold" />} tone="indigo" />
+        <MetricCard label={copyText.guestCount} value={data?.guestLogs ?? 0} icon={<UserCircle size={18} weight="bold" />} />
+        <MetricCard label={copyText.signedInCount} value={data?.signedInLogs ?? 0} icon={<Users size={18} weight="bold" />} tone="emerald" />
+        <MetricCard label={copyText.topCountries} value={data?.topCountries?.[0] ? `${data.topCountries[0].country} (${data.topCountries[0].count})` : "-"} icon={<Clock size={18} weight="bold" />} tone="amber" />
+      </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+      <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <div className="self-start rounded-[28px] border border-zinc-200 bg-white p-4 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+          <div className="rounded-[22px] border border-zinc-200 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] p-3 shadow-sm">
+            <label className="relative block">
+              <span className="sr-only">{copyText.search}</span>
+              <MagnifyingGlass size={16} weight="bold" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input className="h-12 w-full rounded-[16px] border border-zinc-200 bg-white px-4 pl-11 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:ring-4 focus:ring-zinc-100" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={copyText.search} />
+            </label>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
             {([
               ["all", copyText.all],
               ["guest", copyText.guest],
@@ -278,24 +314,25 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
                 type="button"
                 onClick={() => setFilter(value)}
                 className={cx(
-                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  "h-9 rounded-full border px-3 text-xs font-semibold transition",
                   filter === value
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                    ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_8px_18px_rgba(15,23,42,0.16)]"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950",
                 )}
               >
                 {label}
               </button>
             ))}
           </div>
+          </div>
 
-          <div className="mt-5 min-h-[28rem] space-y-2 overflow-hidden rounded-[1.25rem] border border-zinc-200 bg-zinc-50/80 p-2">
-            <div className="flex items-center justify-between px-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
-              <span>{copyText.details}</span>
-              <span>{filteredLogs.length}</span>
+          <div className="mt-5">
+            <div className="flex items-center justify-between px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              <span>{copyText.recentActivity}</span>
+              <span className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[10px] text-zinc-500">{filteredLogs.length}</span>
             </div>
 
-            <div className="h-[min(56vh,36rem)] space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 flex max-h-[min(56vh,36rem)] flex-col gap-2 overflow-y-auto pr-2">
               {isLoading ? (
                 <div className="px-3 py-3 text-sm text-zinc-500">{copyText.loading}</div>
               ) : error ? (
@@ -306,25 +343,39 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
                     key={log.id}
                     type="button"
                     className={cx(
-                      "w-full rounded-2xl border px-3 py-3 text-left transition",
+                      "group mb-0 w-full shrink-0 rounded-[18px] border p-3 text-left transition duration-200",
                       selectedLog?.id === log.id
-                        ? "border-zinc-900 bg-white shadow-[0_12px_26px_rgba(0,0,0,0.06)]"
-                        : "border-zinc-200 bg-white/80 hover:border-zinc-300 hover:bg-white",
+                        ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_18px_34px_rgba(15,23,42,0.14)]"
+                        : "border-zinc-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_14px_28px_rgba(15,23,42,0.06)]",
                     )}
                     onClick={() => setSelectedLogId(log.id)}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-zinc-950">
-                          {log.isSignedIn ? log.email || log.username || log.anonymousId : log.anonymousId}
-                        </p>
-                        <p className="mt-1 text-xs text-zinc-500">{log.country || log.countryCode || "Unknown"} • {formatDateTime(log.createdAt)}</p>
-                      </div>
-                      <span className={cx("rounded-full px-2 py-1 text-[11px] font-semibold", log.isGuest ? "bg-zinc-100 text-zinc-700" : "bg-zinc-900 text-white")}>
-                        {log.isGuest ? copyText.guestBadge : copyText.signedInBadge}
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={cx(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border text-xs font-bold uppercase",
+                          selectedLog?.id === log.id
+                            ? "border-white/15 bg-white/10 text-white"
+                            : "border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:bg-white",
+                        )}
+                      >
+                        {displayLogName(log).slice(0, 1)}
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={cx("min-w-0 truncate text-sm font-semibold", selectedLog?.id === log.id ? "text-white" : "text-zinc-950")}>{displayLogName(log)}</p>
+                          <span className={cx("shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold", selectedLog?.id === log.id ? "bg-white/10 text-white" : log.isGuest ? "bg-zinc-100 text-zinc-700" : "bg-zinc-950 text-white")}>
+                            {log.isGuest ? copyText.guestBadge : copyText.signedInBadge}
+                          </span>
+                        </div>
+                        <div className={cx("mt-1 flex flex-wrap items-center gap-1.5 text-[11px]", selectedLog?.id === log.id ? "text-white/60" : "text-zinc-500")}>
+                          <span>{locationLabel(log)}</span>
+                          <span className={cx("h-1 w-1 rounded-full", selectedLog?.id === log.id ? "bg-white/30" : "bg-zinc-300")} />
+                          <span>{formatDateTime(log.createdAt)}</span>
+                        </div>
+                        <p className={cx("mt-2 overflow-hidden text-ellipsis text-xs leading-5", selectedLog?.id === log.id ? "text-white/68" : "text-zinc-500")} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{log.summary || log.freeText || "-"}</p>
+                      </div>
                     </div>
-                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-500">{log.summary || log.freeText || "-"}</p>
                   </button>
                 ))
               ) : (
@@ -334,10 +385,10 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
           </div>
         </div>
 
-        <div className="rounded-[1.6rem] border border-zinc-200 bg-white p-5 shadow-[0_18px_40px_rgba(17,24,39,0.06)]">
+        <div className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_22px_58px_rgba(15,23,42,0.065)]">
           {selectedLog ? (
             <div className="space-y-6">
-              <div>
+              <div className="rounded-[24px] border border-zinc-200 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={cx("rounded-full px-2.5 py-1 text-[11px] font-semibold", selectedLog.isGuest ? "bg-zinc-100 text-zinc-700" : "bg-zinc-900 text-white")}>
                     {selectedLog.isGuest ? copyText.guestBadge : copyText.signedInBadge}
@@ -345,8 +396,9 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
                   <span className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">{copyText.language}: {selectedLog.locale || "-"}</span>
                   <span className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">{copyText.session}: {selectedLog.id.slice(0, 8)}</span>
                 </div>
-                <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-zinc-950">{selectedLog.email || selectedLog.username || selectedLog.anonymousId}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">{formatDateTime(selectedLog.createdAt)} • {selectedLog.country || selectedLog.countryCode || "Unknown"} {selectedLog.city ? `• ${selectedLog.city}` : ""}</p>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">{copyText.selectedResult}</p>
+                <h3 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.05em] text-zinc-950">{displayLogName(selectedLog)}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">{formatDateTime(selectedLog.createdAt)} • {locationLabel(selectedLog)}</p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -430,8 +482,8 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-[1.35rem] border border-zinc-200 bg-zinc-50/80 p-4">
-      <h4 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">{title}</h4>
+    <section className="rounded-[22px] border border-zinc-200 bg-zinc-50/80 p-4">
+      <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">{title}</h4>
       <div className="mt-3 space-y-2">{children}</div>
     </section>
   );
@@ -441,7 +493,7 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-zinc-200/70 py-2 last:border-b-0">
       <p className="text-xs font-medium text-zinc-500">{label}</p>
-      <p className="max-w-[70%] text-right text-sm font-medium text-zinc-900">{value}</p>
+      <p className="max-w-[70%] break-words text-right text-sm font-medium text-zinc-900">{value}</p>
     </div>
   );
 }

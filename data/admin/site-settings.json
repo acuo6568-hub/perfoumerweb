@@ -9,7 +9,7 @@
   "twitterTitle": "Perfoumer | Orijinal və Premium Ətirlər",
   "twitterDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
   "promotions": {
-    "enabled": true,
+    "enabled": false,
     "mode": "discount",
     "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry, Tom Ford Tobacco Vanille və və daha 3 ətir ilə yeni favoritini tap. Bu seçimlər indi daha sərfəlidir.",
     "textByLocale": {
@@ -31,7 +31,7 @@
     "gradientAngle": 68,
     "textColor": "#ffffff",
     "speed": 28,
-    "closable": false,
+    "closable": true,
     "countdownEnabled": false,
     "scheduleStartAt": "",
     "scheduleEndAt": "",

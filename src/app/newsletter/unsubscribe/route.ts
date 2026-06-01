@@ -286,7 +286,7 @@ export async function GET(request: Request) {
 
   const { error: deleteError } = await supabase
     .from("newsletter_subscribers")
-    .delete()
+    .update({ status: "unsubscribed" })
     .eq("email", consumed.subscriber_email);
 
   if (deleteError) {
