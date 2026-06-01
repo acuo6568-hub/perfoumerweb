@@ -6,6 +6,11 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
+import {
+  appendAdminAuditLog,
+  buildAdminDataAuditEntries,
+  getAdminAuditContext,
+} from "@/lib/admin-audit";
 import { getAdminData, saveAdminData } from "@/lib/admin-data";
 import { parseNotesCsv, parsePerfumesCsv } from "@/lib/admin-csv";
 
@@ -69,6 +74,11 @@ export async function POST(request: Request) {
       });
 
       revalidateCatalog();
+      const auditContext = await getAdminAuditContext(request);
+      await appendAdminAuditLog(buildAdminDataAuditEntries(current, saved, {
+        action: "admin_csv_import_notes",
+        ...auditContext,
+      }));
       return Response.json({ ok: true, ...saved });
     }
 
@@ -81,6 +91,11 @@ export async function POST(request: Request) {
     });
 
     revalidateCatalog();
+    const auditContext = await getAdminAuditContext(request);
+    await appendAdminAuditLog(buildAdminDataAuditEntries(current, saved, {
+      action: "admin_csv_import_perfumes",
+      ...auditContext,
+    }));
     return Response.json({ ok: true, ...saved });
   } catch (error) {
     const message = error instanceof Error ? error.message : "CSV import failed.";

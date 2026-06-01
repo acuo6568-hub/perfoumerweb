@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { ADMIN_SESSION_COOKIE, isAdminConfigured, validateAdminSessionToken } from "@/lib/admin-auth";
+import {
+  appendAdminAuditLog,
+  buildAdminDataAuditEntries,
+  getAdminAuditContext,
+} from "@/lib/admin-audit";
 import { getAdminData, saveAdminData } from "@/lib/admin-data";
 import { normalizePerfumeDiscount } from "@/lib/discounts";
 import type { Perfume } from "@/types/catalog";
@@ -354,6 +359,11 @@ async function applyAction(action: AssistantAction, imageUrl: string | undefined
   revalidateTag("perfumes", { expire: 0 });
   revalidateTag("notes", { expire: 0 });
   revalidatePath("/", "layout");
+  const auditContext = await getAdminAuditContext();
+  await appendAdminAuditLog(buildAdminDataAuditEntries(data, result, {
+    action: `admin_assistant_${action.type}`,
+    ...auditContext,
+  }));
 
   return NextResponse.json({
     ok: true,

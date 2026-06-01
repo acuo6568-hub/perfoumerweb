@@ -6,6 +6,11 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
+import {
+  appendAdminAuditLog,
+  buildAdminDataAuditEntries,
+  getAdminAuditContext,
+} from "@/lib/admin-audit";
 import { getAdminData, saveAdminData } from "@/lib/admin-data";
 
 type SavePayload = {
@@ -69,6 +74,7 @@ export async function PUT(request: Request) {
   }
 
   try {
+    const before = await getAdminData();
     console.log("[API] PUT - Calling saveAdminData...");
     const data = await saveAdminData({
       perfumes: payload.perfumes,
@@ -83,6 +89,13 @@ export async function PUT(request: Request) {
     revalidateTag("notes", { expire: 0 });
     revalidatePath("/", "layout");
     console.log("[API] PUT - Cache revalidated");
+
+    const auditContext = await getAdminAuditContext(request);
+    const auditEntries = buildAdminDataAuditEntries(before, data, {
+      action: "admin_data_save",
+      ...auditContext,
+    });
+    await appendAdminAuditLog(auditEntries);
 
     console.log("[API] PUT - Returning success response");
     return Response.json({ ok: true, ...data });

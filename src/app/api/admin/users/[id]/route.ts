@@ -6,6 +6,7 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
+import { appendAdminAuditLog, getAdminAuditContext } from "@/lib/admin-audit";
 import { createClient } from "@supabase/supabase-js";
 
 async function ensureAuthorized() {
@@ -27,7 +28,7 @@ async function ensureAuthorized() {
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const authError = await ensureAuthorized();
@@ -75,6 +76,21 @@ export async function DELETE(
       throw new Error("Failed to delete user");
     }
 
+    const auditContext = await getAdminAuditContext(request);
+    await appendAdminAuditLog({
+      action: "admin_user_delete",
+      section: "users",
+      targetType: "user",
+      targetId: id,
+      targetLabel: userData.user.email || id,
+      summary: `Marked user "${userData.user.email || id}" as deleted.`,
+      changes: [
+        { path: "user_metadata.is_deleted", before: stringifyBoolean(existingMetadata.is_deleted), after: "true" },
+        { path: "user_metadata.deleted_at", before: stringifyBoolean(existingMetadata.deleted_at), after: String(nextMetadata.deleted_at) },
+      ],
+      ...auditContext,
+    });
+
     return Response.json({
       ok: true,
       user: {
@@ -87,4 +103,9 @@ export async function DELETE(
     console.error("Admin delete user API error:", error);
     return Response.json({ error: message }, { status: 400 });
   }
+}
+
+function stringifyBoolean(value: unknown) {
+  if (value === undefined || value === null || value === "") return "(empty)";
+  return String(value);
 }

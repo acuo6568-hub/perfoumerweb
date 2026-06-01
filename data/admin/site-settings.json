@@ -50,7 +50,7 @@
     "messages": []
   },
   "homeHeader": {
-    "mode": "video",
+    "mode": "rotating",
     "videoUrl": "/perfumevid.MP4",
     "videoTitle": "KAYALI Perfumes",
     "videoDescription": "Discover the full KAYALI collections.",

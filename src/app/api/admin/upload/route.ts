@@ -9,6 +9,7 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
+import { appendAdminAuditLog, getAdminAuditContext } from "@/lib/admin-audit";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const ALLOWED_FOLDERS = new Set(["perfumes", "notes"]);
@@ -104,6 +105,22 @@ export async function POST(request: Request) {
     await mkdir(publicDir, { recursive: true });
     await writeFile(absolutePath, buffer);
 
+    const auditContext = await getAdminAuditContext(request);
+    await appendAdminAuditLog({
+      action: "admin_image_upload",
+      section: folder,
+      targetType: "image",
+      targetId: fileName,
+      targetLabel: file.name,
+      summary: `Uploaded image "${file.name}" to ${folder}.`,
+      changes: [{ path: "url", before: "(empty)", after: `/api/uploads/admin/${folder}/${fileName}` }],
+      metadata: {
+        size: file.size,
+        storage: "local",
+      },
+      ...auditContext,
+    });
+
     return Response.json({
       ok: true,
       url: `/api/uploads/admin/${folder}/${fileName}`,
@@ -138,6 +155,23 @@ export async function POST(request: Request) {
         if (uploadResult.error) {
           throw uploadResult.error;
         }
+
+        const auditContext = await getAdminAuditContext(request);
+        await appendAdminAuditLog({
+          action: "admin_image_upload",
+          section: folder,
+          targetType: "image",
+          targetId: fileName,
+          targetLabel: file.name,
+          summary: `Uploaded image "${file.name}" to ${folder}.`,
+          changes: [{ path: "url", before: "(empty)", after: `/api/uploads/admin/${folder}/${fileName}` }],
+          metadata: {
+            size: file.size,
+            storage: "supabase",
+            bucket: SUPABASE_STORAGE_BUCKET,
+          },
+          ...auditContext,
+        });
 
         return Response.json({
           ok: true,

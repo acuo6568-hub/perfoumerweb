@@ -8,6 +8,7 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
+import { appendAdminAuditLog, getAdminAuditContext } from "@/lib/admin-audit";
 import {
   checkPythonSetup,
   removeBackground,
@@ -148,11 +149,28 @@ export async function POST(request: Request) {
 
     // Use local background remover (no API needed)
     try {
-      return await removeBackgroundLocally(
+      const response = await removeBackgroundLocally(
         imageUrl,
         itemSlug,
         itemType as "perfume" | "note",
       );
+      if (response.ok) {
+        const auditContext = await getAdminAuditContext(request);
+        await appendAdminAuditLog({
+          action: "admin_remove_background",
+          section: itemType as "perfume" | "note",
+          targetType: itemType as "perfume" | "note",
+          targetId: itemSlug,
+          targetLabel: itemSlug,
+          summary: `Removed background for ${itemType} "${itemSlug}".`,
+          changes: [{ path: "image.background", before: "original", after: "removed" }],
+          metadata: {
+            sourceImage: imageUrl,
+          },
+          ...auditContext,
+        });
+      }
+      return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Background removal failed";
       return Response.json(

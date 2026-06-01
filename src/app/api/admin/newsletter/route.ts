@@ -6,6 +6,7 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
+import { appendAdminAuditLog, getAdminAuditContext } from "@/lib/admin-audit";
 import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import { absoluteUrl } from "@/lib/seo";
 import { generateUnsubscribeToken } from "@/lib/newsletter-email";
@@ -306,10 +307,33 @@ export async function POST(request: Request) {
       });
     }
 
+    const sent = results.filter((item) => item.ok).length;
+    const failed = results.filter((item) => !item.ok).length;
+    const auditContext = await getAdminAuditContext(request);
+    await appendAdminAuditLog({
+      action: "admin_newsletter_send",
+      section: "newsletter",
+      targetType: "campaign",
+      targetId: subject,
+      targetLabel: subject,
+      summary: `Sent newsletter "${subject}" to ${sent} subscriber${sent === 1 ? "" : "s"} (${failed} failed).`,
+      changes: [
+        { path: "subject", before: "(empty)", after: subject },
+        { path: "templateMode", before: "(empty)", after: templateMode },
+        { path: "deliveryMode", before: "(empty)", after: deliveryMode },
+      ],
+      metadata: {
+        sent,
+        failed,
+        skippedUnsubscribed: targetContacts.length - activeTargets.length,
+      },
+      ...auditContext,
+    });
+
     return Response.json({
       ok: results.some((item) => item.ok),
-      sent: results.filter((item) => item.ok).length,
-      failed: results.filter((item) => !item.ok).length,
+      sent,
+      failed,
       skippedUnsubscribed: targetContacts.length - activeTargets.length,
       results,
     });

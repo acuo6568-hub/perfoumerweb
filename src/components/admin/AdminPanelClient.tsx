@@ -74,6 +74,7 @@ import { DEFAULT_PROMOTION_SETTINGS } from "@/lib/promotions";
 import type { Note, Perfume, PerfumeDiscount, PerfumeSize } from "@/types/catalog";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AdminCommandCenter } from "@/components/admin/AdminCommandCenter";
+import { AdminAuditTrail } from "@/components/admin/AdminAuditTrail";
 import { AiChatInsights } from "@/components/admin/AiChatInsights";
 import { QoxunuInsights } from "@/components/admin/QoxunuInsights";
 import { BrandSelector } from "@/components/admin/BrandSelector";
@@ -136,7 +137,7 @@ type PromoAnalyticsState = {
     browser?: string | null;
   }>;
 };
-type AdminView = "dashboard" | "assistant" | "aiChat" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
+type AdminView = "dashboard" | "assistant" | "audit" | "aiChat" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
 const ui = {
   shell:
     "overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl",
@@ -3941,6 +3942,7 @@ export function AdminPanelClient({
                   { value: "promotions", label: copy.promotions, icon: <Sparkle size={16} weight="bold" /> },
                   { value: "branding", label: copy.branding, icon: <TextT size={16} weight="bold" /> },
                   { value: "aiChat", label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
+                  { value: "audit", label: adminText(locale, "Audit", "Audit"), icon: <ClockCounterClockwise size={16} weight="bold" /> },
                   { value: "header", label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
                   { value: "qoxunuLogs", label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: <Sparkle size={16} weight="bold" /> },
                   { value: "assistant", label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: <Sparkle size={16} weight="bold" /> },
@@ -4013,6 +4015,13 @@ export function AdminPanelClient({
                 <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
                   <p className="text-sm font-semibold text-zinc-900">{copy.qoxunuLogs}</p>
                   <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.qoxunuLogsDescription}</p>
+                </div>
+              ) : view === "audit" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{adminText(locale, "Audit", "Audit")}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">
+                    {adminText(locale, "Admin paneldə saxlanan bütün dəyişiklikləri izləyin.", "Track every saved admin-panel change.")}
+                  </p>
                 </div>
               ) : view === "promotions" ? (
                 <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
@@ -4141,6 +4150,10 @@ export function AdminPanelClient({
           ) : view === "aiChat" ? (
             <div className="space-y-6">
               <AiChatInsights locale={locale} />
+            </div>
+          ) : view === "audit" ? (
+            <div className="space-y-6">
+              <AdminAuditTrail locale={locale} />
             </div>
           ) : view === "qoxunuLogs" ? (
             <div className="space-y-6">
