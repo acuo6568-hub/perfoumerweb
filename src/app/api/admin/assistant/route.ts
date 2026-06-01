@@ -161,6 +161,167 @@ function buildPerfumeCandidates(prompt: string, perfumes: Perfume[]) {
       }));
 }
 
+function normalizeMatchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\bsausage\b/g, "sauvage")
+    .replace(/\bdafrique\b/g, "d afrique")
+    .replace(/['’`]/g, "")
+    .replace(/[^a-z0-9а-яөүşıəğç]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scorePerfumeName(query: string, perfume: Perfume) {
+  const normalizedQuery = normalizeMatchText(query);
+  if (!normalizedQuery) return 0;
+
+  const haystack = normalizeMatchText(`${perfume.brand} ${perfume.name} ${perfume.slug}`);
+  const compactQuery = normalizedQuery.replace(/\s+/g, "");
+  const compactHaystack = haystack.replace(/\s+/g, "");
+  const queryTokens = normalizedQuery.split(" ").filter((token) => token.length > 1);
+  let score = 0;
+
+  if (haystack.includes(normalizedQuery)) score += 80;
+  if (compactHaystack.includes(compactQuery)) score += 70;
+
+  for (const token of queryTokens) {
+    if (haystack.includes(token)) score += token.length > 3 ? 12 : 6;
+  }
+
+  if (normalizeMatchText(perfume.brand) && normalizedQuery.includes(normalizeMatchText(perfume.brand))) {
+    score += 18;
+  }
+
+  if (normalizeMatchText(perfume.name) && normalizedQuery.includes(normalizeMatchText(perfume.name))) {
+    score += 24;
+  }
+
+  return score;
+}
+
+function findBestPerfumeByName(query: string, perfumes: Perfume[]) {
+  const best = perfumes
+    .map((perfume) => ({ perfume, score: scorePerfumeName(query, perfume) }))
+    .sort((left, right) => right.score - left.score)[0];
+
+  return best && best.score >= 24 ? best.perfume : null;
+}
+
+function cleanDiscountTargetName(value: string) {
+  return value
+    .replace(/\b(if exists|if it exists|if available|əgər varsa|varsa)\b/gi, " ")
+    .replace(/\b(do|make|set|apply|put|qoy|et|edin)\b/gi, " ")
+    .replace(/\b(discount|sale|promo|endirim)\b/gi, " ")
+    .replace(/\b(for|to|on|üçün)\b/gi, " ")
+    .replace(/[,:;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildDeterministicDiscountPlan(
+  prompt: string,
+  perfumes: Perfume[],
+  locale: AssistantLocale,
+): AssistantPlan | null {
+  const lower = prompt.toLowerCase();
+  if (!/(discount|sale|promo|endirim)/i.test(lower) || !/(azn|₼|manat)/i.test(lower)) {
+    return null;
+  }
+
+  const matches = Array.from(
+    prompt.matchAll(
+      /(?:^|,|\band\b|\bvə\b)\s*(.*?)(?:(\d{1,3})\s*ml\s*)?(\d+(?:[.,]\d+)?)\s*(?:azn|₼|manat)(?:\s*(?:for|üçün)?\s*(\d{1,3})\s*ml)?/gi,
+    ),
+  );
+
+  const parsedUpdates = matches
+    .map((match) => {
+      const targetName = cleanDiscountTargetName(match[1] ?? "");
+      const value = Number((match[3] ?? "").replace(",", "."));
+      const ml = Number(match[2] || match[4] || "");
+      if (!targetName || !Number.isFinite(value) || value <= 0) return null;
+      return { targetName, value, ml: Number.isFinite(ml) && ml > 0 ? ml : 50 };
+    })
+    .filter((item): item is { targetName: string; value: number; ml: number } => item !== null);
+
+  if (!parsedUpdates.length) {
+    return null;
+  }
+
+  const found = parsedUpdates
+    .map((update) => {
+      const perfume = findBestPerfumeByName(update.targetName, perfumes);
+      if (!perfume) return null;
+      return {
+        ...update,
+        perfume,
+      };
+    })
+    .filter((item): item is { targetName: string; value: number; ml: number; perfume: Perfume } => item !== null);
+  const missing = parsedUpdates.filter(
+    (update) => !found.some((item) => item.targetName === update.targetName),
+  );
+
+  if (!found.length) {
+    return null;
+  }
+
+  const countLabel = locale === "az" ? `${found.length} məhsul` : `${found.length} product${found.length === 1 ? "" : "s"}`;
+  const missingText = missing.length
+    ? locale === "az"
+      ? ` Tapılmayanlar keçiləcək: ${missing.map((item) => item.targetName).join(", ")}.`
+      : ` Missing items will be skipped: ${missing.map((item) => item.targetName).join(", ")}.`
+    : "";
+
+  return {
+    mode: "ready",
+    title: locale === "az" ? "Məhsul endirimləri" : "Product discounts",
+    summary:
+      locale === "az"
+        ? `${countLabel} üçün ölçüyə görə yeni endirim qiyməti hazırlanıb.`
+        : `Prepared fixed sale prices by size for ${countLabel}.`,
+    reply:
+      locale === "az"
+        ? `${countLabel} üçün endirimi tətbiq etməyə hazıram.${missingText}`
+        : `I can apply these discounts to ${countLabel}.${missingText}`,
+    intent: "set_perfume_discount",
+    confidence: 0.92,
+    needsMoreContext: false,
+    questions: [],
+    action: {
+      type: "set_perfume_discount",
+      payload: {
+        discountUpdates: found.map((item) => ({
+          targetSlug: item.perfume.slug,
+          targetName: `${item.perfume.brand} ${item.perfume.name}`.trim(),
+          enabled: true,
+          mode: "fixed",
+          value: item.value,
+          scope: { kind: "size", ml: item.ml },
+          deadline: { kind: "none" },
+          showDeadline: true,
+        })),
+        skipMissing: true,
+      },
+    },
+    preview: {
+      kind: "product",
+      title: locale === "az" ? "Endirim planı" : "Discount plan",
+      description:
+        locale === "az"
+          ? "Aşağıdakı məhsullarda yalnız göstərilən ölçünün final satış qiyməti dəyişəcək."
+          : "Only the listed size gets the final sale price for each product.",
+      imageUrl: found[0]?.perfume.image || undefined,
+      meta: found.slice(0, 6).map((item) => ({
+        label: `${item.perfume.brand} ${item.perfume.name}`.trim(),
+        value: `${item.ml}ML -> ${item.value} AZN`,
+      })),
+    },
+    suggestedReplies: [],
+  };
+}
+
   function buildCatalogCountPlan(count: number): AssistantPlan {
     return {
       mode: "ready",
@@ -331,12 +492,13 @@ function buildFallbackPlan(prompt: string, candidates: ReturnType<typeof buildPe
       needsMoreContext: true,
       questions: [
         {
-          key: "targetSlug",
+          key: "targetName",
           label: "Product",
-          question: "Which perfume should get the discount?",
+          question: "Which perfume should get the discount? Choose a product from the list or type the catalog name.",
           type: candidates.length ? "select" : "text",
-          options: candidates.map((item) => `${item.brand} ${item.name} (${item.slug})`),
-          placeholder: "Product name or slug",
+          options: candidates.map((item) => `${item.brand} ${item.name}`.trim()),
+          placeholder: "Example: Trussardi Uomo",
+          helper: "Use the product name as admins see it in the catalog. No technical key is needed.",
           required: true,
           uiHint: "product",
         },
@@ -400,8 +562,8 @@ function buildFallbackPlan(prompt: string, candidates: ReturnType<typeof buildPe
           label: "Target",
           question: "Which product or brand should I use?",
           type: candidates.length ? "select" : "text",
-          options: candidates.map((item) => `${item.brand} ${item.name} (${item.slug})`),
-          placeholder: "Product name, slug, or brand",
+          options: candidates.map((item) => `${item.brand} ${item.name}`.trim()),
+          placeholder: "Product name or brand",
           required: true,
           uiHint: "product",
         },
@@ -563,6 +725,11 @@ export async function POST(request: Request) {
   }
 
   const candidates = buildPerfumeCandidates(`${prompt} ${Object.values(answers).join(" ")}`, perfumes);
+  const deterministicDiscountPlan = buildDeterministicDiscountPlan(prompt, perfumes, locale);
+  if (deterministicDiscountPlan) {
+    return NextResponse.json(deterministicDiscountPlan);
+  }
+
   const apiKey = process.env.QOXUNU_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -686,6 +853,7 @@ export async function POST(request: Request) {
           const raw = parsed.action as Record<string, unknown>;
           const type =
             raw.type === "set_perfume_discount" ||
+            raw.type === "bulk_update_prices" ||
             raw.type === "toggle_promo_banner" ||
             raw.type === "update_promo_copy" ||
             raw.type === "create_perfume_draft" ||

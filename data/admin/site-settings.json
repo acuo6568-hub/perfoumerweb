@@ -9,19 +9,19 @@
   "twitterTitle": "Perfoumer | Orijinal və Premium Ətirlər",
   "twitterDescription": "Perfoumer-də orijinal və uzunömürlü kişi və qadın ətirlərini kəşf edin. Lüks, niş və dizayner brendləri, sürətli çatdırılma və xüsusi kolleksiyalar - hamısı bir onlayn ətir mağazasında.",
   "promotions": {
-    "enabled": false,
+    "enabled": true,
     "mode": "discount",
-    "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille indi endirimdədir. Sevdiyiniz ətri seçin və fürsəti qaçırmayın.",
+    "text": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry, Tom Ford Tobacco Vanille və və daha 3 ətir ilə yeni favoritini tap. Bu seçimlər indi daha sərfəlidir.",
     "textByLocale": {
-      "az": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille indi endirimdədir. Sevdiyiniz ətri seçin və fürsəti qaçırmayın.",
-      "en": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille are on discount",
-      "ru": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry və Tom Ford Tobacco Vanille со скидкой"
+      "az": "MFK Baccarat Rouge 540, Tom Ford Lost Cherry, Tom Ford Tobacco Vanille və və daha 3 ətir ilə yeni favoritini tap. Bu seçimlər indi daha sərfəlidir.",
+      "en": "For a limited time, 6 selected perfumes are available at special prices.",
+      "ru": "Только на ограниченный срок: 6 избранных ароматов по специальным ценам."
     },
     "linkHref": "/offers",
-    "linkLabel": "Endirimi gör",
+    "linkLabel": "Təklifi gör",
     "linkLabelByLocale": {
       "az": "Təklifi gör",
-      "en": "See offer",
+      "en": "View Offer",
       "ru": "Посмотреть предложение"
     },
     "backgroundMode": "solid",
@@ -31,7 +31,7 @@
     "gradientAngle": 68,
     "textColor": "#ffffff",
     "speed": 28,
-    "closable": true,
+    "closable": false,
     "countdownEnabled": false,
     "scheduleStartAt": "",
     "scheduleEndAt": "",
@@ -42,7 +42,10 @@
     "sourcePerfumeSlugs": [
       "baccarat-rouge-540",
       "lost-cherry",
-      "tobacco-vanille"
+      "tobacco-vanille",
+      "sauvage-elixir",
+      "trussardi-uomo",
+      "bal-dafrique"
     ],
     "messages": []
   },

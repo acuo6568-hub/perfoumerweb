@@ -87,8 +87,9 @@ function uniqueSlug(slug: string, perfumes: Perfume[]) {
 }
 
 function findPerfumeIndex(perfumes: Perfume[], rawSlug: string, rawName: string) {
-  const slug = normalizeSlug(rawSlug);
-  const name = normalizeSlug(rawName);
+  const parentheticalSlug = rawSlug.match(/\(([^)]+)\)/)?.[1] || rawName.match(/\(([^)]+)\)/)?.[1] || "";
+  const slug = normalizeSlug(parentheticalSlug || rawSlug);
+  const name = normalizeSlug(rawName || rawSlug);
 
   return perfumes.findIndex((item) => {
     if (slug && item.slug === slug) return true;
@@ -130,27 +131,45 @@ async function applyAction(action: AssistantAction, imageUrl: string | undefined
 
   if (action.type === "set_perfume_discount") {
     const payload = action.payload as Record<string, unknown>;
-    const targetSlug = normalizeText(payload.targetSlug, "", 120);
-    const targetName = normalizeText(payload.targetName, "", 120);
-    const index = findPerfumeIndex(perfumes, targetSlug, targetName);
+    const updates = Array.isArray(payload.discountUpdates) ? payload.discountUpdates : [payload];
+    let appliedCount = 0;
 
-    if (index < 0) {
-      throw new Error("target_perfume_not_found");
+    for (const rawUpdate of updates) {
+      if (!rawUpdate || typeof rawUpdate !== "object") continue;
+
+      const update = rawUpdate as Record<string, unknown>;
+      const targetSlug = normalizeText(
+        update.targetSlug ?? update.perfumeSlug ?? update.productId ?? update.targetPerfume,
+        "",
+        120,
+      );
+      const targetName = normalizeText(update.targetName ?? update.targetPerfume, "", 120);
+      const index = findPerfumeIndex(perfumes, targetSlug, targetName);
+
+      if (index < 0) {
+        if (payload.skipMissing) continue;
+        throw new Error("target_perfume_not_found");
+      }
+
+      const discount = normalizePerfumeDiscount({
+        enabled: Boolean(update.enabled ?? true),
+        mode: update.mode === "fixed" ? "fixed" : "percent",
+        value: Number(update.value) || 0,
+        scope: update.scope ?? { kind: "all" },
+        deadline: update.deadline ?? { kind: "none" },
+        showDeadline: Boolean(update.showDeadline ?? true),
+      });
+
+      perfumes[index] = {
+        ...perfumes[index],
+        discount: discount ?? perfumes[index].discount,
+      };
+      appliedCount += 1;
     }
 
-    const discount = normalizePerfumeDiscount({
-      enabled: Boolean(payload.enabled ?? true),
-      mode: payload.mode === "fixed" ? "fixed" : "percent",
-      value: Number(payload.value) || 0,
-      scope: payload.scope ?? { kind: "all" },
-      deadline: payload.deadline ?? { kind: "none" },
-      showDeadline: Boolean(payload.showDeadline ?? true),
-    });
-
-    perfumes[index] = {
-      ...perfumes[index],
-      discount: discount ?? perfumes[index].discount,
-    };
+    if (!appliedCount) {
+      throw new Error("target_perfume_not_found");
+    }
   }
 
   if (action.type === "bulk_update_prices") {

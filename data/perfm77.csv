@@ -1,5 +1,5 @@
 id,slug,title,image,image_alt,gender,price_15ml,price_30ml,price_50ml,brand,top_notes,heart_notes,base_notes,link,stock_status
-perfume-mpfrwro0,perfume-mpfrwro0,Lacoste Essential Collector Edition,/api/uploads/admin/perfumes/untitled-design-2-1779385472458-w2gvxv.png,Lacoste Essential Collector Edition,Kişi,15,25,35,Lacoste,"berqamot, tanqerin","qzlgl, istiot","pauli, nbr",,Available
+perfume-mpfrwro0,lacosteessentialcollectoredition,Lacoste Essential Collector Edition,/api/uploads/admin/perfumes/untitled-design-2-1779385472458-w2gvxv.png,Lacoste Essential Collector Edition,Kişi,15,25,35,Lacoste,"berqamot, tanqerin","qzlgl, istiot","pauli, nbr",,Available
 perfume-mpfrk6n9,perfume-mpfrk6n9,Teriaq İntense,/api/uploads/admin/perfumes/untitled-design-1779384489652-ob06g7.png,Teriaq İntense,Unisex,25,45,70,Lattafa,"zfran, berqamot","darn, likr","nbr, benzoin, tonka-lobyas",,Available
 perfume-mpeif4uo,perfume-mpeif4uo,Moon Tale,/api/uploads/admin/perfumes/untitled-design-1-1779308668432-avlxgr.png,Moon Tale,Unisex,32,55,90,Louis Vuitton,"pion, moruq","maqnoliya, jasmin",tirah,,Available
 perfume-mpei35vq,perfume-mpei35vq,Rain Tea,/api/uploads/admin/perfumes/untitled-design-1779308103593-2je24w.png,Rain Tea,Unisex,32,55,90,Louis Vuitton,"lemonqras, yal-ay","maqnoliya, aac-notlar",qzlgl,,Available

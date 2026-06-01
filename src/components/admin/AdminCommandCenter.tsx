@@ -397,6 +397,65 @@ function mergeActionWithAnswers(
   return { ...action, payload };
 }
 
+function hasDiscountTarget(payload: Record<string, unknown>) {
+  return Boolean(
+    payload.perfumeId ||
+      payload.perfumeSlug ||
+      payload.perfumeSlugs ||
+      payload.productId ||
+      payload.targetPerfume ||
+      payload.targetSlug ||
+      payload.targetName ||
+      payload.discountUpdates,
+  );
+}
+
+function buildProductClarificationQuestion(locale: AdminLocale): AssistantQuestion {
+  return {
+    key: "targetName",
+    label: locale === "az" ? "Məhsulu təsdiqləyin" : "Confirm product",
+    question:
+      locale === "az"
+        ? "AI məhsulu tam müəyyən edə bilmədi. Endirim tətbiq olunacaq ətirin kataloqdakı adını yazın."
+        : "AI could not identify the exact product. Type the catalog product name that should receive the discount.",
+    type: "text",
+    placeholder: locale === "az" ? "Məsələn: Trussardi Uomo" : "Example: Trussardi Uomo",
+    helper:
+      locale === "az"
+        ? "Məhsul adı kifayətdir. Texniki açar və ya xüsusi kod yazmağa ehtiyac yoxdur."
+        : "A product name is enough. No technical key or special code is needed.",
+    required: true,
+    uiHint: "perfume",
+  };
+}
+
+function polishQuestionForAdmin(question: AssistantQuestion, locale: AdminLocale): AssistantQuestion {
+  const combinedText = `${question.label} ${question.question} ${question.placeholder ?? ""} ${question.helper ?? ""}`.toLowerCase();
+  const isTechnicalProductTarget =
+    ["targetSlug", "targetPerfume", "perfumeSlug", "productId"].includes(question.key) ||
+    (question.uiHint === "perfume" && (combinedText.includes("slug") || combinedText.includes("'all'") || combinedText.includes(" all ")));
+
+  if (!isTechnicalProductTarget) {
+    return question;
+  }
+
+  return {
+    ...question,
+    key: "targetName",
+    label: locale === "az" ? "Məhsulu təsdiqləyin" : "Confirm product",
+    question:
+      locale === "az"
+        ? "Endirim hansı ətirə tətbiq olunsun? Kataloqdakı məhsul adını seçin və ya yazın."
+        : "Which perfume should get this discount? Choose or type the catalog product name.",
+    placeholder: locale === "az" ? "Məsələn: Trussardi Uomo" : "Example: Trussardi Uomo",
+    helper:
+      locale === "az"
+        ? "Məhsul adı kifayətdir. Texniki açar və ya xüsusi kod yazmağa ehtiyac yoxdur."
+        : "A product name is enough. No technical key or special code is needed.",
+    uiHint: "perfume",
+  };
+}
+
 function ActionPreview({ plan, locale }: { plan: AssistantPlan; locale: AdminLocale }) {
   const text = copy[locale];
 
@@ -492,8 +551,7 @@ export function AdminCommandCenter({
   const [lastCommand, setLastCommand] = useState("");
   const [lastAssistantReply, setLastAssistantReply] = useState("");
   const [motionKey, setMotionKey] = useState(0);
-  const [showConfirmApplyAll, setShowConfirmApplyAll] = useState(false);
-  const [pendingForceApplyAction, setPendingForceApplyAction] = useState<AssistantAction | null>(null);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resolvedAction = useMemo(
@@ -594,39 +652,38 @@ export function AdminCommandCenter({
         throw new Error(body.error || text.error);
       }
 
-      setPlan(body);
       // If assistant suggests setting a perfume discount but did not include explicit targets,
-      // add a clarifying question so the user can specify a target perfume or explicitly confirm "ALL".
+      // add a clarifying question so the user can specify a catalog product in plain language.
+      let nextPlan: AssistantPlan = {
+        ...body,
+        questions: (body.questions ?? []).map((question) => polishQuestionForAdmin(question, locale)),
+      };
       try {
-        const action = body.action;
-        const hasTargets = Boolean(
-          action?.payload && (action.payload.perfumeId || action.payload.perfumeSlug || action.payload.perfumeSlugs || action.payload.productId || action.payload.targetPerfume),
-        );
+        const action = nextPlan.action;
+        const hasTargets = Boolean(action?.payload && hasDiscountTarget(action.payload));
         if (action?.type === "set_perfume_discount" && !hasTargets) {
-          const clarifyingQuestion: AssistantQuestion = {
-            key: "targetPerfume",
-            label: locale === "az" ? "Hədəf ətir" : "Target perfume",
-            question:
-              locale === "az"
-                ? "Hədəf ətiri daxil edin (slug və ya ad). 'ALL' daxil etsəniz hər şeyə tətbiq olunacaq."
-                : "Enter the target perfume slug or name. Type 'ALL' to apply to all perfumes.",
-            type: "text",
-            required: true,
-            uiHint: "perfume",
+          const clarifyingQuestion = buildProductClarificationQuestion(locale);
+          const hasExistingProductQuestion = (nextPlan.questions ?? []).some((question) =>
+            ["targetName", "targetSlug", "targetPerfume"].includes(question.key),
+          );
+          nextPlan = {
+            ...nextPlan,
+            mode: "clarify",
+            questions: hasExistingProductQuestion ? nextPlan.questions ?? [] : [...(nextPlan.questions ?? []), clarifyingQuestion],
+            needsMoreContext: true,
           };
-
-          setPlan((current) => ({ ...(current ?? body), questions: [...(body.questions ?? []), clarifyingQuestion], needsMoreContext: true }));
-          setAnswers((current) => ({ ...current, [clarifyingQuestion.key]: "" }));
         }
       } catch {
         // noop
       }
-      setFlowState(body.mode === "ready" ? "ready" : "idle");
+      setPlan(nextPlan);
+      setShowQuestionModal(nextPlan.questions.length > 0);
+      setFlowState(nextPlan.mode === "ready" ? "ready" : "idle");
       setLastAssistantReply(body.reply);
       setMotionKey((current) => current + 1);
       setAnswers((current) =>
         Object.fromEntries(
-          body.questions.map((question) => [question.key, current[question.key] ?? (question.type === "toggle" ? "false" : "")]),
+          nextPlan.questions.map((question) => [question.key, current[question.key] ?? (question.type === "toggle" ? "false" : "")]),
         ) as Record<string, string>,
       );
       appendMessage("assistant", body.reply);
@@ -654,12 +711,31 @@ export function AdminCommandCenter({
       const actionToApply = resolvedAction ?? plan.action;
       const payload = (actionToApply && (actionToApply as AssistantAction).payload) || {};
       if (actionToApply?.type === "set_perfume_discount") {
-        const hasTarget = Boolean(
-          payload.perfumeId || payload.perfumeSlug || payload.perfumeSlugs || payload.targetPerfume || payload.productId,
-        );
+        const hasTarget = hasDiscountTarget(payload);
         if (!hasTarget) {
-          setPendingForceApplyAction(actionToApply ?? null);
-          setShowConfirmApplyAll(true);
+          const clarifyingQuestion = buildProductClarificationQuestion(locale);
+          setPlan((current) => {
+            const base = current ?? plan;
+            const hasExistingProductQuestion = (base.questions ?? []).some((question) =>
+              ["targetName", "targetSlug", "targetPerfume"].includes(question.key),
+            );
+            return {
+              ...base,
+              mode: "clarify",
+              needsMoreContext: true,
+              questions: hasExistingProductQuestion ? base.questions : [...(base.questions ?? []), clarifyingQuestion],
+            };
+          });
+          setAnswers((current) => ({ ...current, [clarifyingQuestion.key]: current[clarifyingQuestion.key] ?? "" }));
+          setShowQuestionModal(true);
+          setFlowState("idle");
+          setStatus({
+            tone: "neutral",
+            message:
+              locale === "az"
+                ? "Tətbiqdən əvvəl məhsulu təsdiqləyin."
+                : "Confirm the product before applying.",
+          });
           setIsApplying(false);
           return;
         }
@@ -710,46 +786,6 @@ export function AdminCommandCenter({
       setStatus({ tone: "error", message: error instanceof Error ? error.message : text.error });
     } finally {
       setIsApplying(false);
-    }
-  };
-
-  const handleConfirmForceApply = async () => {
-    setShowConfirmApplyAll(false);
-    if (!pendingForceApplyAction) return;
-
-    setIsApplying(true);
-    setFlowState("applying");
-    setStatus({ tone: "neutral", message: text.thinking });
-
-    try {
-      const response = await fetch("/api/admin/assistant/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: pendingForceApplyAction, answers, imageUrl: "", forceApplyAll: true }),
-      });
-
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(body.error || text.error);
-      }
-
-      setStatus({ tone: "success", message: text.success });
-      setFlowState("applied");
-      setLastAssistantReply(text.success);
-      setMotionKey((current) => current + 1);
-      appendMessage("assistant", text.success);
-      await onRefresh();
-
-      setPlan(null);
-      setPrompt("");
-      setAttachment(null);
-      setAnswers({});
-    } catch (error) {
-      setFlowState("error");
-      setStatus({ tone: "error", message: error instanceof Error ? error.message : text.error });
-    } finally {
-      setIsApplying(false);
-      setPendingForceApplyAction(null);
     }
   };
 
@@ -814,6 +850,7 @@ export function AdminCommandCenter({
                   setFlowState("idle");
                   setLastCommand("");
                   setLastAssistantReply("");
+                  setShowQuestionModal(false);
                   setMotionKey((current) => current + 1);
                 }}
               >
@@ -954,30 +991,41 @@ export function AdminCommandCenter({
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.questionsTitle}</p>
               <div className="mt-3 space-y-3">
                 {questionCount ? (
-                  plan?.questions.map((question) => (
-                    <QuestionCard key={question.key}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-zinc-950">{question.label}</p>
-                          <p className="mt-1 text-sm leading-6 text-zinc-600">{question.question}</p>
+                  <QuestionCard>
+                    <div className="flex items-start gap-3">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-amber-100 bg-amber-50 text-amber-700">
+                        <Sparkle size={16} weight="bold" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-zinc-950">
+                          {locale === "az" ? "Təsdiq lazımdır" : "Confirmation needed"}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-zinc-600">
+                          {locale === "az"
+                            ? "AI planı hazırlayıb, amma tətbiqdən əvvəl bəzi detalları sizinlə dəqiqləşdirməlidir."
+                            : "AI prepared the plan, but a few details need confirmation before anything changes."}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {plan?.questions.map((question) => (
+                            <span
+                              key={question.key}
+                              className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-600"
+                            >
+                              {question.label}
+                            </span>
+                          ))}
                         </div>
-                        <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-zinc-500 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">
-                          {question.type}
-                        </span>
+                        <button
+                          type="button"
+                          className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-[12px] bg-zinc-900 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                          onClick={() => setShowQuestionModal(true)}
+                        >
+                          <CheckCircle size={16} weight="bold" />
+                          {locale === "az" ? "Detalları təsdiqlə" : "Confirm details"}
+                        </button>
                       </div>
-                      <div className="mt-4">
-                        <QuestionInput
-                          question={question}
-                          value={answers[question.key] ?? ""}
-                          onChange={(value) => {
-                            setAnswers((current) => ({ ...current, [question.key]: value }));
-                          }}
-                          locale={locale}
-                        />
-                      </div>
-                      {question.helper ? <p className="mt-3 text-xs leading-5 text-zinc-500">{question.helper}</p> : null}
-                    </QuestionCard>
-                  ))
+                    </div>
+                  </QuestionCard>
                 ) : (
                   <QuestionCard>
                     <p className="text-sm leading-6 text-zinc-500">{text.noPlan}</p>
@@ -1088,32 +1136,76 @@ export function AdminCommandCenter({
         </aside>
       </div>
     </section>
-    {showConfirmApplyAll ? (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
-        <div className="w-[min(640px,92%)] rounded-[14px] bg-white p-6 shadow-[0_14px_40px_rgba(2,6,23,0.32)]">
-          <h3 className="text-lg font-semibold text-zinc-900">{locale === "az" ? "Əməliyyatı təsdiqləyin" : "Confirm action"}</h3>
-          <p className="mt-2 text-sm text-zinc-600">
-            {locale === "az"
-              ? "AI hədəf ətir seçməyib — bununla bütün ətirlərə endirim tətbiq olunacaq. Davam etmək istədiyinizə əminsiniz?"
-              : "The assistant didn't specify a target perfume — this will apply the discount to all perfumes. Are you sure you want to proceed?"}
-          </p>
-          <div className="mt-4 flex justify-end gap-3">
+    {showQuestionModal && plan?.questions.length ? (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/35 px-4 py-6 backdrop-blur-sm">
+        <div className="max-h-[92vh] w-[min(720px,100%)] overflow-hidden rounded-[20px] border border-zinc-200 bg-white shadow-[0_24px_80px_rgba(2,6,23,0.28)]">
+          <div className="border-b border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] px-5 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                  {locale === "az" ? "AI təsdiqi" : "AI confirmation"}
+                </p>
+                <h3 className="mt-2 text-lg font-semibold text-zinc-950">
+                  {locale === "az" ? "Tətbiqdən əvvəl bunu dəqiqləşdirək" : "Confirm this before applying"}
+                </h3>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                  {locale === "az"
+                    ? "AI əmrinizdən plan çıxardı, amma səhv məhsula və ya səhv qiymətə toxunmamaq üçün aşağıdakı məlumatı təsdiqləməlidir."
+                    : "AI understood the command, but needs this detail confirmed so it does not edit the wrong product or price."}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={text.clear}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-zinc-200 bg-white text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950"
+                onClick={() => setShowQuestionModal(false)}
+              >
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-[58vh] space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
+            {plan.questions.map((question) => (
+              <div key={question.key} className="rounded-[16px] border border-zinc-200 bg-zinc-50/70 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-zinc-950">{question.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-600">{question.question}</p>
+                </div>
+                <div className="mt-4">
+                  <QuestionInput
+                    question={question}
+                    value={answers[question.key] ?? ""}
+                    onChange={(value) => {
+                      setAnswers((current) => ({ ...current, [question.key]: value }));
+                    }}
+                    locale={locale}
+                  />
+                </div>
+                {question.helper ? <p className="mt-3 text-xs leading-5 text-zinc-500">{question.helper}</p> : null}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-zinc-100 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
             <button
               type="button"
               className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
-              onClick={() => {
-                setShowConfirmApplyAll(false);
-                setPendingForceApplyAction(null);
-              }}
+              onClick={() => setShowQuestionModal(false)}
             >
-              {locale === "az" ? "Ləğv et" : "Cancel"}
+              {locale === "az" ? "Hələ tətbiq etmə" : "Not yet"}
             </button>
             <button
               type="button"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-rose-600 px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(239,68,68,0.14)] transition hover:bg-rose-500"
-              onClick={() => void handleConfirmForceApply()}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-zinc-900 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canApply || isApplying}
+              onClick={() => {
+                setShowQuestionModal(false);
+                void handleApply();
+              }}
             >
-              {locale === "az" ? "Bəli, tətbiq et" : "Yes, apply"}
+              {isApplying ? <CircleNotch className="animate-spin" size={16} weight="bold" /> : <CheckCircle size={16} weight="bold" />}
+              {locale === "az" ? "Təsdiqlə və tətbiq et" : "Confirm and apply"}
             </button>
           </div>
         </div>

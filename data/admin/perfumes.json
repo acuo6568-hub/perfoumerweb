@@ -1,7 +1,7 @@
 [
   {
     "id": "perfume-mpfrwro0",
-    "slug": "perfume-mpfrwro0",
+    "slug": "lacosteessentialcollectoredition",
     "name": "Lacoste Essential Collector Edition",
     "brand": "Lacoste",
     "gender": "Kişi",
@@ -4530,6 +4530,19 @@
         "label": "50ML"
       }
     ],
+    "discount": {
+      "enabled": true,
+      "mode": "fixed",
+      "value": 40,
+      "scope": {
+        "kind": "size",
+        "ml": 50
+      },
+      "deadline": {
+        "kind": "none"
+      },
+      "showDeadline": true
+    },
     "noteSlugs": {
       "top": [
         "berqamot",
@@ -16914,6 +16927,19 @@
         "label": "50ML"
       }
     ],
+    "discount": {
+      "enabled": true,
+      "mode": "fixed",
+      "value": 45,
+      "scope": {
+        "kind": "size",
+        "ml": 50
+      },
+      "deadline": {
+        "kind": "none"
+      },
+      "showDeadline": true
+    },
     "noteSlugs": {
       "top": [
         "darn",
@@ -64240,6 +64266,19 @@
         "label": "50ML"
       }
     ],
+    "discount": {
+      "enabled": true,
+      "mode": "fixed",
+      "value": 20,
+      "scope": {
+        "kind": "size",
+        "ml": 50
+      },
+      "deadline": {
+        "kind": "none"
+      },
+      "showDeadline": true
+    },
     "noteSlugs": {
       "top": [
         "berqamot",
