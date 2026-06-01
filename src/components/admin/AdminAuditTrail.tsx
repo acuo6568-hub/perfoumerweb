@@ -52,7 +52,6 @@ const copy = {
     changes: "Dəyişikliklər",
     before: "Əvvəl",
     after: "Sonra",
-    metadata: "Əlavə məlumat",
     latest: "Son dəyişikliklər",
     selected: "Nə dəyişdi",
     total: "Cəmi qeydlər",
@@ -62,7 +61,7 @@ const copy = {
     to: "Yeni",
     changedBy: "Dəyişən",
     changedAt: "Vaxt",
-    item: "Element",
+    item: "Növ",
     singleChange: "1 dəyişiklik",
     manyChanges: "{count} dəyişiklik",
     noSelection: "Detalları görmək üçün audit qeydi seçin.",
@@ -82,7 +81,6 @@ const copy = {
     changes: "Changes",
     before: "Before",
     after: "After",
-    metadata: "Extra details",
     latest: "Latest changes",
     selected: "What changed",
     total: "Total entries",
@@ -92,7 +90,7 @@ const copy = {
     to: "New",
     changedBy: "Changed by",
     changedAt: "Time",
-    item: "Item",
+    item: "Type",
     singleChange: "1 change",
     manyChanges: "{count} changes",
     noSelection: "Select an audit entry to inspect the details.",
@@ -110,39 +108,97 @@ function formatDateTime(value: string) {
   return date.toLocaleString();
 }
 
-function actionLabel(action: string) {
-  const label = action
-    .replace(/^admin_/, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+const actionLabels: Record<AdminLocale, Record<string, string>> = {
+  az: {
+    admin_data_save: "Saxlandı",
+    admin_csv_import_perfumes: "Ətirlər import edildi",
+    admin_csv_import_notes: "Notlar import edildi",
+    admin_image_upload: "Şəkil yükləndi",
+    admin_remove_background: "Fon silindi",
+    admin_newsletter_send: "Newsletter göndərildi",
+    admin_user_delete: "İstifadəçi silindi",
+    admin_assistant_execute: "AI köməkçisi",
+  },
+  en: {
+    admin_data_save: "Saved",
+    admin_csv_import_perfumes: "Imported perfumes",
+    admin_csv_import_notes: "Imported notes",
+    admin_image_upload: "Uploaded image",
+    admin_remove_background: "Removed background",
+    admin_newsletter_send: "Sent newsletter",
+    admin_user_delete: "Deleted user",
+    admin_assistant_execute: "AI assistant",
+  },
+};
 
-  return label
-    .replace("Data Save", "Saved")
-    .replace("Csv Import Perfumes", "Imported perfumes")
-    .replace("Csv Import Notes", "Imported notes")
-    .replace("Image Upload", "Uploaded image")
-    .replace("Remove Background", "Removed background")
-    .replace("Newsletter Send", "Sent newsletter")
-    .replace("User Delete", "Deleted user");
-}
+const sectionLabels: Record<AdminLocale, Record<string, string>> = {
+  az: {
+    perfumes: "Ətirlər",
+    notes: "Notlar",
+    settings: "Sayt ayarları",
+    newsletter: "Newsletter",
+    users: "İstifadəçilər",
+    perfume: "Ətir",
+    note: "Not",
+    images: "Şəkillər",
+    uploads: "Yükləmələr",
+  },
+  en: {
+    perfumes: "Perfumes",
+    notes: "Notes",
+    settings: "Site settings",
+    newsletter: "Newsletter",
+    users: "Users",
+    perfume: "Perfume",
+    note: "Note",
+    images: "Images",
+    uploads: "Uploads",
+  },
+};
 
-function shortValue(value: string) {
-  return value.length > 180 ? `${value.slice(0, 177)}...` : value;
-}
+const targetTypeLabels: Record<AdminLocale, Record<string, string>> = {
+  az: {
+    site_settings: "Sayt ayarları",
+    perfume: "Ətir",
+    note: "Not",
+    image: "Şəkil",
+    campaign: "Newsletter kampaniyası",
+    user: "İstifadəçi",
+    settings: "Sayt ayarları",
+  },
+  en: {
+    site_settings: "Site settings",
+    perfume: "Perfume",
+    note: "Note",
+    image: "Image",
+    campaign: "Newsletter campaign",
+    user: "User",
+    settings: "Site settings",
+  },
+};
 
-function fieldLabel(pathValue: string) {
-  const normalized = pathValue
-    .replace(/^site\.?/, "")
-    .replace(/^settings\.?/, "")
-    .replace(/^promotions\.?/, "Promotion ")
-    .replace(/^homeHeader\.?/, "Home header ")
-    .replace(/^user_metadata\.?/, "User ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[._-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const knownLabels: Record<string, string> = {
+const fieldLabels: Record<AdminLocale, Record<string, string>> = {
+  az: {
+    name: "Ad",
+    brand: "Brend",
+    gender: "Cins",
+    image: "Şəkil",
+    imageAlt: "Şəkil alt mətni",
+    stockStatus: "Stok statusu",
+    inStock: "Mövcudluq",
+    externalLink: "Xarici link",
+    slug: "Slug",
+    sourcePerfumeSlug: "Promosiya ətri",
+    sourcePerfumeSlugs: "Promosiya ətirləri",
+    enabled: "Status",
+    mode: "Rejim",
+    text: "Mətn",
+    closable: "Bağlana bilər",
+    "Home header mode": "Ana səhifə başlığı rejimi",
+    "User is deleted": "Silinmə statusu",
+    "User deleted at": "Silinmə vaxtı",
+  },
+  en: {
     name: "Name",
     brand: "Brand",
     gender: "Gender",
@@ -158,20 +214,88 @@ function fieldLabel(pathValue: string) {
     mode: "Mode",
     text: "Text",
     closable: "Can be closed",
+    "Home header mode": "Home header mode",
     "User is deleted": "Deleted status",
     "User deleted at": "Deleted time",
-  };
+  },
+};
 
-  const direct = knownLabels[pathValue] || knownLabels[normalized];
+const valueLabels: Record<AdminLocale, Record<string, string>> = {
+  az: {
+    video: "Video",
+    rotating: "Dönən şəkillər",
+    true: "Bəli",
+    false: "Xeyr",
+    null: "Boş",
+    "(empty)": "Boş",
+  },
+  en: {
+    video: "Video",
+    rotating: "Rotating images",
+    true: "Yes",
+    false: "No",
+    null: "Empty",
+    "(empty)": "Empty",
+  },
+};
+
+function actionLabel(action: string, locale: AdminLocale) {
+  const translated = actionLabels[locale][action];
+  if (translated) return translated;
+
+  return action
+    .replace(/^admin_/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function shortValue(value: string, locale: AdminLocale) {
+  const translated = valueLabels[locale][value] ?? value;
+  return translated.length > 180 ? `${translated.slice(0, 177)}...` : translated;
+}
+
+function labelFromWords(value: string) {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function sectionLabel(section: string, locale: AdminLocale) {
+  return sectionLabels[locale][section] ?? labelFromWords(section.replace(/[._-]+/g, " "));
+}
+
+function targetTypeLabel(targetType: string, locale: AdminLocale) {
+  return targetTypeLabels[locale][targetType] ?? labelFromWords(targetType.replace(/[._-]+/g, " "));
+}
+
+function targetLabel(entry: AdminAuditEntry, locale: AdminLocale) {
+  if (entry.targetType === "site_settings" || entry.targetId === "site-settings") {
+    return targetTypeLabel("site_settings", locale);
+  }
+
+  return entry.targetLabel || entry.targetId || targetTypeLabel(entry.targetType, locale);
+}
+
+function fieldLabel(pathValue: string, locale: AdminLocale) {
+  const normalized = pathValue
+    .replace(/^site\.?/, "")
+    .replace(/^settings\.?/, "")
+    .replace(/^promotions\.?/, "Promotion ")
+    .replace(/^homeHeader\.?/, "Home header ")
+    .replace(/^user_metadata\.?/, "User ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const direct = fieldLabels[locale][pathValue] || fieldLabels[locale][normalized];
   if (direct) return direct;
 
   return normalized
-    ? normalized.replace(/\b\w/g, (letter) => letter.toUpperCase())
+    ? labelFromWords(normalized)
     : "Value";
 }
 
 function changeSentence(change: AdminAuditChange, locale: AdminLocale) {
-  const label = fieldLabel(change.path);
+  const label = fieldLabel(change.path, locale);
   return locale === "az" ? `${label} dəyişdirildi` : `${label} was changed`;
 }
 
@@ -392,7 +516,7 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
               >
                 <option value="all">{text.allSections}</option>
                 {sections.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                  <option key={item} value={item}>{sectionLabel(item, locale)}</option>
                 ))}
               </select>
             </label>
@@ -439,13 +563,13 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className={cx("truncate text-xs font-semibold", selected ? "text-white" : "text-zinc-950")}>{actionLabel(entry.action)}</span>
+                          <span className={cx("truncate text-xs font-semibold", selected ? "text-white" : "text-zinc-950")}>{actionLabel(entry.action, locale)}</span>
                           <span className={cx("shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold", selected ? "bg-white/10 text-white" : tone.badge)}>
                             {changeCountLabel(entry.changes.length, text)}
                           </span>
                         </div>
                         <p className={cx("mt-1 truncate text-sm font-semibold", selected ? "text-white" : "text-zinc-950")}>
-                          {entry.targetLabel || entry.targetId}
+                          {targetLabel(entry, locale)}
                         </p>
                         <p className={cx("mt-1 line-clamp-2 text-xs leading-5", selected ? "text-white/65" : "text-zinc-500")}>
                           {entry.changes[0] ? changeSentence(entry.changes[0], locale) : entry.summary}
@@ -470,10 +594,10 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
               <div className="rounded-[24px] border border-zinc-200 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={cx("rounded-full border px-2.5 py-1 text-[11px] font-semibold", actionTone(selectedEntry.action).badge)}>
-                    {actionLabel(selectedEntry.action)}
+                    {actionLabel(selectedEntry.action, locale)}
                   </span>
                   <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
-                    {selectedEntry.section}
+                    {sectionLabel(selectedEntry.section, locale)}
                   </span>
                   <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
                     {formatDateTime(selectedEntry.createdAt)}
@@ -481,10 +605,10 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
                 </div>
                 <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.selected}</p>
                 <h3 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.05em] text-zinc-950">
-                  {selectedEntry.targetLabel || selectedEntry.targetId}
+                  {targetLabel(selectedEntry, locale)}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  {actionLabel(selectedEntry.action)} · {changeCountLabel(selectedEntry.changes.length, text)}
+                  {actionLabel(selectedEntry.action, locale)} · {changeCountLabel(selectedEntry.changes.length, text)}
                 </p>
               </div>
 
@@ -495,7 +619,7 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
                 </div>
                 <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/80 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.item}</p>
-                  <p className="mt-2 truncate text-sm font-semibold text-zinc-900">{selectedEntry.targetType}</p>
+                  <p className="mt-2 truncate text-sm font-semibold text-zinc-900">{targetTypeLabel(selectedEntry.targetType, locale)}</p>
                 </div>
                 <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/80 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.changedAt}</p>
@@ -513,17 +637,17 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-zinc-950">{changeSentence(change, locale)}</p>
                         <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
-                          {fieldLabel(change.path)}
+                          {fieldLabel(change.path, locale)}
                         </span>
                       </div>
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
                         <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 px-3 py-3">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{text.from}</p>
-                          <p className="mt-2 break-words text-sm font-medium text-zinc-600">{shortValue(change.before)}</p>
+                          <p className="mt-2 break-words text-sm font-medium text-zinc-600">{shortValue(change.before, locale)}</p>
                         </div>
                         <div className="rounded-[16px] border border-emerald-100 bg-emerald-50 px-3 py-3">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-500">{text.to}</p>
-                          <p className="mt-2 break-words text-sm font-semibold text-emerald-900">{shortValue(change.after)}</p>
+                          <p className="mt-2 break-words text-sm font-semibold text-emerald-900">{shortValue(change.after, locale)}</p>
                         </div>
                       </div>
                     </div>
@@ -535,18 +659,6 @@ export function AdminAuditTrail({ locale = "en" }: { locale?: AdminLocale }) {
                 </div>
               )}
 
-              {selectedEntry.metadata && Object.keys(selectedEntry.metadata).length ? (
-                <div className="rounded-[22px] border border-zinc-200 bg-zinc-50/80 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">{text.metadata}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {Object.entries(selectedEntry.metadata).map(([key, value]) => (
-                      <span key={key} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-500">
-                        {key}: {String(value)}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </article>
           ) : (
             <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-[24px] border border-dashed border-zinc-300 bg-zinc-50/70 px-6 text-center">
