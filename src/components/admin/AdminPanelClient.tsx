@@ -42,6 +42,7 @@ import {
   UploadSimple,
   UserCircle,
   WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 
 import {
@@ -1857,51 +1858,58 @@ function PerfumePickerModal({
   return (
     <div
       className={cx(
-        "fixed inset-0 z-[70] flex items-center justify-center bg-zinc-950/35 px-4 py-6 backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "fixed inset-0 z-[70] flex items-end justify-center bg-zinc-950/35 px-0 py-0 backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:items-center sm:px-4 sm:py-6",
         entering ? "opacity-100" : "opacity-0",
       )}
       onClick={onClose}
     >
       <div
         className={cx(
-          "w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          entering ? "translate-y-0 scale-100 opacity-100 blur-0" : "translate-y-4 scale-[0.98] opacity-0 blur-sm",
+          "flex max-h-[100dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[26px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:max-h-[88dvh] sm:rounded-[28px]",
+          entering ? "translate-y-0 scale-100 opacity-100 blur-0" : "translate-y-5 scale-[0.98] opacity-0 blur-sm sm:translate-y-4",
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] px-5 py-4 sm:px-6">
-          <div>
+        <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{adminText(locale, "Ətir seçici", "Perfume picker")}</p>
-            <h3 className="mt-1 text-lg font-semibold tracking-[-0.04em] text-zinc-950">{adminText(locale, "Ətir seçin", "Select a perfume")}</h3>
-            <p className="mt-1 text-sm text-zinc-500">{adminText(locale, "Axtarın, önizləyin və iş sahəsindən çıxmadan dəyişin.", "Search, preview, and switch without leaving the workspace.")}</p>
+            <h3 className="mt-1 truncate text-base font-semibold tracking-[-0.03em] text-zinc-950 sm:text-lg">{adminText(locale, "Ətir seçin", "Select a perfume")}</h3>
+            <p className="mt-1 hidden text-sm text-zinc-500 sm:block">{adminText(locale, "Axtarın, önizləyin və iş sahəsindən çıxmadan dəyişin.", "Search, preview, and switch without leaving the workspace.")}</p>
           </div>
 
-          <button type="button" className={ui.compactButton} onClick={onClose}>
-            {adminText(locale, "Bağla", "Close")}
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50"
+            onClick={onClose}
+            aria-label={adminText(locale, "Bağla", "Close")}
+          >
+            <X size={16} weight="bold" />
           </button>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="border-b border-[#E5E7EB] p-5 lg:border-b-0 lg:border-r sm:p-6">
+        <div className="grid min-h-0 flex-1 gap-0 md:grid-cols-[minmax(0,1fr)_260px] lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="flex min-h-0 flex-col border-[#E5E7EB] md:border-r">
+            <div className="sticky top-0 z-[1] border-b border-zinc-100 bg-white/96 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
             <label className="relative block">
               <span className="sr-only">{adminText(locale, "Ətirləri axtar", "Search perfumes")}</span>
               <MagnifyingGlass
                 size={15}
                 weight="bold"
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 sm:left-4"
               />
               <input
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={copy.searchPerfumes}
-                className={cx(
-                  "h-11 w-full rounded-[12px] border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
-                )}
+                className="h-11 w-full rounded-full border border-[#E5E7EB] bg-zinc-50/70 px-3.5 pl-10 pr-16 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 sm:h-12 sm:pl-11"
               />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-zinc-500 shadow-sm">
+                {filteredPerfumes.length}
+              </span>
             </label>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 p-1">
               {([
                 ["all", copy.all],
                 ["missingImage", copy.missingImage],
@@ -1911,10 +1919,10 @@ function PerfumePickerModal({
                   key={value}
                   type="button"
                   className={cx(
-                    "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition",
+                    "min-w-0 truncate rounded-full px-2.5 py-2 text-[11px] font-semibold transition sm:text-xs",
                     filter === value
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                      ? "bg-zinc-950 text-white shadow-sm"
+                      : "text-zinc-600 hover:bg-white hover:text-zinc-950",
                   )}
                   onClick={() => setFilter(value)}
                 >
@@ -1922,8 +1930,9 @@ function PerfumePickerModal({
                 </button>
               ))}
             </div>
+            </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 sm:px-6">
               <span>{copy.perfumeList}</span>
               <span className="inline-flex items-center gap-2">
                 {isFiltering ? <ArrowsClockwise className="animate-spin text-indigo-500" size={13} weight="bold" /> : null}
@@ -1931,7 +1940,7 @@ function PerfumePickerModal({
               </span>
             </div>
 
-            <div className="mt-3 max-h-[58vh] overflow-y-auto pr-1">
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 sm:px-5 sm:pb-5">
               <div className={cx("grid gap-2 transition duration-200", isFiltering ? "opacity-60" : "opacity-100")}>
                 {visiblePerfumes.length ? (
                   visiblePerfumes.map((item) => {
@@ -1948,15 +1957,15 @@ function PerfumePickerModal({
                           });
                         }}
                         className={cx(
-                          "flex items-center gap-3 rounded-[16px] border px-3 py-2.5 text-left transition duration-200",
+                          "group grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-[16px] border px-3 py-2.5 text-left transition duration-200 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:rounded-[18px] sm:px-3.5 sm:py-3",
                           isSelected
                             ? "border-indigo-500 bg-indigo-50/70 shadow-[0_8px_20px_rgba(99,102,241,0.08)]"
                             : "border-[#E5E7EB] bg-white hover:border-zinc-300 hover:bg-zinc-50",
                         )}
                       >
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[12px] border border-[#E5E7EB] bg-zinc-100">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[13px] border border-[#E5E7EB] bg-zinc-100 sm:h-[52px] sm:w-[52px]">
                           {item.image ? (
-                            <Image src={item.image} alt={item.name} fill sizes="48px" className="object-cover" />
+                            <Image src={item.image} alt={item.name} fill sizes="52px" className="object-cover transition duration-300 group-hover:scale-105" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
                               {item.name.slice(0, 2)}
@@ -1966,14 +1975,22 @@ function PerfumePickerModal({
 
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
-                          <p className="truncate text-xs text-zinc-500">
+                          <p className="mt-0.5 truncate text-xs text-zinc-500">
                             {item.brand} · {item.gender || "Unspecified"}
                           </p>
+                          <p className="mt-1 text-[11px] font-semibold text-zinc-500 sm:hidden">{formatStartingPrice(item, priceCopy)}</p>
                         </div>
 
-                        <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
-                          {formatStartingPrice(item, priceCopy)}
-                        </span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="hidden rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600 sm:inline-flex">
+                            {formatStartingPrice(item, priceCopy)}
+                          </span>
+                          {isSelected ? (
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-indigo-600 text-white">
+                              <CheckCircle size={14} weight="fill" />
+                            </span>
+                          ) : null}
+                        </div>
                       </button>
                     );
                   })
@@ -1987,7 +2004,7 @@ function PerfumePickerModal({
             </div>
           </div>
 
-          <div className="bg-[#FCFCFD] p-5 sm:p-6">
+          <div className="hidden bg-[#FCFCFD] p-4 md:block sm:p-6">
             {selectedPerfume ? (
               <div className="space-y-4">
                 <div className="rounded-[20px] border border-[#E5E7EB] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
@@ -2120,6 +2137,7 @@ export function AdminPanelClient({
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AdminView>("perfumes");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [perfumeEditorTab, setPerfumeEditorTab] = useState<PerfumeEditorTab>("basics");
   const [resizeModalOpen, setResizeModalOpen] = useState(false);
   const [resizeScale, setResizeScale] = useState(1);
@@ -2148,6 +2166,15 @@ export function AdminPanelClient({
     // measure after paint
     requestAnimationFrame(t);
   }, [resizeModalOpen]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
 
   
   const [noteEditorTab, setNoteEditorTab] = useState<NoteEditorTab>("content");
@@ -2205,6 +2232,23 @@ export function AdminPanelClient({
   const t = (key: keyof typeof copy, values: Record<string, string | number> = {}) =>
     interpolate(copy[key], values);
   const showTopSearch = view === "perfumes";
+  const navItems = useMemo(
+    () => [
+      { value: "dashboard" as const, label: copy.dashboard, icon: <TrendUp size={16} weight="bold" /> },
+      { value: "perfumes" as const, label: copy.perfumes, icon: <SquaresFour size={16} weight="bold" /> },
+      { value: "notes" as const, label: copy.notes, icon: <Rows size={16} weight="bold" /> },
+      { value: "brands" as const, label: adminText(locale, "Brendlər", "Brands"), icon: <Package size={16} weight="bold" /> },
+      { value: "promotions" as const, label: copy.promotions, icon: <Sparkle size={16} weight="bold" /> },
+      { value: "branding" as const, label: copy.branding, icon: <TextT size={16} weight="bold" /> },
+      { value: "aiChat" as const, label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
+      { value: "audit" as const, label: adminText(locale, "Audit", "Audit"), icon: <ClockCounterClockwise size={16} weight="bold" /> },
+      { value: "header" as const, label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
+      { value: "qoxunuLogs" as const, label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: <Sparkle size={16} weight="bold" /> },
+      { value: "assistant" as const, label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: <Sparkle size={16} weight="bold" /> },
+    ],
+    [copy, locale],
+  );
+  const currentViewLabel = navItems.find((item) => item.value === view)?.label || copy.adminWorkspace;
   const siteName = settings.siteName || DEFAULT_SITE_NAME;
   const effectiveMetaKeywords = useMemo(
     () => resolveSiteMetaKeywords(settings.metaKeywords, siteName),
@@ -3899,12 +3943,12 @@ export function AdminPanelClient({
   }
 
   return (
-    <section className="h-dvh overflow-hidden px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6 admin-page-enter">
-      <div className="flex h-full gap-6 overflow-visible">
+    <section className="min-h-dvh overflow-x-hidden px-2 py-2 sm:px-4 sm:py-4 lg:h-dvh lg:overflow-hidden lg:px-6 lg:py-6 admin-page-enter">
+      <div className="relative flex min-h-[calc(100dvh-1rem)] w-full gap-0 overflow-visible sm:min-h-[calc(100dvh-2rem)] lg:h-full lg:min-h-0 lg:gap-6">
         <aside
           className={cx(
             ui.card,
-            "relative shrink-0 overflow-visible transition-[width,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "relative hidden shrink-0 overflow-visible transition-[width,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] lg:block",
             sidebarCollapsed ? "w-[72px] p-3 pt-3" : "w-[220px] p-3 pt-6",
           )}
         >
@@ -3934,19 +3978,7 @@ export function AdminPanelClient({
 
             <div className={cx("mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain", sidebarCollapsed ? "pr-0" : "pr-1")}>
               <div className="space-y-1">
-                {[
-                  { value: "dashboard", label: copy.dashboard, icon: <TrendUp size={16} weight="bold" /> },
-                  { value: "perfumes", label: copy.perfumes, icon: <SquaresFour size={16} weight="bold" /> },
-                  { value: "notes", label: copy.notes, icon: <Rows size={16} weight="bold" /> },
-                  { value: "brands", label: adminText(locale, "Brendlər", "Brands"), icon: <Package size={16} weight="bold" /> },
-                  { value: "promotions", label: copy.promotions, icon: <Sparkle size={16} weight="bold" /> },
-                  { value: "branding", label: copy.branding, icon: <TextT size={16} weight="bold" /> },
-                  { value: "aiChat", label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
-                  { value: "audit", label: adminText(locale, "Audit", "Audit"), icon: <ClockCounterClockwise size={16} weight="bold" /> },
-                  { value: "header", label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
-                  { value: "qoxunuLogs", label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: <Sparkle size={16} weight="bold" /> },
-                  { value: "assistant", label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: <Sparkle size={16} weight="bold" /> },
-                ].map((item) => (
+                {navItems.map((item) => (
                   <button
                     key={item.value}
                     type="button"
@@ -4071,19 +4103,148 @@ export function AdminPanelClient({
           </div>
         </aside>
 
+        {mobileNavOpen ? (
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+            <button
+              type="button"
+              className="absolute inset-0 bg-zinc-950/35 backdrop-blur-[2px]"
+              aria-label={locale === "az" ? "Menyunu bağla" : "Close menu"}
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <div className="absolute bottom-2 left-2 top-2 flex w-[min(88vw,340px)] flex-col overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+              <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-zinc-950">{copy.adminWorkspace}</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">{currentViewLabel}</p>
+                </div>
+                <button
+                  type="button"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50"
+                  aria-label={locale === "az" ? "Bağla" : "Close"}
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <X size={17} weight="bold" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div className="space-y-1">
+                  {navItems.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className={cx(
+                        "flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-left text-[13px] font-semibold transition",
+                        view === item.value
+                          ? item.value === "assistant"
+                            ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-white shadow-[0_10px_24px_rgba(14,165,233,0.24)]"
+                            : "bg-indigo-50 text-indigo-700"
+                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950",
+                      )}
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        startTransition(() => setView(item.value));
+                      }}
+                    >
+                      <span
+                        className={cx(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]",
+                          view === item.value
+                            ? item.value === "assistant"
+                              ? "bg-white/18 text-white"
+                              : "bg-white text-indigo-600"
+                            : "bg-zinc-50 text-zinc-400",
+                        )}
+                      >
+                        {item.icon}
+                      </span>
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div
           key={view}
           className={cx(
-            "flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6 pt-0 pr-4 sm:pr-5 lg:pr-6",
+            "min-w-0 flex-1 overflow-y-auto overscroll-contain space-y-4 pt-0 sm:space-y-5 lg:min-h-0 lg:space-y-6 lg:pr-6",
             view === "dashboard" ? "pb-6" : "pb-32",
             "admin-section-stagger",
           )}
         >
-          <div
-            className="sticky top-0 z-20 flex flex-col gap-3 rounded-[18px] border border-[#E5E7EB] bg-white/95 px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] backdrop-blur sm:flex-row sm:items-center sm:justify-between"
-          >
+          <div className="sticky top-2 z-30 rounded-[18px] border border-[#E5E7EB] bg-white/95 px-3 py-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:top-0 lg:px-4 lg:shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-zinc-700 transition hover:border-[#D1D5DB] hover:bg-zinc-50 lg:hidden"
+                aria-label={locale === "az" ? "Menyu" : "Menu"}
+                onClick={() => setMobileNavOpen(true)}
+              >
+                <Rows size={18} weight="bold" />
+              </button>
+
+              <div className="min-w-0 flex-1 lg:hidden">
+                <p className="truncate text-sm font-semibold text-zinc-950">{currentViewLabel}</p>
+                <p className="text-xs text-zinc-500">{copy.adminWorkspace}</p>
+              </div>
+
+              {showTopSearch ? (
+                <label className="relative hidden w-full max-w-2xl flex-1 lg:block">
+                  <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
+                  <MagnifyingGlass
+                    size={15}
+                    weight="bold"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                  />
+                  <input
+                    value={perfumePickerQuery}
+                    onChange={(event) => {
+                      setPerfumePickerQuery(event.target.value);
+                      setIsPerfumePickerOpen(true);
+                    }}
+                    onFocus={() => setIsPerfumePickerOpen(true)}
+                    placeholder={locale === "az" ? "Axtar..." : "Search..."}
+                    className="h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
+                    ⌘K
+                  </span>
+                </label>
+              ) : (
+                <div className="hidden flex-1 lg:block" />
+              )}
+
+            <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-zinc-600 transition hover:border-[#D1D5DB] hover:bg-zinc-50 sm:h-11 sm:w-11"
+                aria-label={locale === "az" ? "Bildirişlər" : "Notifications"}
+              >
+                <Bell size={16} weight="bold" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-indigo-500" />
+              </button>
+
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white p-1.5 text-left transition hover:border-[#D1D5DB] hover:bg-zinc-50 sm:gap-3 sm:px-3 sm:py-2"
+                aria-label={locale === "az" ? "Hesab" : "Account"}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700 sm:h-10 sm:w-10 sm:text-sm">
+                  AA
+                </div>
+                <div className="hidden md:block">
+                  <p className="text-sm font-semibold text-zinc-900">Admin</p>
+                  <p className="text-xs text-zinc-500">Super Admin</p>
+                </div>
+                <UserCircle size={16} weight="bold" className="hidden text-zinc-400 sm:block" />
+              </button>
+            </div>
+            </div>
+
             {showTopSearch ? (
-              <label className="relative block w-full max-w-2xl flex-1">
+              <label className="relative mt-3 block w-full lg:hidden">
                 <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
                 <MagnifyingGlass
                   size={15}
@@ -4098,43 +4259,13 @@ export function AdminPanelClient({
                   }}
                   onFocus={() => setIsPerfumePickerOpen(true)}
                   placeholder={locale === "az" ? "Axtar..." : "Search..."}
-                  className={cx(
-                    "h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10",
-                  )}
+                  className="h-10 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 pr-12 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
                   ⌘K
                 </span>
               </label>
-            ) : (
-              <div className="hidden flex-1 sm:block" />
-            )}
-
-            <div className="flex items-center gap-3 self-end sm:self-auto">
-              <button
-                type="button"
-                className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-zinc-600 transition hover:border-[#D1D5DB] hover:bg-zinc-50"
-                aria-label={locale === "az" ? "Bildirişlər" : "Notifications"}
-              >
-                <Bell size={16} weight="bold" />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-indigo-500" />
-              </button>
-
-              <button
-                type="button"
-                className="flex items-center gap-3 rounded-full border border-[#E5E7EB] bg-white px-3 py-2 text-left transition hover:border-[#D1D5DB] hover:bg-zinc-50"
-                aria-label={locale === "az" ? "Hesab" : "Account"}
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700">
-                  AA
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-semibold text-zinc-900">Admin</p>
-                  <p className="text-xs text-zinc-500">Super Admin</p>
-                </div>
-                <UserCircle size={16} weight="bold" className="text-zinc-400" />
-              </button>
-            </div>
+            ) : null}
           </div>
 
           {view === "dashboard" ? (

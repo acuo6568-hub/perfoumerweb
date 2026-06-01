@@ -13,6 +13,7 @@ type SessionRow = {
   device_type: string | null;
   browser: string | null;
   os: string | null;
+  locale: string | null;
   path: string | null;
   referrer: string | null;
   last_seen: string | null;
@@ -352,7 +353,7 @@ export async function GET(request: Request) {
     supabase
       .from("website_live_sessions")
       .select(
-        "session_id,anonymous_id,user_id,is_logged_in,device_type,browser,os,path,referrer,last_seen,first_seen,page_views,country_code,country,region,city,timezone,is_suspected_bot,traffic_reason",
+        "session_id,anonymous_id,user_id,is_logged_in,device_type,browser,os,locale,path,referrer,last_seen,first_seen,page_views,country_code,country,region,city,timezone,is_suspected_bot,traffic_reason",
       )
       .like("session_id", "v2_%"),
     supabase
@@ -645,6 +646,7 @@ export async function GET(request: Request) {
         deviceType: normalizeText(row.device_type, "unknown"),
         browser: normalizeText(row.browser, "Unknown"),
         os: normalizeText(row.os, "Unknown"),
+        locale: normalizeText(row.locale, "az"),
         countryCode: String(row.country_code || "").trim(),
         country: normalizeCountryLabel(row.country, row.country_code),
         region: normalizeText(row.region, "-"),

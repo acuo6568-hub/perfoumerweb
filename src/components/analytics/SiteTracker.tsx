@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -8,6 +8,17 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 const ANALYTICS_VERSION = "v2";
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const SESSION_LAST_SEEN_KEY = "perfoumer.analytics.v2.session-last-seen";
+const ANONYMOUS_ID_KEY = "perfoumer.analytics.v2.anonymous-id";
+const SESSION_ID_KEY = "perfoumer.analytics.v2.session-id";
+const DISMISSED_MESSAGES_KEY = "perfoumer.analytics.v2.dismissed-messages";
+
+type VisitorMessage = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  expiresAt: string;
+};
 
 function getOrCreateStorageId(key: string, storage: Storage): string {
   const existing = storage.getItem(key);
@@ -21,7 +32,7 @@ function getOrCreateStorageId(key: string, storage: Storage): string {
 }
 
 function getOrCreateSessionId(storage: Storage): string {
-  const existing = storage.getItem("perfoumer.analytics.v2.session-id") || "";
+  const existing = storage.getItem(SESSION_ID_KEY) || "";
   const lastSeen = Number(storage.getItem(SESSION_LAST_SEEN_KEY) || 0);
   const now = Date.now();
 
@@ -31,9 +42,24 @@ function getOrCreateSessionId(storage: Storage): string {
   }
 
   const next = `${ANALYTICS_VERSION}_${crypto.randomUUID()}`;
-  storage.setItem("perfoumer.analytics.v2.session-id", next);
+  storage.setItem(SESSION_ID_KEY, next);
   storage.setItem(SESSION_LAST_SEEN_KEY, String(now));
   return next;
+}
+
+function readDismissedMessages(storage: Storage) {
+  try {
+    const parsed = JSON.parse(storage.getItem(DISMISSED_MESSAGES_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function dismissMessage(messageId: string, storage: Storage) {
+  const dismissed = new Set(readDismissedMessages(storage));
+  dismissed.add(messageId);
+  storage.setItem(DISMISSED_MESSAGES_KEY, JSON.stringify(Array.from(dismissed).slice(-80)));
 }
 
 function detectDeviceType(userAgent: string): "mobile" | "tablet" | "desktop" {
@@ -69,6 +95,7 @@ export function SiteTracker() {
   const supabase = getSupabaseBrowserClient();
   const lastSentRef = useRef(0);
   const lastPageViewPathRef = useRef("");
+  const [visitorMessage, setVisitorMessage] = useState<VisitorMessage | null>(null);
 
   const fullPath = useMemo(() => {
     const query = searchParams?.toString() || "";
@@ -78,7 +105,7 @@ export function SiteTracker() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const anonymousId = getOrCreateStorageId("perfoumer.analytics.v2.anonymous-id", window.localStorage);
+    const anonymousId = getOrCreateStorageId(ANONYMOUS_ID_KEY, window.localStorage);
     const sessionId = getOrCreateSessionId(window.localStorage);
     const userAgent = window.navigator.userAgent || "";
     let heartbeatId: number | ReturnType<typeof setInterval> | null = null;
@@ -162,5 +189,72 @@ export function SiteTracker() {
     };
   }, [fullPath, supabase]);
 
-  return null;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storage = window.localStorage;
+    const anonymousId = getOrCreateStorageId(ANONYMOUS_ID_KEY, storage);
+    const sessionId = getOrCreateSessionId(storage);
+    let intervalId: number | null = null;
+    let isDisposed = false;
+
+    const fetchMessages = async () => {
+      const params = new URLSearchParams({
+        sessionId,
+        anonymousId,
+        locale: document.documentElement.lang || "az",
+        path: fullPath || "/",
+      });
+
+      try {
+        const response = await fetch(`/api/visitor-messages?${params}`, { cache: "no-store" });
+        const data = (await response.json()) as { messages?: VisitorMessage[] };
+        if (!response.ok || isDisposed) return;
+
+        const dismissed = new Set(readDismissedMessages(storage));
+        const nextMessage = (data.messages ?? []).find((message) => !dismissed.has(message.id)) ?? null;
+        setVisitorMessage(nextMessage);
+      } catch {
+        if (!isDisposed) {
+          setVisitorMessage(null);
+        }
+      }
+    };
+
+    void fetchMessages();
+    intervalId = window.setInterval(fetchMessages, 12000);
+
+    return () => {
+      isDisposed = true;
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [fullPath]);
+
+  if (!visitorMessage) {
+    return null;
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[140] w-[min(360px,calc(100vw-2rem))] rounded-[18px] border border-zinc-200 bg-white p-4 text-zinc-950 shadow-[0_24px_80px_rgba(15,23,42,0.2)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{visitorMessage.title}</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-zinc-600">{visitorMessage.body}</p>
+        </div>
+        <button
+          type="button"
+          aria-label="Close message"
+          onClick={() => {
+            dismissMessage(visitorMessage.id, window.localStorage);
+            setVisitorMessage(null);
+          }}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border border-zinc-200 bg-zinc-50 text-zinc-500 transition hover:bg-zinc-100"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
 }

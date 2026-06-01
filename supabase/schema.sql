@@ -905,6 +905,31 @@ create index if not exists website_analytics_events_country_idx
 create index if not exists website_analytics_events_suspected_bot_idx
   on public.website_analytics_events (is_suspected_bot);
 
+create table if not exists public.website_visitor_messages (
+  id uuid primary key default gen_random_uuid(),
+  target_session_id text not null default '',
+  target_anonymous_id text not null default '',
+  target_locale text not null default 'all',
+  target_path text not null default '',
+  title text not null default '',
+  body text not null default '',
+  status text not null default 'active' check (status in ('active', 'dismissed', 'expired')),
+  created_by text not null default 'admin',
+  expires_at timestamptz not null default timezone('utc', now()) + interval '20 minutes',
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists website_visitor_messages_session_idx
+  on public.website_visitor_messages (target_session_id, expires_at desc);
+
+create index if not exists website_visitor_messages_anonymous_idx
+  on public.website_visitor_messages (target_anonymous_id, expires_at desc);
+
+create index if not exists website_visitor_messages_status_idx
+  on public.website_visitor_messages (status, expires_at desc);
+
+alter table public.website_visitor_messages enable row level security;
+
 drop trigger if exists set_website_live_sessions_updated_at on public.website_live_sessions;
 create trigger set_website_live_sessions_updated_at
 before update on public.website_live_sessions
