@@ -368,6 +368,7 @@ const adminCopy = {
     everythingSaved: "Bütün dəyişikliklər saxlanıb",
     refresh: "Yenilə",
     reset: "Sıfırla",
+    resetChanges: "Dəyişiklikləri ləğv et",
     saveChanges: "Dəyişiklikləri saxla",
     saving: "Saxlanılır...",
     logout: "Çıxış",
@@ -577,6 +578,8 @@ const adminCopy = {
     externalLink: "Xarici keçid",
     sizeMatrix: "Ölçü cədvəli",
     sizeMatrixDescription: "Satış ölçülərini və qiymətləri bir siyahıda saxlayın.",
+    size: "Ölçü",
+    sizes: "Ölçülər",
     addSize: "Ölçü əlavə et",
     label: "Etiket",
     ml: "ML",
@@ -590,6 +593,11 @@ const adminCopy = {
     addNoteSlug: "Not slug əlavə et",
     existingSlugs: "{count} mövcud not slug seçimi",
     addLinkedNote: "Not əlavə et",
+    noteSelectorPlaceholder: "Not adı və ya slug axtarın",
+    selectedNotes: "Seçilmiş notlar",
+    availableNotes: "Not kitabxanası",
+    chooseNote: "Notu seç",
+    customSlugHint: "Siyahıda olmayan xüsusi slug yazıb əlavə edə bilərsiniz.",
     mediaQuickActions: "Sürətli media əməliyyatları",
     uploadImage: "Şəkil yüklə",
     replaceImage: "Şəkli yenilə",
@@ -712,6 +720,7 @@ const adminCopy = {
     everythingSaved: "All changes saved",
     refresh: "Refresh",
     reset: "Reset",
+    resetChanges: "Discard changes",
     saveChanges: "Save changes",
     saving: "Saving...",
     logout: "Log out",
@@ -921,6 +930,8 @@ const adminCopy = {
     externalLink: "External link",
     sizeMatrix: "Size matrix",
     sizeMatrixDescription: "Maintain sale sizes and prices in one list.",
+    size: "Size",
+    sizes: "Sizes",
     addSize: "Add size",
     label: "Label",
     ml: "ML",
@@ -934,6 +945,11 @@ const adminCopy = {
     addNoteSlug: "Add note slug",
     existingSlugs: "{count} note slug options available",
     addLinkedNote: "Add note",
+    noteSelectorPlaceholder: "Search note name or slug",
+    selectedNotes: "Selected notes",
+    availableNotes: "Note library",
+    chooseNote: "Choose note",
+    customSlugHint: "You can type a custom slug if it is not in the list.",
     mediaQuickActions: "Media quick actions",
     uploadImage: "Upload image",
     replaceImage: "Replace image",
@@ -2166,6 +2182,7 @@ export function AdminPanelClient({
   const [removingBg, setRemovingBg] = useState(false);
   const [importing, setImporting] = useState<"perfumes" | "notes" | null>(null);
   const [tokenInput, setTokenInput] = useState({ top: "", heart: "", base: "" });
+  const [openNoteSelectorGroup, setOpenNoteSelectorGroup] = useState<"top" | "heart" | "base" | null>(null);
   const [brandDropdownSearch, setBrandDropdownSearch] = useState("");
 
   const perfumeImportRef = useRef<HTMLInputElement | null>(null);
@@ -2554,6 +2571,30 @@ export function AdminPanelClient({
   const noteSlugOptions = useMemo(
     () =>
       Array.from(new Set(notes.map((item) => normalizeSlug(item.slug)).filter(Boolean))).sort(),
+    [notes],
+  );
+  const noteLookup = useMemo(
+    () =>
+      new Map(
+        notes
+          .map((item) => [normalizeSlug(item.slug), item] as const)
+          .filter(([slug]) => Boolean(slug)),
+      ),
+    [notes],
+  );
+  const noteSelectorOptions = useMemo(
+    () =>
+      notes
+        .map((item) => {
+          const slug = normalizeSlug(item.slug);
+          return {
+            ...item,
+            slug,
+            searchPool: normalizeSearchText([item.name, slug, item.content].join(" ")),
+          };
+        })
+        .filter((item) => Boolean(item.slug))
+        .sort((left, right) => left.name.localeCompare(right.name)),
     [notes],
   );
 
@@ -3052,6 +3093,23 @@ export function AdminPanelClient({
     }
 
     const token = normalizeSlug(tokenInput[group]);
+    if (!token) {
+      return;
+    }
+
+    if (!selectedPerfume.noteSlugs[group].includes(token)) {
+      setPerfumeNoteSlugs(group, [...selectedPerfume.noteSlugs[group], token]);
+    }
+
+    setTokenInput((current) => ({ ...current, [group]: "" }));
+  };
+
+  const addNoteSlugToGroup = (group: "top" | "heart" | "base", slugValue: string) => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    const token = normalizeSlug(slugValue);
     if (!token) {
       return;
     }
@@ -5748,21 +5806,41 @@ export function AdminPanelClient({
                     </h2>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {[
-                        selectedPerfume.brand || "Unbranded",
-                        selectedPerfume.gender || "Unspecified",
-                        t("sizeCount", { count: selectedPerfume.sizes.length }),
-                        t("noteLinksCount", {
-                          count:
-                            selectedPerfume.noteSlugs.top.length +
-                            selectedPerfume.noteSlugs.heart.length +
-                            selectedPerfume.noteSlugs.base.length,
-                        }),
+                        {
+                          label: copy.brand,
+                          value: selectedPerfume.brand || "Unbranded",
+                          icon: <Package size={13} weight="bold" />,
+                        },
+                        {
+                          label: copy.gender,
+                          value: selectedPerfume.gender || "Unspecified",
+                          icon: <UserCircle size={13} weight="bold" />,
+                        },
+                        {
+                          label: copy.sizes,
+                          value: t("sizeCount", { count: selectedPerfume.sizes.length }),
+                          icon: <Rows size={13} weight="bold" />,
+                        },
+                        {
+                          label: copy.perfumeNotes,
+                          value: t("noteLinksCount", {
+                            count:
+                              selectedPerfume.noteSlugs.top.length +
+                              selectedPerfume.noteSlugs.heart.length +
+                              selectedPerfume.noteSlugs.base.length,
+                          }),
+                          icon: <Tag size={13} weight="bold" />,
+                        },
                       ].map((item) => (
                         <span
-                          key={item}
-                          className="inline-flex items-center rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-xs font-medium text-zinc-600"
+                          key={item.label}
+                          className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                         >
-                          {item}
+                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
+                            {item.icon}
+                          </span>
+                          <span className="text-zinc-400">{item.label}</span>
+                          <span>{item.value}</span>
                         </span>
                       ))}
                     </div>
@@ -5786,10 +5864,6 @@ export function AdminPanelClient({
                       <Link size={16} weight="bold" />
                       {adminText(locale, "Məhsulu aç", "Open Product")}
                     </a>
-                    <button type="button" className={ui.primaryButton} onClick={onSave} disabled={busy}>
-                      <FloppyDisk size={16} weight="bold" />
-                      {adminText(locale, "Dəyişiklikləri saxla", "Save Changes")}
-                    </button>
                   </div>
                 </div>
 
@@ -5799,14 +5873,14 @@ export function AdminPanelClient({
                     icon={<TextT size={15} weight="bold" />}
                     onClick={() => startTransition(() => setPerfumeEditorTab("basics"))}
                   >
-                    Basics
+                    {copy.basics}
                   </TabButton>
                   <TabButton
                     active={perfumeEditorTab === "notes"}
                     icon={<Tag size={15} weight="bold" />}
                     onClick={() => startTransition(() => setPerfumeEditorTab("notes"))}
                   >
-                    Notes
+                    {copy.perfumeNotes}
                   </TabButton>
                   <TabButton
                     active={perfumeEditorTab === "discounts"}
@@ -5820,7 +5894,7 @@ export function AdminPanelClient({
                     icon={<ImageSquare size={15} weight="bold" />}
                     onClick={() => startTransition(() => setPerfumeEditorTab("media"))}
                   >
-                    Media
+                    {copy.media}
                   </TabButton>
                 </div>
 
@@ -5830,12 +5904,12 @@ export function AdminPanelClient({
                       <div className={cx(ui.soft, "p-4 sm:p-5")}>
                         <SectionLabel
                           icon={<TextT size={16} weight="bold" />}
-                          title="Core details"
-                          detail="Keep the main catalog identity clean and consistent across the storefront."
+                          title={copy.coreDetails}
+                          detail={copy.coreDetailsDescription}
                         />
 
                         <div className="mt-5 grid gap-4 md:grid-cols-2">
-                          <Field label="Perfume name">
+                          <Field label={copy.perfumeName}>
                             <input
                               className={ui.input}
                               value={selectedPerfume.name}
@@ -5851,7 +5925,7 @@ export function AdminPanelClient({
                               placeholder={adminText(locale, "Brend seçin və ya yazın", "Select or type brand name")}
                             />
                           </Field>
-                          <Field label={copy.slug} hint={adminText(locale, "Sayt üzrə istifadə olunan kiçik hərfli URL açarı", "Lowercase URL key used across the site")}>
+                          <Field label={copy.slug} hint={copy.slugHint}>
                             <input
                               className={ui.input}
                               value={selectedPerfume.slug}
@@ -5861,7 +5935,7 @@ export function AdminPanelClient({
                               placeholder="baccarat-rouge-540"
                             />
                           </Field>
-                          <Field label="Gender">
+                          <Field label={copy.gender}>
                             <input
                               className={ui.input}
                               value={selectedPerfume.gender}
@@ -5872,7 +5946,7 @@ export function AdminPanelClient({
                         </div>
 
                         <div className="mt-4">
-                          <Field label="External link">
+                          <Field label={copy.externalLink}>
                             <input
                               className={ui.input}
                               value={selectedPerfume.externalLink}
@@ -5888,8 +5962,8 @@ export function AdminPanelClient({
                       <div className={cx(ui.soft, "p-4 sm:p-5")}>
                         <SectionLabel
                           icon={<Rows size={16} weight="bold" />}
-                          title="Size matrix"
-                          detail="Standard sizes: 15ML, 30ML, 50ML. Edit prices only."
+                          title={copy.sizeMatrix}
+                          detail={copy.sizeMatrixDescription}
                         />
 
                         <div className="mt-5 space-y-3">
@@ -5898,12 +5972,12 @@ export function AdminPanelClient({
                               key={`${size.label}-${index}`}
                               className="grid gap-3 rounded-[16px] border border-[#E5E7EB] bg-white p-3.5 md:grid-cols-[auto_1fr]"
                             >
-                              <Field label="Size">
+                              <Field label={copy.size}>
                                 <div className="flex h-11 items-center rounded-[12px] border border-[#E5E7EB] bg-zinc-50 px-3 font-mono text-sm font-semibold text-zinc-700">
                                   {size.label}
                                 </div>
                               </Field>
-                              <Field label="Price">
+                              <Field label={copy.price}>
                                 <input
                                   type="number"
                                   className={ui.input}
@@ -6452,78 +6526,183 @@ export function AdminPanelClient({
                 ) : null}
 
                 {perfumeEditorTab === "notes" ? (
-                  <div className="mt-6 space-y-4">
-                    {(["top", "heart", "base"] as const).map((group) => (
-                      <div key={group} className={cx(ui.soft, "p-4 sm:p-5")}>
-                        <SectionLabel
-                          icon={<Tag size={16} weight="bold" />}
-                          title={`${group[0]?.toUpperCase()}${group.slice(1)} notes`}
-                          detail={`Attach note slugs to build the ${group} layer for this perfume.`}
-                        />
+                  <div className="mt-6 grid gap-4 xl:grid-cols-3">
+                    {(["top", "heart", "base"] as const).map((group) => {
+                      const groupTitle =
+                        group === "top" ? copy.topNotes : group === "heart" ? copy.heartNotes : copy.baseNotes;
+                      const query = normalizeSearchText(tokenInput[group]);
+                      const selectedSlugs = selectedPerfume.noteSlugs[group];
+                      const selectorOpen = openNoteSelectorGroup === group;
+                      const availableNotes = noteSelectorOptions
+                        .filter((note) => !selectedSlugs.includes(note.slug))
+                        .filter((note) => (query ? note.searchPool.includes(query) : true))
+                        .slice(0, 8);
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {selectedPerfume.noteSlugs[group].length ? (
-                            selectedPerfume.noteSlugs[group].map((token) => (
-                              <button
-                                key={token}
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
-                                onClick={() => removeTokenFromGroup(group, token)}
-                              >
-                                <span>{token}</span>
-                                <span className="text-zinc-400">{adminText(locale, "Sil", "Remove")}</span>
-                              </button>
-                            ))
-                          ) : (
-                            <span className="text-sm text-zinc-500">
-                              {adminText(locale, `Hələ bağlı ${group} notu yoxdur.`, `No ${group} notes linked yet.`)}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                          <Field
-                            label="Add note slug"
-                            hint={`${noteSlugOptions.length} existing note slug${noteSlugOptions.length === 1 ? "" : "s"} available for autocomplete`}
-                          >
-                            <input
-                              list={`note-options-${group}`}
-                              className={ui.input}
-                              value={tokenInput[group]}
-                              onChange={(event) =>
-                                setTokenInput((current) => ({
-                                  ...current,
-                                  [group]: event.target.value,
-                                }))
+                      return (
+                        <div key={group} className={cx(ui.soft, "overflow-hidden bg-white p-0")}>
+                          <div className="border-b border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFB_100%)] p-4 sm:p-5">
+                            <SectionLabel
+                              icon={<Tag size={16} weight="bold" />}
+                              title={groupTitle}
+                              detail={t("attachNotesDetail", { group: groupTitle.toLowerCase() })}
+                              action={
+                                <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
+                                  {selectedSlugs.length.toLocaleString()}
+                                </span>
                               }
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.preventDefault();
-                                  addTokenToGroup(group);
-                                }
-                              }}
-                              placeholder="bergamot"
                             />
-                          </Field>
-                          <div className="flex items-end">
-                            <button
-                              type="button"
-                              className={ui.secondaryButton}
-                              onClick={() => addTokenToGroup(group)}
-                            >
-                              <Plus size={16} weight="bold" />
-                              Add note
-                            </button>
+                          </div>
+
+                          <div className="space-y-5 p-4 sm:p-5">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                                {copy.selectedNotes}
+                              </p>
+                              <div className="mt-3 grid gap-2">
+                                {selectedSlugs.length ? (
+                                  selectedSlugs.map((token) => {
+                                    const note = noteLookup.get(token);
+                                    const title = note?.name || token;
+
+                                    return (
+                                      <div
+                                        key={token}
+                                        className="group flex items-center gap-3 rounded-[16px] border border-zinc-200 bg-white p-2.5 shadow-sm transition hover:border-zinc-300 hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
+                                      >
+                                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-[14px] border border-zinc-200 bg-zinc-50">
+                                          {note?.image ? (
+                                            <img
+                                              src={note.image}
+                                              alt={note.imageAlt || title}
+                                              className="h-full w-full object-cover"
+                                            />
+                                          ) : (
+                                            <div className="flex h-full w-full items-center justify-center text-xs font-bold uppercase text-zinc-400">
+                                              {title.slice(0, 1)}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-sm font-semibold text-zinc-950">{title}</p>
+                                          <p className="mt-0.5 truncate font-mono text-[11px] text-zinc-500">{token}</p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-3 text-[11px] font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
+                                          onClick={() => removeTokenFromGroup(group, token)}
+                                        >
+                                          {copy.remove}
+                                        </button>
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="rounded-[16px] border border-dashed border-zinc-200 bg-zinc-50 px-4 py-5 text-sm text-zinc-500">
+                                    {t("noLinkedGroupNotes", { group: groupTitle.toLowerCase() })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {selectorOpen ? (
+                              <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/70 p-3">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                                    {copy.availableNotes}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-500 transition hover:border-zinc-300 hover:text-zinc-800"
+                                    onClick={() => setOpenNoteSelectorGroup(null)}
+                                  >
+                                    {adminText(locale, "Bağla", "Close")}
+                                  </button>
+                                </div>
+                                <Field
+                                  label={copy.addNoteSlug}
+                                  hint={`${t("existingSlugs", { count: noteSlugOptions.length })}. ${copy.customSlugHint}`}
+                                >
+                                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_auto]">
+                                    <input
+                                      className={ui.input}
+                                      value={tokenInput[group]}
+                                      onChange={(event) =>
+                                        setTokenInput((current) => ({
+                                          ...current,
+                                          [group]: event.target.value,
+                                        }))
+                                      }
+                                      onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                          event.preventDefault();
+                                          addTokenToGroup(group);
+                                        }
+                                      }}
+                                      placeholder={copy.noteSelectorPlaceholder}
+                                    />
+                                    <button
+                                      type="button"
+                                      className={cx(ui.secondaryButton, "h-11")}
+                                      onClick={() => addTokenToGroup(group)}
+                                    >
+                                      <Plus size={16} weight="bold" />
+                                      {copy.addLinkedNote}
+                                    </button>
+                                  </div>
+                                </Field>
+
+                                <div className="mt-4 grid max-h-[22rem] gap-2 overflow-y-auto pr-1">
+                                  {availableNotes.length ? (
+                                      availableNotes.map((note) => (
+                                        <button
+                                          key={note.slug}
+                                          type="button"
+                                          className="flex w-full items-center gap-3 rounded-[14px] border border-zinc-200 bg-white p-2.5 text-left transition hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-[0_12px_24px_rgba(79,70,229,0.08)]"
+                                          onClick={() => addNoteSlugToGroup(group, note.slug)}
+                                        >
+                                          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-[13px] border border-zinc-200 bg-zinc-50">
+                                            {note.image ? (
+                                              <img
+                                                src={note.image}
+                                                alt={note.imageAlt || note.name}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            ) : (
+                                              <div className="flex h-full w-full items-center justify-center text-xs font-bold uppercase text-zinc-400">
+                                                {note.name.slice(0, 1)}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-semibold text-zinc-950">{note.name}</p>
+                                            <p className="mt-0.5 truncate font-mono text-[11px] text-zinc-500">{note.slug}</p>
+                                          </div>
+                                          <span className="hidden rounded-full border border-zinc-200 bg-white px-2 py-1 text-[10px] font-semibold text-zinc-500 sm:inline-flex">
+                                            {copy.chooseNote}
+                                          </span>
+                                        </button>
+                                      ))
+                                    ) : (
+                                      <div className="rounded-[14px] border border-dashed border-zinc-200 bg-white px-3 py-4 text-sm text-zinc-500">
+                                        {copy.noNotesFound}
+                                      </div>
+                                    )}
+                                  </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="flex w-full items-center justify-center gap-2 rounded-[16px] border border-dashed border-zinc-300 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                                onClick={() => setOpenNoteSelectorGroup(group)}
+                              >
+                                <Plus size={16} weight="bold" />
+                                {copy.addLinkedNote}
+                              </button>
+                            )}
                           </div>
                         </div>
-
-                        <datalist id={`note-options-${group}`}>
-                          {noteSlugOptions.map((slug) => (
-                            <option key={slug} value={slug} />
-                          ))}
-                        </datalist>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : null}
 
@@ -6811,7 +6990,7 @@ export function AdminPanelClient({
                   icon={<ImageSquare size={15} weight="bold" />}
                   onClick={() => startTransition(() => setNoteEditorTab("media"))}
                 >
-                  Media
+                  {copy.media}
                 </TabButton>
               </div>
 
@@ -6988,7 +7167,7 @@ export function AdminPanelClient({
                 action={
                   <button type="button" className={ui.primaryButton} onClick={addNote}>
                     <Plus size={16} weight="bold" />
-                    Add note
+                    {copy.addNote}
                   </button>
                 }
               />
@@ -7002,8 +7181,14 @@ export function AdminPanelClient({
         status={saveStatus.tone}
         message={saveStatus.message}
         onSave={onSave}
+        onReset={cancelEditing}
         isDirty={dirty}
         isSaving={busy}
+        labels={{
+          unsavedChanges: copy.unsavedChanges,
+          saveChanges: copy.saveChanges,
+          resetChanges: copy.resetChanges,
+        }}
       />
       {perfumePickerModal}
       {resizeModalOpen && (() => {

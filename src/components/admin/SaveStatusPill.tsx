@@ -1,4 +1,4 @@
-import { CheckCircle, FloppyDisk, Spinner } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CheckCircle, FloppyDisk, Spinner } from "@phosphor-icons/react";
 import cx from "classnames";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -7,16 +7,24 @@ interface SaveStatusPillProps {
   status: "idle" | "saving" | "success" | "error";
   message: string;
   onSave: () => void;
+  onReset: () => void;
   isDirty: boolean;
   isSaving: boolean;
+  labels: {
+    unsavedChanges: string;
+    saveChanges: string;
+    resetChanges: string;
+  };
 }
 
 export function SaveStatusPill({
   status,
   message,
   onSave,
+  onReset,
   isDirty,
   isSaving,
+  labels,
 }: SaveStatusPillProps) {
   const [mounted, setMounted] = useState(false);
   const [showPill, setShowPill] = useState(false);
@@ -56,7 +64,7 @@ export function SaveStatusPill({
                 : "bg-white/95 border-[#E5E7EB] text-zinc-900",
         )}
       >
-        <div className="flex items-center justify-between gap-4 min-w-0">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             {status === "saving" && (
               <div className="flex-shrink-0">
@@ -71,24 +79,41 @@ export function SaveStatusPill({
             )}
 
             <span className="min-w-0 truncate text-sm font-medium">
-              {message || (isDirty ? "Unsaved changes" : "")}
+              {message || (isDirty ? labels.unsavedChanges : "")}
             </span>
           </div>
 
           {isDirty && status === "idle" ? (
-            <button
-              onClick={onSave}
-              disabled={isSaving}
-              className={cx(
-                "flex flex-shrink-0 items-center gap-2 rounded-[12px] px-3.5 py-2 text-sm font-semibold transition-all whitespace-nowrap",
-                isSaving
-                  ? "cursor-not-allowed bg-zinc-200 text-zinc-500"
-                  : "bg-indigo-600 text-white hover:bg-indigo-500 active:scale-95",
-              )}
-            >
-              <FloppyDisk size={16} weight="bold" />
-              Save
-            </button>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={onReset}
+                disabled={isSaving}
+                className={cx(
+                  "flex items-center gap-2 rounded-[12px] border px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap",
+                  isSaving
+                    ? "cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 active:scale-95",
+                )}
+              >
+                <ArrowCounterClockwise size={15} weight="bold" />
+                {labels.resetChanges}
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className={cx(
+                  "flex items-center gap-2 rounded-[12px] px-3.5 py-2 text-sm font-semibold transition-all whitespace-nowrap",
+                  isSaving
+                    ? "cursor-not-allowed bg-zinc-200 text-zinc-500"
+                    : "bg-indigo-600 text-white hover:bg-indigo-500 active:scale-95",
+                )}
+              >
+                <FloppyDisk size={16} weight="bold" />
+                {labels.saveChanges}
+              </button>
+            </div>
           ) : null}
         </div>
       </div>
