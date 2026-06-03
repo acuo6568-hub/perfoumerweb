@@ -330,7 +330,7 @@ type ActivityOverview = {
     subject: string;
     detail: string;
     timestamp: string;
-    time: string;
+    time?: string;
   }>;
 };
 
@@ -1817,6 +1817,16 @@ export function AdminDashboard({
     });
   };
 
+  const formatActivityTimeLabel = (value: string) => {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return "";
+
+    return date.toLocaleTimeString(locale === "az" ? "az-AZ" : "en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const formatSessionViews = (count: number) =>
     copy.sessionViews.replace("{count}", count.toLocaleString());
 
@@ -2914,7 +2924,7 @@ export function AdminDashboard({
               return (
                 <div key={item.id} className="grid min-h-[70px] grid-cols-[54px_18px_40px_minmax(0,1fr)] items-center gap-2.5 border-b border-zinc-100 px-3 py-3 last:border-b-0 sm:grid-cols-[68px_22px_48px_minmax(0,1fr)] sm:gap-3 sm:px-4">
                   <div>
-                    <p className="text-sm font-semibold leading-none text-zinc-950">{item.time}</p>
+                    <p className="text-sm font-semibold leading-none text-zinc-950">{formatActivityTimeLabel(item.timestamp)}</p>
                     <p className="mt-1.5 text-xs font-medium text-zinc-500">{formatActivityDateLabel(item.timestamp)}</p>
                   </div>
                   <div className="flex h-full items-center justify-center border-l border-zinc-200">

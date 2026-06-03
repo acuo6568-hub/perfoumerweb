@@ -172,18 +172,6 @@ function joinDetail(...parts: Array<string | null | undefined>) {
   return parts.map((part) => String(part || "").trim()).filter(Boolean).join(" · ");
 }
 
-function toTimeLabel(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export async function GET(request: Request) {
   const authError = await ensureAuthorized();
   if (authError) {
@@ -361,11 +349,7 @@ export async function GET(request: Request) {
 
     const recentItems = items
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 100)
-      .map((item) => ({
-        ...item,
-        time: toTimeLabel(item.timestamp),
-      }));
+      .slice(0, 100);
 
     return Response.json({
       generatedAt: new Date().toISOString(),

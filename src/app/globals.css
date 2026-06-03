@@ -25,6 +25,21 @@ html {
   animation: weatherProductReveal 520ms ease-out both;
 }
 
+.weather-pill-shimmer {
+  position: relative;
+}
+
+.weather-pill-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.72) 42%, transparent 64%);
+  transform: translateX(-115%);
+  animation: weatherPillShimmer 4.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
 @keyframes weatherWidgetFade {
   from {
     opacity: 0;
@@ -44,6 +59,17 @@ html {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes weatherPillShimmer {
+  0%,
+  62% {
+    transform: translateX(-115%);
+  }
+
+  100% {
+    transform: translateX(115%);
   }
 }
 
@@ -5159,6 +5185,7 @@ h6 {
   .admin-ios-rise,
   .weather-widget-fade,
   .weather-product-card,
+  .weather-pill-shimmer::after,
   .support-pulse-ring,
   .support-typing-dot {
     animation: none;

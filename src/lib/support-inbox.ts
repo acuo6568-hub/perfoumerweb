@@ -86,6 +86,26 @@ type AddMessageInput = {
 
 const SUPPORT_DATA_PATH = path.join(process.cwd(), "data", "admin", "support-inbox.json");
 
+function canUseLocalSupportData() {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    !process.env.VERCEL &&
+    !process.env.AWS_LAMBDA_FUNCTION_NAME &&
+    !process.cwd().startsWith("/var/task")
+  );
+}
+
+function hasSupabaseConfig() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function supportStorageError(action: string, cause?: unknown) {
+  const detail = cause instanceof Error ? ` ${cause.message}` : "";
+  return new Error(
+    `Support inbox ${action} failed. Configure Supabase support tables and SUPABASE_SERVICE_ROLE_KEY for production.${detail}`,
+  );
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -111,6 +131,10 @@ function getSupabase(): SupabaseClient | null {
 }
 
 async function readLocalData(): Promise<LocalSupportData> {
+  if (!canUseLocalSupportData()) {
+    return { conversations: [], messages: [], attachments: [] };
+  }
+
   try {
     const raw = await readFile(SUPPORT_DATA_PATH, "utf-8");
     const parsed = JSON.parse(raw) as Partial<LocalSupportData>;
@@ -125,6 +149,10 @@ async function readLocalData(): Promise<LocalSupportData> {
 }
 
 async function writeLocalData(data: LocalSupportData) {
+  if (!canUseLocalSupportData()) {
+    throw supportStorageError("write");
+  }
+
   await mkdir(path.dirname(SUPPORT_DATA_PATH), { recursive: true });
   await writeFile(SUPPORT_DATA_PATH, JSON.stringify(data, null, 2), "utf-8");
 }
@@ -204,15 +232,22 @@ async function tryListSupabaseThreads(limit = 80): Promise<SupportThread[] | nul
     .select("*")
     .order("last_message_at", { ascending: false })
     .limit(limit);
-  if (error) return null;
+  if (error) {
+    if (!canUseLocalSupportData()) throw supportStorageError("read", error);
+    return null;
+  }
 
   const ids = ((conversations ?? []) as SupportConversation[]).map((row) => row.id);
   if (!ids.length) return [];
 
-  const [{ data: messages }, { data: attachments }] = await Promise.all([
+  const [{ data: messages, error: messagesError }, { data: attachments, error: attachmentsError }] = await Promise.all([
     supabase.from("support_messages").select("*").in("conversation_id", ids).order("created_at", { ascending: true }),
     supabase.from("support_attachments").select("*").in("conversation_id", ids).order("created_at", { ascending: true }),
   ]);
+  if (messagesError || attachmentsError) {
+    if (!canUseLocalSupportData()) throw supportStorageError("read", messagesError || attachmentsError);
+    return null;
+  }
 
   return buildThreads({
     conversations: ((conversations ?? []) as Partial<SupportConversation>[]).map(normalizeConversation),
@@ -225,6 +260,7 @@ async function tryUpsertSupabaseConversation(conversation: SupportConversation) 
   const supabase = getSupabase();
   if (!supabase) return false;
   const { error } = await supabase.from("support_conversations").upsert(conversation, { onConflict: "id" });
+  if (error && !canUseLocalSupportData()) throw supportStorageError("save", error);
   return !error;
 }
 
@@ -232,12 +268,18 @@ async function tryInsertSupabaseMessage(message: SupportMessage, attachment?: Su
   const supabase = getSupabase();
   if (!supabase) return false;
   const { error } = await supabase.from("support_messages").insert(message);
-  if (error) return false;
+  if (error) {
+    if (!canUseLocalSupportData()) throw supportStorageError("message save", error);
+    return false;
+  }
   if (attachment) {
     const { error: attachmentError } = await supabase.from("support_attachments").insert(attachment);
-    if (attachmentError) return false;
+    if (attachmentError) {
+      if (!canUseLocalSupportData()) throw supportStorageError("attachment save", attachmentError);
+      return false;
+    }
   }
-  await supabase
+  const { error: conversationError } = await supabase
     .from("support_conversations")
     .update({
       status: message.sender_type === "admin" ? "active" : "waiting",
@@ -246,6 +288,9 @@ async function tryInsertSupabaseMessage(message: SupportMessage, attachment?: Su
       closed_at: null,
     })
     .eq("id", message.conversation_id);
+  if (conversationError && !canUseLocalSupportData()) {
+    throw supportStorageError("conversation update", conversationError);
+  }
   return true;
 }
 
@@ -253,12 +298,46 @@ async function tryPatchSupabaseConversation(id: string, patch: Partial<SupportCo
   const supabase = getSupabase();
   if (!supabase) return false;
   const { error } = await supabase.from("support_conversations").update(patch).eq("id", id);
+  if (error && !canUseLocalSupportData()) throw supportStorageError("conversation update", error);
   return !error;
+}
+
+async function markUserMessagesRead(conversationId: string, readAt = nowIso()) {
+  const supabase = getSupabase();
+  if (supabase) {
+    const { error } = await supabase
+      .from("support_messages")
+      .update({ read_at: readAt })
+      .eq("conversation_id", conversationId)
+      .eq("sender_type", "user")
+      .is("read_at", null);
+
+    if (!error) return;
+    if (!canUseLocalSupportData()) throw supportStorageError("message read update", error);
+  }
+
+  const local = await readLocalData();
+  let changed = false;
+  local.messages = local.messages.map((message) => {
+    if (message.conversation_id !== conversationId || message.sender_type !== "user" || message.read_at) {
+      return message;
+    }
+
+    changed = true;
+    return { ...message, read_at: readAt };
+  });
+
+  if (changed) {
+    await writeLocalData(local);
+  }
 }
 
 export async function listSupportThreads(limit = 80): Promise<SupportThread[]> {
   const fromSupabase = await tryListSupabaseThreads(limit);
   if (fromSupabase) return fromSupabase;
+  if (!canUseLocalSupportData() && !hasSupabaseConfig()) {
+    throw supportStorageError("read");
+  }
   const local = await readLocalData();
   return buildThreads(local).slice(0, limit);
 }
@@ -411,6 +490,10 @@ export async function patchSupportConversation(id: string, patch: Partial<Suppor
       ...normalizedPatch,
     };
     await writeLocalData(local);
+  }
+
+  if (normalizedPatch.status === "active" || normalizedPatch.status === "closed") {
+    await markUserMessagesRead(id, timestamp);
   }
 
   return getSupportThread(id);

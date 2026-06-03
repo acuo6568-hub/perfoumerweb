@@ -2857,9 +2857,9 @@ export function AdminPanelClient({
     const loadSupportSummary = async () => {
       try {
         const response = await fetch("/api/admin/support", { cache: "no-store" });
-        const data = (await response.json()) as { summary?: { unread?: number } };
+        const data = (await response.json()) as { summary?: { newCount?: number; waitingCount?: number } };
         if (!active || !response.ok) return;
-        setSupportUnreadCount(Number(data.summary?.unread || 0));
+        setSupportUnreadCount(Number(data.summary?.newCount || 0) + Number(data.summary?.waitingCount || 0));
       } catch {
         if (active) setSupportUnreadCount(0);
       }

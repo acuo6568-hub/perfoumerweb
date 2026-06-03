@@ -478,10 +478,6 @@ export default async function PerfumeDetailPage({
               supabase={supabaseConfig}
             />
 
-            {settings.weather.enabled ? (
-              <WeatherPerfumeWidget locale={locale} variant="qoxunu" />
-            ) : null}
-
             <div className="rounded-[1.95rem] bg-white/96 p-6 shadow-[0_20px_54px_rgba(24,24,24,0.05)] ring-1 ring-zinc-200/80 md:p-8">
               <div className="space-y-8">
                 <NoteGroup title={t.detail.topNotes} notes={perfume.notes.top} locale={locale} />
@@ -514,46 +510,52 @@ export default async function PerfumeDetailPage({
 
         <PerfumeCommentsSection perfumeSlug={perfume.slug} locale={locale} supabase={supabaseConfig} />
 
-        {similarPerfumes.length > 0 ? (
-          <section className="mt-24">
+        <div className="mt-24 space-y-20">
+          {settings.weather.enabled ? (
+            <WeatherPerfumeWidget locale={locale} variant="qoxunu" className="!mt-0" />
+          ) : null}
+
+          {similarPerfumes.length > 0 ? (
+            <section>
+              <h2 className="text-5xl leading-[0.98] text-zinc-800 md:text-6xl">
+                {t.detail.similarProducts}
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-500 md:text-base">
+                {t.detail.similarProductsHint}
+              </p>
+
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
+                {similarPerfumes.map((item) => (
+                  <ProductCard key={item.id} perfume={item} locale={locale} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section>
             <h2 className="text-5xl leading-[0.98] text-zinc-800 md:text-6xl">
-              {t.detail.similarProducts}
+              {t.detail.moreProducts}
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-500 md:text-base">
-              {t.detail.similarProductsHint}
+              {t.detail.moreProductsHint}
             </p>
 
             <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
-              {similarPerfumes.map((item) => (
+              {relatedPerfumes.map((item) => (
                 <ProductCard key={item.id} perfume={item} locale={locale} />
               ))}
             </div>
+
+            <div className="mt-9 flex justify-center">
+              <Link
+                href={toLocalePath("/catalog", locale)}
+                className="inline-flex min-h-13 items-center justify-center rounded-full border border-zinc-400 bg-transparent px-9 text-lg font-medium text-zinc-700 transition md:hover:bg-white/70"
+              >
+                {t.detail.otherProducts}
+              </Link>
+            </div>
           </section>
-        ) : null}
-
-        <section className="mt-24">
-          <h2 className="text-5xl leading-[0.98] text-zinc-800 md:text-6xl">
-            {t.detail.moreProducts}
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-500 md:text-base">
-            {t.detail.moreProductsHint}
-          </p>
-
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
-            {relatedPerfumes.map((item) => (
-              <ProductCard key={item.id} perfume={item} locale={locale} />
-            ))}
-          </div>
-
-          <div className="mt-9 flex justify-center">
-            <Link
-              href={toLocalePath("/catalog", locale)}
-              className="inline-flex min-h-13 items-center justify-center rounded-full border border-zinc-400 bg-transparent px-9 text-lg font-medium text-zinc-700 transition md:hover:bg-white/70"
-            >
-              {t.detail.otherProducts}
-            </Link>
-          </div>
-        </section>
+        </div>
 
         <section className="mt-8 rounded-2xl border border-zinc-200/80 bg-white/78 p-4 shadow-[0_10px_24px_rgba(22,22,24,0.04)] md:p-5">
           <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">Sürətli keçidlər</p>

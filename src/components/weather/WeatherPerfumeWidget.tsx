@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CloudRain, Compass, MapPin, Sparkle, Wind } from "@phosphor-icons/react";
+import { Cloud, CloudRain, Compass, MapPin, Sparkle, Wind } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
 import { toLocalePath, type Locale } from "@/lib/i18n";
@@ -37,6 +37,64 @@ type WeatherPerfumeWidgetProps = {
 function formatPrice(sizes: PerfumeSize[]) {
   const min = sizes.reduce((value, size) => Math.min(value, size.price), Number.POSITIVE_INFINITY);
   return Number.isFinite(min) ? `${min} ₼-dən` : "Qiymət sorğu ilə";
+}
+
+function weatherReason(locale: Locale) {
+  if (locale === "ru") return "Для мягкой погоды подходят цветочные, чистые мускусные и мягкие древесные ароматы.";
+  if (locale === "en") return "Mild weather pairs well with florals, clean musk, and soft woods.";
+  return "Mülayim hava üçün çiçəkli, təmiz müşk və yumşaq odunsu qoxular uyğundur.";
+}
+
+function weatherMoodLabel(locale: Locale) {
+  if (locale === "ru") return "Погода";
+  if (locale === "en") return "Weather";
+  return "Hava";
+}
+
+function nearbyLabel(locale: Locale) {
+  if (locale === "ru") return "Рядом";
+  if (locale === "en") return "Nearby";
+  return "Yaxın şəhər";
+}
+
+function fallbackTags(locale: Locale) {
+  if (locale === "ru") return ["Чистый", "Дневной", "Легкий"];
+  if (locale === "en") return ["Clean", "Daily", "Light"];
+  return ["Təmiz", "Gündəlik", "Yüngül"];
+}
+
+function buildProductTags(product: WeatherProduct, locale: Locale) {
+  const lower = `${product.reason} ${product.name} ${product.brand}`.toLowerCase();
+  const dictionary =
+    locale === "ru"
+      ? [
+          { label: "Мускус", tokens: ["musk", "муск"] },
+          { label: "Цветочный", tokens: ["floral", "flower", "rose", "çiç", "цвет"] },
+          { label: "Древесный", tokens: ["wood", "oud", "odun", "древ"] },
+          { label: "Свежий", tokens: ["fresh", "clean", "təmiz", "свеж"] },
+          { label: "Легкий", tokens: ["light", "yüngül", "лег"] },
+        ]
+      : locale === "en"
+        ? [
+            { label: "Musk", tokens: ["musk"] },
+            { label: "Floral", tokens: ["floral", "flower", "rose", "çiç"] },
+            { label: "Woody", tokens: ["wood", "oud", "odun"] },
+            { label: "Clean", tokens: ["fresh", "clean", "təmiz"] },
+            { label: "Light", tokens: ["light", "yüngül"] },
+          ]
+        : [
+            { label: "Müşk", tokens: ["musk", "müşk"] },
+            { label: "Çiçəkli", tokens: ["floral", "flower", "rose", "çiç"] },
+            { label: "Odunsu", tokens: ["wood", "oud", "odun"] },
+            { label: "Təmiz", tokens: ["fresh", "clean", "təmiz"] },
+            { label: "Yüngül", tokens: ["light", "yüngül"] },
+          ];
+
+  const matches = dictionary
+    .filter((entry) => entry.tokens.some((token) => lower.includes(token)))
+    .map((entry) => entry.label);
+
+  return Array.from(new Set([...matches, ...fallbackTags(locale)])).slice(0, 3);
 }
 
 function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
@@ -78,7 +136,7 @@ export function WeatherPerfumeWidget({ locale, variant = "home", className = "" 
       ? "Подбор по температуре, сезону и времени дня."
       : locale === "en"
         ? "Selected by temperature, season, and time of day."
-        : "Havanın temperaturuna, mövsümə və günün vaxtına görə ən uyğun qoxular.";
+        : "Havanın ritminə uyğun qısa, premium seçim.";
   const cityChoices = [
     ...(payload?.availableCities?.map((city) => city.name) ?? []),
     ...(selectedCity && !(payload?.availableCities ?? []).some((city) => city.name === selectedCity) ? [selectedCity] : []),
@@ -130,105 +188,116 @@ export function WeatherPerfumeWidget({ locale, variant = "home", className = "" 
 
   const weather = payload?.weather;
   const products = payload?.recommendations ?? [];
+  const visibleProducts = products.slice(0, compact ? 5 : 8);
+  const WeatherIcon = weather?.precipitation
+    ? CloudRain
+    : weather?.windSpeed && weather.windSpeed >= 22
+      ? Wind
+      : weather?.mood
+        ? Cloud
+        : Sparkle;
+  const weatherCityLabel = weather?.city ?? selectedCity;
 
   return (
     <section
       className={[
-        compact
-          ? "mt-4 rounded-[1.25rem] border border-zinc-200 bg-white/88 p-4 shadow-[0_16px_36px_rgba(24,24,24,0.07)]"
-          : "mt-12 overflow-hidden rounded-[2rem] border border-zinc-200/85 bg-[#fbfaf7] p-4 shadow-[0_22px_58px_rgba(24,24,24,0.08)] sm:p-5 md:p-6",
-        "weather-widget-fade",
+        compact ? "mt-6" : "mt-10",
+        "weather-widget-fade border-y border-zinc-200/70 bg-[#f8f6f1]/45 py-6 sm:py-7",
         className,
       ].join(" ")}
     >
-      <div className={compact ? "grid gap-4" : "grid gap-5 lg:grid-cols-[0.9fr_1.4fr] lg:items-stretch"}>
-        <aside className="rounded-[1.35rem] border border-zinc-200 bg-white p-4 shadow-[0_12px_34px_rgba(24,24,24,0.05)] sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-zinc-500 uppercase">Perfoumer Weather</p>
-              <h2 className={compact ? "mt-2 text-xl font-semibold text-zinc-950" : "mt-2 max-w-[13ch] text-4xl leading-[0.98] text-zinc-950 md:text-5xl"}>{title}</h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-zinc-500">{subtitle}</p>
-            </div>
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-800">
-              {weather?.precipitation ? <CloudRain size={18} weight="duotone" /> : weather?.windSpeed && weather.windSpeed >= 22 ? <Wind size={18} weight="duotone" /> : <Sparkle size={18} weight="duotone" />}
-            </span>
+      <div className="mx-auto max-w-[1540px] px-0">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-[#a2844b] uppercase">Perfoumer Weather</p>
+            <h2 className="mt-2 font-serif text-[2rem] leading-[1.02] text-zinc-950 sm:text-[2.45rem] md:text-[2.8rem]">
+              {title}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">{weatherReason(locale)}</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-400">{subtitle}</p>
           </div>
 
-          <div className="mt-5 rounded-[1.1rem] border border-zinc-200 bg-[#f6f3ed] p-4">
-            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-900">
-              <MapPin size={15} weight="bold" />
-              <span>{weather?.city ?? selectedCity}</span>
-              <span className="text-zinc-400">·</span>
-              <span>{isLoading ? "..." : <AnimatedNumber value={weather?.temperature ?? 0} suffix="°C" />}</span>
-              <span className="text-zinc-400">·</span>
-              <span>{weather?.mood ?? "Hava"}</span>
-            </div>
-            <p className="mt-3 text-[0.95rem] leading-6 text-zinc-700">
-              {weather?.advice ?? "Bugünkü hava üçün uyğun qoxular hazırlanır..."}
-            </p>
-            <p className="mt-3 text-[0.68rem] tracking-[0.16em] text-zinc-400 uppercase">
-              {payload?.attribution ?? "Weather data by Open-Meteo.com"}
-            </p>
+          <div className="weather-pill-shimmer inline-flex w-fit max-w-full items-center gap-2 overflow-hidden rounded-full border border-zinc-200/90 bg-white/82 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_10px_28px_rgba(24,24,24,0.04)] backdrop-blur">
+            <MapPin size={15} weight="bold" className="shrink-0 text-zinc-800" />
+            <span className="truncate">{weatherCityLabel || "..."}</span>
+            <span className="text-zinc-300">·</span>
+            <span>{isLoading ? "..." : <AnimatedNumber value={weather?.temperature ?? 0} suffix="°C" />}</span>
+            <span className="text-zinc-300">·</span>
+            <WeatherIcon size={17} weight="duotone" className="shrink-0 text-zinc-800" />
+            <span className="truncate">{weather?.mood ?? weatherMoodLabel(locale)}</span>
           </div>
+        </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {cityChoices.map((city) => (
-              <button
-                key={city}
-                type="button"
-                onClick={() => setSelectedCity(city)}
-                className={[
-                  "rounded-full border px-3 py-1.5 text-[0.75rem] font-semibold transition",
-                  selectedCity === city ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-                ].join(" ")}
-              >
-                {city}
-              </button>
-            ))}
+        <div className="mt-5 flex flex-wrap gap-2">
+          {cityChoices.map((city) => (
             <button
+              key={city}
               type="button"
-              onClick={useNearestCity}
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-zinc-600 transition hover:border-zinc-300"
+              onClick={() => setSelectedCity(city)}
+              className={[
+                "h-8 rounded-full border px-3 text-xs font-semibold transition",
+                selectedCity === city ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_8px_18px_rgba(24,24,24,0.12)]" : "border-zinc-200 bg-white/80 text-zinc-600 hover:border-zinc-300 hover:bg-white",
+              ].join(" ")}
             >
-              <Compass size={13} weight="bold" />
-              {isLocating ? "..." : locale === "az" ? "Yaxın şəhər" : "Nearby"}
+              {city}
             </button>
-          </div>
-        </aside>
+          ))}
+          <button
+            type="button"
+            onClick={useNearestCity}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white/80 px-3 text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-white"
+          >
+            <Compass size={13} weight="bold" />
+            {isLocating ? "..." : nearbyLabel(locale)}
+          </button>
+        </div>
 
-        <div className={compact ? "flex gap-3 overflow-x-auto pb-1" : "flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible"}>
-          {(isLoading ? [] : products).slice(0, compact ? 3 : 6).map((perfume, index) => (
+        <div className="mt-6 flex snap-x gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {(isLoading ? [] : visibleProducts).map((perfume, index) => (
             <Link
               key={perfume.slug}
               href={toLocalePath(`/perfumes/${perfume.slug}`, locale)}
-              className="weather-product-card group min-w-[13.5rem] rounded-[1.25rem] border border-zinc-200 bg-white p-3 shadow-[0_12px_30px_rgba(24,24,24,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(24,24,24,0.1)]"
+              className="weather-product-card group min-w-[9.8rem] snap-start rounded-[0.95rem] border border-transparent bg-transparent p-1 transition duration-300 hover:-translate-y-1 sm:min-w-[11.2rem]"
               style={{ animationDelay: `${index * 80}ms` }}
             >
-              <div className="relative aspect-[4/3] rounded-[1rem] bg-zinc-50">
+              <div className="relative aspect-[1.08] overflow-hidden rounded-[0.9rem] border border-zinc-100 bg-white/72 shadow-[0_12px_32px_rgba(24,24,24,0.04)]">
                 <Image
                   src={perfume.image || "/perfoumerlogo.png"}
                   alt={perfume.imageAlt || `${perfume.brand} ${perfume.name}`}
                   fill
-                  sizes="220px"
-                  className="object-contain p-3 transition duration-500 group-hover:scale-[1.035]"
+                  sizes="180px"
+                  className="object-contain p-4 transition duration-500 group-hover:scale-[1.045]"
                 />
-              </div>
-              <div className="mt-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[0.66rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">{perfume.brand}</p>
-                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-zinc-950">{perfume.name}</h3>
-                </div>
-                <span className="shrink-0 rounded-full border border-zinc-200 bg-[#f6f3ed] px-2 py-1 text-[0.7rem] font-bold text-zinc-900">
+                <span className="absolute bottom-2 right-2 rounded-full border border-zinc-200 bg-[#f4f1eb]/95 px-2 py-0.5 text-[0.68rem] font-bold text-zinc-900 shadow-sm">
                   <AnimatedNumber value={perfume.matchPercent} suffix="%" />
                 </span>
               </div>
+              <div className="mt-3 min-w-0">
+                <p className="truncate text-[0.66rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">{perfume.brand}</p>
+                <h3 className="mt-1 line-clamp-2 min-h-[2.25rem] text-sm font-semibold leading-[1.15] text-zinc-950">{perfume.name}</h3>
+              </div>
               <p className="mt-2 text-xs font-semibold text-zinc-900">{formatPrice(perfume.sizes)}</p>
-              <p className="mt-2 line-clamp-3 text-xs leading-5 text-zinc-500">{perfume.reason}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {buildProductTags(perfume, locale).map((tag) => (
+                  <span key={tag} className="rounded-full bg-[#ebe7df] px-2 py-0.5 text-[0.68rem] font-medium text-zinc-600">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </Link>
           ))}
 
+          {isLoading ? Array.from({ length: compact ? 4 : 6 }).map((_, index) => (
+            <div key={index} className="weather-product-card min-w-[9.8rem] snap-start p-1 sm:min-w-[11.2rem]" style={{ animationDelay: `${index * 80}ms` }}>
+              <div className="aspect-[1.08] rounded-[0.9rem] border border-zinc-100 bg-white/70" />
+              <div className="mt-3 h-3 w-16 rounded-full bg-zinc-200/70" />
+              <div className="mt-2 h-4 w-28 rounded-full bg-zinc-200/70" />
+              <div className="mt-3 h-3 w-20 rounded-full bg-zinc-200/70" />
+            </div>
+          )) : null}
+
           {!isLoading && !products.length ? (
-            <div className="rounded-[1.2rem] border border-zinc-200 bg-white p-5 text-sm text-zinc-500">
+            <div className="rounded-[1rem] border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-500">
               Hava əsaslı seçim hazırda yüklənmədi. Bakı üçün standart qoxular göstəriləcək.
             </div>
           ) : null}

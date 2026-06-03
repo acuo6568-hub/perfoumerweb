@@ -930,6 +930,109 @@ create index if not exists website_visitor_messages_status_idx
 
 alter table public.website_visitor_messages enable row level security;
 
+create table if not exists public.support_conversations (
+  id text primary key,
+  user_id uuid references auth.users(id) on delete set null,
+  guest_id text,
+  status text not null default 'waiting' check (status in ('new', 'waiting', 'active', 'closed')),
+  assigned_admin_id text,
+  source_page text not null default '',
+  user_name text,
+  user_email text,
+  user_agent text,
+  device text,
+  browser text,
+  is_online boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  last_message_at timestamptz not null default timezone('utc', now()),
+  closed_at timestamptz
+);
+
+create table if not exists public.support_messages (
+  id text primary key,
+  conversation_id text not null references public.support_conversations(id) on delete cascade,
+  sender_type text not null default 'user' check (sender_type in ('user', 'admin', 'system', 'ai')),
+  sender_id text,
+  message text not null default '',
+  attachment_url text,
+  attachment_type text,
+  created_at timestamptz not null default timezone('utc', now()),
+  read_at timestamptz
+);
+
+create table if not exists public.support_attachments (
+  id text primary key,
+  conversation_id text not null references public.support_conversations(id) on delete cascade,
+  message_id text not null references public.support_messages(id) on delete cascade,
+  file_url text not null default '',
+  file_name text not null default '',
+  file_type text not null default '',
+  file_size integer not null default 0 check (file_size >= 0),
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.support_conversations
+  add column if not exists user_id uuid references auth.users(id) on delete set null,
+  add column if not exists guest_id text,
+  add column if not exists status text not null default 'waiting',
+  add column if not exists assigned_admin_id text,
+  add column if not exists source_page text not null default '',
+  add column if not exists user_name text,
+  add column if not exists user_email text,
+  add column if not exists user_agent text,
+  add column if not exists device text,
+  add column if not exists browser text,
+  add column if not exists is_online boolean not null default false,
+  add column if not exists created_at timestamptz not null default timezone('utc', now()),
+  add column if not exists updated_at timestamptz not null default timezone('utc', now()),
+  add column if not exists last_message_at timestamptz not null default timezone('utc', now()),
+  add column if not exists closed_at timestamptz;
+
+alter table public.support_messages
+  add column if not exists conversation_id text references public.support_conversations(id) on delete cascade,
+  add column if not exists sender_type text not null default 'user',
+  add column if not exists sender_id text,
+  add column if not exists message text not null default '',
+  add column if not exists attachment_url text,
+  add column if not exists attachment_type text,
+  add column if not exists created_at timestamptz not null default timezone('utc', now()),
+  add column if not exists read_at timestamptz;
+
+alter table public.support_attachments
+  add column if not exists conversation_id text references public.support_conversations(id) on delete cascade,
+  add column if not exists message_id text references public.support_messages(id) on delete cascade,
+  add column if not exists file_url text not null default '',
+  add column if not exists file_name text not null default '',
+  add column if not exists file_type text not null default '',
+  add column if not exists file_size integer not null default 0,
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+create index if not exists support_conversations_last_message_idx
+  on public.support_conversations (last_message_at desc);
+
+create index if not exists support_conversations_status_idx
+  on public.support_conversations (status, last_message_at desc);
+
+create index if not exists support_conversations_user_idx
+  on public.support_conversations (user_id);
+
+create index if not exists support_conversations_guest_idx
+  on public.support_conversations (guest_id);
+
+create index if not exists support_messages_conversation_idx
+  on public.support_messages (conversation_id, created_at asc);
+
+create index if not exists support_messages_unread_idx
+  on public.support_messages (conversation_id, sender_type, read_at);
+
+create index if not exists support_attachments_conversation_idx
+  on public.support_attachments (conversation_id, created_at asc);
+
+alter table public.support_conversations enable row level security;
+alter table public.support_messages enable row level security;
+alter table public.support_attachments enable row level security;
+
 drop trigger if exists set_website_live_sessions_updated_at on public.website_live_sessions;
 create trigger set_website_live_sessions_updated_at
 before update on public.website_live_sessions
