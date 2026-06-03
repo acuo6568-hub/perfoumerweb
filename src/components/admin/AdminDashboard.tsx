@@ -4,6 +4,7 @@ import {
   Users,
   Eye,
   ArrowClockwise,
+  ArrowRight,
   CopySimple,
   EnvelopeOpen,
   Clock,
@@ -22,7 +23,6 @@ import {
   RedditLogo,
   SnapchatLogo,
   TiktokLogo,
-  Warning,
   TrendUp,
   TwitterLogo,
   UserCircle,
@@ -31,13 +31,7 @@ import {
   XLogo,
   Trash,
   X,
-DeviceMobile,
-DeviceTablet,
-Desktop,
-Laptop,
-
-
-} from "@phosphor-icons/react";
+} from "@/components/admin/lucide-admin-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -276,16 +270,26 @@ type LiveStats = {
   }>;
   currentUsers: Array<{
     sessionId: string;
+    anonymousId: string;
+    userId?: string | null;
     label: string;
     email?: string;
+    locale?: string;
+    deviceType?: string;
+    browser?: string;
+    os?: string;
     countryCode?: string;
     country: string;
+    region?: string;
     city: string;
+    timezone?: string;
     path: string;
     pathWithQuery: string;
     pageViews: number;
+    firstSeen?: string;
     lastSeen: string;
     isLoggedIn: boolean;
+    isSuspectedBot?: boolean;
   }>;
   marketing: {
     strongestMarket: string;
@@ -326,7 +330,7 @@ type ActivityOverview = {
     subject: string;
     detail: string;
     timestamp: string;
-    time: string;
+    time?: string;
   }>;
 };
 
@@ -478,6 +482,20 @@ const dashboardCopy = {
     quizCompleted: "Qoxunu testi tamamlandı",
     pageVisited: "{subject} səhifəsinə baxıldı",
     usersPanelSubtitle: "Qeydiyyatdan keçən istifadəçilər və email siyahısı",
+    liveGuests: "Canlı qonaqlar",
+    liveVisitorPanelSubtitle: "Saytda olan qonaqlar və istifadəçilər",
+    registeredVisitors: "Qeydiyyatlı",
+    guestVisitors: "Qonaq",
+    currentPage: "Cari səhifə",
+    deviceInfo: "Cihaz",
+    locationInfo: "Məkan",
+    popupTitle: "Popup başlığı",
+    popupMessage: "Popup mesajı",
+    popupLanguage: "Dil",
+    visitorLanguage: "Ziyarətçinin dili",
+    allLanguages: "Bütün dillər",
+    sendPopup: "Popup göndər",
+    popupSentToast: "Popup göndərildi",
     userCount: "İstifadəçi sayı",
     totalUserCount: "Ümumi istifadəçi",
     activeUserCount: "Aktiv istifadəçi",
@@ -652,6 +670,20 @@ const dashboardCopy = {
     quizCompleted: "Qoxunu quiz completed",
     pageVisited: "{subject} page visited",
     usersPanelSubtitle: "Registered users and email list",
+    liveGuests: "Live guests",
+    liveVisitorPanelSubtitle: "Guests and users currently on the website",
+    registeredVisitors: "Registered",
+    guestVisitors: "Guest",
+    currentPage: "Current page",
+    deviceInfo: "Device",
+    locationInfo: "Location",
+    popupTitle: "Popup title",
+    popupMessage: "Popup message",
+    popupLanguage: "Language",
+    visitorLanguage: "Visitor language",
+    allLanguages: "All languages",
+    sendPopup: "Send popup",
+    popupSentToast: "Popup sent",
     userCount: "User count",
     totalUserCount: "Total users",
     activeUserCount: "Active users",
@@ -713,7 +745,7 @@ const dashboardCopy = {
 };
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
-const panelClass = "rounded-[20px] border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.07)]";
+const panelClass = "rounded-[16px] border border-zinc-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-300 sm:rounded-[20px] sm:p-5 sm:hover:-translate-y-0.5 sm:hover:shadow-[0_16px_40px_rgba(15,23,42,0.07)]";
 const softPanelClass = "rounded-[20px] border border-zinc-100 bg-zinc-50/70 p-4";
 const containedScrollClass = "overscroll-contain [-webkit-overflow-scrolling:touch]";
 
@@ -886,64 +918,50 @@ function getTrackerPreviewUrl(origin: string, targetPath: string, slug: string) 
 
 function getSourceMeta(source: string) {
   const normalized = source.toLowerCase();
-  if (normalized.includes("instagram")) return { Icon: InstagramLogo, tone: "border-pink-100 bg-pink-50 text-pink-700" };
-  if (normalized.includes("tiktok")) return { Icon: TiktokLogo, tone: "border-zinc-200 bg-zinc-950 text-white" };
-  if (normalized.includes("facebook") || normalized.includes("fb.")) return { Icon: FacebookLogo, tone: "border-blue-100 bg-blue-50 text-blue-700" };
-  if (normalized.includes("meta")) return { Icon: MetaLogo, tone: "border-blue-100 bg-blue-50 text-blue-700" };
-  if (normalized.includes("google")) return { Icon: GoogleLogo, tone: "border-emerald-100 bg-emerald-50 text-emerald-700" };
-  if (normalized.includes("youtube") || normalized.includes("youtu")) return { Icon: YoutubeLogo, tone: "border-red-100 bg-red-50 text-red-700" };
-  if (normalized === "x" || normalized.includes("twitter")) return { Icon: normalized === "x" ? XLogo : TwitterLogo, tone: "border-zinc-200 bg-zinc-50 text-zinc-900" };
-  if (normalized.includes("whatsapp")) return { Icon: WhatsappLogo, tone: "border-emerald-100 bg-emerald-50 text-emerald-700" };
-  if (normalized.includes("pinterest")) return { Icon: PinterestLogo, tone: "border-red-100 bg-red-50 text-red-700" };
-  if (normalized.includes("snapchat")) return { Icon: SnapchatLogo, tone: "border-yellow-100 bg-yellow-50 text-yellow-700" };
-  if (normalized.includes("reddit")) return { Icon: RedditLogo, tone: "border-orange-100 bg-orange-50 text-orange-700" };
-  return { Icon: Globe, tone: "border-zinc-200 bg-zinc-50 text-zinc-600" };
+  if (normalized.includes("instagram")) return { Icon: InstagramLogo, tone: "bg-[radial-gradient(circle_at_30%_107%,#fdf497_0%,#fdf497_5%,#fd5949_45%,#d6249f_60%,#285AEB_90%)] text-white", weight: "fill" as const };
+  if (normalized.includes("tiktok")) return { Icon: TiktokLogo, tone: "bg-zinc-950 text-white", weight: "fill" as const };
+  if (normalized.includes("facebook") || normalized.includes("fb.")) return { Icon: FacebookLogo, tone: "bg-[#1877F2] text-white", weight: "fill" as const };
+  if (normalized.includes("meta")) return { Icon: MetaLogo, tone: "bg-[#0866FF] text-white", weight: "fill" as const };
+  if (normalized.includes("google")) return { Icon: GoogleLogo, tone: "bg-white text-[#4285F4] ring-1 ring-zinc-200", weight: "bold" as const };
+  if (normalized.includes("youtube") || normalized.includes("youtu")) return { Icon: YoutubeLogo, tone: "bg-[#FF0000] text-white", weight: "fill" as const };
+  if (normalized === "x" || normalized.includes("twitter")) return { Icon: normalized === "x" ? XLogo : TwitterLogo, tone: "bg-zinc-950 text-white", weight: "fill" as const };
+  if (normalized.includes("whatsapp")) return { Icon: WhatsappLogo, tone: "bg-[#25D366] text-white", weight: "fill" as const };
+  if (normalized.includes("pinterest")) return { Icon: PinterestLogo, tone: "bg-[#E60023] text-white", weight: "fill" as const };
+  if (normalized.includes("snapchat")) return { Icon: SnapchatLogo, tone: "bg-[#FFFC00] text-zinc-950", weight: "fill" as const };
+  if (normalized.includes("reddit")) return { Icon: RedditLogo, tone: "bg-[#FF4500] text-white", weight: "fill" as const };
+  if (normalized === "direct") return { Icon: LinkSimple, tone: "bg-zinc-950 text-white", weight: "bold" as const };
+  return { Icon: Globe, tone: "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200", weight: "bold" as const };
 }
 
-function SourceBadge({ source }: { source: string }) {
-  const { Icon, tone } = getSourceMeta(source || "Direct");
+function SourceLogo({ source, className }: { source: string; className?: string }) {
+  const { Icon, tone, weight } = getSourceMeta(source || "Direct");
   return (
-    <span className="inline-flex min-w-0 items-center gap-2">
-      <span className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border", tone)}>
-        <Icon size={18} weight="fill" />
-      </span>
-      <span className="truncate">{source || "Direct"}</span>
+    <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[10px]", tone, className)}>
+      <Icon size={18} weight={weight} />
     </span>
   );
 }
 
-function getDeviceMeta(device: string) {
+function DeviceLogo({ device, className }: { device: string; className?: string }) {
   const normalized = device.toLowerCase();
-
-  if (normalized.includes("mobile") || normalized.includes("phone")) {
-    return {
-      Icon: DeviceMobile,
-      label: "Mobile",
-      tone: "border-indigo-100 bg-indigo-50 text-indigo-700",
-    };
+  const isMobile = normalized.includes("mobile") || normalized.includes("phone");
+  const isTablet = normalized.includes("tablet") || normalized.includes("ipad");
+  if (isMobile) {
+    return <span className={cx("grid h-8 w-8 place-items-center rounded-[10px] bg-zinc-950", className)}><span className="h-5 w-3 rounded-[4px] border border-white/85" /></span>;
   }
-
-  if (normalized.includes("tablet") || normalized.includes("ipad")) {
-    return {
-      Icon: DeviceTablet,
-      label: "Tablet",
-      tone: "border-violet-100 bg-violet-50 text-violet-700",
-    };
+  if (isTablet) {
+    return <span className={cx("grid h-8 w-8 place-items-center rounded-[10px] bg-indigo-50", className)}><span className="h-5 w-4 rounded-[4px] border border-indigo-500" /></span>;
   }
+  return <span className={cx("grid h-8 w-8 place-items-center rounded-[10px] bg-blue-50", className)}><span className="h-4 w-5 rounded-[3px] border border-blue-600 after:mx-auto after:mt-[14px] after:block after:h-1 after:w-3 after:rounded-full after:bg-blue-600" /></span>;
+}
 
-  if (normalized.includes("laptop")) {
-    return {
-      Icon: Laptop,
-      label: "Laptop",
-      tone: "border-sky-100 bg-sky-50 text-sky-700",
-    };
-  }
-
-  return {
-    Icon: Desktop,
-    label: "Desktop",
-    tone: "border-zinc-200 bg-zinc-50 text-zinc-700",
-  };
+function SourceBadge({ source }: { source: string }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <SourceLogo source={source} />
+      <span className="truncate">{source || "Direct"}</span>
+    </span>
+  );
 }
 
 function buildSparklinePath(values: number[], width = 96, height = 32) {
@@ -1080,7 +1098,10 @@ export function AdminDashboard({
   const [overviewRange, setOverviewRange] = useState<"today" | "7" | "30" | "90">("30");
   const [chartMetric, setChartMetric] = useState<ChartMetric>("visitors");
   const [trafficDimension, setTrafficDimension] = useState<"country" | "recentCountry" | "device" | "referrer">("country");
+  const [activityFeedLimit, setActivityFeedLimit] = useState<5 | 10 | 25 | 50 | 100>(5);
+  const [activityLimitMenuOpen, setActivityLimitMenuOpen] = useState(false);
   const [activeChartIndex, setActiveChartIndex] = useState<number | null>(null);
+  const [activeTrafficIndex, setActiveTrafficIndex] = useState<number | null>(null);
   const [liveVisitorsExpanded, setLiveVisitorsExpanded] = useState(false);
   const [expandedPanel, setExpandedPanel] = useState<"perfumes" | "wishlist" | "search" | "activity" | null>(null);
   const [userSearch, setUserSearch] = useState("");
@@ -1127,6 +1148,14 @@ export function AdminDashboard({
   const [trackerTargetPath, setTrackerTargetPath] = useState("/");
   const [isTrackerSaving, setIsTrackerSaving] = useState(false);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+  const [selectedLiveSessionId, setSelectedLiveSessionId] = useState<string | null>(null);
+  const [visitorPopupTitle, setVisitorPopupTitle] = useState(locale === "az" ? "Perfoumer" : "Perfoumer");
+  const [visitorPopupBody, setVisitorPopupBody] = useState(
+    locale === "az" ? "Salam! Sizə necə kömək edə bilərik?" : "Hi! How can we help you?",
+  );
+  const [visitorPopupLocaleMode, setVisitorPopupLocaleMode] = useState<"visitor" | "all">("visitor");
+  const [isVisitorPopupSending, setIsVisitorPopupSending] = useState(false);
+  const [visitorPopupError, setVisitorPopupError] = useState<string | null>(null);
   const siteOrigin = "https://perfoumer.az";
   const supabase = getSupabaseBrowserClient();
   const copy = dashboardCopy[locale];
@@ -1145,6 +1174,10 @@ export function AdminDashboard({
   useEffect(() => {
     setActiveChartIndex(null);
   }, [chartMetric, overviewRange]);
+
+  useEffect(() => {
+    setActiveTrafficIndex(null);
+  }, [trafficDimension]);
 
   useEffect(() => {
     if (!newsletterOpen && !newsletterConfirmTarget) {
@@ -1641,6 +1674,7 @@ export function AdminDashboard({
   const handleSelectUser = useCallback(
     (userId: string) => {
       setSelectedUserId(userId);
+      setSelectedLiveSessionId(null);
       setUserDetailTab("sessions");
       setUserWishlist([]);
       setUserCart([]);
@@ -1685,6 +1719,66 @@ export function AdminDashboard({
     );
   }, [copy.deleteConfirm, copy.usersLoadError]);
 
+  const handleSelectLiveVisitor = useCallback((sessionId: string) => {
+    const visitor = (liveStats?.currentUsers ?? []).find((item) => item.sessionId === sessionId);
+    setSelectedUserId(null);
+    setSelectedLiveSessionId(sessionId);
+    setVisitorPopupError(null);
+    setVisitorPopupLocaleMode("visitor");
+    setVisitorPopupTitle("Perfoumer");
+    setVisitorPopupBody(
+      (visitor?.locale || locale) === "az"
+        ? "Salam! Sizə necə kömək edə bilərik?"
+        : "Hi! How can we help you?",
+    );
+  }, [liveStats?.currentUsers, locale]);
+
+  const handleSendVisitorPopup = useCallback(async () => {
+    const visitor = (liveStats?.currentUsers ?? []).find((item) => item.sessionId === selectedLiveSessionId);
+    if (!visitor) {
+      return;
+    }
+
+    setIsVisitorPopupSending(true);
+    setVisitorPopupError(null);
+
+    try {
+      const response = await fetch("/api/admin/visitor-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: visitor.sessionId,
+          anonymousId: visitor.anonymousId,
+          locale: visitorPopupLocaleMode === "visitor" ? visitor.locale || locale : "all",
+          path: visitor.pathWithQuery || visitor.path || "",
+          title: visitorPopupTitle,
+          body: visitorPopupBody,
+          ttlMinutes: 20,
+        }),
+      });
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || copy.sendPopup);
+      }
+
+      setToastMessage(copy.popupSentToast);
+    } catch (err) {
+      setVisitorPopupError(err instanceof Error ? err.message : copy.sendPopup);
+    } finally {
+      setIsVisitorPopupSending(false);
+    }
+  }, [
+    copy.popupSentToast,
+    copy.sendPopup,
+    liveStats?.currentUsers,
+    locale,
+    selectedLiveSessionId,
+    visitorPopupBody,
+    visitorPopupLocaleMode,
+    visitorPopupTitle,
+  ]);
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -1707,6 +1801,32 @@ export function AdminDashboard({
     });
   };
 
+  const formatActivityDateLabel = (value: string) => {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return "";
+    const now = new Date();
+    const sameDay =
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate();
+    if (sameDay) return copy.todayShort;
+
+    return date.toLocaleDateString(locale === "az" ? "az-AZ" : "en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const formatActivityTimeLabel = (value: string) => {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return "";
+
+    return date.toLocaleTimeString(locale === "az" ? "az-AZ" : "en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const formatSessionViews = (count: number) =>
     copy.sessionViews.replace("{count}", count.toLocaleString());
 
@@ -1716,6 +1836,14 @@ export function AdminDashboard({
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) || null,
     [users, selectedUserId],
+  );
+  const liveVisitors = useMemo(
+    () => (liveStats?.currentUsers ?? []).filter((visitor) => !visitor.isSuspectedBot),
+    [liveStats?.currentUsers],
+  );
+  const selectedLiveVisitor = useMemo(
+    () => liveVisitors.find((visitor) => visitor.sessionId === selectedLiveSessionId) || null,
+    [liveVisitors, selectedLiveSessionId],
   );
   const newsletterStatusByEmail = useMemo(() => {
     return new Map(newsletterSubscribers.map((subscriber) => [subscriber.email.toLowerCase(), subscriber.status]));
@@ -1954,7 +2082,7 @@ export function AdminDashboard({
     };
   }, [expandedPanel, searchOverview?.noResults, searchOverview?.topSearches]);
 
-  const activityFeed = useMemo(() => (activityOverview?.items ?? []).slice(0, expandedPanel === "activity" ? 20 : 8), [activityOverview?.items, expandedPanel]);
+  const activityFeed = useMemo(() => (activityOverview?.items ?? []).slice(0, activityFeedLimit), [activityFeedLimit, activityOverview?.items]);
   const localizedActivityFeed = useMemo(() => {
     return activityFeed.map((item) => {
       const icon =
@@ -1969,6 +2097,18 @@ export function AdminDashboard({
         item.kind === "signup" ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
         item.kind === "quiz" ? "text-amber-700 bg-amber-50 border-amber-100" :
         "text-zinc-700 bg-zinc-50 border-zinc-200";
+      const dotTone =
+        item.kind === "search" ? "bg-indigo-600" :
+        item.kind === "wishlist" ? "bg-rose-500" :
+        item.kind === "signup" ? "bg-orange-500" :
+        item.kind === "quiz" ? "bg-emerald-500" :
+        "bg-blue-500";
+      const tileTone =
+        item.kind === "search" ? "border-indigo-100 bg-indigo-50 text-indigo-600" :
+        item.kind === "wishlist" ? "border-rose-100 bg-rose-50 text-rose-600" :
+        item.kind === "signup" ? "border-orange-100 bg-orange-50 text-orange-600" :
+        item.kind === "quiz" ? "border-emerald-100 bg-emerald-50 text-emerald-600" :
+        "border-blue-100 bg-blue-50 text-blue-600";
       const title =
         item.kind === "search" ? copy.userSearched.replace("{subject}", item.subject || copy.unknown) :
         item.kind === "wishlist" ? copy.addedToWishlist.replace("{subject}", item.subject || copy.unknown) :
@@ -1976,7 +2116,7 @@ export function AdminDashboard({
         item.kind === "quiz" ? copy.quizCompleted :
         copy.pageVisited.replace("{subject}", item.subject || item.detail || copy.unknown);
 
-      return { ...item, icon, tone, title };
+      return { ...item, icon, tone, dotTone, tileTone, title };
     });
   }, [activityFeed, copy]);
 
@@ -1991,18 +2131,24 @@ export function AdminDashboard({
     const minValue = 0;
     const range = Math.max(1, maxValue - minValue);
     const points = renderValues.map((value, index) => {
-      const x = paddingX + (index * (width - paddingX * 2)) / Math.max(renderValues.length - 1, 1);
+      const x = renderValues.length === 1
+        ? width / 2
+        : paddingX + (index * (width - paddingX * 2)) / (renderValues.length - 1);
       const y = height - paddingY - ((value - minValue) / range) * (height - paddingY * 2);
       return { x, y, value, isActive: value > 0 };
     });
-    const linePath = points.reduce((path, point, index) => {
-      if (index === 0) return `M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
-      const previous = points[index - 1];
-      const controlX = previous.x + (point.x - previous.x) / 2;
-      return `${path} C ${controlX.toFixed(2)} ${previous.y.toFixed(2)}, ${controlX.toFixed(2)} ${point.y.toFixed(2)}, ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
-    }, "");
+    const linePath = points.length === 1
+      ? `M ${paddingX} ${points[0].y.toFixed(2)} L ${width - paddingX} ${points[0].y.toFixed(2)}`
+      : points.reduce((path, point, index) => {
+        if (index === 0) return `M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+        const previous = points[index - 1];
+        const controlX = previous.x + (point.x - previous.x) / 2;
+        return `${path} C ${controlX.toFixed(2)} ${previous.y.toFixed(2)}, ${controlX.toFixed(2)} ${point.y.toFixed(2)}, ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+      }, "");
     const areaPath =
-      points.length > 1
+      points.length === 1
+        ? `M ${paddingX} ${points[0].y.toFixed(2)} L ${width - paddingX} ${points[0].y.toFixed(2)} L ${width - paddingX} ${height - paddingY} L ${paddingX} ${height - paddingY} Z`
+        : points.length > 1
         ? `${linePath} L ${(points[points.length - 1]?.x || width - paddingX).toFixed(2)} ${height - paddingY} L ${paddingX} ${height - paddingY} Z`
         : "";
     return { width, height, paddingX, paddingY, maxValue, minValue, points, linePath, areaPath };
@@ -2039,6 +2185,7 @@ export function AdminDashboard({
   ];
   const trafficSegments = trafficSources.length ? trafficSources : [{ country: copy.notEnoughData, countryCode: "", count: 1, tone: 0 }];
   const trafficHasData = trafficSources.some((item) => item.count > 0);
+  const activeTrafficSegment = trafficSegments[activeTrafficIndex ?? 0] ?? trafficSegments[0];
   const donutRadius = 54;
   const donutCircumference = 2 * Math.PI * donutRadius;
   const dashboardStats = stats ?? createEmptyStats();
@@ -2098,22 +2245,22 @@ export function AdminDashboard({
 
   if (stats || isInitialDashboardLoading) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         <section className={panelClass}>
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
-              <h2 className="text-[32px] font-bold leading-tight text-zinc-950">
+              <h2 className="text-[26px] font-bold leading-tight text-zinc-950 sm:text-[32px]">
                 {copy.dashboard}
               </h2>
               <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-zinc-500">{copy.realtimeAnalytics}</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
               <button
                 type="button"
                 onClick={handleRefreshAll}
                 disabled={isRefreshingAll}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-70"
+                className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-70 sm:col-span-1 sm:h-11 sm:px-4"
               >
                 <ArrowClockwise size={16} weight="bold" className={isRefreshingAll ? "animate-spin" : ""} />
                 {isRefreshingAll ? copy.refreshing : copy.refreshAll}
@@ -2136,7 +2283,7 @@ export function AdminDashboard({
                     type="button"
                     onClick={() => applyOverviewRange(item.value)}
                     className={cx(
-                      "h-11 rounded-full border px-4 text-sm font-medium transition",
+                      "h-10 rounded-full border px-3 text-sm font-medium transition sm:h-11 sm:px-4",
                       overviewRange === item.value
                         ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(79,70,229,0.08)]"
                         : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
@@ -2197,7 +2344,7 @@ export function AdminDashboard({
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.72fr)]">
           <div className={cx(panelClass, "overflow-hidden p-0")}>
-            <div className="grid border-b border-zinc-200 bg-zinc-50/50 sm:grid-cols-5">
+            <div className="grid grid-cols-2 border-b border-zinc-200 bg-zinc-50/50 lg:grid-cols-5">
               {analyticsMetricTabs.map((item) => {
                 const Icon = chartMetricOptions.find((option) => option.value === item.value)?.icon ?? TrendUp;
                 const active = chartMetric === item.value;
@@ -2208,21 +2355,21 @@ export function AdminDashboard({
                     type="button"
                     onClick={() => setChartMetric(item.value)}
                     className={cx(
-                      "group relative flex min-h-[102px] items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 text-left transition sm:border-b-0 sm:border-r last:sm:border-r-0",
+                      "group relative flex min-h-[84px] items-center justify-between gap-3 border-b border-r border-zinc-200 px-3 py-3 text-left transition even:border-r-0 lg:min-h-[102px] lg:border-b-0 lg:px-4 lg:py-4 lg:even:border-r last:lg:border-r-0",
                       active ? "bg-white" : "bg-transparent hover:bg-white/80",
                     )}
                   >
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-zinc-500">{item.label}</span>
                       <span className="mt-3 flex items-end gap-3">
-                        <span className="text-[28px] font-bold leading-none text-zinc-950">{item.metric}</span>
-                        <span className="mb-1 rounded-[8px] border border-emerald-100 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                        <span className="text-[22px] font-bold leading-none text-zinc-950 sm:text-[28px]">{item.metric}</span>
+                        <span className="mb-0.5 hidden rounded-[8px] border border-emerald-100 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 sm:inline-flex">
                           {item.change}
                         </span>
                       </span>
                     </span>
                     <span className={cx(
-                      "grid h-10 w-10 shrink-0 place-items-center rounded-[13px] border transition",
+                      "grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border transition sm:h-10 sm:w-10 sm:rounded-[13px]",
                       active ? "border-indigo-100 bg-indigo-50 text-indigo-700" : "border-zinc-200 bg-white text-zinc-400 group-hover:text-zinc-700",
                     )}>
                       <Icon size={17} weight="bold" />
@@ -2233,7 +2380,7 @@ export function AdminDashboard({
               })}
             </div>
 
-            <div className="px-5 pb-5 pt-4">
+            <div className="px-3 pb-4 pt-4 sm:px-5 sm:pb-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-950">{chartMetricLabel}</h3>
@@ -2241,7 +2388,7 @@ export function AdminDashboard({
                 </div>
               </div>
 
-              <div className="relative h-[360px] overflow-hidden rounded-[18px] border border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFA_100%)]">
+              <div className="relative h-[260px] overflow-hidden rounded-[16px] border border-zinc-100 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFAFA_100%)] sm:h-[320px] lg:h-[360px] lg:rounded-[18px]">
                 {chartHasData ? (
                 <svg key={chartMetric} viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`} className={cx("absolute inset-0 h-full w-full transition-opacity duration-300", isOverviewRefreshing ? "opacity-35" : "opacity-100")}>
                   <defs>
@@ -2314,25 +2461,27 @@ export function AdminDashboard({
             </div>
           </div>
 
-          <div className={cx(panelClass, "overflow-hidden")}>
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
+          <div className={cx(panelClass, "overflow-hidden p-4")}>
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-zinc-950">{copy.trafficSources}</h3>
-                <p className="mt-1 text-sm font-medium text-zinc-500">
-                  {copy.visitorCountries}
-                </p>
+                <h3 className="text-base font-semibold text-zinc-950">{copy.trafficSources}</h3>
+                <p className="mt-1 text-sm font-medium text-zinc-500">{copy.visitorCountries}</p>
               </div>
-              </div>
+              {trafficHasData ? (
+                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-500">
+                  {trafficSegments.length}
+                </span>
+              ) : null}
+            </div>
 
-              <div className="grid grid-cols-2 gap-1 rounded-[16px] border border-zinc-200 bg-zinc-50 p-1">
+            <div className="mt-3 grid grid-cols-4 gap-1 rounded-[12px] border border-zinc-200 bg-zinc-50 p-1">
                 {trafficDimensionOptions.map((item) => (
                   <button
                     key={item.value}
                     type="button"
                     onClick={() => setTrafficDimension(item.value)}
                     className={cx(
-                      "h-9 rounded-[12px] px-2 text-sm font-medium transition",
+                      "h-8 rounded-[9px] px-1 text-xs font-semibold transition",
                       trafficDimension === item.value
                         ? "bg-white text-zinc-950 shadow-sm"
                         : "text-zinc-500 hover:text-zinc-900",
@@ -2341,60 +2490,87 @@ export function AdminDashboard({
                     {item.label}
                   </button>
                 ))}
-              </div>
             </div>
 
-          {trafficHasData ? (
-  <div className="mt-6 space-y-3">
-    {trafficSegments.map((item) => {
-      const percent = Math.round((item.count / Math.max(trafficTotal, 1)) * 100);
-      const label = item.country || copy.unknown;
-      const deviceMeta = getDeviceMeta(label);
-      const DeviceIcon = deviceMeta.Icon;
+            {trafficHasData ? (
+            <div className="mt-4 grid gap-4">
+              <div className="relative mx-auto grid h-[118px] w-[118px] place-items-center">
+                <svg viewBox="0 0 140 140" className="h-[118px] w-[118px] -rotate-90">
+                  <circle cx="70" cy="70" r={donutRadius} fill="none" stroke="#EEF0F4" strokeWidth="13" />
+                  {trafficSegments.map((item, index) => {
+                    const previous = trafficSegments.slice(0, index).reduce((sum, segment) => sum + segment.count, 0);
+                    const ratio = item.count / Math.max(trafficTotal, 1);
+                    const dash = Math.max(0.012, ratio) * donutCircumference;
+                    const offset = -(previous / Math.max(trafficTotal, 1)) * donutCircumference;
+                    const colors = ["#4F46E5", "#6366F1", "#8B5CF6", "#A5B4FC", "#C4B5FD", "#CBD5E1", "#94A3B8", "#64748B"];
+                    const isActive = activeTrafficIndex === null || activeTrafficIndex === index;
+                    return (
+                      <circle
+                        key={item.country}
+                        cx="70"
+                        cy="70"
+                        r={donutRadius}
+                        fill="none"
+                        stroke={colors[index % colors.length]}
+                        strokeWidth={activeTrafficIndex === index ? "16" : "13"}
+                        strokeLinecap="round"
+                        strokeDasharray={`${Math.max(2, dash - 4)} ${donutCircumference}`}
+                        strokeDashoffset={offset}
+                        opacity={isActive ? 1 : 0.22}
+                        className="cursor-pointer transition-all duration-200"
+                        onMouseEnter={() => setActiveTrafficIndex(index)}
+                        onMouseLeave={() => setActiveTrafficIndex(null)}
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="absolute text-center">
+                  <p className="text-[26px] font-bold leading-none text-zinc-950">{activeTrafficSegment?.count?.toLocaleString() ?? trafficTotal.toLocaleString()}</p>
+                  <p className="mt-1 max-w-[88px] truncate text-xs font-medium text-zinc-500">{activeTrafficSegment?.country || copy.topCountryCount}</p>
+                </div>
+              </div>
 
-      return (
-        <div
-          key={label}
-          className="group rounded-[18px] border border-zinc-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-[0_14px_34px_rgba(79,70,229,0.10)]"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              {trafficDimension === "device" ? (
-                <span className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-[15px] border", deviceMeta.tone)}>
-                  <DeviceIcon size={24} weight="bold" />
-                </span>
-              ) : trafficDimension === "referrer" ? (
-                <SourceBadge source={label} />
-              ) : (
-                <CountryWithFlag country={label} countryCode={item.countryCode} fallback={copy.unknown} />
-              )}
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-zinc-950">
-                  {trafficDimension === "device" ? deviceMeta.label : label}
-                </p>
-                <p className="mt-0.5 text-xs font-medium text-zinc-500">
-                  {item.count.toLocaleString()} visitors
-                </p>
+              <div className="space-y-2">
+                {trafficSegments.map((item, index) => {
+                  const percent = Math.round((item.count / Math.max(trafficTotal, 1)) * 100);
+                  const isActive = activeTrafficIndex === index;
+                  return (
+                    <div
+                      key={item.country}
+                      onMouseEnter={() => setActiveTrafficIndex(index)}
+                      onMouseLeave={() => setActiveTrafficIndex(null)}
+                      className={cx(
+                        "rounded-[12px] border p-2.5 transition-all duration-200",
+                        isActive ? "border-indigo-200 bg-indigo-50/60 shadow-[0_10px_30px_rgba(79,70,229,0.12)]" : "border-zinc-100 bg-zinc-50/70 hover:border-zinc-200 hover:bg-white",
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" style={{ opacity: 1 - index * 0.16 }} />
+                        <span className="min-w-0 flex-1 text-sm font-semibold text-zinc-800">
+                          {trafficDimension === "country" || trafficDimension === "recentCountry" ? (
+                            <CountryWithFlag country={item.country} countryCode={item.countryCode} fallback={copy.unknown} />
+                          ) : trafficDimension === "device" ? (
+                            <span className="inline-flex min-w-0 items-center gap-2">
+                              <DeviceLogo device={item.country} />
+                              <span className="truncate capitalize">{item.country}</span>
+                            </span>
+                          ) : trafficDimension === "referrer" ? (
+                            <SourceBadge source={item.country} />
+                          ) : (
+                            <span className="truncate">{item.country}</span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-sm font-semibold text-zinc-950">{percent}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200/80">
+                        <div className="h-full rounded-full bg-indigo-500 transition-all duration-300" style={{ width: `${Math.max(percent, 4)}%`, opacity: isActive ? 1 : 1 - index * 0.12 }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-
-            <p className="text-lg font-bold tracking-[-0.04em] text-zinc-950">
-              {percent}%
-            </p>
-          </div>
-
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100">
-            <div
-              className="h-full rounded-full bg-indigo-500 transition-all duration-700 ease-out"
-              style={{ width: `${Math.max(percent, 4)}%` }}
-            />
-          </div>
-        </div>
-      );
-    })}
-  </div>
-) : (
+            ) : (
               <div className="mt-5">
                 <EmptyState label={copy.notEnoughData} />
               </div>
@@ -2406,12 +2582,12 @@ export function AdminDashboard({
           </div>
         </section>
 
-        <section className={panelClass}>
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <section className={cx(panelClass, "p-4")}>
+          <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)] xl:items-start">
             <div className="min-w-0">
               <h3 className="text-lg font-semibold text-zinc-950">{copy.marketingTrackers}</h3>
               <p className="mt-1 text-sm font-medium text-zinc-500">{copy.marketingTrackersSubtitle}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {trackerExamples.map((example) => (
                   <button
                     key={example.slug}
@@ -2421,124 +2597,94 @@ export function AdminDashboard({
                       setTrackerSlug(example.slug);
                       setTrackerTargetPath(example.target);
                     }}
-                    className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-white"
+                    className="inline-flex h-9 items-center gap-2 rounded-[11px] border border-zinc-200 bg-white px-2.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
                   >
                     <SourceBadge source={example.source} />
                   </button>
                 ))}
               </div>
             </div>
-            <div className="w-full rounded-[18px] border border-zinc-200 bg-zinc-50/70 p-4 xl:w-[720px]">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-indigo-100 bg-indigo-50 text-indigo-700">
-                  <LinkSimple size={18} weight="bold" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-zinc-950">{copy.trackerBuilderTitle}</p>
-                  <p className="mt-0.5 text-xs font-medium text-zinc-500">{copy.trackerPreview}: {trackerPreviewSlug ? `?perf_track=${trackerPreviewSlug}` : "?perf_track="}</p>
+
+            <div className="min-w-0 rounded-[14px] border border-zinc-200 bg-zinc-50/60 p-3">
+              <div className="grid gap-2 md:grid-cols-[minmax(160px,1fr)_minmax(140px,0.65fr)_minmax(130px,0.75fr)_auto] md:items-end">
+                <input
+                  value={trackerName}
+                  onChange={(event) => {
+                    setTrackerName(event.target.value);
+                    if (!trackerSlug) {
+                      setTrackerSlug(normalizeTrackerSlugInput(event.target.value));
+                    }
+                  }}
+                  placeholder={copy.trackerNamePlaceholder}
+                  className="h-10 min-w-0 rounded-[10px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                />
+                <div className="flex h-10 min-w-0 overflow-hidden rounded-[10px] border border-zinc-200 bg-white focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-50">
+                  <span className="grid w-9 place-items-center border-r border-zinc-100 bg-zinc-50 text-sm font-bold text-zinc-400">@</span>
+                  <input
+                    value={trackerSlug}
+                    onChange={(event) => setTrackerSlug(normalizeTrackerSlugInput(event.target.value))}
+                    placeholder={copy.trackerSlugPlaceholder}
+                    className="min-w-0 flex-1 bg-transparent px-3 text-sm font-medium text-zinc-900 outline-none placeholder:text-zinc-400"
+                  />
                 </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-[1fr_0.78fr]">
-                <label className="block">
-                  <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-zinc-500">
-                    <Code size={14} weight="bold" />
-                    {copy.trackerName}
-                  </span>
-                  <input
-                    value={trackerName}
-                    onChange={(event) => {
-                      setTrackerName(event.target.value);
-                      if (!trackerSlug) {
-                        setTrackerSlug(normalizeTrackerSlugInput(event.target.value));
-                      }
-                    }}
-                    placeholder={copy.trackerNamePlaceholder}
-                    className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-zinc-500">
-                    <LinkSimple size={14} weight="bold" />
-                    {copy.trackerSlug}
-                  </span>
-                  <div className="flex h-11 overflow-hidden rounded-[12px] border border-zinc-200 bg-white focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-50">
-                    <span className="grid w-10 place-items-center border-r border-zinc-100 bg-zinc-50 text-sm font-bold text-zinc-400">@</span>
-                    <input
-                      value={trackerSlug}
-                      onChange={(event) => setTrackerSlug(normalizeTrackerSlugInput(event.target.value))}
-                      placeholder={copy.trackerSlugPlaceholder}
-                      className="min-w-0 flex-1 bg-transparent px-3 text-sm font-medium text-zinc-900 outline-none placeholder:text-zinc-400"
-                    />
-                  </div>
-                </label>
-
-                <label className="block md:col-span-2">
-                  <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-zinc-500">
-                    <Globe size={14} weight="bold" />
-                    {copy.trackerTarget}
-                  </span>
-                  <input
-                    value={trackerTargetPath}
-                    onChange={(event) => setTrackerTargetPath(event.target.value)}
-                    placeholder={copy.trackerTargetPlaceholder}
-                    className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                <button
-                  type="button"
-                  onClick={() => copyTrackerUrl(trackerPreviewUrl)}
-                  className="flex min-w-0 items-center gap-2 rounded-[12px] border border-zinc-200 bg-white px-3 py-2.5 text-left text-xs font-semibold text-zinc-600 transition hover:border-indigo-200 hover:text-indigo-700"
-                >
-                  <CopySimple size={15} weight="bold" className="shrink-0" />
-                  <span className="min-w-0 truncate">{trackerPreviewUrl}</span>
-                </button>
-
+                <input
+                  value={trackerTargetPath}
+                  onChange={(event) => setTrackerTargetPath(event.target.value)}
+                  placeholder={copy.trackerTargetPlaceholder}
+                  className="h-10 min-w-0 rounded-[10px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                />
                 <button
                   type="button"
                   onClick={handleCreateTracker}
                   disabled={isTrackerSaving || !trackerName.trim() || !trackerPreviewSlug}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-zinc-950 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <PaperPlaneRight size={15} weight="bold" className={isTrackerSaving ? "animate-pulse" : ""} />
                   {copy.createTracker}
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => copyTrackerUrl(trackerPreviewUrl)}
+                className="mt-2 flex w-full min-w-0 items-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-3 py-2 text-left text-xs font-semibold text-zinc-500 transition hover:border-indigo-200 hover:text-indigo-700"
+              >
+                <CopySimple size={14} weight="bold" className="shrink-0" />
+                <span className="min-w-0 truncate">{trackerPreviewUrl}</span>
+              </button>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-            <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/60 p-4">
+          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.75fr)]">
+            <div className="rounded-[14px] border border-zinc-200 bg-zinc-50/50 p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-zinc-950">{copy.customLinks}</p>
                 <span className="text-sm font-medium text-zinc-500">{marketingOverview?.days ?? (overviewRange === "today" ? 1 : Number(overviewRange))}d</span>
               </div>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-1.5">
                 {(marketingOverview?.customTrackers ?? []).length ? (
                   (marketingOverview?.customTrackers ?? []).slice(0, 8).map((tracker) => (
-                    <div key={tracker.id} className="grid gap-3 rounded-[14px] border border-zinc-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-zinc-950">{tracker.name}</p>
-                          <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">@{tracker.slug}</span>
+                    <div key={tracker.id} className="grid gap-2 rounded-[12px] border border-zinc-200 bg-white px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                      <div className="flex min-w-0 gap-3">
+                        <SourceLogo source={`${tracker.name} ${tracker.slug}`} />
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-zinc-950">{tracker.name}</p>
+                            <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">@{tracker.slug}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyTrackerUrl(tracker.url)}
+                            className="mt-1 block max-w-full truncate text-left text-xs font-medium text-zinc-500 transition hover:text-indigo-600"
+                          >
+                            {tracker.url}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => copyTrackerUrl(tracker.url)}
-                          className="mt-2 block max-w-full truncate text-left text-xs font-medium text-zinc-500 transition hover:text-indigo-600"
-                        >
-                          {tracker.url}
-                        </button>
                       </div>
-                      <div className="grid grid-cols-4 gap-2 text-right">
-                        <MiniMetric label={copy.clicks} value={formatCompactNumber(tracker.clicks)} tone="sky" />
-                        <MiniMetric label={copy.signups} value={formatCompactNumber(tracker.signups)} tone="emerald" />
-                        <MiniMetric label={copy.conversion} value={formatRatioPercent(tracker.conversionRate)} tone="indigo" />
-                        <MiniMetric label={copy.earlyExits} value={formatRatioPercent(tracker.earlyExitRate)} tone="amber" />
+                      <div className="flex flex-wrap justify-end gap-1.5 text-xs font-semibold">
+                        <span className="rounded-full bg-sky-50 px-2 py-1 text-sky-700">{formatCompactNumber(tracker.clicks)} {copy.clicks}</span>
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">{formatCompactNumber(tracker.signups)} {copy.signups}</span>
+                        <span className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-700">{formatRatioPercent(tracker.conversionRate)}</span>
+                        <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">{formatRatioPercent(tracker.earlyExitRate)}</span>
                       </div>
                     </div>
                   ))
@@ -2548,12 +2694,12 @@ export function AdminDashboard({
               </div>
             </div>
 
-            <div className="rounded-[18px] border border-zinc-200 bg-zinc-50/60 p-4">
+            <div className="rounded-[14px] border border-zinc-200 bg-zinc-50/50 p-3">
               <p className="text-sm font-semibold text-zinc-950">{copy.topSourcesLabel}</p>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-1.5">
                 {(marketingOverview?.topSources ?? []).length ? (
                   (marketingOverview?.topSources ?? []).slice(0, 7).map((source) => (
-                    <div key={source.source} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border border-zinc-200 bg-white px-3 py-2.5">
+                    <div key={source.source} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[12px] border border-zinc-200 bg-white px-3 py-2">
                       <div className="min-w-0">
                         <p className="min-w-0 text-sm font-semibold text-zinc-950">
                           <SourceBadge source={source.source} />
@@ -2562,11 +2708,11 @@ export function AdminDashboard({
                           {formatCompactNumber(source.visitors)} {copy.uniqueVisitors.toLowerCase()} · {formatCompactNumber(source.clicks)} {copy.clicks.toLowerCase()}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
                           {source.signups} {copy.signups}
                         </span>
-                        <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                        <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
                           {formatRatioPercent(source.earlyExitRate)}
                         </span>
                       </div>
@@ -2729,30 +2875,66 @@ export function AdminDashboard({
           </div>
         </section>
 
-        <section className={panelClass} id="dashboard-activity">
-          <div className="flex items-center justify-between gap-3">
+        <section className={cx(panelClass, "rounded-[18px] p-4 sm:p-5")} id="dashboard-activity">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-950">{copy.recentActivity}</h3>
+              <h3 className="text-lg font-semibold leading-tight text-zinc-950">{copy.recentActivity}</h3>
               <p className="mt-1 text-sm font-medium text-zinc-500">
                 {copy.liveUserActions}
               </p>
             </div>
+            <div className="flex items-center">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setActivityLimitMenuOpen((current) => !current)}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[11px] border border-indigo-100 bg-white px-3 text-sm font-semibold text-indigo-600 transition hover:border-indigo-200 hover:bg-indigo-50/50"
+                >
+                  <span>{activityFeedLimit}</span>
+                  <ArrowRight size={16} weight="bold" />
+                </button>
+                {activityLimitMenuOpen ? (
+                  <div className="absolute right-0 top-11 z-30 w-[116px] overflow-hidden rounded-[12px] border border-zinc-200 bg-white p-1 shadow-[0_18px_45px_rgba(15,23,42,0.14)]">
+                    {([5, 10, 25, 50, 100] as const).map((limit) => (
+                      <button
+                        key={limit}
+                        type="button"
+                        onClick={() => {
+                          setActivityFeedLimit(limit);
+                          setActivityLimitMenuOpen(false);
+                        }}
+                        className={cx(
+                          "flex h-9 w-full items-center justify-between rounded-[9px] px-3 text-sm font-semibold transition",
+                          activityFeedLimit === limit ? "bg-indigo-50 text-indigo-700" : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950",
+                        )}
+                      >
+                        <span>{limit}</span>
+                        {activityFeedLimit === limit ? <span>✓</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
 
-          <div className="mt-4 divide-y divide-zinc-100">
+          <div className="mt-4 overflow-hidden rounded-[16px] border border-zinc-200 bg-white">
             {localizedActivityFeed.length ? localizedActivityFeed.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.id} className="flex items-center gap-4 py-3">
-                  <span className="w-12 shrink-0 text-sm font-medium text-zinc-500">{item.time}</span>
-                  <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-full border", item.tone)}>
-                    <Icon size={16} weight="bold" />
+                <div key={item.id} className="grid min-h-[70px] grid-cols-[54px_18px_40px_minmax(0,1fr)] items-center gap-2.5 border-b border-zinc-100 px-3 py-3 last:border-b-0 sm:grid-cols-[68px_22px_48px_minmax(0,1fr)] sm:gap-3 sm:px-4">
+                  <div>
+                    <p className="text-sm font-semibold leading-none text-zinc-950">{formatActivityTimeLabel(item.timestamp)}</p>
+                    <p className="mt-1.5 text-xs font-medium text-zinc-500">{formatActivityDateLabel(item.timestamp)}</p>
+                  </div>
+                  <div className="flex h-full items-center justify-center border-l border-zinc-200">
+                    <span className={cx("h-2.5 w-2.5 rounded-full", item.dotTone)} />
+                  </div>
+                  <span className={cx("grid h-9 w-9 place-items-center rounded-[11px] border sm:h-11 sm:w-11 sm:rounded-[13px]", item.tileTone)}>
+                    <Icon size={20} weight="regular" />
                   </span>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-500">
-                    {(item.subject || copy.visitor).slice(0, 1).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-zinc-800">{item.title}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-zinc-950">{item.title}</p>
                     {item.detail ? <p className="mt-1 truncate text-sm font-medium text-zinc-500">{item.detail}</p> : null}
                   </div>
                 </div>
@@ -2762,53 +2944,38 @@ export function AdminDashboard({
         </section>
 
         <section className={panelClass}>
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <h3 className="text-[24px] font-bold leading-tight text-zinc-950">{copy.usersTitle}</h3>
+              <h3 className="text-[22px] font-semibold leading-tight text-zinc-950">{copy.usersTitle}</h3>
               <p className="mt-1 text-sm font-medium text-zinc-500">{copy.usersPanelSubtitle}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex h-11 items-center gap-3 rounded-[14px] border border-zinc-200 bg-zinc-50 px-4 text-sm font-medium text-zinc-600">
-                <span>{copy.userCount}</span>
-                <span className="font-semibold text-zinc-950">{filteredUsers.length.toLocaleString()} / {usersMeta.total.toLocaleString()}</span>
-              </span>
-              <button
-                type="button"
-                onClick={exportFilteredUsers}
-                className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
-              >
-                {copy.export}
-              </button>
-              <button
-                type="button"
-                onClick={openNewsletterPanel}
-                className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-700 transition hover:border-indigo-200 hover:bg-indigo-100"
-              >
-                <EnvelopeOpen size={15} weight="bold" />
-                {copy.newsletterButton}
-              </button>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+              {[
+                [copy.userCount, `${filteredUsers.length.toLocaleString()} / ${usersMeta.total.toLocaleString()}`],
+                [copy.activeUserCount, userMetricSummary.active.toLocaleString()],
+                [copy.liveGuests, liveVisitors.length.toLocaleString()],
+                [copy.newsletterSubscribersMetric, userMetricSummary.newsletter.toLocaleString()],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="min-w-[132px] border-l border-zinc-200 pl-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{label}</p>
+                  <p className="mt-1 text-sm font-semibold text-zinc-950">{value}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="mt-7 grid gap-4 xl:grid-cols-[390px_minmax(0,1fr)]">
-            <div className="space-y-4">
-              <div className="rounded-[18px] border border-zinc-200 bg-white p-4">
-                <div className="flex gap-2">
-                  <div className="relative min-w-0 flex-1">
-                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={17} weight="bold" />
-                    <input
-                      value={userSearch}
-                      onChange={(event) => setUserSearch(event.target.value)}
-                      placeholder={copy.searchUsers}
-                      className="h-11 w-full rounded-[12px] border border-zinc-200 bg-white px-3 pl-10 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
-                    />
-                  </div>
-                  <button type="button" className="grid h-11 w-11 place-items-center rounded-[12px] border border-zinc-200 bg-white text-zinc-500 transition hover:bg-zinc-50">
-                    <MagnifyingGlass size={16} weight="bold" />
-                  </button>
-                </div>
-
-                <div className="mt-4 grid grid-cols-4 gap-2">
+          <div className="mt-5 flex flex-col gap-3 border-y border-zinc-100 py-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative min-w-0 lg:w-[340px]">
+                <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={17} weight="bold" />
+                <input
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  placeholder={copy.searchUsers}
+                  className="h-10 w-full rounded-[10px] border border-zinc-200 bg-white px-3 pl-10 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                />
+              </div>
+              <div className="grid grid-cols-4 rounded-[12px] border border-zinc-200 bg-zinc-50 p-1 sm:inline-grid">
                 {[
                   ["all", copy.all],
                   ["active", copy.active],
@@ -2820,78 +2987,98 @@ export function AdminDashboard({
                     type="button"
                     onClick={() => setUserFilter(value as "all" | "active" | "newsletter" | "recent")}
                     className={cx(
-                      "h-11 rounded-[12px] border px-3 text-sm font-medium transition",
-                      userFilter === value
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                        : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                      "h-8 rounded-[8px] px-2 text-xs font-semibold transition",
+                      userFilter === value ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900",
                     )}
                   >
                     {label}
                   </button>
                 ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleSelectAllUsers}
-                  className="mt-4 inline-flex h-12 w-full items-center justify-between rounded-[12px] border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
-                >
-                  <span>{copy.selectAll}</span>
-                  <span>{allFilteredSelected ? "✓" : selectedUserEmails.length.toLocaleString()}</span>
-                </button>
-              </div>
-
-              <div className="rounded-[18px] border border-zinc-200 bg-white p-4">
-                <div className="space-y-4 rounded-[16px] bg-zinc-50 p-4">
-                  {[
-                    [copy.totalUserCount, userMetricSummary.total, "border-sky-100 bg-sky-50 text-sky-700"],
-                    [copy.activeUserCount, userMetricSummary.active, "border-emerald-100 bg-emerald-50 text-emerald-700"],
-                    [copy.newsletterSubscribersMetric, userMetricSummary.newsletter, "border-indigo-100 bg-indigo-50 text-indigo-700"],
-                    [copy.newThisMonth, userMetricSummary.newThisMonth, "border-amber-100 bg-amber-50 text-amber-700"],
-                  ].map(([label, value, tone]) => (
-                    <div key={String(label)} className="flex items-center justify-between gap-3">
-                      <span className={cx("grid h-8 w-8 place-items-center rounded-[10px] border", String(tone))}>
-                        <Users size={15} weight="bold" />
-                      </span>
-                      <span className="min-w-0 flex-1 text-sm font-medium text-zinc-500">{label}</span>
-                      <span className="text-sm font-semibold text-zinc-950">{Number(value).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-[18px] border border-zinc-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-950">{copy.quickFilter}</p>
-                    <p className="mt-1 text-sm font-medium text-zinc-500">{copy.byLastLogin}</p>
-                  </div>
-                  <span className="text-zinc-400">›</span>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  {[
-                    [copy.todayShort, userMetricSummary.today],
-                    [copy.days7, userMetricSummary.week],
-                    [copy.days30, userMetricSummary.month],
-                    [copy.days90, userMetricSummary.quarter],
-                  ].map(([label, value]) => (
-                    <div key={String(label)} className="flex h-12 items-center justify-between rounded-[12px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700">
-                      <span>{label}</span>
-                      <span className="font-semibold text-zinc-950">{Number(value).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleSelectAllUsers}
+                className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+              >
+                {copy.selectAll}
+                <span className="font-semibold text-zinc-950">{allFilteredSelected ? "✓" : selectedUserEmails.length.toLocaleString()}</span>
+              </button>
+              <button
+                type="button"
+                onClick={exportFilteredUsers}
+                className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+              >
+                {copy.export}
+              </button>
+              <button
+                type="button"
+                onClick={openNewsletterPanel}
+                className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+              >
+                <EnvelopeOpen size={15} weight="bold" />
+                {copy.newsletterButton}
+              </button>
+            </div>
+          </div>
 
-            <div className={cx("overflow-x-auto rounded-[18px] border border-zinc-200 bg-white", containedScrollClass)}>
-              <div className="grid min-w-[720px] grid-cols-[48px_minmax(260px,1fr)_140px_150px_150px_110px] items-center border-b border-zinc-100 bg-white px-5 py-4 text-sm font-semibold text-zinc-500">
+          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_240px_320px]">
+            <div className="grid gap-2 md:hidden">
+              {isUsersLoading ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-20 animate-pulse rounded-[14px] bg-zinc-100" />
+                ))
+              ) : filteredUsers.length ? (
+                filteredUsers.map((user) => {
+                  const email = user.email.toLowerCase();
+                  const subscribed = newsletterStatusByEmail.get(email) === "subscribed";
+                  const country = countryByEmail.get(email) || {
+                    country: user.country || "",
+                    countryCode: user.countryCode || "",
+                  };
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => handleSelectUser(user.id)}
+                      className={cx(
+                        "rounded-[14px] border p-3 text-left transition",
+                        selectedUserId === user.id ? "border-indigo-200 bg-indigo-50" : "border-zinc-200 bg-white hover:bg-zinc-50",
+                      )}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-zinc-200 bg-zinc-50 text-sm font-bold uppercase text-zinc-600">
+                          {user.email.slice(0, 1)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-zinc-950">{user.email}</span>
+                          <span className="mt-1 flex min-w-0 items-center gap-2 text-xs font-medium text-zinc-500">
+                            <span>{formatDateTime(user.last_seen_at || user.last_sign_in_at)}</span>
+                            <span>·</span>
+                            <CountryFlag country={country.country} countryCode={country.countryCode} className="h-5 w-7 text-[13px]" />
+                          </span>
+                        </span>
+                        <span className={cx("shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium", subscribed ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-500")}>
+                          {subscribed ? copy.subscribed : copy.notSubscribed}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <EmptyState label={copy.noUsers} />
+              )}
+            </div>
+
+            <div className={cx("hidden min-w-0 overflow-x-auto rounded-[14px] border border-zinc-200 bg-white md:block", containedScrollClass)}>
+              <div className="grid min-w-[560px] grid-cols-[34px_minmax(176px,1fr)_86px_90px_88px_54px] items-center border-b border-zinc-100 bg-white px-3 py-3 text-xs font-semibold text-zinc-500">
                 <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAllUsers} className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500" />
-                <span>{copy.userColumn}</span>
-                <span>{copy.lastLogin}</span>
-                <span>{copy.lastSeen}</span>
-                <span>{copy.newsletterButton}</span>
-                <span>{copy.countryLabel}</span>
+                <span className="truncate">{copy.userColumn}</span>
+                <span className="truncate">{copy.lastLogin}</span>
+                <span className="truncate">{copy.lastSeen}</span>
+                <span className="truncate">{copy.newsletterButton}</span>
+                <span className="truncate">{copy.countryLabel}</span>
               </div>
               {isUsersLoading ? (
                 <div className="space-y-2 p-3">
@@ -2900,7 +3087,7 @@ export function AdminDashboard({
                   ))}
                 </div>
               ) : filteredUsers.length ? (
-                <div className={cx("max-h-[560px] min-w-[720px] divide-y divide-zinc-100 overflow-y-auto", containedScrollClass)}>
+                <div className={cx("max-h-[540px] min-w-[560px] divide-y divide-zinc-100 overflow-y-auto", containedScrollClass)}>
                   {filteredUsers.map((user) => {
                     const email = user.email.toLowerCase();
                     const subscribed = newsletterStatusByEmail.get(email) === "subscribed";
@@ -2923,7 +3110,7 @@ export function AdminDashboard({
                           }
                         }}
                         className={cx(
-                          "grid cursor-pointer grid-cols-[48px_minmax(260px,1fr)_140px_150px_150px_110px] items-center px-5 py-4 transition hover:bg-zinc-50 focus:bg-indigo-50/60 focus:outline-none",
+                          "grid cursor-pointer grid-cols-[34px_minmax(176px,1fr)_86px_90px_88px_54px] items-center px-3 py-3 transition hover:bg-zinc-50 focus:bg-indigo-50/60 focus:outline-none",
                           selectedUserId === user.id && "bg-indigo-50/60",
                         )}
                       >
@@ -2934,24 +3121,25 @@ export function AdminDashboard({
                           onChange={() => toggleUserSelection(user.email)}
                           className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
                         />
-                        <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
                           <span className={cx(
-                            "grid h-10 w-10 place-items-center rounded-full border text-sm font-bold uppercase",
+                            "grid h-8 w-8 place-items-center rounded-full border text-xs font-bold uppercase",
                             selectedUserId === user.id ? "border-indigo-200 bg-white text-indigo-700" : "border-zinc-200 bg-zinc-50 text-zinc-600",
                           )}>
                             {user.email.slice(0, 1)}
                           </span>
                           <span className="min-w-0 truncate text-sm font-semibold text-zinc-950">{user.email}</span>
                         </div>
-                        <span className="text-sm font-medium text-zinc-600">{formatDateTime(user.last_sign_in_at)}</span>
-                        <span className="text-sm font-medium text-zinc-600">{formatDateTime(user.last_seen_at)}</span>
+                        <span className="truncate text-xs font-medium text-zinc-600">{formatDateTime(user.last_sign_in_at)}</span>
+                        <span className="truncate text-xs font-medium text-zinc-600">{formatDateTime(user.last_seen_at)}</span>
                         <div>
-                          <span className={cx("rounded-full border px-2.5 py-1 text-sm font-medium", subscribed ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-500")}>
+                          <span className={cx("rounded-full border px-2 py-0.5 text-xs font-medium", subscribed ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-500")}>
                             {subscribed ? copy.subscribed : copy.notSubscribed}
                           </span>
                         </div>
-                        <span className="min-w-0 text-sm font-semibold text-zinc-700">
-                          <CountryWithFlag country={country.country} countryCode={country.countryCode} />
+                        <span className="min-w-0 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
+                          <CountryFlag country={country.country} countryCode={country.countryCode} className="h-5 w-7 text-[13px]" />
+                          <span className="truncate">{normalizeCountryCode(country.country, country.countryCode) || "-"}</span>
                         </span>
                       </div>
                     );
@@ -2961,68 +3149,163 @@ export function AdminDashboard({
                 <EmptyState label={copy.noUsers} />
               )}
             </div>
-          </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-zinc-200 bg-zinc-50/70 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-zinc-600">
-              <span className="grid h-4 w-4 place-items-center rounded-full border border-zinc-300 bg-white" />
-              {selectedUserEmails.length.toLocaleString()} {locale === "az" ? "seçildi" : "selected"}
-            </div>
-            <button type="button" onClick={toggleSelectAllUsers} className="h-10 rounded-[12px] border border-zinc-200 bg-white px-4 text-sm font-medium text-indigo-600 transition hover:bg-zinc-50">
-              {copy.selectAll}
-            </button>
-          </div>
-
-          {selectedUser ? (
-            <div className="mt-4 rounded-[18px] border border-zinc-200 bg-zinc-50/70 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 rounded-[14px] border border-zinc-200 bg-white">
+              <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-zinc-950">{selectedUser.email}</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-sm font-medium">
-                    <span className={cx("rounded-full border px-2.5 py-1", selectedUser.is_online ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-white text-zinc-500")}>
-                      {selectedUser.is_online  ? copy.onlineUsers : copy.offline}
-                    </span>
-                    {(selectedUser.country || selectedUser.countryCode) ? (
-                      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-zinc-500">
-                        <CountryWithFlag country={selectedUser.country} countryCode={selectedUser.countryCode} />
-                      </span>
-                    ) : null}
-                    <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-zinc-500">{copy.lastLogin}: {formatDateTime(selectedUser.last_sign_in_at)}</span>
-                    <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-zinc-500">{copy.lastSeen}: {formatDateTime(selectedUser.last_seen_at)}</span>
-                  </div>
+                  <p className="text-sm font-semibold text-zinc-950">{copy.liveGuests}</p>
+                  <p className="mt-0.5 text-xs font-medium text-zinc-500">{copy.liveVisitorPanelSubtitle}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteUser(selectedUser.id)}
-                  disabled={selectedUser.is_deleted}
-                  className="inline-flex h-9 items-center gap-2 rounded-[11px] border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Trash size={14} weight="bold" />
-                  {copy.deleteUser}
-                </button>
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  {liveVisitors.length.toLocaleString()}
+                </span>
               </div>
-
-              <div className="mt-4 inline-flex rounded-[14px] border border-zinc-200 bg-white p-1">
-                {[
-                  ["sessions", copy.viewSessions],
-                  ["wishlist", copy.viewWishlist],
-                  ["cart", copy.viewCart],
-                ].map(([tab, label]) => (
+              <div className={cx("max-h-[360px] divide-y divide-zinc-100 overflow-y-auto sm:max-h-[460px] xl:max-h-[640px]", containedScrollClass)}>
+                {liveVisitors.length ? liveVisitors.slice(0, 18).map((visitor) => (
                   <button
-                    key={tab}
+                    key={visitor.sessionId}
                     type="button"
-                    onClick={() => handleChangeDetailTab(tab as "sessions" | "wishlist" | "cart")}
+                    onClick={() => handleSelectLiveVisitor(visitor.sessionId)}
                     className={cx(
-                      "rounded-[11px] px-3 py-1.5 text-sm font-medium transition",
-                      userDetailTab === tab ? "bg-zinc-950 text-white" : "text-zinc-500 hover:text-zinc-950",
+                      "block w-full px-4 py-3 text-left transition hover:bg-zinc-50",
+                      selectedLiveVisitor?.sessionId === visitor.sessionId && "bg-indigo-50",
                     )}
                   >
-                    {label}
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="min-w-0 flex items-center gap-2">
+                        <CountryFlag country={visitor.country} countryCode={visitor.countryCode} className="h-5 w-7 text-[13px]" />
+                        <span className="truncate text-sm font-semibold text-zinc-900">{visitor.label || copy.visitor}</span>
+                      </span>
+                      <span className="shrink-0 text-xs font-semibold text-zinc-400">{visitor.locale || "az"}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-medium text-zinc-500">{visitor.pathWithQuery || visitor.path || "/"}</span>
+                    <span className="mt-1 block truncate text-xs font-medium text-zinc-400">
+                      {[visitor.deviceType, visitor.browser, visitor.city || visitor.country].filter(Boolean).join(" · ")}
+                    </span>
                   </button>
-                ))}
+                )) : (
+                  <EmptyState label={copy.notEnoughData} />
+                )}
+              </div>
+            </div>
+
+            <aside className="min-w-0 rounded-[14px] border border-zinc-200 bg-white">
+              <div className="border-b border-zinc-100 px-4 py-3">
+                <p className="text-sm font-semibold text-zinc-950">{selectedLiveVisitor ? copy.liveGuests : selectedUser ? copy.userColumn : copy.currentPage}</p>
+                <p className="mt-0.5 truncate text-xs font-medium text-zinc-500">
+                  {selectedLiveVisitor?.label || selectedUser?.email || copy.notEnoughData}
+                </p>
               </div>
 
-              <div className="mt-4 rounded-[16px] border border-zinc-200 bg-white p-3">
+              {selectedLiveVisitor ? (
+                <div className={cx("max-h-[520px] overflow-y-auto p-4 xl:max-h-[640px]", containedScrollClass)}>
+                  <div className="space-y-3">
+                    {[
+                      [copy.currentPage, selectedLiveVisitor.pathWithQuery || selectedLiveVisitor.path || "/"],
+                      [copy.deviceInfo, [selectedLiveVisitor.deviceType, selectedLiveVisitor.browser, selectedLiveVisitor.os].filter(Boolean).join(" · ") || "-"],
+                      [copy.locationInfo, [selectedLiveVisitor.city, selectedLiveVisitor.country].filter(Boolean).join(", ") || "-"],
+                      [copy.lastSeen, formatDateTime(selectedLiveVisitor.lastSeen)],
+                    ].map(([label, value]) => (
+                      <div key={String(label)} className="border-b border-zinc-100 pb-3 last:border-b-0">
+                        <p className="text-xs font-semibold text-zinc-400">{label}</p>
+                        <p className="mt-1 break-words text-sm font-semibold text-zinc-800">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 border-t border-zinc-100 pt-4">
+                    <div className="grid gap-3">
+                      <input
+                        value={visitorPopupTitle}
+                        onChange={(event) => setVisitorPopupTitle(event.target.value)}
+                        placeholder={copy.popupTitle}
+                        className="h-10 w-full rounded-[10px] border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                      />
+                      <textarea
+                        value={visitorPopupBody}
+                        onChange={(event) => setVisitorPopupBody(event.target.value)}
+                        placeholder={copy.popupMessage}
+                        rows={4}
+                        className="w-full resize-none rounded-[10px] border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          ["visitor", `${copy.visitorLanguage} (${selectedLiveVisitor.locale || "az"})`],
+                          ["all", copy.allLanguages],
+                        ].map(([mode, label]) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setVisitorPopupLocaleMode(mode as "visitor" | "all")}
+                            className={cx(
+                              "h-9 rounded-[10px] border px-2 text-xs font-semibold transition",
+                              visitorPopupLocaleMode === mode ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-zinc-200 text-zinc-500 hover:text-zinc-900",
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {visitorPopupError ? (
+                        <div className="rounded-[10px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                          {visitorPopupError}
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={handleSendVisitorPopup}
+                        disabled={isVisitorPopupSending || !visitorPopupTitle.trim() || !visitorPopupBody.trim()}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <PaperPlaneRight size={15} weight="bold" className={isVisitorPopupSending ? "animate-pulse" : ""} />
+                        {copy.sendPopup}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedUser ? (
+                <div className={cx("max-h-[520px] overflow-y-auto p-4 xl:max-h-[640px]", containedScrollClass)}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-zinc-950">{selectedUser.email}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                        <span className={cx("rounded-full border px-2.5 py-1", selectedUser.is_online ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-500")}>
+                          {selectedUser.is_online ? copy.onlineUsers : copy.offline}
+                        </span>
+                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-zinc-500">{copy.lastSeen}: {formatDateTime(selectedUser.last_seen_at)}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(selectedUser.id)}
+                      disabled={selectedUser.is_deleted}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash size={14} weight="bold" />
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 rounded-[12px] border border-zinc-200 bg-zinc-50 p-1">
+                    {[
+                      ["sessions", copy.viewSessions],
+                      ["wishlist", copy.viewWishlist],
+                      ["cart", copy.viewCart],
+                    ].map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => handleChangeDetailTab(tab as "sessions" | "wishlist" | "cart")}
+                        className={cx(
+                          "h-8 rounded-[8px] px-2 text-xs font-semibold transition",
+                          userDetailTab === tab ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-4">
                 {sessionsError || userItemsError ? (
                   <div className="mb-3 rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
                     {sessionsError || userItemsError}
@@ -3061,11 +3344,11 @@ export function AdminDashboard({
                   isUserItemsLoading ? (
                     <div className="h-24 animate-pulse rounded-[12px] bg-zinc-100" />
                   ) : userWishlist.length ? (
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-2">
                       {userWishlist.map((item) => (
-                        <div key={`${item.slug}-${item.created_at}`} className="flex items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
-                          {item.image ? <img src={item.image} alt={item.name} className="h-11 w-11 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
-                          <div className="min-w-0">
+                        <div key={`${item.slug}-${item.created_at}`} className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
+                          {item.image ? <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
+                          <div className="min-w-0 pr-1">
                             <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
                             <p className="truncate text-sm font-medium text-zinc-500">{item.brand}</p>
                           </div>
@@ -3081,14 +3364,17 @@ export function AdminDashboard({
                   isUserItemsLoading ? (
                     <div className="h-24 animate-pulse rounded-[12px] bg-zinc-100" />
                   ) : userCart.length ? (
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-2">
                       {userCart.map((item) => (
-                        <div key={`${item.slug}-${item.created_at}-${item.size_ml}`} className="flex items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
-                          {item.image ? <img src={item.image} alt={item.name} className="h-11 w-11 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
-                          <div className="min-w-0">
+                        <div key={`${item.slug}-${item.created_at}-${item.size_ml}`} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50/70 p-3">
+                          {item.image ? <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[12px] border border-zinc-200 object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-white text-sm font-semibold text-zinc-400">{item.name.slice(0, 1)}</span>}
+                          <div className="min-w-0 pr-1">
                             <p className="truncate text-sm font-semibold text-zinc-950">{item.name}</p>
                             <p className="truncate text-sm font-medium text-zinc-500">{item.size_ml} ml · x{item.quantity}</p>
                           </div>
+                          <span className="rounded-full border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-600">
+                            {item.quantity}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -3096,9 +3382,15 @@ export function AdminDashboard({
                     <EmptyState label={copy.emptyCart} />
                   )
                 ) : null}
-              </div>
-            </div>
-          ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <EmptyState label={copy.notEnoughData} />
+                </div>
+              )}
+            </aside>
+          </div>
         </section>
 
         {toastMessage ? (
