@@ -136,6 +136,79 @@ const answerLabels = {
   },
 } satisfies Record<AdminLocale, Record<string, string>>;
 
+const answerValueLabels = {
+  az: {
+    all: "Fərq etmir",
+    unisex: "Uniseks",
+    qadın: "Qadın",
+    kişi: "Kişi",
+    fresh: "Təzə və təmiz",
+    warm: "İsti və yumşaq",
+    floral: "Çiçəkli və zərif",
+    bold: "Cəsur və iddialı",
+    daily: "Gündəlik",
+    office: "Ofis",
+    date: "Görüş",
+    evening: "Axşam",
+    soft: "Yüngül",
+    balanced: "Balanslı",
+    strong: "Güclü",
+    skin: "Dəriyə yaxın",
+    close: "Yaxın aura",
+    moderate: "Orta",
+    dry: "Quru və təmiz",
+    sweet: "Şirin",
+    rich: "Doygun",
+    summer: "Yay",
+    winter: "Qış",
+    spring: "Yaz/Payız",
+    citrus: "Sitrus",
+    woody: "Odunsu",
+    amber: "Amber/Şirin",
+    oud: "Oud/Dumanlı",
+    long: "Uzun",
+    beast: "Maksimum",
+    under80: "80 AZN-dən aşağı",
+    "80to140": "80-140 AZN",
+    "140plus": "140+ AZN",
+  },
+  en: {
+    all: "No preference",
+    unisex: "Unisex",
+    qadın: "Women",
+    kişi: "Men",
+    fresh: "Fresh and clean",
+    warm: "Warm and soft",
+    floral: "Floral and elegant",
+    bold: "Bold and strong",
+    daily: "Every day",
+    office: "Office",
+    date: "Date",
+    evening: "Evening",
+    soft: "Light",
+    balanced: "Balanced",
+    strong: "Strong",
+    skin: "Skin close",
+    close: "Close aura",
+    moderate: "Medium",
+    dry: "Dry and clean",
+    sweet: "Sweet",
+    rich: "Rich",
+    summer: "Summer",
+    winter: "Winter",
+    spring: "Spring/Autumn",
+    citrus: "Citrus",
+    woody: "Woody",
+    amber: "Amber/Sweet",
+    oud: "Oud/Smoky",
+    long: "Long",
+    beast: "Maximum",
+    under80: "Under 80 AZN",
+    "80to140": "80-140 AZN",
+    "140plus": "140+ AZN",
+  },
+} satisfies Record<AdminLocale, Record<string, string>>;
+
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
@@ -153,6 +226,16 @@ function displayLogName(log: QoxunuLog) {
 
 function locationLabel(log: QoxunuLog) {
   return [log.country || log.countryCode, log.city].filter(Boolean).join(" · ") || "Unknown";
+}
+
+function displayAnswerValue(value: string, locale: AdminLocale) {
+  const labels = answerValueLabels[locale] as Record<string, string>;
+  return labels[value] || value || "-";
+}
+
+function formatAdminPrice(value: number, locale: AdminLocale) {
+  if (!Number.isFinite(value) || value <= 0) return "-";
+  return locale === "az" ? `${value} AZN-dən başlayır` : `From ${value} AZN`;
 }
 
 function MetricCard({
@@ -399,6 +482,14 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
                 <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">{copyText.selectedResult}</p>
                 <h3 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.05em] text-zinc-950">{displayLogName(selectedLog)}</h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">{formatDateTime(selectedLog.createdAt)} • {locationLabel(selectedLog)}</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {(["vibe", "profile", "occasion", "budget"] as const).map((key) => selectedLog.answers[key] ? (
+                    <div key={key} className="rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{labels[key]}</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-zinc-950">{displayAnswerValue(selectedLog.answers[key], locale)}</p>
+                    </div>
+                  ) : null)}
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -427,7 +518,7 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
                   {Object.entries(selectedLog.answers).length ? Object.entries(selectedLog.answers).map(([key, value]) => (
                     <div key={key} className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">{labels[key as keyof typeof labels] || key}</p>
-                      <p className="mt-1 text-sm font-medium text-zinc-900">{value}</p>
+                      <p className="mt-1 text-sm font-medium text-zinc-900">{displayAnswerValue(value, locale)}</p>
                     </div>
                   )) : <p className="text-sm text-zinc-500">-</p>}
                 </div>
@@ -448,14 +539,26 @@ export function QoxunuInsights({ locale = "en" }: { locale?: AdminLocale }) {
               </Section>
 
               <Section title={copyText.recommendations}>
-                <div className="space-y-2">
+                <div className="grid gap-3 xl:grid-cols-3">
                   {selectedLog.recommendations.length ? selectedLog.recommendations.map((perfume, index) => (
-                    <div key={`${perfume.slug}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-3 py-3">
-                      <div>
-                        <p className="text-sm font-semibold text-zinc-950">{perfume.brand ? `${perfume.brand} ${perfume.name}` : perfume.name}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{perfume.slug}</p>
+                    <div key={`${perfume.slug}-${index}`} className={cx(
+                      "rounded-[20px] border p-3 shadow-sm",
+                      index === 0 ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-950",
+                    )}>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className={cx(
+                          "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold",
+                          index === 0 ? "bg-white text-zinc-950" : "bg-zinc-100 text-zinc-700",
+                        )}>
+                          #{index + 1}
+                        </span>
+                        <p className={cx("text-xs font-semibold", index === 0 ? "text-white/80" : "text-zinc-500")}>{formatAdminPrice(perfume.minPrice, locale)}</p>
                       </div>
-                      <p className="text-xs font-semibold text-zinc-500">{perfume.minPrice ? `${perfume.minPrice} AZN` : "-"}</p>
+                      <div className="mt-3">
+                        <p className={cx("text-[10px] font-bold uppercase tracking-[0.22em]", index === 0 ? "text-white/55" : "text-zinc-400")}>{perfume.brand || "-"}</p>
+                        <p className={cx("mt-1 text-sm font-semibold leading-5", index === 0 ? "text-white" : "text-zinc-950")}>{perfume.name}</p>
+                        <p className={cx("mt-2 break-all text-[11px]", index === 0 ? "text-white/50" : "text-zinc-400")}>{perfume.slug}</p>
+                      </div>
                     </div>
                   )) : <p className="text-sm text-zinc-500">-</p>}
                 </div>

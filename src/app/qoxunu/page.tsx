@@ -65,7 +65,7 @@ export default async function QoxunuPage() {
   return (
     <div className="qoxunu-gold-page relative overflow-hidden">
       <div aria-hidden="true" className="qoxunu-gold-aura" />
-      <main className="qoxunu-page-enter relative z-[1] mx-auto min-h-dvh max-w-[1540px] px-4 pt-[1.5rem] pb-0.5 sm:px-6 sm:pt-[2rem] sm:pb-1.5 md:px-10 md:pt-[2.4rem] md:pb-2.5">
+      <main className="qoxunu-page-enter relative z-[1] mx-auto min-h-dvh max-w-[1520px] px-4 pt-[1.1rem] pb-8 sm:px-6 sm:pt-[1.35rem] md:px-8 md:pt-[1.6rem]">
         <ScentQuizClient perfumes={perfumes} notes={notes} locale={locale} />
       </main>
     </div>
