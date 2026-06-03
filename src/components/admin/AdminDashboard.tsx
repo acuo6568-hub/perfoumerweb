@@ -31,7 +31,7 @@ import {
   XLogo,
   Trash,
   X,
-} from "@phosphor-icons/react";
+} from "@/components/admin/lucide-admin-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 

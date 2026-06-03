@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, UploadSimple } from "@phosphor-icons/react";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import type { Locale } from "@/lib/i18n";
@@ -80,6 +81,7 @@ type SupportMessage = {
   attachment_url: string | null;
   attachment_type: string | null;
   created_at: string;
+  read_at?: string | null;
 };
 
 type SupportThread = {
@@ -215,7 +217,7 @@ const copyByLocale: Record<
     question2: "Mənə ədviyyatlı unisex ətir tövsiyə et",
     question3: "Çatdırılma və ödəniş necə olur?",
     question4: "Qaytarma prosesi necə olur?",
-    thinking: "Düşünürəm...",
+    thinking: "Remi düşünür...",
     error: "Xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.",
     contactTitle: "Perfoumer komandası ilə birbaşa əlaqə saxlayın.",
     contactBody: "Email və ya WhatsApp ilə sürətli yazın.",
@@ -1713,6 +1715,30 @@ export function AIChatModal({
         ? copy.supportWaiting
         : copy.supportAiActive;
 
+  const getSupportMessageStatus = (message: SupportMessage) => {
+    if (message.sender_type !== "user") return null;
+    if (message.read_at) return { mark: "✓✓", className: "text-[#4F46E5]" };
+    if (supportThread?.status === "active") return { mark: "✓✓", className: "text-black/50" };
+    return { mark: "✓", className: "text-black/40" };
+  };
+
+  const returnToAiAssistant = () => {
+    try {
+      window.localStorage.removeItem(SUPPORT_CONVERSATION_ID_KEY);
+    } catch {
+      // Ignore storage errors.
+    }
+
+    setSupportThread(null);
+    setActiveTab("chat");
+    setMessages([]);
+    setChatSessionId(null);
+    setTypingMessageId(null);
+    setSupportError(null);
+    setInput("");
+    setPendingImage(null);
+  };
+
   const ensureSupportGuestId = () => {
     if (supportGuestId) return supportGuestId;
     if (typeof window === "undefined") {
@@ -2926,16 +2952,25 @@ export function AIChatModal({
                       <span className={`h-1.5 w-1.5 rounded-full ${supportThread.status === "active" ? "bg-emerald-400" : "bg-[#d8b889]"}`} />
                       {supportStatusLabel}
                     </div>
-                    {supportThread.status === "active" ? (
-                      <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
-                        <span className="h-6 w-6 rounded-full bg-[linear-gradient(135deg,#d8b889,#fff0cb)]" />
-                        {copy.supportJoined}
-                      </div>
-                    ) : null}
+                    <AnimatePresence>
+                      {supportThread.status === "active" ? (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.92, y: -4 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.92 }}
+                          transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                          className="mx-auto flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200"
+                        >
+                          <span className="h-6 w-6 rounded-full bg-[linear-gradient(135deg,#d8b889,#fff0cb)]" />
+                          ✨ {copy.supportJoined}
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                     {supportThread.messages.map((message) => {
                       const isUser = message.sender_type === "user";
                       const isAdmin = message.sender_type === "admin";
                       const isSystem = message.sender_type === "system" || message.sender_type === "ai";
+                      const status = getSupportMessageStatus(message);
                       return (
                         <div key={message.id} className={["flex", isSystem ? "justify-center" : isUser ? "justify-end" : "justify-start"].join(" ")}>
                           <div
@@ -2954,8 +2989,9 @@ export function AIChatModal({
                               </a>
                             ) : null}
                             <p>{message.message}</p>
-                            <p className={["mt-1 text-[10px]", isUser ? "text-black/55" : "text-zinc-500"].join(" ")}>
+                            <p className={["mt-1 flex items-center justify-end gap-1 text-[10px]", isUser ? "text-black/55" : "text-zinc-500"].join(" ")}>
                               {formatMessageTime(new Date(message.created_at).getTime(), locale)}
+                              {status ? <span className={status.className}>{status.mark}</span> : null}
                             </p>
                           </div>
                         </div>
@@ -2971,6 +3007,29 @@ export function AIChatModal({
                       <span>▣</span>
                       {copy.supportSaved}
                     </div>
+                    {supportThread.status === "closed" ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ type: "spring", stiffness: 240, damping: 24 }}
+                        className="rounded-2xl border border-[#d8b889]/20 bg-[#d8b889]/10 p-4 text-center"
+                      >
+                        <p className="text-[13px] leading-5 text-zinc-300">
+                          {locale === "az"
+                            ? "Dəstək söhbəti tamamlandı. AI köməkçi ilə yenidən danışa bilərsiniz."
+                            : locale === "ru"
+                              ? "Чат поддержки завершен. Вы можете снова поговорить с AI помощником."
+                              : "Support chat is complete. You can talk to the AI assistant again."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={returnToAiAssistant}
+                          className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full border border-[#d8b889]/45 bg-[#d8b889] px-4 text-[13px] font-semibold text-black transition hover:bg-[#e7c89a]"
+                        >
+                          ✨ {locale === "az" ? "AI Köməkçiyə qayıt" : locale === "ru" ? "Вернуться к AI" : "Return to AI assistant"}
+                        </button>
+                      </motion.div>
+                    ) : null}
                   </>
                 )}
               </div>

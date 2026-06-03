@@ -109,5 +109,167 @@
         "description": "Parfums de Marly Delina"
       }
     ]
+  },
+  "weather": {
+    "enabled": true,
+    "homepageEnabled": false,
+    "catalogEnabled": false,
+    "qoxunuEnabled": false,
+    "defaultCity": "Bakı",
+    "productLimit": 6,
+    "cacheMinutes": 30,
+    "temperatureRules": [
+      {
+        "id": "hot",
+        "min": 28,
+        "max": null,
+        "recommend": [
+          "fresh",
+          "citrus",
+          "aquatic",
+          "green",
+          "neroli",
+          "musk",
+          "tea"
+        ],
+        "avoid": [
+          "oud",
+          "tobacco",
+          "heavy-vanilla",
+          "leather",
+          "very-sweet"
+        ],
+        "goodFor": [
+          "daily",
+          "office",
+          "summer"
+        ]
+      },
+      {
+        "id": "mild",
+        "min": 20,
+        "max": 27,
+        "recommend": [
+          "floral",
+          "citrus",
+          "clean-musk",
+          "soft-woody",
+          "fruity-fresh"
+        ],
+        "avoid": [],
+        "goodFor": [
+          "daily",
+          "office",
+          "university",
+          "casual"
+        ]
+      },
+      {
+        "id": "cool",
+        "min": 10,
+        "max": 19,
+        "recommend": [
+          "amber",
+          "woody",
+          "vanilla",
+          "musk",
+          "iris",
+          "patchouli",
+          "spicy"
+        ],
+        "avoid": [],
+        "goodFor": [
+          "date",
+          "evening",
+          "formal"
+        ]
+      },
+      {
+        "id": "cold",
+        "min": null,
+        "max": 9,
+        "recommend": [
+          "oud",
+          "tobacco",
+          "leather",
+          "amber",
+          "vanilla",
+          "tonka",
+          "incense",
+          "warm-spicy"
+        ],
+        "avoid": [],
+        "goodFor": [
+          "night",
+          "winter",
+          "strong-signature"
+        ]
+      }
+    ],
+    "conditionRules": [
+      {
+        "condition": "rainy",
+        "recommend": [
+          "woody",
+          "clean-musk",
+          "iris",
+          "tea",
+          "soft-amber"
+        ],
+        "avoid": [
+          "very-sweet",
+          "tropical"
+        ],
+        "boost": []
+      },
+      {
+        "condition": "windy",
+        "recommend": [],
+        "avoid": [],
+        "boost": [
+          "strong-projection",
+          "long-lasting"
+        ]
+      },
+      {
+        "condition": "humid",
+        "recommend": [
+          "light-citrus",
+          "aquatic",
+          "fresh-green",
+          "clean-musk"
+        ],
+        "avoid": [
+          "heavy-sweet",
+          "oud",
+          "tobacco"
+        ],
+        "boost": []
+      },
+      {
+        "condition": "night",
+        "recommend": [],
+        "avoid": [],
+        "boost": [
+          "amber",
+          "vanilla",
+          "oud",
+          "tobacco",
+          "musk",
+          "date-night"
+        ]
+      },
+      {
+        "condition": "day",
+        "recommend": [],
+        "avoid": [],
+        "boost": [
+          "fresh",
+          "citrus",
+          "clean",
+          "office-safe"
+        ]
+      }
+    ]
   }
 }

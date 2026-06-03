@@ -11,7 +11,7 @@ import {
   NotePencil,
   UserCircle,
   WarningCircle,
-} from "@phosphor-icons/react";
+} from "@/components/admin/lucide-admin-icons";
 
 type AdminLocale = "az" | "en";
 

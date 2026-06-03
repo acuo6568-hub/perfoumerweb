@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, CheckCircle, FloppyDisk, Spinner } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CheckCircle, FloppyDisk, Spinner } from "@/components/admin/lucide-admin-icons";
 import cx from "classnames";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";

@@ -15,6 +15,22 @@ import {
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import {
+  BarChart3,
+  BotMessageSquare,
+  Boxes,
+  BrainCircuit,
+  CloudSun,
+  FlaskConical,
+  Headset,
+  History,
+  ImageIcon,
+  Layers3,
+  Sparkles as LucideSparkles,
+  Type,
+  WandSparkles,
+  type LucideIcon,
+} from "lucide-react";
+import {
   TrendUp,
   ArrowsClockwise,
   CheckCircle,
@@ -43,7 +59,7 @@ import {
   UserCircle,
   WarningCircle,
   X,
-} from "@phosphor-icons/react";
+} from "@/components/admin/lucide-admin-icons";
 
 import {
   DEFAULT_SITE_NAME,
@@ -172,6 +188,10 @@ const ui = {
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
+}
+
+function sidebarIcon(Icon: LucideIcon) {
+  return <Icon size={18} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />;
 }
 
 const ADMIN_LOCALE_STORAGE_KEY = "perfoumer-admin-locale";
@@ -2210,6 +2230,7 @@ export function AdminPanelClient({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [importing, setImporting] = useState<"perfumes" | "notes" | null>(null);
   const [tokenInput, setTokenInput] = useState({ top: "", heart: "", base: "" });
   const [openNoteSelectorGroup, setOpenNoteSelectorGroup] = useState<"top" | "heart" | "base" | null>(null);
@@ -2236,19 +2257,19 @@ export function AdminPanelClient({
   const showTopSearch = view === "perfumes";
   const navItems = useMemo(
     () => [
-      { value: "dashboard" as const, label: copy.dashboard, icon: <TrendUp size={16} weight="bold" /> },
-      { value: "perfumes" as const, label: copy.perfumes, icon: <SquaresFour size={16} weight="bold" /> },
-      { value: "notes" as const, label: copy.notes, icon: <Rows size={16} weight="bold" /> },
-      { value: "brands" as const, label: adminText(locale, "Brendlər", "Brands"), icon: <Package size={16} weight="bold" /> },
-      { value: "promotions" as const, label: copy.promotions, icon: <Sparkle size={16} weight="bold" /> },
-      { value: "weather" as const, label: adminText(locale, "Hava tövsiyələri", "Weather scents"), icon: <Bell size={16} weight="bold" /> },
-      { value: "branding" as const, label: copy.branding, icon: <TextT size={16} weight="bold" /> },
-      { value: "aiChat" as const, label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
-      { value: "support" as const, label: "Support", icon: <Bell size={16} weight="bold" /> },
-      { value: "audit" as const, label: adminText(locale, "Audit", "Audit"), icon: <ClockCounterClockwise size={16} weight="bold" /> },
-      { value: "header" as const, label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
-      { value: "qoxunuLogs" as const, label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: <Sparkle size={16} weight="bold" /> },
-      { value: "assistant" as const, label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: <Sparkle size={16} weight="bold" /> },
+      { value: "dashboard" as const, label: copy.dashboard, icon: sidebarIcon(BarChart3) },
+      { value: "perfumes" as const, label: copy.perfumes, icon: sidebarIcon(FlaskConical) },
+      { value: "notes" as const, label: copy.notes, icon: sidebarIcon(Layers3) },
+      { value: "brands" as const, label: adminText(locale, "Brendlər", "Brands"), icon: sidebarIcon(Boxes) },
+      { value: "promotions" as const, label: copy.promotions, icon: sidebarIcon(LucideSparkles) },
+      { value: "weather" as const, label: adminText(locale, "Hava tövsiyələri", "Weather scents"), icon: sidebarIcon(CloudSun) },
+      { value: "branding" as const, label: copy.branding, icon: sidebarIcon(Type) },
+      { value: "aiChat" as const, label: copy.aiChat, icon: sidebarIcon(BotMessageSquare) },
+      { value: "support" as const, label: "Support", icon: sidebarIcon(Headset) },
+      { value: "audit" as const, label: adminText(locale, "Audit", "Audit"), icon: sidebarIcon(History) },
+      { value: "header" as const, label: adminText(locale, "Media", "Media"), icon: sidebarIcon(ImageIcon) },
+      { value: "qoxunuLogs" as const, label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: sidebarIcon(WandSparkles) },
+      { value: "assistant" as const, label: adminText(locale, "AI köməkçisi", "AI Assistant"), icon: sidebarIcon(BrainCircuit) },
     ],
     [copy, locale],
   );
@@ -2828,6 +2849,29 @@ export function AdminPanelClient({
   useEffect(() => {
     window.localStorage.setItem(ADMIN_LOCALE_STORAGE_KEY, locale);
   }, [locale]);
+
+  useEffect(() => {
+    if (!authenticated) return;
+
+    let active = true;
+    const loadSupportSummary = async () => {
+      try {
+        const response = await fetch("/api/admin/support", { cache: "no-store" });
+        const data = (await response.json()) as { summary?: { unread?: number } };
+        if (!active || !response.ok) return;
+        setSupportUnreadCount(Number(data.summary?.unread || 0));
+      } catch {
+        if (active) setSupportUnreadCount(0);
+      }
+    };
+
+    void loadSupportSummary();
+    const intervalId = window.setInterval(loadSupportSummary, 5000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [authenticated]);
 
   useEffect(() => {
     if (!perfumes.length) {
@@ -4025,14 +4069,10 @@ export function AdminPanelClient({
                     key={item.value}
                     type="button"
                     className={cx(
-                      "group relative isolate flex items-center gap-2.5 overflow-hidden text-[13px] font-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                      item.value === "assistant"
-                        ? view === item.value
-                          ? "border border-cyan-300/70 bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-white shadow-[0_10px_24px_rgba(14,165,233,0.28)]"
-                          : "border border-transparent bg-[linear-gradient(135deg,rgba(236,254,255,0.92),rgba(240,249,255,0.78),rgba(250,245,255,0.9))] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-cyan-200 hover:text-zinc-950 hover:shadow-[0_8px_22px_rgba(14,165,233,0.14)]"
-                        : view === item.value
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950",
+                      "group relative isolate flex items-center gap-2.5 overflow-hidden text-[13px] font-medium transition-all duration-150 ease-out",
+                      view === item.value
+                        ? "bg-[linear-gradient(90deg,rgba(99,102,241,.10),rgba(168,85,247,.08))] text-[#312E81] shadow-[0_8px_22px_rgba(99,102,241,0.10)]"
+                        : "text-zinc-600 hover:bg-zinc-50/90 hover:text-zinc-950",
                       sidebarCollapsed
                         ? "mx-auto h-10 w-10 justify-center rounded-[14px] px-0"
                         : "h-9 w-full justify-start rounded-[11px] px-3",
@@ -4043,30 +4083,12 @@ export function AdminPanelClient({
                     aria-label={item.label}
                     title={item.label}
                   >
-                    {item.value === "assistant" ? (
-                      <>
-                        <span
-                          className={cx(
-                            "pointer-events-none absolute bg-gradient-to-r from-cyan-400/0 via-white/45 to-fuchsia-400/0 bg-[length:220%_100%] opacity-70 blur-[1px] transition-opacity duration-300 group-hover:opacity-100 animate-shimmer",
-                            sidebarCollapsed ? "inset-1 rounded-[12px]" : "inset-0 rounded-[inherit]",
-                          )}
-                        />
-                        <span
-                          className={cx(
-                            "pointer-events-none absolute bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.65),rgba(255,255,255,0.16)_40%,rgba(255,255,255,0)_72%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100",
-                            sidebarCollapsed ? "inset-[2px] rounded-[10px]" : "inset-[1px] rounded-[inherit]",
-                          )}
-                        />
-                      </>
-                    ) : null}
-                    <span className={cx("relative z-[1] shrink-0 transition-transform duration-300", sidebarCollapsed ? "" : "group-hover:scale-110", item.value === "assistant" ? (view === item.value ? "text-white" : "text-cyan-600 group-hover:text-cyan-700") : view === item.value ? "text-indigo-600" : "text-zinc-400") }>
+                    <span className={cx("relative z-[1] shrink-0 text-current transition-transform duration-150 ease-out group-hover:scale-[1.05]", view === item.value ? "text-[#4F46E5]" : "text-zinc-400") }>
                       {sidebarCollapsed ? (
                         <span className={cx(
-                          "inline-flex h-10 w-10 items-center justify-center rounded-[12px] transition",
+                          "inline-flex h-10 w-10 items-center justify-center rounded-[12px] transition duration-150",
                           view === item.value
-                            ? item.value === "assistant"
-                              ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-white"
-                              : "bg-indigo-50 text-indigo-600"
+                            ? "bg-[linear-gradient(90deg,rgba(99,102,241,.10),rgba(168,85,247,.08))] text-[#4F46E5]"
                             : "bg-white text-zinc-400",
                         )}>
                           {item.icon}
@@ -4075,7 +4097,15 @@ export function AdminPanelClient({
                         item.icon
                       )}
                     </span>
-                    {!sidebarCollapsed ? <span className={cx("relative z-[1] truncate", item.value === "assistant" && view === item.value ? "drop-shadow-[0_1px_0_rgba(255,255,255,0.22)]" : "")}>{item.label}</span> : null}
+                    {!sidebarCollapsed ? <span className="relative z-[1] truncate">{item.label}</span> : null}
+                    {item.value === "support" && supportUnreadCount > 0 ? (
+                      <span className={cx(
+                        "relative z-[1] ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white",
+                        sidebarCollapsed ? "absolute -right-1 -top-1" : "",
+                      )}>
+                        {supportUnreadCount > 99 ? "99+" : supportUnreadCount}
+                      </span>
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -4189,11 +4219,9 @@ export function AdminPanelClient({
                       key={item.value}
                       type="button"
                       className={cx(
-                        "flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-left text-[13px] font-semibold transition",
+                        "group flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-left text-[13px] font-semibold transition-all duration-150",
                         view === item.value
-                          ? item.value === "assistant"
-                            ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-white shadow-[0_10px_24px_rgba(14,165,233,0.24)]"
-                            : "bg-indigo-50 text-indigo-700"
+                          ? "bg-[linear-gradient(90deg,rgba(99,102,241,.10),rgba(168,85,247,.08))] text-[#312E81] shadow-[0_8px_22px_rgba(99,102,241,0.10)]"
                           : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950",
                       )}
                       onClick={() => {
@@ -4203,17 +4231,20 @@ export function AdminPanelClient({
                     >
                       <span
                         className={cx(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]",
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] transition-transform duration-150 group-hover:scale-[1.05]",
                           view === item.value
-                            ? item.value === "assistant"
-                              ? "bg-white/18 text-white"
-                              : "bg-white text-indigo-600"
+                            ? "bg-white text-[#4F46E5]"
                             : "bg-zinc-50 text-zinc-400",
                         )}
                       >
                         {item.icon}
                       </span>
                       <span className="truncate">{item.label}</span>
+                      {item.value === "support" && supportUnreadCount > 0 ? (
+                        <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">
+                          {supportUnreadCount > 99 ? "99+" : supportUnreadCount}
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>

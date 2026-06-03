@@ -10,6 +10,7 @@ import {
   getSupportThread,
   patchSupportConversation,
 } from "@/lib/support-inbox";
+import type { SupportThread } from "@/lib/support-inbox";
 
 type SupportBody = {
   action?: "request" | "message" | "close" | "ping";
@@ -34,6 +35,16 @@ const SUPABASE_STORAGE_BUCKET = (process.env.SUPABASE_STORAGE_BUCKET || "admin-i
 
 function sanitizeText(value: unknown, maxLength = 2000) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function hideStaffOnlyMessages(thread: SupportThread | null) {
+  if (!thread) return null;
+  return {
+    ...thread,
+    messages: thread.messages.filter(
+      (message) => !(message.sender_type === "system" && message.sender_id === "__internal_note"),
+    ),
+  };
 }
 
 function createId(prefix: string) {
@@ -147,7 +158,7 @@ export async function GET(request: Request) {
     ? await getSupportThread(conversationId)
     : await findOpenSupportThread(userId, guestId);
 
-  return Response.json({ thread: thread ?? null });
+  return Response.json({ thread: hideStaffOnlyMessages(thread ?? null) });
 }
 
 export async function POST(request: Request) {
@@ -169,7 +180,7 @@ export async function POST(request: Request) {
         browser: sanitizeText(body.browser, 140),
         recentMessages: Array.isArray(body.recentMessages) ? body.recentMessages : [],
       });
-      return Response.json({ thread, guestId });
+      return Response.json({ thread: hideStaffOnlyMessages(thread), guestId });
     }
 
     const conversationId = sanitizeText(body.conversationId, 120);
@@ -179,12 +190,12 @@ export async function POST(request: Request) {
 
     if (action === "close") {
       const thread = await patchSupportConversation(conversationId, { status: "closed", is_online: false });
-      return Response.json({ thread });
+      return Response.json({ thread: hideStaffOnlyMessages(thread) });
     }
 
     if (action === "ping") {
       const thread = await patchSupportConversation(conversationId, { is_online: true });
-      return Response.json({ thread });
+      return Response.json({ thread: hideStaffOnlyMessages(thread) });
     }
 
     const message = sanitizeText(body.message, 4000);
@@ -204,7 +215,7 @@ export async function POST(request: Request) {
       attachmentSize: attachment?.size,
     });
 
-    return Response.json({ thread, guestId });
+    return Response.json({ thread: hideStaffOnlyMessages(thread), guestId });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Support request failed.";
     return Response.json({ error: message }, { status: 400 });

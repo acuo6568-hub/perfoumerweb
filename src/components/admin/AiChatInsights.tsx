@@ -2,7 +2,7 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Clock, CopySimple, MagnifyingGlass, Sparkle, UserCircle, Users } from "@phosphor-icons/react";
+import { Clock, CopySimple, MagnifyingGlass, Sparkle, UserCircle, Users } from "@/components/admin/lucide-admin-icons";
 
 type AdminLocale = "az" | "en";
 

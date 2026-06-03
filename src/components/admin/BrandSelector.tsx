@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { MagnifyingGlass, X } from "@phosphor-icons/react";
+import { MagnifyingGlass, X } from "@/components/admin/lucide-admin-icons";
 
 interface BrandSelectorProps {
   value: string;

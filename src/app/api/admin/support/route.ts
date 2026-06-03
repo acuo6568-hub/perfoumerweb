@@ -18,7 +18,7 @@ import {
 } from "@/lib/support-inbox";
 
 type AdminSupportBody = {
-  action?: "reply" | "assign" | "close" | "reopen";
+  action?: "reply" | "assign" | "close" | "reopen" | "note";
   conversationId?: string;
   message?: string;
   attachmentDataUrl?: string;
@@ -167,6 +167,21 @@ export async function POST(request: Request) {
     }
 
     const message = sanitizeText(body.message, 4000);
+    if (body.action === "note") {
+      if (!message) {
+        return Response.json({ error: "Note is required." }, { status: 400 });
+      }
+
+      const thread = await addSupportMessage({
+        conversationId,
+        senderType: "system",
+        senderId: "__internal_note",
+        message,
+      });
+
+      return Response.json({ thread });
+    }
+
     const attachment = await saveAttachment(body);
     if (!message && !attachment) {
       return Response.json({ error: "Message or attachment is required." }, { status: 400 });

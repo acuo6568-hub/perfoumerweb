@@ -1,0 +1,186 @@
+{
+  "conversations": [
+    {
+      "id": "support_107381d5-b1a8-48f5-b5ea-429d2385df2e",
+      "user_id": "875e7450-ce84-4f79-8fbe-49b2bffcf43e",
+      "guest_id": "8936ee6a-5b37-4a56-b973-21e57ca1506e",
+      "status": "active",
+      "assigned_admin_id": "PerfoumerAdmin",
+      "source_page": "/qoxunu",
+      "user_name": "bakhishov",
+      "user_email": "elbay@bakhishov.com",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15",
+      "device": "MacIntel",
+      "browser": "en-US",
+      "is_online": true,
+      "created_at": "2026-06-03T15:16:11.102Z",
+      "updated_at": "2026-06-03T15:17:03.250Z",
+      "last_message_at": "2026-06-03T15:17:03.250Z",
+      "closed_at": null
+    },
+    {
+      "id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "user_id": "875e7450-ce84-4f79-8fbe-49b2bffcf43e",
+      "guest_id": "8936ee6a-5b37-4a56-b973-21e57ca1506e",
+      "status": "closed",
+      "assigned_admin_id": "PerfoumerAdmin",
+      "source_page": "/qoxunu",
+      "user_name": "bakhishov",
+      "user_email": "elbay@bakhishov.com",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15",
+      "device": "MacIntel",
+      "browser": "en-US",
+      "is_online": true,
+      "created_at": "2026-06-03T14:54:50.446Z",
+      "updated_at": "2026-06-03T15:16:01.590Z",
+      "last_message_at": "2026-06-03T15:15:42.913Z",
+      "closed_at": "2026-06-03T15:16:01.590Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "sys_7f67f68d-34fc-40cb-abf6-786b2680cb80",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "system",
+      "sender_id": null,
+      "message": "İnsan dəstəyi istəndi. AI cavabları dayandırıldı.",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T14:54:50.446Z",
+      "read_at": "2026-06-03T14:54:50.446Z"
+    },
+    {
+      "id": "msg_a4edb52a-24e0-4763-8905-4c51a47f840c",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "admin",
+      "sender_id": "PerfoumerAdmin",
+      "message": "Salam test.",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T14:55:35.805Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_178cac32-3039-47d9-a6c2-829ea3859f14",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "user",
+      "sender_id": "875e7450-ce84-4f79-8fbe-49b2bffcf43e",
+      "message": "salam",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T14:55:45.156Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_c4ffab44-a8c9-462b-a0b4-0de0482d97dc",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "user",
+      "sender_id": "875e7450-ce84-4f79-8fbe-49b2bffcf43e",
+      "message": ".",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T14:55:48.979Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_8d58e89f-3ba5-410e-9644-1fce7c3f139b",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "user",
+      "sender_id": "875e7450-ce84-4f79-8fbe-49b2bffcf43e",
+      "message": "d",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T14:56:17.168Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_698ea77c-8f31-4204-899d-a0d318a8aec7",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "user",
+      "sender_id": "875e7450-ce84-4f79-8fbe-49b2bffcf43e",
+      "message": "Testing",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T14:58:57.467Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_b80b3c0d-f384-4175-8ce3-de9994fdc1c7",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "admin",
+      "sender_id": "PerfoumerAdmin",
+      "message": "s",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:13:53.493Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_f835d5e3-898a-49be-bd80-15a0d07cdcdc",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "admin",
+      "sender_id": "PerfoumerAdmin",
+      "message": "sala,",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:15:35.960Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_c4d1d119-c0c1-4749-bb43-b94c63eb2434",
+      "conversation_id": "support_7281789a-c700-46f9-8643-b5c9dfd8e008",
+      "sender_type": "admin",
+      "sender_id": "PerfoumerAdmin",
+      "message": "salam",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:15:42.913Z",
+      "read_at": null
+    },
+    {
+      "id": "sys_f8ce90e7-0ed1-4005-b3b7-4d92f629bf77",
+      "conversation_id": "support_107381d5-b1a8-48f5-b5ea-429d2385df2e",
+      "sender_type": "system",
+      "sender_id": null,
+      "message": "İnsan dəstəyi istəndi. AI cavabları dayandırıldı.",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:16:11.102Z",
+      "read_at": "2026-06-03T15:16:11.102Z"
+    },
+    {
+      "id": "msg_04db88e0-bf14-48f2-ad34-0a8908b1a82b",
+      "conversation_id": "support_107381d5-b1a8-48f5-b5ea-429d2385df2e",
+      "sender_type": "system",
+      "sender_id": "__internal_note",
+      "message": "[internal-note] test",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:16:41.375Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_1bbe0c3c-a9e9-4e21-8a6d-b247b224fb65",
+      "conversation_id": "support_107381d5-b1a8-48f5-b5ea-429d2385df2e",
+      "sender_type": "admin",
+      "sender_id": "PerfoumerAdmin",
+      "message": "salam.",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:16:47.462Z",
+      "read_at": null
+    },
+    {
+      "id": "msg_1a2f8303-cc58-414d-beab-fc7c0b3250d1",
+      "conversation_id": "support_107381d5-b1a8-48f5-b5ea-429d2385df2e",
+      "sender_type": "admin",
+      "sender_id": "PerfoumerAdmin",
+      "message": "salam",
+      "attachment_url": null,
+      "attachment_type": null,
+      "created_at": "2026-06-03T15:17:03.250Z",
+      "read_at": null
+    }
+  ],
+  "attachments": []
+}
