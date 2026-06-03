@@ -1008,6 +1008,39 @@ alter table public.support_attachments
   add column if not exists file_size integer not null default 0,
   add column if not exists created_at timestamptz not null default timezone('utc', now());
 
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'support_conversations_status_check'
+      and conrelid = 'public.support_conversations'::regclass
+  ) then
+    alter table public.support_conversations
+      add constraint support_conversations_status_check
+      check (status in ('new', 'waiting', 'active', 'closed'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'support_messages_sender_type_check'
+      and conrelid = 'public.support_messages'::regclass
+  ) then
+    alter table public.support_messages
+      add constraint support_messages_sender_type_check
+      check (sender_type in ('user', 'admin', 'system', 'ai'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'support_attachments_file_size_check'
+      and conrelid = 'public.support_attachments'::regclass
+  ) then
+    alter table public.support_attachments
+      add constraint support_attachments_file_size_check
+      check (file_size >= 0);
+  end if;
+end $$;
+
 create index if not exists support_conversations_last_message_idx
   on public.support_conversations (last_message_at desc);
 
@@ -1032,6 +1065,31 @@ create index if not exists support_attachments_conversation_idx
 alter table public.support_conversations enable row level security;
 alter table public.support_messages enable row level security;
 alter table public.support_attachments enable row level security;
+
+drop trigger if exists set_support_conversations_updated_at on public.support_conversations;
+create trigger set_support_conversations_updated_at
+before update on public.support_conversations
+for each row
+execute function public.set_updated_at();
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'admin-images',
+  'admin-images',
+  false,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/jpg', 'image/webp']::text[]
+)
+on conflict (id) do update
+set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Admin image uploads are readable through API" on storage.objects;
+create policy "Admin image uploads are readable through API"
+  on storage.objects
+  for select
+  using (bucket_id = 'admin-images' and name like 'uploads/%');
 
 drop trigger if exists set_website_live_sessions_updated_at on public.website_live_sessions;
 create trigger set_website_live_sessions_updated_at

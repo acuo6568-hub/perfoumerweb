@@ -183,7 +183,7 @@ function projectionWeatherScore(perfume: Perfume, weather: WeatherSnapshot) {
 }
 
 function scoreToPercent(score: number) {
-  return Math.max(64, Math.min(97, Math.round(64 + score * 33)));
+  return Math.max(0, Math.min(100, Math.round(score * 100)));
 }
 
 export function buildWeatherAdvice(weather: WeatherSnapshot, settings: SiteWeatherSettings) {

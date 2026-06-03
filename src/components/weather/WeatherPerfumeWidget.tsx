@@ -36,7 +36,23 @@ type WeatherPerfumeWidgetProps = {
 
 function formatPrice(sizes: PerfumeSize[]) {
   const min = sizes.reduce((value, size) => Math.min(value, size.price), Number.POSITIVE_INFINITY);
-  return Number.isFinite(min) ? `${min} ₼-dən` : "Qiymət sorğu ilə";
+  return Number.isFinite(min) ? `${min} ₼` : "Qiymət sorğu ilə";
+}
+
+function startingLabel(locale: Locale) {
+  if (locale === "ru") return "От";
+  if (locale === "en") return "From";
+  return "Başlayan qiymət";
+}
+
+function formatStartingPrice(sizes: PerfumeSize[], locale: Locale) {
+  return `${formatPrice(sizes)} / ${startingLabel(locale)}`;
+}
+
+function matchLabel(locale: Locale) {
+  if (locale === "ru") return "совпадение";
+  if (locale === "en") return "match";
+  return "uyğunluq";
 }
 
 function weatherReason(locale: Locale) {
@@ -188,7 +204,9 @@ export function WeatherPerfumeWidget({ locale, variant = "home", className = "" 
 
   const weather = payload?.weather;
   const products = payload?.recommendations ?? [];
-  const visibleProducts = products.slice(0, compact ? 5 : 8);
+  const visibleProducts = products.slice(0, compact ? 5 : 6);
+  const featuredProduct = visibleProducts[0] ?? null;
+  const secondaryProducts = visibleProducts.slice(1, compact ? 5 : 6);
   const WeatherIcon = weather?.precipitation
     ? CloudRain
     : weather?.windSpeed && weather.windSpeed >= 22
@@ -202,22 +220,20 @@ export function WeatherPerfumeWidget({ locale, variant = "home", className = "" 
     <section
       className={[
         compact ? "mt-6" : "mt-10",
-        "weather-widget-fade border-y border-zinc-200/70 bg-[#f8f6f1]/45 py-6 sm:py-7",
+        "weather-widget-fade border-y border-zinc-200/70 bg-[#f7f5ef]/55 py-5 sm:py-6",
         className,
       ].join(" ")}
     >
       <div className="mx-auto max-w-[1540px] px-0">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <p className="text-[0.68rem] font-semibold tracking-[0.2em] text-[#a2844b] uppercase">Perfoumer Weather</p>
-            <h2 className="mt-2 font-serif text-[2rem] leading-[1.02] text-zinc-950 sm:text-[2.45rem] md:text-[2.8rem]">
+            <h2 className="font-serif text-[1.65rem] leading-[1.05] text-zinc-950 sm:text-[2rem] md:text-[2.25rem]">
               {title}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">{weatherReason(locale)}</p>
-            <p className="mt-1 text-xs leading-5 text-zinc-400">{subtitle}</p>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-500">{weather?.advice || weatherReason(locale)}</p>
           </div>
 
-          <div className="weather-pill-shimmer inline-flex w-fit max-w-full items-center gap-2 overflow-hidden rounded-full border border-zinc-200/90 bg-white/82 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_10px_28px_rgba(24,24,24,0.04)] backdrop-blur">
+          <div className="weather-pill-shimmer inline-flex w-fit max-w-full items-center gap-2 overflow-hidden rounded-full border border-zinc-200/90 bg-white/86 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_10px_28px_rgba(24,24,24,0.04)] backdrop-blur">
             <MapPin size={15} weight="bold" className="shrink-0 text-zinc-800" />
             <span className="truncate">{weatherCityLabel || "..."}</span>
             <span className="text-zinc-300">·</span>
@@ -228,76 +244,123 @@ export function WeatherPerfumeWidget({ locale, variant = "home", className = "" 
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          {cityChoices.map((city) => (
+        <div className="mt-3 flex flex-col gap-3 border-t border-zinc-200/70 pt-3 lg:flex-row lg:items-center lg:justify-between">
+          <p className="max-w-3xl text-xs leading-5 text-zinc-500">
+            <span className="font-semibold text-zinc-900">{locale === "ru" ? "Настроение дня" : locale === "en" ? "Today’s mood" : "Bugünkü əhval"}:</span>{" "}
+            {subtitle}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {cityChoices.map((city) => (
+              <button
+                key={city}
+                type="button"
+                onClick={() => setSelectedCity(city)}
+                className={[
+                  "h-8 rounded-full border px-3 text-xs font-semibold transition",
+                  selectedCity === city ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_8px_18px_rgba(24,24,24,0.12)]" : "border-zinc-200 bg-white/80 text-zinc-600 hover:border-zinc-300 hover:bg-white",
+                ].join(" ")}
+              >
+                {city}
+              </button>
+            ))}
             <button
-              key={city}
               type="button"
-              onClick={() => setSelectedCity(city)}
-              className={[
-                "h-8 rounded-full border px-3 text-xs font-semibold transition",
-                selectedCity === city ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_8px_18px_rgba(24,24,24,0.12)]" : "border-zinc-200 bg-white/80 text-zinc-600 hover:border-zinc-300 hover:bg-white",
-              ].join(" ")}
+              onClick={useNearestCity}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white/80 px-3 text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-white"
             >
-              {city}
+              <Compass size={13} weight="bold" />
+              {isLocating ? "..." : nearbyLabel(locale)}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={useNearestCity}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white/80 px-3 text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-white"
-          >
-            <Compass size={13} weight="bold" />
-            {isLocating ? "..." : nearbyLabel(locale)}
-          </button>
+          </div>
         </div>
 
-        <div className="mt-6 flex snap-x gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(isLoading ? [] : visibleProducts).map((perfume, index) => (
+        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(18rem,1.45fr)_minmax(0,3fr)] lg:items-stretch">
+          {isLoading ? (
+            <div className="weather-product-card min-h-[23rem] rounded-[1.45rem] border border-zinc-200/80 bg-white/70 p-4 sm:rounded-[1.9rem]" />
+          ) : featuredProduct ? (
             <Link
-              key={perfume.slug}
-              href={toLocalePath(`/perfumes/${perfume.slug}`, locale)}
-              className="weather-product-card group min-w-[9.8rem] snap-start rounded-[0.95rem] border border-transparent bg-transparent p-1 transition duration-300 hover:-translate-y-1 sm:min-w-[11.2rem]"
-              style={{ animationDelay: `${index * 80}ms` }}
+              href={toLocalePath(`/perfumes/${featuredProduct.slug}`, locale)}
+              className="weather-product-card group grid min-h-[23rem] overflow-hidden rounded-[1.45rem] border border-zinc-200/80 bg-white/86 shadow-[0_18px_55px_rgba(24,24,24,0.07)] transition duration-300 hover:-translate-y-1 sm:grid-cols-[1.05fr_0.95fr] sm:rounded-[1.9rem] lg:grid-cols-1"
             >
-              <div className="relative aspect-[1.08] overflow-hidden rounded-[0.9rem] border border-zinc-100 bg-white/72 shadow-[0_12px_32px_rgba(24,24,24,0.04)]">
+              <div className="relative m-2 min-h-[15rem] overflow-hidden rounded-[1.05rem] bg-[radial-gradient(circle_at_50%_20%,#ffffff_0%,#ede7dc_58%,#ddd2c3_100%)] sm:m-3 sm:rounded-[1.5rem]">
                 <Image
-                  src={perfume.image || "/perfoumerlogo.png"}
-                  alt={perfume.imageAlt || `${perfume.brand} ${perfume.name}`}
+                  src={featuredProduct.image || "/perfoumerlogo.png"}
+                  alt={featuredProduct.imageAlt || `${featuredProduct.brand} ${featuredProduct.name}`}
                   fill
-                  sizes="180px"
-                  className="object-contain p-4 transition duration-500 group-hover:scale-[1.045]"
+                  sizes="(min-width: 1024px) 370px, (min-width: 640px) 50vw, 100vw"
+                  className="object-contain p-8 drop-shadow-[0_26px_32px_rgba(0,0,0,0.16)] transition duration-700 group-hover:scale-[1.055]"
                 />
-                <span className="absolute bottom-2 right-2 rounded-full border border-zinc-200 bg-[#f4f1eb]/95 px-2 py-0.5 text-[0.68rem] font-bold text-zinc-900 shadow-sm">
-                  <AnimatedNumber value={perfume.matchPercent} suffix="%" />
+                <span className="absolute right-3 top-3 rounded-full border border-white/70 bg-white/82 px-3 py-1 text-[0.72rem] font-bold text-zinc-950 shadow-sm backdrop-blur">
+                  ☀︎ <AnimatedNumber value={featuredProduct.matchPercent} suffix={`% ${matchLabel(locale)}`} />
                 </span>
               </div>
-              <div className="mt-3 min-w-0">
-                <p className="truncate text-[0.66rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">{perfume.brand}</p>
-                <h3 className="mt-1 line-clamp-2 min-h-[2.25rem] text-sm font-semibold leading-[1.15] text-zinc-950">{perfume.name}</h3>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-zinc-900">{formatPrice(perfume.sizes)}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {buildProductTags(perfume, locale).map((tag) => (
-                  <span key={tag} className="rounded-full bg-[#ebe7df] px-2 py-0.5 text-[0.68rem] font-medium text-zinc-600">
-                    {tag}
-                  </span>
-                ))}
+              <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
+                <div>
+                  <p className="text-[0.66rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase">{featuredProduct.brand}</p>
+                  <h3 className="mt-2 font-serif text-2xl leading-[1.05] text-zinc-950">{featuredProduct.name}</h3>
+                  <p className="mt-1 text-sm font-semibold text-zinc-950">{formatStartingPrice(featuredProduct.sizes, locale)}</p>
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-500">{featuredProduct.reason}</p>
+                </div>
+                <div className="mt-3">
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {buildProductTags(featuredProduct, locale).map((tag) => (
+                      <span key={tag} className="rounded-full bg-[#ebe7df] px-2 py-0.5 text-[0.68rem] font-medium text-zinc-600">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </Link>
-          ))}
+          ) : null}
 
-          {isLoading ? Array.from({ length: compact ? 4 : 6 }).map((_, index) => (
-            <div key={index} className="weather-product-card min-w-[9.8rem] snap-start p-1 sm:min-w-[11.2rem]" style={{ animationDelay: `${index * 80}ms` }}>
-              <div className="aspect-[1.08] rounded-[0.9rem] border border-zinc-100 bg-white/70" />
-              <div className="mt-3 h-3 w-16 rounded-full bg-zinc-200/70" />
-              <div className="mt-2 h-4 w-28 rounded-full bg-zinc-200/70" />
-              <div className="mt-3 h-3 w-20 rounded-full bg-zinc-200/70" />
-            </div>
-          )) : null}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
+            {(isLoading ? [] : secondaryProducts).map((perfume, index) => (
+              <Link
+                key={perfume.slug}
+                href={toLocalePath(`/perfumes/${perfume.slug}`, locale)}
+                className="weather-product-card group min-w-0 rounded-[1.45rem] border border-zinc-200/75 bg-white/78 p-2 shadow-[0_12px_30px_rgba(24,24,24,0.04)] transition duration-300 hover:-translate-y-1 hover:bg-white sm:rounded-[1.9rem] sm:p-3"
+                style={{ animationDelay: `${(index + 1) * 80}ms` }}
+              >
+                <div className="relative aspect-[0.92] overflow-hidden rounded-[1.05rem] bg-[linear-gradient(145deg,#ffffff_0%,#eee9df_100%)] sm:rounded-[1.5rem]">
+                  <Image
+                    src={perfume.image || "/perfoumerlogo.png"}
+                    alt={perfume.imageAlt || `${perfume.brand} ${perfume.name}`}
+                    fill
+                    sizes="180px"
+                    className="object-contain p-4 drop-shadow-[0_16px_18px_rgba(0,0,0,0.12)] transition duration-500 group-hover:scale-[1.06]"
+                  />
+                  <span className="absolute bottom-2 right-2 rounded-full border border-white/70 bg-white/86 px-2 py-0.5 text-[0.65rem] font-bold text-zinc-950 shadow-sm">
+                    ☀︎ <AnimatedNumber value={perfume.matchPercent} suffix="%" />
+                  </span>
+                </div>
+                <div className="mt-3 min-w-0">
+                  <p className="truncate text-[0.62rem] font-semibold tracking-[0.16em] text-zinc-500 uppercase">{perfume.brand}</p>
+                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-[1.08] text-zinc-950">{perfume.name}</h3>
+                </div>
+                <p className="mt-1 text-xs font-medium text-zinc-500">{formatStartingPrice(perfume.sizes, locale)}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {buildProductTags(perfume, locale).slice(0, 2).map((tag) => (
+                    <span key={tag} className="rounded-full bg-[#ebe7df] px-2 py-0.5 text-[0.66rem] font-medium text-zinc-600">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+
+            {isLoading ? Array.from({ length: compact ? 4 : 5 }).map((_, index) => (
+              <div key={index} className="weather-product-card rounded-[1.45rem] border border-zinc-200/75 bg-white/70 p-2 sm:rounded-[1.9rem] sm:p-3" style={{ animationDelay: `${index * 80}ms` }}>
+                <div className="aspect-[0.92] rounded-[1.05rem] bg-zinc-100/80 sm:rounded-[1.5rem]" />
+                <div className="mt-3 h-3 w-16 rounded-full bg-zinc-200/70" />
+                <div className="mt-2 h-4 w-24 rounded-full bg-zinc-200/70" />
+                <div className="mt-3 h-3 w-14 rounded-full bg-zinc-200/70" />
+              </div>
+            )) : null}
+          </div>
 
           {!isLoading && !products.length ? (
-            <div className="rounded-[1rem] border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-500">
+            <div className="rounded-[0.5rem] border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-500">
               Hava əsaslı seçim hazırda yüklənmədi. Bakı üçün standart qoxular göstəriləcək.
             </div>
           ) : null}

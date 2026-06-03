@@ -26,6 +26,8 @@ type AdminSupportBody = {
   attachmentMimeType?: string;
 };
 
+type SupportThreadResult = Awaited<ReturnType<typeof patchSupportConversation>>;
+
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 const SUPABASE_STORAGE_BUCKET = (process.env.SUPABASE_STORAGE_BUCKET || "admin-images").trim();
@@ -125,6 +127,14 @@ async function saveAttachment(body: AdminSupportBody) {
   }
 }
 
+function threadResponse(thread: SupportThreadResult) {
+  if (!thread) {
+    return Response.json({ error: "Support conversation was not found." }, { status: 404 });
+  }
+
+  return Response.json({ thread });
+}
+
 export async function GET() {
   const auth = await ensureAuthorized();
   if (auth.response) return auth.response;
@@ -153,17 +163,17 @@ export async function POST(request: Request) {
         assigned_admin_id: auth.username,
         status: "active",
       });
-      return Response.json({ thread });
+      return threadResponse(thread);
     }
 
     if (body.action === "close") {
       const thread = await patchSupportConversation(conversationId, { status: "closed" });
-      return Response.json({ thread });
+      return threadResponse(thread);
     }
 
     if (body.action === "reopen") {
       const thread = await patchSupportConversation(conversationId, { status: "active", closed_at: null });
-      return Response.json({ thread });
+      return threadResponse(thread);
     }
 
     const message = sanitizeText(body.message, 4000);
@@ -179,7 +189,7 @@ export async function POST(request: Request) {
         message,
       });
 
-      return Response.json({ thread });
+      return threadResponse(thread);
     }
 
     const attachment = await saveAttachment(body);
@@ -198,7 +208,7 @@ export async function POST(request: Request) {
       attachmentSize: attachment?.size,
     });
 
-    return Response.json({ thread });
+    return threadResponse(thread);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Support action failed.";
     return Response.json({ error: message }, { status: 400 });

@@ -29,6 +29,8 @@ type SupportBody = {
   attachmentMimeType?: string;
 };
 
+type SupportThreadResult = Awaited<ReturnType<typeof patchSupportConversation>>;
+
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 const SUPABASE_STORAGE_BUCKET = (process.env.SUPABASE_STORAGE_BUCKET || "admin-images").trim();
@@ -45,6 +47,14 @@ function hideStaffOnlyMessages(thread: SupportThread | null) {
       (message) => !(message.sender_type === "system" && message.sender_id === "__internal_note"),
     ),
   };
+}
+
+function threadResponse(thread: SupportThreadResult, guestId?: string | null) {
+  if (!thread) {
+    return Response.json({ error: "Support conversation was not found." }, { status: 404 });
+  }
+
+  return Response.json({ thread: hideStaffOnlyMessages(thread), guestId });
 }
 
 function createId(prefix: string) {
@@ -190,12 +200,12 @@ export async function POST(request: Request) {
 
     if (action === "close") {
       const thread = await patchSupportConversation(conversationId, { status: "closed", is_online: false });
-      return Response.json({ thread: hideStaffOnlyMessages(thread) });
+      return threadResponse(thread, guestId);
     }
 
     if (action === "ping") {
       const thread = await patchSupportConversation(conversationId, { is_online: true });
-      return Response.json({ thread: hideStaffOnlyMessages(thread) });
+      return threadResponse(thread, guestId);
     }
 
     const message = sanitizeText(body.message, 4000);
@@ -215,7 +225,7 @@ export async function POST(request: Request) {
       attachmentSize: attachment?.size,
     });
 
-    return Response.json({ thread: hideStaffOnlyMessages(thread), guestId });
+    return threadResponse(thread, guestId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Support request failed.";
     return Response.json({ error: message }, { status: 400 });
