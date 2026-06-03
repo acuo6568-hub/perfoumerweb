@@ -157,7 +157,7 @@ export function SiteTracker() {
       void send("v2_page_view");
       heartbeatId = window.setInterval(() => {
         void send("v2_heartbeat");
-      }, 30000);
+   }, 120000);
     };
 
     if (typeof window.requestIdleCallback === "function") {
@@ -222,7 +222,7 @@ export function SiteTracker() {
     };
 
     void fetchMessages();
-    intervalId = window.setInterval(fetchMessages, 12000);
+  intervalId = window.setInterval(fetchMessages, 120000);
 
     return () => {
       isDisposed = true;
