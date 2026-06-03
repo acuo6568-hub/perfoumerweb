@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { parseCsv } from "@/lib/csv";
 import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import { normalizePerfumeDiscount } from "@/lib/discounts";
-import type { Note, Perfume, PerfumeSize, PerfumeWithNotes } from "@/types/catalog";
+import type { Note, Perfume, PerfumeRecommendationAttributes, PerfumeSize, PerfumeWithNotes } from "@/types/catalog";
 
 type NoteCsvRow = {
   Slug: string;
@@ -205,6 +205,7 @@ function normalizePerfume(value: unknown): Perfume | null {
     externalLink?: unknown;
     sizes?: unknown;
     discount?: unknown;
+    attributes?: unknown;
     noteSlugs?: {
       top?: unknown;
       heart?: unknown;
@@ -249,6 +250,40 @@ function normalizePerfume(value: unknown): Perfume | null {
           .filter(Boolean)
       : [];
 
+  const normalizeStringArray = (input: unknown) =>
+    Array.isArray(input)
+      ? input
+          .map((item) => (typeof item === "string" ? item.trim().toLowerCase() : ""))
+          .filter(Boolean)
+      : [];
+
+  const normalizeAttributes = (input: unknown): PerfumeRecommendationAttributes | undefined => {
+    if (!input || typeof input !== "object") return undefined;
+
+    const raw = input as Record<string, unknown>;
+    const facets =
+      raw.facets && typeof raw.facets === "object"
+        ? Object.fromEntries(
+            Object.entries(raw.facets as Record<string, unknown>)
+              .map(([key, value]) => [key, Number(value)])
+              .filter(([, value]) => Number.isFinite(value))
+              .map(([key, value]) => [key, Math.max(0, Math.min(10, value as number))]),
+          )
+        : undefined;
+
+    return {
+      season: normalizeStringArray(raw.season),
+      longevity: typeof raw.longevity === "string" ? raw.longevity.trim().toLowerCase() : undefined,
+      projection: typeof raw.projection === "string" ? raw.projection.trim().toLowerCase() : undefined,
+      style: normalizeStringArray(raw.style),
+      occasion: normalizeStringArray(raw.occasion),
+      mood: normalizeStringArray(raw.mood),
+      ageRange: normalizeStringArray(raw.ageRange),
+      luxuryLevel: typeof raw.luxuryLevel === "string" ? raw.luxuryLevel.trim().toLowerCase() : undefined,
+      facets,
+    };
+  };
+
   const image = typeof perfume.image === "string" && perfume.image.trim()
     ? perfume.image.trim()
     : getPerfumeImageUrl(slug);
@@ -274,6 +309,7 @@ function normalizePerfume(value: unknown): Perfume | null {
       heart: normalizeSlugArray(perfume.noteSlugs?.heart),
       base: normalizeSlugArray(perfume.noteSlugs?.base),
     },
+    attributes: normalizeAttributes(perfume.attributes),
   };
 }
 

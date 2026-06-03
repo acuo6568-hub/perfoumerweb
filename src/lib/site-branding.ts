@@ -25,6 +25,34 @@ export type SiteHomeHeaderSettings = {
   slides: SiteHomeHeaderSlide[];
 };
 
+export type WeatherTemperatureRule = {
+  id: string;
+  min: number | null;
+  max: number | null;
+  recommend: string[];
+  avoid: string[];
+  goodFor: string[];
+};
+
+export type WeatherConditionRule = {
+  condition: "rainy" | "windy" | "humid" | "day" | "night";
+  recommend: string[];
+  avoid: string[];
+  boost: string[];
+};
+
+export type SiteWeatherSettings = {
+  enabled: boolean;
+  homepageEnabled: boolean;
+  catalogEnabled: boolean;
+  qoxunuEnabled: boolean;
+  defaultCity: string;
+  productLimit: number;
+  cacheMinutes: number;
+  temperatureRules: WeatherTemperatureRule[];
+  conditionRules: WeatherConditionRule[];
+};
+
 export type SitePromotionSettings = {
   enabled: boolean;
   mode: SitePromotionMode;
@@ -113,6 +141,57 @@ const DEFAULT_PROMOTION_SETTINGS: SitePromotionSettings = {
   sourcePerfumeSlug: "",
   sourcePerfumeSlugs: [],
   messages: [],
+};
+
+export const DEFAULT_WEATHER_SETTINGS: SiteWeatherSettings = {
+  enabled: true,
+  homepageEnabled: true,
+  catalogEnabled: true,
+  qoxunuEnabled: true,
+  defaultCity: "Bakı",
+  productLimit: 6,
+  cacheMinutes: 30,
+  temperatureRules: [
+    {
+      id: "hot",
+      min: 28,
+      max: null,
+      recommend: ["fresh", "citrus", "aquatic", "green", "neroli", "musk", "tea"],
+      avoid: ["oud", "tobacco", "heavy-vanilla", "leather", "very-sweet"],
+      goodFor: ["daily", "office", "summer"],
+    },
+    {
+      id: "mild",
+      min: 20,
+      max: 27,
+      recommend: ["floral", "citrus", "clean-musk", "soft-woody", "fruity-fresh"],
+      avoid: [],
+      goodFor: ["daily", "office", "university", "casual"],
+    },
+    {
+      id: "cool",
+      min: 10,
+      max: 19,
+      recommend: ["amber", "woody", "vanilla", "musk", "iris", "patchouli", "spicy"],
+      avoid: [],
+      goodFor: ["date", "evening", "formal"],
+    },
+    {
+      id: "cold",
+      min: null,
+      max: 9,
+      recommend: ["oud", "tobacco", "leather", "amber", "vanilla", "tonka", "incense", "warm-spicy"],
+      avoid: [],
+      goodFor: ["night", "winter", "strong-signature"],
+    },
+  ],
+  conditionRules: [
+    { condition: "rainy", recommend: ["woody", "clean-musk", "iris", "tea", "soft-amber"], avoid: ["very-sweet", "tropical"], boost: [] },
+    { condition: "windy", recommend: [], avoid: [], boost: ["strong-projection", "long-lasting"] },
+    { condition: "humid", recommend: ["light-citrus", "aquatic", "fresh-green", "clean-musk"], avoid: ["heavy-sweet", "oud", "tobacco"], boost: [] },
+    { condition: "night", recommend: [], avoid: [], boost: ["amber", "vanilla", "oud", "tobacco", "musk", "date-night"] },
+    { condition: "day", recommend: [], avoid: [], boost: ["fresh", "citrus", "clean", "office-safe"] },
+  ],
 };
 
 function normalizePromotionText(value: unknown) {
@@ -232,6 +311,70 @@ function normalizeHomeHeaderSettings(value: unknown): SiteHomeHeaderSettings {
     videoCtaHref: normalizePromotionText(settings.videoCtaHref) || DEFAULT_HOME_HEADER_SETTINGS.videoCtaHref,
     rotationMode,
     slides,
+  };
+}
+
+function normalizeWeatherStringList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizePromotionText(item).toLowerCase()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  return [] as string[];
+}
+
+function normalizeWeatherTemperatureRule(value: unknown, fallback: WeatherTemperatureRule): WeatherTemperatureRule {
+  const rule = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const min = rule.min === null || rule.min === "" ? null : Number(rule.min);
+  const max = rule.max === null || rule.max === "" ? null : Number(rule.max);
+
+  return {
+    id: normalizePromotionText(rule.id) || fallback.id,
+    min: Number.isFinite(min) ? min : fallback.min,
+    max: Number.isFinite(max) ? max : fallback.max,
+    recommend: normalizeWeatherStringList(rule.recommend).length ? normalizeWeatherStringList(rule.recommend) : fallback.recommend,
+    avoid: normalizeWeatherStringList(rule.avoid).length ? normalizeWeatherStringList(rule.avoid) : fallback.avoid,
+    goodFor: normalizeWeatherStringList(rule.goodFor).length ? normalizeWeatherStringList(rule.goodFor) : fallback.goodFor,
+  };
+}
+
+function normalizeWeatherConditionRule(value: unknown, fallback: WeatherConditionRule): WeatherConditionRule {
+  const rule = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const condition = normalizePromotionText(rule.condition) as WeatherConditionRule["condition"];
+
+  return {
+    condition: ["rainy", "windy", "humid", "day", "night"].includes(condition) ? condition : fallback.condition,
+    recommend: normalizeWeatherStringList(rule.recommend).length ? normalizeWeatherStringList(rule.recommend) : fallback.recommend,
+    avoid: normalizeWeatherStringList(rule.avoid).length ? normalizeWeatherStringList(rule.avoid) : fallback.avoid,
+    boost: normalizeWeatherStringList(rule.boost).length ? normalizeWeatherStringList(rule.boost) : fallback.boost,
+  };
+}
+
+function normalizeWeatherSettings(value: unknown): SiteWeatherSettings {
+  const settings = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const temperatureSource = Array.isArray(settings.temperatureRules) ? settings.temperatureRules : [];
+  const conditionSource = Array.isArray(settings.conditionRules) ? settings.conditionRules : [];
+
+  return {
+    enabled: Boolean(settings.enabled ?? DEFAULT_WEATHER_SETTINGS.enabled),
+    homepageEnabled: Boolean(settings.homepageEnabled ?? DEFAULT_WEATHER_SETTINGS.homepageEnabled),
+    catalogEnabled: Boolean(settings.catalogEnabled ?? DEFAULT_WEATHER_SETTINGS.catalogEnabled),
+    qoxunuEnabled: Boolean(settings.qoxunuEnabled ?? DEFAULT_WEATHER_SETTINGS.qoxunuEnabled),
+    defaultCity: normalizePromotionText(settings.defaultCity) || DEFAULT_WEATHER_SETTINGS.defaultCity,
+    productLimit: Math.min(12, Math.max(3, Math.round(Number(settings.productLimit) || DEFAULT_WEATHER_SETTINGS.productLimit))),
+    cacheMinutes: Math.min(60, Math.max(30, Math.round(Number(settings.cacheMinutes) || DEFAULT_WEATHER_SETTINGS.cacheMinutes))),
+    temperatureRules: DEFAULT_WEATHER_SETTINGS.temperatureRules.map((fallback, index) =>
+      normalizeWeatherTemperatureRule(temperatureSource[index], fallback),
+    ),
+    conditionRules: DEFAULT_WEATHER_SETTINGS.conditionRules.map((fallback, index) =>
+      normalizeWeatherConditionRule(conditionSource[index], fallback),
+    ),
   };
 }
 
@@ -381,6 +524,7 @@ export type SiteSettings = {
   twitterDescription: string;
   promotions: SitePromotionSettings;
   homeHeader: SiteHomeHeaderSettings;
+  weather: SiteWeatherSettings;
 };
 
 function normalizeString(value: unknown) {
@@ -435,6 +579,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
     twitterDescription?: unknown;
     promotions?: unknown;
     homeHeader?: unknown;
+    weather?: unknown;
   };
   const siteName = normalizeSiteName(settings.siteName);
   const siteDomain = normalizeSiteDomain(settings.siteDomain);
@@ -455,6 +600,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
       normalizeString(settings.twitterDescription) || defaultDescription,
     promotions: normalizePromotionSettings(settings.promotions ?? DEFAULT_PROMOTION_SETTINGS),
     homeHeader: normalizeHomeHeaderSettings(settings.homeHeader ?? DEFAULT_HOME_HEADER_SETTINGS),
+    weather: normalizeWeatherSettings(settings.weather ?? DEFAULT_WEATHER_SETTINGS),
   };
 }
 
@@ -493,4 +639,4 @@ export function applySiteBranding<T>(value: T, settings: SiteSettings): T {
   return value;
 }
 
-export { normalizeHomeHeaderSettings };
+export { normalizeHomeHeaderSettings, normalizeWeatherSettings };

@@ -59,6 +59,7 @@ import {
   type SitePromotionSettings,
   type SitePromotionTextMap,
   type SiteSettings,
+  type SiteWeatherSettings,
 } from "@/lib/site-branding";
 import {
   DEFAULT_SITE_META_KEYWORD_COUNT,
@@ -78,6 +79,7 @@ import { AdminCommandCenter } from "@/components/admin/AdminCommandCenter";
 import { AdminAuditTrail } from "@/components/admin/AdminAuditTrail";
 import { AiChatInsights } from "@/components/admin/AiChatInsights";
 import { QoxunuInsights } from "@/components/admin/QoxunuInsights";
+import { SupportInbox } from "@/components/admin/SupportInbox";
 import { BrandSelector } from "@/components/admin/BrandSelector";
 import { SaveStatusPill } from "@/components/admin/SaveStatusPill";
 import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
@@ -138,7 +140,7 @@ type PromoAnalyticsState = {
     browser?: string | null;
   }>;
 };
-type AdminView = "dashboard" | "assistant" | "audit" | "aiChat" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions";
+type AdminView = "dashboard" | "assistant" | "audit" | "aiChat" | "support" | "qoxunuLogs" | "perfumes" | "notes" | "brands" | "branding" | "header" | "promotions" | "weather";
 const ui = {
   shell:
     "overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl",
@@ -2239,8 +2241,10 @@ export function AdminPanelClient({
       { value: "notes" as const, label: copy.notes, icon: <Rows size={16} weight="bold" /> },
       { value: "brands" as const, label: adminText(locale, "Brendlər", "Brands"), icon: <Package size={16} weight="bold" /> },
       { value: "promotions" as const, label: copy.promotions, icon: <Sparkle size={16} weight="bold" /> },
+      { value: "weather" as const, label: adminText(locale, "Hava tövsiyələri", "Weather scents"), icon: <Bell size={16} weight="bold" /> },
       { value: "branding" as const, label: copy.branding, icon: <TextT size={16} weight="bold" /> },
       { value: "aiChat" as const, label: copy.aiChat, icon: <UserCircle size={16} weight="bold" /> },
+      { value: "support" as const, label: "Support", icon: <Bell size={16} weight="bold" /> },
       { value: "audit" as const, label: adminText(locale, "Audit", "Audit"), icon: <ClockCounterClockwise size={16} weight="bold" /> },
       { value: "header" as const, label: adminText(locale, "Media", "Media"), icon: <ImageSquare size={16} weight="bold" /> },
       { value: "qoxunuLogs" as const, label: adminText(locale, "Qoxunu tap", "Qoxunu Tap"), icon: <Sparkle size={16} weight="bold" /> },
@@ -2387,6 +2391,44 @@ export function AdminPanelClient({
       },
     }));
   };
+
+  const updateWeatherSettings = (patch: Partial<SiteWeatherSettings>) => {
+    setSettings((current) => ({
+      ...current,
+      weather: {
+        ...current.weather,
+        ...patch,
+      },
+    }));
+  };
+
+  const updateWeatherTemperatureRule = (
+    index: number,
+    patch: Partial<SiteWeatherSettings["temperatureRules"][number]>,
+  ) => {
+    updateWeatherSettings({
+      temperatureRules: settings.weather.temperatureRules.map((rule, ruleIndex) =>
+        ruleIndex === index ? { ...rule, ...patch } : rule,
+      ),
+    });
+  };
+
+  const updateWeatherConditionRule = (
+    index: number,
+    patch: Partial<SiteWeatherSettings["conditionRules"][number]>,
+  ) => {
+    updateWeatherSettings({
+      conditionRules: settings.weather.conditionRules.map((rule, ruleIndex) =>
+        ruleIndex === index ? { ...rule, ...patch } : rule,
+      ),
+    });
+  };
+
+  const parseWeatherTokens = (value: string) =>
+    value
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
 
   const updatePromotionTextForLocale = (text: string) => {
     updatePromotionSettings({
@@ -4043,6 +4085,13 @@ export function AdminPanelClient({
                   <p className="text-sm font-semibold text-zinc-900">{copy.aiChat}</p>
                   <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.aiChatDescription}</p>
                 </div>
+              ) : view === "support" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">Support</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">
+                    {adminText(locale, "Operatora qoşulan müştəri söhbətlərini cavablandırın, bağlayın və izləyin.", "Reply to human-support conversations, assign, close, and monitor them.")}
+                  </p>
+                </div>
               ) : view === "qoxunuLogs" ? (
                 <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
                   <p className="text-sm font-semibold text-zinc-900">{copy.qoxunuLogs}</p>
@@ -4059,6 +4108,13 @@ export function AdminPanelClient({
                 <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
                   <p className="text-sm font-semibold text-zinc-900">{copy.promotions}</p>
                   <p className="mt-2 text-sm leading-6 text-zinc-500">{copy.promotionsDescription}</p>
+                </div>
+              ) : view === "weather" ? (
+                <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">{adminText(locale, "Hava tövsiyələri", "Weather scents")}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">
+                    {adminText(locale, "Bugünkü hava üçün qoxu qaydalarını, şəhəri və widget görünməsini idarə edin.", "Control weather-based scent rules, city, and widget visibility.")}
+                  </p>
                 </div>
               ) : view === "header" ? (
                 <div className="mt-5 rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
@@ -4282,6 +4338,10 @@ export function AdminPanelClient({
             <div className="space-y-6">
               <AiChatInsights locale={locale} />
             </div>
+          ) : view === "support" ? (
+            <div className="space-y-6">
+              <SupportInbox locale={locale} />
+            </div>
           ) : view === "audit" ? (
             <div className="space-y-6">
               <AdminAuditTrail locale={locale} />
@@ -4433,6 +4493,172 @@ export function AdminPanelClient({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          ) : view === "weather" ? (
+            <div className="space-y-6">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                  <Bell size={14} weight="bold" />
+                  {adminText(locale, "Hava tövsiyələri", "Weather scents")}
+                </div>
+                <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.05em] text-zinc-950">
+                  {adminText(locale, "Bugünkü hava üçün ətirlər", "Scents for today’s weather")}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+                  {adminText(locale, "Open-Meteo məlumatına əsaslanan qoxu qaydalarını idarə edin. Hava sadəcə widget deyil, məhsul matching siqnalıdır.", "Manage scent rules powered by Open-Meteo. Weather acts as a product-matching signal, not a standalone widget.")}
+                </p>
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className={cx(ui.soft, "space-y-5 bg-white p-5 sm:p-6")}>
+                  <SectionLabel
+                    icon={<Bell size={16} weight="bold" />}
+                    title={adminText(locale, "Görünmə və defaultlar", "Visibility and defaults")}
+                    detail={adminText(locale, "Homepage, catalog və Qoxunu Tap daxilində widget-i ayrıca idarə edin.", "Control the widget separately across homepage, catalog, and Qoxunu Tap.")}
+                  />
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      ["enabled", adminText(locale, "Feature aktivdir", "Feature enabled")],
+                      ["homepageEnabled", adminText(locale, "Homepage widget", "Homepage widget")],
+                      ["catalogEnabled", adminText(locale, "Catalog widget", "Catalog widget")],
+                      ["qoxunuEnabled", adminText(locale, "Qoxunu kartı", "Qoxunu card")],
+                    ].map(([key, label]) => (
+                      <label key={key} className="flex min-h-[72px] cursor-pointer items-center justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-[#FCFCFD] px-4 py-3 transition hover:border-zinc-300 hover:bg-white">
+                        <span className="text-sm font-semibold text-zinc-900">{label}</span>
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={Boolean(settings.weather[key as keyof SiteWeatherSettings])}
+                          onChange={(event) => updateWeatherSettings({ [key]: event.target.checked } as Partial<SiteWeatherSettings>)}
+                        />
+                        <span className="relative inline-flex h-7 w-12 shrink-0 rounded-full border border-zinc-300 bg-white p-1 transition after:h-5 after:w-5 after:rounded-full after:bg-zinc-300 after:shadow-sm after:transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:after:translate-x-5 peer-checked:after:bg-white" />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Field label={adminText(locale, "Default şəhər", "Default city")}>
+                      <input
+                        value={settings.weather.defaultCity}
+                        onChange={(event) => updateWeatherSettings({ defaultCity: event.target.value })}
+                        className={ui.input}
+                        placeholder="Bakı"
+                      />
+                    </Field>
+                    <Field label={adminText(locale, "Məhsul sayı", "Product count")}>
+                      <input
+                        type="number"
+                        min={3}
+                        max={12}
+                        value={settings.weather.productLimit}
+                        onChange={(event) => updateWeatherSettings({ productLimit: Number(event.target.value) })}
+                        className={ui.input}
+                      />
+                    </Field>
+                    <Field label={adminText(locale, "Cache dəqiqə", "Cache minutes")} hint="30-60">
+                      <input
+                        type="number"
+                        min={30}
+                        max={60}
+                        value={settings.weather.cacheMinutes}
+                        onChange={(event) => updateWeatherSettings({ cacheMinutes: Number(event.target.value) })}
+                        className={ui.input}
+                      />
+                    </Field>
+                  </div>
+
+                  <SectionLabel
+                    icon={<TrendUp size={16} weight="bold" />}
+                    title={adminText(locale, "Temperatur qaydaları", "Temperature rules")}
+                    detail={adminText(locale, "Recommend/Avoid tokenləri vergüllə yazın: citrus, neroli, oud, tobacco...", "Write recommend/avoid tokens separated by commas: citrus, neroli, oud, tobacco...")}
+                  />
+
+                  <div className="grid gap-3">
+                    {settings.weather.temperatureRules.map((rule, index) => (
+                      <div key={rule.id} className="rounded-[18px] border border-zinc-200 bg-[#FCFCFD] p-4">
+                        <div className="grid gap-3 md:grid-cols-[0.7fr_0.7fr_1.3fr]">
+                          <Field label="Min">
+                            <input
+                              type="number"
+                              value={rule.min ?? ""}
+                              onChange={(event) => updateWeatherTemperatureRule(index, { min: event.target.value === "" ? null : Number(event.target.value) })}
+                              className={ui.input}
+                            />
+                          </Field>
+                          <Field label="Max">
+                            <input
+                              type="number"
+                              value={rule.max ?? ""}
+                              onChange={(event) => updateWeatherTemperatureRule(index, { max: event.target.value === "" ? null : Number(event.target.value) })}
+                              className={ui.input}
+                            />
+                          </Field>
+                          <Field label={rule.id}>
+                            <input
+                              value={rule.recommend.join(", ")}
+                              onChange={(event) => updateWeatherTemperatureRule(index, { recommend: parseWeatherTokens(event.target.value) })}
+                              className={ui.input}
+                            />
+                          </Field>
+                        </div>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <Field label="Avoid">
+                            <input
+                              value={rule.avoid.join(", ")}
+                              onChange={(event) => updateWeatherTemperatureRule(index, { avoid: parseWeatherTokens(event.target.value) })}
+                              className={ui.input}
+                            />
+                          </Field>
+                          <Field label="Good for">
+                            <input
+                              value={rule.goodFor.join(", ")}
+                              onChange={(event) => updateWeatherTemperatureRule(index, { goodFor: parseWeatherTokens(event.target.value) })}
+                              className={ui.input}
+                            />
+                          </Field>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <aside className={cx(ui.soft, "bg-white p-5")}>
+                  <SectionLabel
+                    icon={<Sparkle size={16} weight="bold" />}
+                    title={adminText(locale, "Hava şərtləri", "Weather conditions")}
+                    detail={adminText(locale, "Yağış, külək, rütubət və günün vaxtı üçün əlavə boost qaydaları.", "Extra boost rules for rain, wind, humidity, and time of day.")}
+                  />
+                  <div className="mt-4 grid gap-3">
+                    {settings.weather.conditionRules.map((rule, index) => (
+                      <div key={rule.condition} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">{rule.condition}</p>
+                        <Field label="Recommend">
+                          <input
+                            value={rule.recommend.join(", ")}
+                            onChange={(event) => updateWeatherConditionRule(index, { recommend: parseWeatherTokens(event.target.value) })}
+                            className={ui.input}
+                          />
+                        </Field>
+                        <Field label="Avoid">
+                          <input
+                            value={rule.avoid.join(", ")}
+                            onChange={(event) => updateWeatherConditionRule(index, { avoid: parseWeatherTokens(event.target.value) })}
+                            className={ui.input}
+                          />
+                        </Field>
+                        <Field label="Boost">
+                          <input
+                            value={rule.boost.join(", ")}
+                            onChange={(event) => updateWeatherConditionRule(index, { boost: parseWeatherTokens(event.target.value) })}
+                            className={ui.input}
+                          />
+                        </Field>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
               </div>
             </div>
           ) : view === "promotions" ? (

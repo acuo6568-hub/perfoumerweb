@@ -6,6 +6,7 @@ import { Hero } from "@/components/Hero";
 import { BrandLogoMarquee } from "@/components/home/BrandLogoMarquee";
 import { HomeFeaturedSearch } from "@/components/home/HomeFeaturedSearch";
 import { PersonalizedFeaturedGrid } from "@/components/home/PersonalizedFeaturedGrid";
+import { WeatherPerfumeWidget } from "@/components/weather/WeatherPerfumeWidget";
 import { getFeaturedPerfumes, getPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
@@ -718,6 +719,10 @@ export default async function Home() {
           locale={locale}
           supabase={supabaseConfig}
         />
+
+        {settings.weather.enabled && settings.weather.homepageEnabled ? (
+          <WeatherPerfumeWidget locale={locale} variant="home" />
+        ) : null}
 
         <div className="mt-8 flex justify-center">
           <Link

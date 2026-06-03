@@ -4,6 +4,7 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 
 import { getPerfumes } from "@/lib/catalog";
+import { getStartingPrice as getQoxunuStartingPrice, rankQoxunuPerfumes } from "@/lib/qoxunu-engine";
 import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
@@ -18,6 +19,8 @@ type QuizAnswers = {
   budget?: string;
   season?: string;
   longevity?: string;
+  environment?: string;
+  personality?: string;
 };
 
 type RecommendRequest = {
@@ -42,6 +45,9 @@ type QoxunuRecommendation = {
   heart: string[];
   base: string[];
   minPrice: number;
+  matchPercent?: number;
+  reasons?: string[];
+  archetype?: string;
 };
 
 const SUMMARY_LANGUAGE: Record<NonNullable<RecommendRequest["locale"]>, string> = {
@@ -86,45 +92,6 @@ function enforceSecondPersonVoice(summary: string, locale: NonNullable<Recommend
   return result;
 }
 
-const KEYWORDS = {
-  vibe: {
-    fresh: ["citrus", "bergamot", "lemon", "grapefruit", "marine", "aquatic", "green", "tea", "neroli"],
-    warm: ["vanilla", "amber", "tonka", "benzoin", "cinnamon", "caramel", "resin"],
-    floral: ["rose", "jasmine", "peony", "iris", "violet", "orange", "floral"],
-    bold: ["oud", "leather", "tobacco", "smoke", "spice", "incense", "musk", "patchouli"],
-  },
-  occasion: {
-    daily: ["citrus", "green", "musk", "floral", "tea"],
-    office: ["bergamot", "citrus", "neroli", "green", "lavender", "tea"],
-    date: ["rose", "vanilla", "amber", "musk", "jasmine", "tonka"],
-    evening: ["oud", "amber", "leather", "tobacco", "patchouli", "spice"],
-  },
-  intensity: {
-    soft: ["citrus", "green", "tea", "floral", "neroli"],
-    balanced: ["musk", "floral", "woody", "amber"],
-    strong: ["oud", "leather", "tobacco", "amber", "patchouli", "incense"],
-  },
-  projection: {
-    skin: ["musk", "tea", "iris", "cashmere", "soft"],
-    close: ["floral", "green", "woody", "musk", "smooth"],
-    moderate: ["amber", "citrus", "woody", "floral", "musk"],
-    bold: ["oud", "leather", "tobacco", "incense", "patchouli"],
-  },
-  sweetness: {
-    dry: ["citrus", "green", "tea", "iris", "woody"],
-    balanced: ["musk", "floral", "amber", "woody", "vanilla"],
-    sweet: ["vanilla", "tonka", "caramel", "amber", "jasmine"],
-    rich: ["vanilla", "amber", "tonka", "resin", "benzoin", "caramel"],
-  },
-  profile: {
-    citrus: ["citrus", "bergamot", "lemon", "mandarin", "grapefruit", "neroli"],
-    floral: ["floral", "rose", "jasmine", "iris", "violet", "peony", "ylang"],
-    woody: ["woody", "sandalwood", "cedar", "vetiver", "patchouli"],
-    amber: ["amber", "vanilla", "tonka", "benzoin", "resin", "sweet"],
-    oud: ["oud", "smoke", "leather", "incense", "tobacco"],
-  },
-} as const;
-
 function normalize(value: string) {
   return value.trim().toLowerCase();
 }
@@ -135,16 +102,6 @@ function getStartingPrice(perfume: Perfume) {
   }
 
   return perfume.sizes.reduce((min, item) => (item.price < min ? item.price : min), perfume.sizes[0].price);
-}
-
-function collectPerfumeTokens(perfume: Perfume) {
-  return [
-    ...perfume.noteSlugs.top,
-    ...perfume.noteSlugs.heart,
-    ...perfume.noteSlugs.base,
-    normalize(perfume.name),
-    normalize(perfume.brand),
-  ].map(normalize);
 }
 
 function recommendationIdentity(perfume: Perfume) {
@@ -182,71 +139,6 @@ function dedupeRecommendationPerfumes(perfumes: Perfume[]) {
   }
 
   return Array.from(byIdentity.values());
-}
-
-function countMatches(tokens: string[], keywords: readonly string[]) {
-  let score = 0;
-  for (const keyword of keywords) {
-    if (tokens.some((token) => token.includes(keyword))) {
-      score += 1;
-    }
-  }
-  return score;
-}
-
-function scorePerfume(perfume: Perfume, answers: QuizAnswers) {
-  const tokens = collectPerfumeTokens(perfume);
-  let score = 0;
-
-  const gender = normalize(perfume.gender);
-  if (answers.gender && answers.gender !== "all") {
-    if (gender.includes(answers.gender)) {
-      score += 6;
-    } else if (gender.includes("unisex")) {
-      score += 3;
-    } else {
-      score -= 2;
-    }
-  }
-
-  if (answers.vibe && answers.vibe in KEYWORDS.vibe) {
-    score += countMatches(tokens, KEYWORDS.vibe[answers.vibe as keyof typeof KEYWORDS.vibe]) * 2.2;
-  }
-
-  if (answers.occasion && answers.occasion in KEYWORDS.occasion) {
-    score += countMatches(tokens, KEYWORDS.occasion[answers.occasion as keyof typeof KEYWORDS.occasion]) * 1.8;
-  }
-
-  if (answers.intensity && answers.intensity in KEYWORDS.intensity) {
-    score += countMatches(tokens, KEYWORDS.intensity[answers.intensity as keyof typeof KEYWORDS.intensity]) * 1.5;
-  }
-
-  if (answers.projection && answers.projection in KEYWORDS.projection) {
-    score += countMatches(tokens, KEYWORDS.projection[answers.projection as keyof typeof KEYWORDS.projection]) * 1.4;
-  }
-
-  if (answers.sweetness && answers.sweetness in KEYWORDS.sweetness) {
-    score += countMatches(tokens, KEYWORDS.sweetness[answers.sweetness as keyof typeof KEYWORDS.sweetness]) * 1.6;
-  }
-
-  if (answers.profile && answers.profile in KEYWORDS.profile) {
-    score += countMatches(tokens, KEYWORDS.profile[answers.profile as keyof typeof KEYWORDS.profile]) * 2.8;
-  }
-
-  const price = getStartingPrice(perfume);
-  if (answers.budget === "under80") {
-    score += price <= 80 ? 3 : -1;
-  } else if (answers.budget === "80to140") {
-    score += price >= 80 && price <= 140 ? 3 : -1;
-  } else if (answers.budget === "140plus") {
-    score += price >= 140 ? 3 : -1;
-  }
-
-  if (perfume.inStock) {
-    score += 1.2;
-  }
-
-  return score;
 }
 
 function parseJsonObject(raw: string) {
@@ -422,20 +314,23 @@ export async function POST(request: Request) {
   const isGuest = typeof body.isGuest === "boolean" ? body.isGuest : !isSignedIn;
 
   const perfumes = dedupeRecommendationPerfumes(await getPerfumes());
-  const candidates = [...perfumes]
-    .map((perfume) => ({ perfume, score: scorePerfume(perfume, answers) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 24)
-    .map(({ perfume }) => ({
-      slug: perfume.slug,
-      name: perfume.name,
-      brand: perfume.brand,
-      gender: perfume.gender,
-      top: perfume.noteSlugs.top,
-      heart: perfume.noteSlugs.heart,
-      base: perfume.noteSlugs.base,
-      minPrice: getStartingPrice(perfume),
-    }));
+  const rankedMatches = rankQoxunuPerfumes(perfumes, answers, 24);
+  const matchBySlug = new Map(rankedMatches.map((match) => [match.perfume.slug, match]));
+  const candidates = rankedMatches.map(({ perfume, matchPercent, reasons, archetype, score }) => ({
+    slug: perfume.slug,
+    name: perfume.name,
+    brand: perfume.brand,
+    gender: perfume.gender,
+    top: perfume.noteSlugs.top,
+    heart: perfume.noteSlugs.heart,
+    base: perfume.noteSlugs.base,
+    minPrice: getQoxunuStartingPrice(perfume),
+    matchPercent,
+    score,
+    archetype: archetype.name,
+    reasons,
+    attributes: perfume.attributes ?? null,
+  }));
 
   const model = getEnvValue("OPENAI_MODEL") || "gpt-4.1-mini";
 
@@ -453,7 +348,7 @@ export async function POST(request: Request) {
         {
           role: "system",
           content:
-            `You are a perfume recommendation expert. Choose exactly 3 candidates by slug based on structured quiz answers and free-text preference. Return strict JSON with keys: slugs (string[]), summary (string, 1-3 short sentences explaining taste and why these picks fit). The summary language MUST be ${summaryLanguage} only. Do not switch language. Do not output English unless locale is en. Keep brand and perfume names unchanged. Address the customer directly in second person (Azerbaijani: siz, English: you, Russian: вы). Never call them "user" or equivalent third-person wording.`,
+            `You are a premium perfume consultant. Choose exactly 3 candidates by slug based on structured quiz answers, weighted compatibility data, candidate reasons, and free-text preference. Preserve diversity: avoid three nearly identical scent directions unless the answers demand it. Return strict JSON with keys: slugs (string[]), summary (string, 1-3 short sentences explaining taste and why these picks fit). The summary language MUST be ${summaryLanguage} only. Do not switch language. Do not output English unless locale is en. Keep brand and perfume names unchanged. Address the customer directly in second person (Azerbaijani: siz, English: you, Russian: вы). Never call them "user" or equivalent third-person wording.`,
         },
         {
           role: "user",
@@ -500,6 +395,15 @@ export async function POST(request: Request) {
 
   const responsePayload = {
     slugs: finalSlugs,
+    matches: finalSlugs.map((slug) => {
+      const match = matchBySlug.get(slug);
+      return {
+        slug,
+        matchPercent: match?.matchPercent ?? 0,
+        reasons: match?.reasons ?? [],
+        archetype: match?.archetype ?? null,
+      };
+    }),
     summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",
     usedFallback,
     warning: usedFallback ? "no_ai_selection" : null,
@@ -518,7 +422,19 @@ export async function POST(request: Request) {
     recommendations: finalSlugs.map((slug) => {
       const perfume = candidates.find((item) => item.slug === slug);
       return perfume
-        ? perfume
+        ? {
+            slug: perfume.slug,
+            name: perfume.name,
+            brand: perfume.brand,
+            gender: perfume.gender,
+            top: perfume.top,
+            heart: perfume.heart,
+            base: perfume.base,
+            minPrice: perfume.minPrice,
+            matchPercent: perfume.matchPercent,
+            reasons: perfume.reasons,
+            archetype: perfume.archetype,
+          }
         : { slug, name: slug, brand: "", gender: "", top: [], heart: [], base: [], minPrice: 0 };
     }),
     summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",

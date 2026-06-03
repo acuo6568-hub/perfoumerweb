@@ -24,8 +24,19 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { WeatherPerfumeWidget } from "@/components/weather/WeatherPerfumeWidget";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { humanizeNoteToken, localizeNoteLabel } from "@/lib/note-label";
+import {
+  buildUserScentProfile,
+  getMatchLabel,
+  getPersonalizedReason,
+  getProfileArchetype,
+  rankQoxunuPerfumes,
+  scorePerfumeMatch,
+  type QoxunuArchetype,
+} from "@/lib/qoxunu-engine";
 import type { Note, Perfume } from "@/types/catalog";
 
 type QuizAnswers = {
@@ -39,6 +50,14 @@ type QuizAnswers = {
   budget: string;
   season: string;
   longevity: string;
+  environment: string;
+  personality: string;
+};
+
+type AiMatchDetail = {
+  matchPercent: number;
+  reasons: string[];
+  archetype: QoxunuArchetype | null;
 };
 
 type TextAnswers = {
@@ -124,6 +143,8 @@ const QUICK_QUESTION_KEYS: QuickQuestionKey[] = [
   "intensity",
   "projection",
   "sweetness",
+  "environment",
+  "personality",
   "season",
   "profile",
   "longevity",
@@ -187,8 +208,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "gender",
-        title: "Əsasən hansı kateqoriya axtarırsan?",
-        description: "Bu seçim uyğun qoxuları daha dəqiq qruplaşdırmağa kömək edir.",
+        title: "Ətiri kimin üçün seçirik?",
+        description: "Bu cavab qoxunun xarakterini daha doğru istiqamətə aparır.",
         options: [
           { value: "all", label: "Fərq etmir", hint: "Qadın, kişi və uniseks birlikdə" },
           { value: "unisex", label: "Uniseks", hint: "Orta balanslı və universal" },
@@ -199,8 +220,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "vibe",
-        title: "Qoxunun ümumi ab-havası necə olsun?",
-        description: "Ən çox hiss etmək istədiyin moodu seç.",
+        title: "Ətiriniz ilk anda hansı hissi versin?",
+        description: "Sizi ən yaxşı ifadə edən ümumi ab-havanı seçin.",
         options: [
           { value: "fresh", label: "Təzə və təmiz", hint: "Sitrus, yaşıl, yüngül" },
           { value: "warm", label: "İsti və yumşaq", hint: "Vanil, amber, rahat" },
@@ -211,8 +232,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "occasion",
-        title: "Ətiri əsasən harada istifadə edəcəksən?",
-        description: "İstifadə mühiti qoxunun tonunu dəyişir.",
+        title: "Bu ətri ən çox harada istifadə edəcəksiniz?",
+        description: "Məkan və ritm düzgün qoxu gücünü seçməyə kömək edir.",
         options: [
           { value: "daily", label: "Gündəlik", hint: "Universallıq önəmlidir" },
           { value: "office", label: "Ofis", hint: "Yumşaq və səliqəli profil" },
@@ -223,8 +244,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "intensity",
-        title: "Qoxu nə qədər hiss olunsun?",
-        description: "Qalıcılıq və yayılım üçün rahatlıq səviyyəni seç.",
+        title: "Ətiriniz ətrafdakılar tərəfindən nə qədər hiss edilsin?",
+        description: "Daha sakit, balanslı və ya ifadəli aura seçin.",
         options: [
           { value: "soft", label: "Yüngül", hint: "Sakit, yaxın məsafə" },
           { value: "balanced", label: "Balanslı", hint: "Gündəlik üçün ideal" },
@@ -234,8 +255,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "projection",
-        title: "İzlənmə nə qədər yaxın olsun?",
-        description: "Ətrinin səndən nə qədər uzağa hiss olunmasını istəyirsən?",
+        title: "Ətiriniz necə bir iz buraxsın?",
+        description: "Yaxın məsafədə incə aura, yoxsa daha yadda qalan iz?",
         options: [
           { value: "skin", label: "Dəriyə yaxın", hint: "Yalnız yaxın məsafədə hiss olunur" },
           { value: "close", label: "Yaxın aura", hint: "Zərif, səliqəli iz buraxır" },
@@ -246,8 +267,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "sweetness",
-        title: "Şirinlik səviyyəsi necə olsun?",
-        description: "Şirinlik qoxunun minimal, balanslı və ya gur olmasını dəyişir.",
+        title: "Şirinlik sizə necə yaxın gəlir?",
+        description: "Quru, zərif şirin və ya daha doygun hiss seçin.",
         options: [
           { value: "dry", label: "Quru və təmiz", hint: "Şirinlik demək olar ki, hiss olunmur" },
           { value: "balanced", label: "Balanslı", hint: "Yumşaq, zərif şirinlik" },
@@ -257,9 +278,33 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       },
       {
         kind: "choice",
+        key: "environment",
+        title: "Hansı mühit sizi daha çox çəkir?",
+        description: "Bu seçim qoxunun emosional tərəfini daha yaxşı tutur.",
+        options: [
+          { value: "beach", label: "Dəniz kənarı", hint: "Təmiz hava, sərinlik, azadlıq" },
+          { value: "hotel", label: "Lüks otel", hint: "Səliqə, prestij, sakit bahalı hiss" },
+          { value: "nature", label: "Təbiət", hint: "Yaşıl, odunsu, rahat nəfəs" },
+          { value: "city", label: "Şəhər gecələri", hint: "Enerji, sirr və parlaq iz" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "personality",
+        title: "Özünüzü hansı söz daha yaxşı təsvir edir?",
+        description: "Ətir bəzən notdan çox xarakter seçir.",
+        options: [
+          { value: "calm", label: "Sakit", hint: "Yumşaq, təmiz və yormayan" },
+          { value: "elegant", label: "Zərif", hint: "İncə, seçilmiş və balanslı" },
+          { value: "assertive", label: "İddialı", hint: "Güclü, diqqətçəkən və özünəinamlı" },
+          { value: "mysterious", label: "Sirli", hint: "Dərin, tünd və yadda qalan" },
+        ],
+      },
+      {
+        kind: "choice",
         key: "season",
-        title: "Əsas mövsüm hansıdır?",
-        description: "Mövsüm seçimi AI nəticəsini daha düzgün edir.",
+        title: "Bu ətri daha çox hansı mövsümdə istifadə edəcəksiniz?",
+        description: "Mövsüm qoxunun istiliyini və təravətini düzgün balanslayır.",
         options: [
           { value: "all", label: "Bütün mövsüm", hint: "Universallıq" },
           { value: "summer", label: "Yay", hint: "Yüngül və təravətli" },
@@ -270,8 +315,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "profile",
-        title: "Hansına daha yaxınsan?",
-        description: "Əsas nota ailəsi top nəticəni birbaşa təsir edir.",
+        title: "Hansı qoxu ailəsi sizə daha yaxındır?",
+        description: "Bu seçim şəxsi imza profilinizin əsas istiqamətini qurur.",
         options: [
           { value: "citrus", label: "Sitrus", hint: "Bergamot, limon, neroli" },
           { value: "floral", label: "Çiçəkli", hint: "Gül, yasəmən, iris" },
@@ -283,8 +328,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "longevity",
-        title: "Qalıcılıq gözləntin necədir?",
-        description: "AI bunu prioritetləşdirmədə istifadə edir.",
+        title: "Qalıcılıqdan gözləntiniz necədir?",
+        description: "Günün ritminə uyğun performans səviyyəsini seçin.",
         options: [
           { value: "moderate", label: "Orta", hint: "4-6 saat yetərlidir" },
           { value: "long", label: "Uzun", hint: "8+ saat istəyirəm" },
@@ -294,8 +339,8 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       {
         kind: "choice",
         key: "budget",
-        title: "Başlanğıc büdcə aralığın nədir?",
-        description: "Nəticələri büdcənə uyğun prioritetləşdiririk.",
+        title: "Hansı büdcə aralığı sizə rahatdır?",
+        description: "Tövsiyələri seçdiyiniz aralığa daha yaxın saxlayırıq.",
         options: [
           { value: "all", label: "Fərq etmir", hint: "Bütün qiymət aralığı" },
           { value: "under80", label: "80 AZN-dən aşağı", hint: "Sərfəli seçimlər" },
@@ -422,6 +467,30 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
           { value: "balanced", label: "Balanced", hint: "Soft and elegant sweetness" },
           { value: "sweet", label: "Sweet", hint: "Softer and more attractive" },
           { value: "rich", label: "Rich", hint: "Clear and dense sweetness" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "environment",
+        title: "Which setting feels most like you?",
+        description: "This helps capture the emotional side of your scent.",
+        options: [
+          { value: "beach", label: "Coastal air", hint: "Clean, airy, effortless" },
+          { value: "hotel", label: "Luxury hotel", hint: "Polished, elegant, premium" },
+          { value: "nature", label: "Nature", hint: "Green, woody, grounded" },
+          { value: "city", label: "City nights", hint: "Energy, mystery, impact" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "personality",
+        title: "Which word describes you best?",
+        description: "A signature scent should match character, not only notes.",
+        options: [
+          { value: "calm", label: "Calm", hint: "Soft, clean, easy to wear" },
+          { value: "elegant", label: "Elegant", hint: "Refined, balanced, graceful" },
+          { value: "assertive", label: "Assertive", hint: "Confident and noticeable" },
+          { value: "mysterious", label: "Mysterious", hint: "Deep, dark, memorable" },
         ],
       },
       {
@@ -595,6 +664,30 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
       },
       {
         kind: "choice",
+        key: "environment",
+        title: "Какая атмосфера вам ближе?",
+        description: "Это помогает точнее уловить эмоциональный характер аромата.",
+        options: [
+          { value: "beach", label: "Море", hint: "Чистота, воздух, легкость" },
+          { value: "hotel", label: "Люксовый отель", hint: "Статус, порядок, премиальность" },
+          { value: "nature", label: "Природа", hint: "Зелень, дерево, спокойствие" },
+          { value: "city", label: "Ночной город", hint: "Энергия, загадка, след" },
+        ],
+      },
+      {
+        kind: "choice",
+        key: "personality",
+        title: "Какое слово лучше описывает вас?",
+        description: "Аромат должен совпадать не только с нотами, но и с характером.",
+        options: [
+          { value: "calm", label: "Спокойный", hint: "Мягкий, чистый, ненавязчивый" },
+          { value: "elegant", label: "Элегантный", hint: "Тонкий, аккуратный, сбалансированный" },
+          { value: "assertive", label: "Уверенный", hint: "Заметный и выразительный" },
+          { value: "mysterious", label: "Загадочный", hint: "Глубокий, темный, запоминающийся" },
+        ],
+      },
+      {
+        kind: "choice",
         key: "season",
         title: "Какой основной сезон?",
         description: "Сезонность помогает AI точнее ранжировать варианты.",
@@ -661,56 +754,6 @@ const QUIZ_DICTIONARY: Record<Locale, QuizDictionary> = {
   },
 };
 
-const KEYWORDS = {
-  vibe: {
-    fresh: ["citrus", "bergamot", "lemon", "grapefruit", "marine", "aquatic", "green", "tea", "neroli"],
-    warm: ["vanilla", "amber", "tonka", "benzoin", "cinnamon", "caramel", "resin"],
-    floral: ["rose", "jasmine", "peony", "iris", "violet", "orange-blossom", "lily", "floral"],
-    bold: ["oud", "leather", "tobacco", "smoke", "spice", "incense", "musk", "patchouli"],
-  },
-  occasion: {
-    daily: ["citrus", "green", "musk", "floral", "tea"],
-    office: ["bergamot", "citrus", "neroli", "green", "lavender", "tea"],
-    date: ["rose", "vanilla", "amber", "musk", "jasmine", "tonka"],
-    evening: ["oud", "amber", "leather", "tobacco", "patchouli", "spice"],
-  },
-  intensity: {
-    soft: ["citrus", "green", "tea", "floral", "neroli"],
-    balanced: ["musk", "floral", "woody", "amber"],
-    strong: ["oud", "leather", "tobacco", "amber", "patchouli", "incense"],
-  },
-  projection: {
-    skin: ["musk", "tea", "iris", "cashmere", "soft"],
-    close: ["floral", "green", "woody", "musk", "smooth"],
-    moderate: ["amber", "citrus", "woody", "floral", "musk"],
-    bold: ["oud", "leather", "tobacco", "incense", "patchouli"],
-  },
-  sweetness: {
-    dry: ["citrus", "green", "tea", "iris", "woody"],
-    balanced: ["musk", "floral", "amber", "woody", "vanilla"],
-    sweet: ["vanilla", "tonka", "caramel", "amber", "jasmine"],
-    rich: ["vanilla", "amber", "tonka", "resin", "benzoin", "caramel"],
-  },
-  profile: {
-    citrus: ["citrus", "bergamot", "lemon", "mandarin", "grapefruit", "neroli"],
-    floral: ["floral", "rose", "jasmine", "iris", "violet", "peony", "ylang"],
-    woody: ["woody", "sandalwood", "cedar", "vetiver", "patchouli"],
-    amber: ["amber", "vanilla", "tonka", "benzoin", "resin", "sweet"],
-    oud: ["oud", "smoke", "leather", "incense", "tobacco"],
-  },
-  season: {
-    summer: ["citrus", "marine", "aquatic", "green", "neroli"],
-    winter: ["amber", "vanilla", "oud", "tobacco", "incense"],
-    spring: ["floral", "green", "citrus", "woody"],
-    all: ["floral", "woody", "citrus", "amber"],
-  },
-  longevity: {
-    moderate: ["citrus", "green", "tea", "light"],
-    long: ["amber", "woody", "musk", "resin"],
-    beast: ["oud", "leather", "tobacco", "incense", "patchouli"],
-  },
-} as const;
-
 const INITIAL_ANSWERS: QuizAnswers = {
   gender: "",
   vibe: "",
@@ -722,6 +765,8 @@ const INITIAL_ANSWERS: QuizAnswers = {
   budget: "",
   season: "",
   longevity: "",
+  environment: "",
+  personality: "",
 };
 
 const SEARCH_CHAR_FOLD_MAP: Record<string, string> = {
@@ -834,26 +879,6 @@ function sanitizePerfumeForDisplay(perfume: Perfume): Perfume {
     name: sanitizeUserFacingText(perfume.name),
     brand: sanitizeUserFacingText(perfume.brand),
   };
-}
-
-function collectPerfumeTokens(perfume: Perfume) {
-  return [
-    ...perfume.noteSlugs.top,
-    ...perfume.noteSlugs.heart,
-    ...perfume.noteSlugs.base,
-    normalize(perfume.name),
-    normalize(perfume.brand),
-  ].map(normalize);
-}
-
-function countMatches(tokens: string[], keywords: readonly string[]) {
-  let score = 0;
-  for (const keyword of keywords) {
-    if (tokens.some((token) => token.includes(keyword))) {
-      score += 1;
-    }
-  }
-  return score;
 }
 
 function getStartingPrice(perfume: Perfume) {
@@ -1072,36 +1097,6 @@ function QuizResultProductCard({ perfume, locale }: { perfume: Perfume; locale: 
   );
 }
 
-function scorePerfume(perfume: Perfume, answers: QuizAnswers) {
-  const tokens = collectPerfumeTokens(perfume);
-  let score = 0;
-
-  const gender = normalize(perfume.gender);
-  if (answers.gender && answers.gender !== "all") {
-    if (gender.includes(answers.gender)) score += 6;
-    else if (gender.includes("unisex")) score += 3;
-    else score -= 2;
-  }
-
-  if (answers.vibe && answers.vibe in KEYWORDS.vibe) score += countMatches(tokens, KEYWORDS.vibe[answers.vibe as keyof typeof KEYWORDS.vibe]) * 2.2;
-  if (answers.occasion && answers.occasion in KEYWORDS.occasion) score += countMatches(tokens, KEYWORDS.occasion[answers.occasion as keyof typeof KEYWORDS.occasion]) * 1.8;
-  if (answers.intensity && answers.intensity in KEYWORDS.intensity) score += countMatches(tokens, KEYWORDS.intensity[answers.intensity as keyof typeof KEYWORDS.intensity]) * 1.5;
-  if (answers.projection && answers.projection in KEYWORDS.projection) score += countMatches(tokens, KEYWORDS.projection[answers.projection as keyof typeof KEYWORDS.projection]) * 1.4;
-  if (answers.sweetness && answers.sweetness in KEYWORDS.sweetness) score += countMatches(tokens, KEYWORDS.sweetness[answers.sweetness as keyof typeof KEYWORDS.sweetness]) * 1.6;
-  if (answers.profile && answers.profile in KEYWORDS.profile) score += countMatches(tokens, KEYWORDS.profile[answers.profile as keyof typeof KEYWORDS.profile]) * 2.8;
-  if (answers.season && answers.season in KEYWORDS.season) score += countMatches(tokens, KEYWORDS.season[answers.season as keyof typeof KEYWORDS.season]) * 1.2;
-  if (answers.longevity && answers.longevity in KEYWORDS.longevity) score += countMatches(tokens, KEYWORDS.longevity[answers.longevity as keyof typeof KEYWORDS.longevity]) * 1.2;
-
-  const price = getStartingPrice(perfume);
-  if (answers.budget === "under80") score += price <= 80 ? 3 : -1;
-  else if (answers.budget === "80to140") score += price >= 80 && price <= 140 ? 3 : -1;
-  else if (answers.budget === "140plus") score += price >= 140 ? 3 : -1;
-
-  if (perfume.inStock) score += 1.2;
-
-  return score;
-}
-
 function getChoiceLabel(questions: Question[], key: keyof QuizAnswers, value: string) {
   for (const question of questions) {
     if (question.kind !== "choice" || question.key !== key) {
@@ -1113,28 +1108,6 @@ function getChoiceLabel(questions: Question[], key: keyof QuizAnswers, value: st
   }
 
   return "";
-}
-
-function getReasonText(locale: Locale, matchedProfile: string, tags: string[]) {
-  if (locale === "az") {
-    if (matchedProfile) {
-      return `${matchedProfile} xəttinə uyğun nota balansı sizin zövqünüzlə yaxşı uyğunlaşır.`;
-    }
-    return `${tags.join(", ")} istifadəsi üçün balanslı və rahat tərz yaradır.`;
-  }
-
-  if (locale === "ru") {
-    if (matchedProfile) {
-      return `Композиция в стиле ${matchedProfile} хорошо совпадает с вашим ароматическим профилем.`;
-    }
-    return `Сочетание ${tags.join(", ")} формирует сбалансированный и комфортный характер аромата.`;
-  }
-
-  if (matchedProfile) {
-    return `Its ${matchedProfile} direction aligns well with your scent profile.`;
-  }
-
-  return `The ${tags.join(", ")} profile creates a balanced and wearable signature.`;
 }
 
 function getResultTags(dictionary: QuizDictionary, answers: QuizAnswers) {
@@ -1163,20 +1136,15 @@ function getLuxuryOptionIcon(value: string) {
 }
 
 function getLuxuryMatchScore(index: number, confidence: number) {
-  if (index === 0) return Math.max(96, confidence);
-  if (index === 1) return Math.max(92, confidence - 4);
-  return Math.max(88, confidence - 9);
-}
-
-function getLuxuryRankLabel(locale: Locale, index: number) {
-  if (index === 0) return locale === "az" ? "Perfect match" : locale === "ru" ? "Perfect match" : "Perfect match";
-  if (index === 1) return locale === "az" ? "Alternativ" : locale === "ru" ? "Альтернатива" : "Alternative";
-  return locale === "az" ? "Fərqli xarakter" : locale === "ru" ? "Другой характер" : "Different character";
+  if (index === 0) return confidence;
+  if (index === 1) return Math.max(62, confidence - 4);
+  return Math.max(62, confidence - 8);
 }
 
 export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume[]; notes: Note[]; locale: Locale }) {
   const NOTES_PER_PAGE = 24;
   const dictionary = QUIZ_DICTIONARY[locale];
+  const siteSettings = useSiteSettings();
   const [answers, setAnswers] = useState<QuizAnswers>(INITIAL_ANSWERS);
   const [notePreferences, setNotePreferences] = useState<Record<string, "like" | "dislike">>({});
   const [extraAiNotes, setExtraAiNotes] = useState("");
@@ -1184,6 +1152,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
   const [notesPage, setNotesPage] = useState(1);
   const [stepIndex, setStepIndex] = useState(0);
   const [aiMatches, setAiMatches] = useState<Perfume[] | null>(null);
+  const [aiMatchDetails, setAiMatchDetails] = useState<Record<string, AiMatchDetail>>({});
   const [aiSummary, setAiSummary] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -1285,47 +1254,30 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
   const currentStepIndex = Math.min(stepIndex, Math.max(choiceQuestions.length - 1, 0));
   const currentQuestion = choiceQuestions[currentStepIndex];
 
-  const topMatches = useMemo(() => {
-    if (!isComplete) return [] as Perfume[];
-
-    return [...perfumes]
-      .map((perfume) => ({ perfume, score: scorePerfume(perfume, answers) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-      .map((item) => item.perfume);
+  const topMatchDetails = useMemo(() => {
+    if (!isComplete) return [];
+    return rankQoxunuPerfumes(perfumes, answers, 3);
   }, [answers, isComplete, perfumes]);
+
+  const topMatches = useMemo(() => topMatchDetails.map((item) => item.perfume), [topMatchDetails]);
 
   const perfumesBySlug = useMemo(() => new Map(perfumes.map((item) => [item.slug, item])), [perfumes]);
   const shownMatches = aiMatches && aiMatches.length ? aiMatches : topMatches;
   const shouldShowResults = hasGeneratedAi && !isAiLoading;
 
-  const resultConfidence = useMemo(() => {
-    const filledChoiceCount = Object.values(answers).filter(Boolean).length;
-    const filledTextCount =
-      (Object.keys(notePreferences).length > 0 ? 1 : 0) +
-      (extraAiNotes.trim().length > 1 ? 1 : 0);
-    const score = 72 + filledChoiceCount * 2.6 + filledTextCount * 4.2;
-    return Math.max(74, Math.min(98, Math.round(score)));
-  }, [answers, extraAiNotes, notePreferences]);
+  const getMatchDetail = (perfume: Perfume) => {
+    const aiDetail = aiMatchDetails[perfume.slug];
+    if (aiDetail) return aiDetail;
+    const fallback = topMatchDetails.find((item) => item.perfume.slug === perfume.slug) ?? scorePerfumeMatch(perfume, answers);
+    return {
+      matchPercent: fallback.matchPercent,
+      reasons: fallback.reasons,
+      archetype: fallback.archetype,
+    };
+  };
 
-  const matchStrengthLabel =
-    locale === "az"
-      ? resultConfidence >= 92
-        ? "Yüksək uyğunluq"
-        : resultConfidence >= 84
-          ? "Balanslı seçim"
-          : "Yaxşı başlanğıc"
-      : locale === "ru"
-        ? resultConfidence >= 92
-          ? "Высокое совпадение"
-          : resultConfidence >= 84
-            ? "Сбалансированный выбор"
-            : "Хорошее начало"
-        : resultConfidence >= 92
-          ? "High match"
-          : resultConfidence >= 84
-            ? "Balanced match"
-            : "Good starting point";
+  const featuredForScore = shownMatches[0];
+  const resultConfidence = featuredForScore ? getMatchDetail(featuredForScore).matchPercent : topMatchDetails[0]?.matchPercent ?? 82;
 
   const profileLine = [
     answers.vibe ? getChoiceLabel(choiceQuestions, "vibe", answers.vibe) : "",
@@ -1465,6 +1417,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
     setNotesQuery("");
     setStepIndex(0);
     setAiMatches(null);
+    setAiMatchDetails({});
     setAiSummary("");
     setAiError("");
     setAiNotice("");
@@ -1526,6 +1479,12 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
 
       const payload = (await response.json().catch(() => ({}))) as {
         slugs?: string[];
+        matches?: Array<{
+          slug?: string;
+          matchPercent?: number;
+          reasons?: string[];
+          archetype?: QoxunuArchetype | null;
+        }>;
         summary?: string;
         error?: string;
         usedFallback?: boolean;
@@ -1542,6 +1501,21 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
       const mapped = (payload.slugs ?? [])
         .map((slug) => perfumesBySlug.get(slug))
         .filter((item): item is Perfume => Boolean(item));
+      const nextMatchDetails: Record<string, AiMatchDetail> = {};
+
+      for (const item of payload.matches ?? []) {
+        if (!item.slug) continue;
+        const matchedPerfume = perfumesBySlug.get(item.slug);
+        nextMatchDetails[item.slug] = {
+          matchPercent: Number.isFinite(item.matchPercent)
+            ? Number(item.matchPercent)
+            : matchedPerfume
+              ? scorePerfumeMatch(matchedPerfume, answers).matchPercent
+              : 82,
+          reasons: Array.isArray(item.reasons) ? item.reasons.filter((reason): reason is string => typeof reason === "string") : [],
+          archetype: item.archetype ?? null,
+        };
+      }
 
       if (payload.usedFallback) {
         setAiNotice(dictionary.fallbackNotice);
@@ -1554,6 +1528,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
       }
 
       setAiMatches(mapped.length ? mapped : null);
+      setAiMatchDetails(nextMatchDetails);
       setAiSummary(sanitizeUserFacingText((payload.summary ?? "").trim()));
       setHasGeneratedAi(true);
     } catch {
@@ -1643,12 +1618,8 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
 
   const renderResultMeta = (perfume: Perfume, index: number, dense = false) => {
     const tags = resultTags.length ? resultTags : [sanitizeUserFacingText(perfume.brand) || "Seçim"];
-    const profileLabel = answers.profile ? getChoiceLabel(choiceQuestions, "profile", answers.profile) : "";
-    const profileMatch =
-      answers.profile && answers.profile in KEYWORDS.profile
-        ? countMatches(collectPerfumeTokens(perfume), KEYWORDS.profile[answers.profile as keyof typeof KEYWORDS.profile])
-        : 0;
-    const reason = getReasonText(locale, profileMatch > 0 ? profileLabel : "", tags);
+    const match = getMatchDetail(perfume);
+    const reason = getPersonalizedReason({ ...scorePerfumeMatch(perfume, answers), matchPercent: match.matchPercent, reasons: match.reasons }, locale);
 
     return (
       <div className={dense ? "qoxunu-mobile-meta" : "qoxunu-desktop-meta"}>
@@ -1837,25 +1808,20 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
     answers.occasion ? getChoiceLabel(choiceQuestions, "occasion", answers.occasion) : "",
     answers.longevity ? getChoiceLabel(choiceQuestions, "longevity", answers.longevity) : "",
     answers.budget ? getChoiceLabel(choiceQuestions, "budget", answers.budget) : "",
+    answers.environment ? getChoiceLabel(choiceQuestions, "environment", answers.environment) : "",
+    answers.personality ? getChoiceLabel(choiceQuestions, "personality", answers.personality) : "",
   ].filter(Boolean);
   const luxuryWhyLines = [
     answers.sweetness ? `${getChoiceLabel(choiceQuestions, "sweetness", answers.sweetness)} not balansına üstünlük verdiniz` : "",
     answers.profile ? `${getChoiceLabel(choiceQuestions, "profile", answers.profile)} xarakteri profilinizə uyğundur` : "",
     answers.occasion ? `${getChoiceLabel(choiceQuestions, "occasion", answers.occasion)} istifadəsi üçün seçildi` : "",
     answers.longevity ? `${getChoiceLabel(choiceQuestions, "longevity", answers.longevity)} qalıcılıq istədiniz` : "",
+    answers.environment ? `${getChoiceLabel(choiceQuestions, "environment", answers.environment)} atmosferinə yaxın seçim edildi` : "",
+    answers.personality ? `${getChoiceLabel(choiceQuestions, "personality", answers.personality)} xarakteriniz qoxu profilinə daxil edildi` : "",
   ].filter(Boolean);
-  const profileTitle =
-    answers.profile === "amber"
-      ? "Warm Oriental"
-      : answers.profile === "woody"
-        ? "Soft Woods"
-        : answers.profile === "floral"
-          ? "Modern Floral"
-          : answers.profile === "citrus"
-            ? "Clean Citrus"
-            : answers.profile === "oud"
-              ? "Dark Signature"
-              : "Personal Signature";
+  const profileArchetype = getProfileArchetype(buildUserScentProfile(answers));
+  const profileTitle = profileArchetype.name;
+  const profileSentence = profileArchetype.sentence;
 
   return (
     <section className="qoxunu-luxury-shell mx-auto w-full pb-8">
@@ -1983,7 +1949,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                 <div className="qoxunu-note-pills">
                   {heroNotePills.map((note) => <span key={note}>{note}</span>)}
                 </div>
-                <p className="qoxunu-quote">“{aiSummary || getReasonText(locale, luxuryProfileChips[1] || "", luxuryProfileChips)}”</p>
+                <p className="qoxunu-quote">“{aiSummary || getPersonalizedReason(scorePerfumeMatch(heroDisplayPerfume, answers), locale)}”</p>
 
                 <div className="qoxunu-dna">
                   <p>Sizin qoxu profiliniz</p>
@@ -2010,6 +1976,7 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                 <div className="qoxunu-alt-list">
                   {shownMatches.map((perfume, index) => {
                     const displayPerfume = sanitizePerfumeForDisplay(perfume);
+                    const match = getMatchDetail(perfume);
                     const notePills = [...displayPerfume.noteSlugs.top, ...displayPerfume.noteSlugs.heart, ...displayPerfume.noteSlugs.base]
                       .filter(Boolean)
                       .slice(0, 2)
@@ -2023,8 +1990,8 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                       >
                         <div className="qoxunu-alt-rank">
                           <span>#{index + 1}</span>
-                          <small>{getLuxuryRankLabel(locale, index)}</small>
-                          <strong>{getLuxuryMatchScore(index, resultConfidence)}%</strong>
+                          <small>{getMatchLabel(match.matchPercent, locale)}</small>
+                          <strong>{match.matchPercent}%</strong>
                         </div>
                         <div className="qoxunu-alt-body">
                           <div className="qoxunu-alt-image">
@@ -2045,14 +2012,18 @@ export function ScentQuizClient({ perfumes, notes, locale }: { perfumes: Perfume
                 <section className="qoxunu-profile-card">
                   <p>Sizin qoxu profiliniz</p>
                   <h3>{profileTitle}</h3>
-                  <span>{aiSummary || "İsti, zərif və yadda qalan qoxular sizin profilinizə daha yaxın görünür."}</span>
+                  <span>{profileSentence}</span>
                   <div>
-                    {luxuryProfileChips.slice(0, 4).map((chip) => <small key={chip}>{chip}</small>)}
+                    {(profileArchetype.traits.length ? profileArchetype.traits : luxuryProfileChips).slice(0, 4).map((chip) => <small key={chip}>{chip}</small>)}
                   </div>
                   <div className="qoxunu-profile-indicator" aria-hidden="true">
                     {Array.from({ length: 7 }).map((_, index) => <span key={index} className={index < 3 ? "is-active" : ""} />)}
                   </div>
                 </section>
+
+                {siteSettings.weather.enabled && siteSettings.weather.qoxunuEnabled ? (
+                  <WeatherPerfumeWidget locale={locale} variant="qoxunu" />
+                ) : null}
               </aside>
             </>
           ) : (

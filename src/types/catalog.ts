@@ -55,6 +55,34 @@ export type PerfumeDiscount = {
   showDeadline?: boolean;
 };
 
+export type PerfumeRecommendationAttributes = {
+  season?: string[];
+  longevity?: "moderate" | "long" | "beast" | string;
+  projection?: "skin" | "close" | "moderate" | "strong" | "bold" | string;
+  style?: string[];
+  occasion?: string[];
+  mood?: string[];
+  ageRange?: string[];
+  luxuryLevel?: "accessible" | "signature" | "premium" | "niche" | string;
+  facets?: Partial<Record<
+    | "sweetness"
+    | "freshness"
+    | "warmth"
+    | "floral"
+    | "woody"
+    | "smoky"
+    | "green"
+    | "powdery"
+    | "spicy"
+    | "musky"
+    | "romantic"
+    | "formal"
+    | "minimal"
+    | "mysterious",
+    number
+  >>;
+};
+
 export type Perfume = {
   id: string;
   slug: string;
@@ -73,6 +101,7 @@ export type Perfume = {
     heart: string[];
     base: string[];
   };
+  attributes?: PerfumeRecommendationAttributes;
   mediaScale?: number;
   mediaScaleByDevice?: { mobile?: number; laptop?: number; monitor?: number };
 };

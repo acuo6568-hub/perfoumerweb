@@ -20,6 +20,7 @@ import { PerfumeHeroCover } from "@/components/perfume/PerfumeHeroCover";
 import { PerfumePurchasePanel } from "@/components/perfume/PerfumePurchasePanel";
 import { PerfumeShareButton } from "@/components/perfume/PerfumeShareButton";
 import { PerfumeVariantStrip } from "@/components/perfume/PerfumeVariantStrip";
+import { WeatherPerfumeWidget } from "@/components/weather/WeatherPerfumeWidget";
 import { getPerfumeBySlug, getPerfumes, getRelatedPerfumes, getSimilarPerfumes } from "@/lib/catalog";
 import { getCurrentLocale } from "@/lib/i18n.server";
 import { toLocalePath } from "@/lib/i18n";
@@ -476,6 +477,10 @@ export default async function PerfumeDetailPage({
               discount={perfume.discount}
               supabase={supabaseConfig}
             />
+
+            {settings.weather.enabled ? (
+              <WeatherPerfumeWidget locale={locale} variant="qoxunu" />
+            ) : null}
 
             <div className="rounded-[1.95rem] bg-white/96 p-6 shadow-[0_20px_54px_rgba(24,24,24,0.05)] ring-1 ring-zinc-200/80 md:p-8">
               <div className="space-y-8">

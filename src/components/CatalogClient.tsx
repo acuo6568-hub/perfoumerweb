@@ -25,6 +25,7 @@ import { localizeNoteLabel } from "@/lib/note-label";
 import { filterPerfumesBySpecialPreset, type CatalogSpecialPreset } from "@/lib/special-items";
 import { normalizeSearchText, tokenizeSearch } from "@/lib/search-normalize";
 import { ProductCard } from "@/components/ProductCard";
+import { WeatherPerfumeWidget } from "@/components/weather/WeatherPerfumeWidget";
 import type { Perfume } from "@/types/catalog";
 
 type NoteFilterType = "top" | "heart" | "base";
@@ -1313,6 +1314,10 @@ export function CatalogClient({
         )}
         {hasMore ? <p className="sm:text-right">{t.catalog.clickMore}</p> : null}
       </div>
+
+      {siteSettings.weather.enabled && siteSettings.weather.catalogEnabled ? (
+        <WeatherPerfumeWidget locale={locale} variant="catalog" className="relative z-10 mt-5" />
+      ) : null}
 
       <section
         className={[

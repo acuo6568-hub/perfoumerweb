@@ -17,6 +17,36 @@ html {
   scroll-behavior: smooth;
 }
 
+.weather-widget-fade {
+  animation: weatherWidgetFade 520ms ease-out both;
+}
+
+.weather-product-card {
+  animation: weatherProductReveal 520ms ease-out both;
+}
+
+@keyframes weatherWidgetFade {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes weatherProductReveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -5126,7 +5156,25 @@ h6 {
     animation: none;
   }
 
-  .admin-ios-rise {
+  .admin-ios-rise,
+  .weather-widget-fade,
+  .weather-product-card,
+  .support-pulse-ring {
     animation: none;
+  }
+}
+
+.support-pulse-ring {
+  animation: supportPulseRing 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes supportPulseRing {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.82);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
   }
 }

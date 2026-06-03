@@ -53,6 +53,8 @@ type StoredChatSession = {
 
 const CHAT_PERSIST_KEY = "ai-chat-preserved-conversation-v1";
 const CHAT_ANONYMOUS_ID_KEY = "ai-chat-anonymous-id-v1";
+const SUPPORT_GUEST_ID_KEY = "perfoumer-support-guest-id-v1";
+const SUPPORT_CONVERSATION_ID_KEY = "perfoumer-support-conversation-id-v1";
 
 type AIChatModalProps = {
   isOpen: boolean;
@@ -66,7 +68,29 @@ type AIChatModalProps = {
   triggerLabel?: string;
 };
 
-type ModalTab = "chat" | "contact";
+type ModalTab = "chat" | "contact" | "support";
+
+type SupportStatus = "new" | "waiting" | "active" | "closed";
+
+type SupportMessage = {
+  id: string;
+  sender_type: "user" | "admin" | "system" | "ai";
+  sender_id: string | null;
+  message: string;
+  attachment_url: string | null;
+  attachment_type: string | null;
+  created_at: string;
+};
+
+type SupportThread = {
+  id: string;
+  status: SupportStatus;
+  messages: SupportMessage[];
+  guest_id: string | null;
+  user_name: string | null;
+  user_email: string | null;
+  updated_at: string;
+};
 
 type UserContextPayload = {
   signedIn: boolean;
@@ -121,6 +145,17 @@ const copyByLocale: Record<
     photoRemove: string;
     tabChat: string;
     tabContact: string;
+    tabSupport: string;
+    supportAiActive: string;
+    supportWaiting: string;
+    supportActive: string;
+    supportClosed: string;
+    supportTitle: string;
+    supportBody: string;
+    supportStatusWaiting: string;
+    supportEstimated: string;
+    supportJoined: string;
+    supportSaved: string;
     introName: string;
     introLine1: string;
     introLine2: string;
@@ -159,6 +194,17 @@ const copyByLocale: Record<
     photoRemove: "Sil",
     tabChat: "Çat",
     tabContact: "Əlaqə",
+    tabSupport: "Operatora qoşul",
+    supportAiActive: "AI köməkçi aktivdir",
+    supportWaiting: "Dəstək komandası gözlənilir",
+    supportActive: "Operator söhbətdədir",
+    supportClosed: "Söhbət tamamlandı",
+    supportTitle: "Dəstək komandasına qoşulursunuz...",
+    supportBody: "Mesajınızı yazın, komandamız mümkün qədər tez cavab verəcək.",
+    supportStatusWaiting: "Gözləyir",
+    supportEstimated: "Təxmini vaxt: 1-3 dəq",
+    supportJoined: "Operator söhbətə qoşuldu",
+    supportSaved: "Bu söhbət yadda saxlanılır",
     introName: "Remi",
     introLine1: "Perfoumer-ə xoş gəlmisiniz.",
     introLine2: "Zövqünüzə uyğun seçimləri tapmaq və sayt üzrə sizi yönləndirmək üçün buradayam.",
@@ -196,6 +242,17 @@ const copyByLocale: Record<
     photoRemove: "Remove",
     tabChat: "Chat",
     tabContact: "Contact",
+    tabSupport: "Operator",
+    supportAiActive: "AI assistant active",
+    supportWaiting: "Waiting for support",
+    supportActive: "Operator is in chat",
+    supportClosed: "Chat completed",
+    supportTitle: "Connecting you to support...",
+    supportBody: "Write your message and our team will reply as soon as possible.",
+    supportStatusWaiting: "Waiting",
+    supportEstimated: "Estimated: 1-3 min",
+    supportJoined: "Operator joined the chat",
+    supportSaved: "This chat is saved",
     introName: "Remi",
     introLine1: "Checking out Perfoumer.",
     introLine2: "I can walk you through what happened here.",
@@ -233,6 +290,17 @@ const copyByLocale: Record<
     photoRemove: "Удалить",
     tabChat: "Чат",
     tabContact: "Контакт",
+    tabSupport: "Оператор",
+    supportAiActive: "AI помощник активен",
+    supportWaiting: "Ожидаем поддержку",
+    supportActive: "Оператор в чате",
+    supportClosed: "Чат завершен",
+    supportTitle: "Подключаем к поддержке...",
+    supportBody: "Напишите сообщение, команда ответит как можно быстрее.",
+    supportStatusWaiting: "Ожидание",
+    supportEstimated: "Примерно: 1-3 мин",
+    supportJoined: "Оператор подключился к чату",
+    supportSaved: "Этот чат сохранен",
     introName: "Remi",
     introLine1: "Вы смотрите Perfoumer.",
     introLine2: "Могу быстро провести по сайту и разделам.",
@@ -1631,6 +1699,37 @@ export function AIChatModal({
   const autoNudgeResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingImage, setPendingImage] = useState<PendingImageAttachment | null>(null);
+  const [supportThread, setSupportThread] = useState<SupportThread | null>(null);
+  const [supportGuestId, setSupportGuestId] = useState<string | null>(null);
+  const [isSupportLoading, setIsSupportLoading] = useState(false);
+  const [supportError, setSupportError] = useState<string | null>(null);
+
+  const isSupportMode = Boolean(supportThread) || activeTab === "support";
+  const supportStatusLabel = supportThread?.status === "active"
+    ? copy.supportActive
+    : supportThread?.status === "closed"
+      ? copy.supportClosed
+      : supportThread
+        ? copy.supportWaiting
+        : copy.supportAiActive;
+
+  const ensureSupportGuestId = () => {
+    if (supportGuestId) return supportGuestId;
+    if (typeof window === "undefined") {
+      const fallback = typeof crypto !== "undefined" ? crypto.randomUUID() : `guest-${Date.now()}`;
+      setSupportGuestId(fallback);
+      return fallback;
+    }
+    const stored = window.localStorage.getItem(SUPPORT_GUEST_ID_KEY);
+    if (stored) {
+      setSupportGuestId(stored);
+      return stored;
+    }
+    const nextId = typeof crypto !== "undefined" ? crypto.randomUUID() : `guest-${Date.now()}`;
+    window.localStorage.setItem(SUPPORT_GUEST_ID_KEY, nextId);
+    setSupportGuestId(nextId);
+    return nextId;
+  };
 
   const ensureAnonymousChatId = () => {
     if (anonymousChatId) {
@@ -1663,6 +1762,131 @@ export function AIChatModal({
     const nextId = typeof crypto !== "undefined" ? crypto.randomUUID() : `chat-${Date.now()}`;
     setChatSessionId(nextId);
     return nextId;
+  };
+
+  const getAccessToken = async () =>
+    userContext.signedIn && supabase
+      ? (await supabase.auth.getSession()).data.session?.access_token ?? null
+      : null;
+
+  const loadSupportThread = async (options: { silent?: boolean } = {}) => {
+    const conversationId =
+      supportThread?.id ||
+      (typeof window !== "undefined" ? window.localStorage.getItem(SUPPORT_CONVERSATION_ID_KEY) || "" : "");
+    const guestId = ensureSupportGuestId();
+    if (!conversationId && !guestId) return;
+
+    if (!options.silent) setIsSupportLoading(true);
+    try {
+      const accessToken = await getAccessToken();
+      const params = new URLSearchParams();
+      if (conversationId) params.set("conversationId", conversationId);
+      if (guestId) params.set("guestId", guestId);
+      const response = await fetch(`/api/support?${params.toString()}`, {
+        cache: "no-store",
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      });
+      const data = (await response.json()) as { thread?: SupportThread | null; error?: string };
+      if (!response.ok) throw new Error(data.error || "Support thread failed");
+      if (data.thread) {
+        setSupportThread(data.thread);
+        setActiveTab("support");
+        window.localStorage.setItem(SUPPORT_CONVERSATION_ID_KEY, data.thread.id);
+      }
+    } catch {
+      if (!options.silent) setSupportError(copy.error);
+    } finally {
+      if (!options.silent) setIsSupportLoading(false);
+    }
+  };
+
+  const requestHumanSupport = async () => {
+    if (isSupportLoading) return;
+    setIsSupportLoading(true);
+    setSupportError(null);
+    setActiveTab("support");
+
+    try {
+      const guestId = ensureSupportGuestId();
+      const accessToken = await getAccessToken();
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          action: "request",
+          guestId,
+          sourcePage: typeof window !== "undefined" ? window.location.pathname : "",
+          userName: userContext.username,
+          userEmail: userContext.email,
+          userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
+          device: userContext.device?.platform || "",
+          browser: userContext.device?.language || "",
+          recentMessages: messages.map((message) => ({
+            role: message.role,
+            text: message.text,
+            createdAt: message.createdAt,
+          })),
+        }),
+      });
+      const data = (await response.json()) as { thread?: SupportThread; guestId?: string; error?: string };
+      if (!response.ok || !data.thread) throw new Error(data.error || "Support request failed");
+      setSupportThread(data.thread);
+      window.localStorage.setItem(SUPPORT_CONVERSATION_ID_KEY, data.thread.id);
+      if (data.guestId) {
+        setSupportGuestId(data.guestId);
+        window.localStorage.setItem(SUPPORT_GUEST_ID_KEY, data.guestId);
+      }
+    } catch {
+      setSupportError(copy.error);
+    } finally {
+      setIsSupportLoading(false);
+    }
+  };
+
+  const sendSupportMessage = async (messageText: string, attachment: PendingImageAttachment | null) => {
+    let thread = supportThread;
+    if (!thread) {
+      await requestHumanSupport();
+      thread = supportThread;
+    }
+    const conversationId =
+      thread?.id ||
+      (typeof window !== "undefined" ? window.localStorage.getItem(SUPPORT_CONVERSATION_ID_KEY) || "" : "");
+    if (!conversationId) return;
+
+    setIsSupportLoading(true);
+    setSupportError(null);
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          action: "message",
+          conversationId,
+          guestId: ensureSupportGuestId(),
+          message: messageText,
+          attachmentDataUrl: attachment?.dataUrl,
+          attachmentName: attachment?.fileName,
+          attachmentMimeType: attachment?.mimeType,
+        }),
+      });
+      const data = (await response.json()) as { thread?: SupportThread | null; error?: string };
+      if (!response.ok || !data.thread) throw new Error(data.error || "Support message failed");
+      setSupportThread(data.thread);
+      setPendingImage(null);
+      setInput("");
+    } catch {
+      setSupportError(copy.error);
+    } finally {
+      setIsSupportLoading(false);
+    }
   };
 
   const loadActiveChatHistory = async (userId: string) => {
@@ -1831,7 +2055,24 @@ export function AIChatModal({
 
   useEffect(() => {
     ensureAnonymousChatId();
+    ensureSupportGuestId();
   }, []);
+
+  useEffect(() => {
+    const storedConversationId =
+      typeof window !== "undefined" ? window.localStorage.getItem(SUPPORT_CONVERSATION_ID_KEY) : null;
+    if (storedConversationId) {
+      void loadSupportThread();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supportThread || supportThread.status === "closed") return;
+    const intervalId = window.setInterval(() => {
+      void loadSupportThread({ silent: true });
+    }, 4000);
+    return () => window.clearInterval(intervalId);
+  }, [supportThread?.id, supportThread?.status]);
 
   useEffect(() => {
     try {
@@ -1938,10 +2179,10 @@ export function AIChatModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setActiveTab("chat");
+      setActiveTab(supportThread ? "support" : "chat");
       setPendingImage(null);
     }
-  }, [isOpen]);
+  }, [isOpen, supportThread]);
 
   useEffect(() => {
     if (!isOpen || !isCompactViewport) return;
@@ -2090,6 +2331,11 @@ export function AIChatModal({
       : pendingImage;
     const trimmed = messageText.trim();
     if (!trimmed && !attachment) return;
+    if (isSupportMode || supportThread) {
+      setActiveTab("support");
+      await sendSupportMessage(trimmed || copy.photoAttached, attachment);
+      return;
+    }
     const requestStartedAt = Date.now();
     setActiveTab("chat");
     setIsHistoryOpen(false);
@@ -2215,8 +2461,8 @@ export function AIChatModal({
     const file = event.target.files?.[0];
     event.target.value = "";
 
-    if (!file || isLoading) return;
-    if (!file.type.startsWith("image/")) {
+    if (!file || isLoading || isSupportLoading) return;
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
       return;
     }
 
@@ -2448,7 +2694,7 @@ export function AIChatModal({
         : copy.placeholder;
   const isHeroMode = messages.length === 0;
   const showContactView = isHeroMode && activeTab === "contact";
-  const showComposer = activeTab === "chat";
+  const showComposer = activeTab === "chat" || activeTab === "support";
   const shouldUseFocusedModal = isCompactViewport;
   const shouldHideTrigger = !isExpanded && isTriggerHidden;
 
@@ -2607,7 +2853,129 @@ export function AIChatModal({
               }}
             >
 
-          {messages.length === 0 ? (
+          {isSupportMode ? (
+            <>
+              <div
+                className="flex items-center justify-between px-3 pt-3 sm:px-3 sm:pt-3"
+                style={{
+                  animation: "fadeUp 220ms ease-out 30ms both",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("chat")}
+                    className="rounded-full px-2.5 py-1 text-[13px] text-zinc-400 transition hover:text-white"
+                  >
+                    {copy.tabChat}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("contact")}
+                    className="rounded-full px-2.5 py-1 text-[13px] text-zinc-400 transition hover:text-white"
+                  >
+                    {copy.tabContact}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!supportThread) void requestHumanSupport();
+                    }}
+                    className="rounded-full border border-[#d8b889]/50 bg-[#d8b889]/12 px-2.5 py-1 text-[12px] font-medium text-[#f2d6a8]"
+                  >
+                    {copy.tabSupport}
+                  </button>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900/80 text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+                  aria-label="Close chat"
+                >
+                  <svg viewBox="0 0 20 20" className="h-5 w-5" fill="currentColor">
+                    <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div
+                ref={messagesContainerRef}
+                className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 pb-24 pt-3 sm:space-y-4 sm:px-4 sm:pb-28 sm:pt-4"
+                style={{ animation: "chatDrop 260ms ease-out 60ms both", scrollbarGutter: "stable" }}
+              >
+                {!supportThread ? (
+                  <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
+                    <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-[#d8b889]/20 bg-[#d8b889]/8">
+                      <div className="absolute inset-0 rounded-full border border-[#d8b889]/30 support-pulse-ring" />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black text-[#f2d6a8]">
+                        <UploadSimple size={26} weight="bold" />
+                      </div>
+                    </div>
+                    <h3 className="mt-6 max-w-[280px] text-[20px] font-semibold leading-[1.15] text-white">
+                      {copy.supportTitle}
+                    </h3>
+                    <p className="mt-3 max-w-[300px] text-[13px] leading-6 text-zinc-400">{copy.supportBody}</p>
+                    <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#d8b889]/20 bg-[#d8b889]/10 px-3 py-1.5 text-[12px] text-[#f2d6a8]">
+                      <AnimatedDots className="gap-1" />
+                      {copy.supportStatusWaiting} · {copy.supportEstimated}
+                    </div>
+                    {supportError ? <p className="mt-4 text-xs text-red-300">{supportError}</p> : null}
+                  </div>
+                ) : (
+                  <>
+                    <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[12px] text-zinc-300">
+                      <span className={`h-1.5 w-1.5 rounded-full ${supportThread.status === "active" ? "bg-emerald-400" : "bg-[#d8b889]"}`} />
+                      {supportStatusLabel}
+                    </div>
+                    {supportThread.status === "active" ? (
+                      <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
+                        <span className="h-6 w-6 rounded-full bg-[linear-gradient(135deg,#d8b889,#fff0cb)]" />
+                        {copy.supportJoined}
+                      </div>
+                    ) : null}
+                    {supportThread.messages.map((message) => {
+                      const isUser = message.sender_type === "user";
+                      const isAdmin = message.sender_type === "admin";
+                      const isSystem = message.sender_type === "system" || message.sender_type === "ai";
+                      return (
+                        <div key={message.id} className={["flex", isSystem ? "justify-center" : isUser ? "justify-end" : "justify-start"].join(" ")}>
+                          <div
+                            className={[
+                              "max-w-[82%] rounded-2xl px-3.5 py-3 text-[14px] leading-6",
+                              isSystem
+                                ? "border border-white/10 bg-white/[0.04] text-[12px] text-zinc-500"
+                                : isUser
+                                  ? "bg-[#d8b889] text-black"
+                                  : "bg-white/[0.08] text-zinc-100",
+                            ].join(" ")}
+                          >
+                            {message.attachment_url ? (
+                              <a href={message.attachment_url} target="_blank" rel="noreferrer" className="mb-2 block overflow-hidden rounded-xl">
+                                <img src={message.attachment_url} alt={message.message} className="max-h-48 w-full object-cover" />
+                              </a>
+                            ) : null}
+                            <p>{message.message}</p>
+                            <p className={["mt-1 text-[10px]", isUser ? "text-black/55" : "text-zinc-500"].join(" ")}>
+                              {formatMessageTime(new Date(message.created_at).getTime(), locale)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isSupportLoading ? (
+                      <div className="space-y-2" style={{ animation: "fadeUp 220ms ease-out" }}>
+                        <div className="text-sm text-zinc-300">{copy.tabSupport}</div>
+                        <ThinkingIndicator label={copy.supportWaiting} />
+                      </div>
+                    ) : null}
+                    <div className="mx-auto flex w-fit items-center gap-2 rounded-full text-[11px] text-zinc-500">
+                      <span>▣</span>
+                      {copy.supportSaved}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          ) : messages.length === 0 ? (
             <div className="relative h-full w-full overflow-hidden rounded-[24px] bg-black sm:rounded-[28px]">
               {womanVideoUrl ? (
                 <video
@@ -2668,6 +3036,14 @@ export function AIChatModal({
                   }`}
                 >
                   {copy.tabContact}
+                </button>
+                <button
+                  onClick={() => {
+                    void requestHumanSupport();
+                  }}
+                  className="rounded-full border border-[#d8b889]/45 px-2.5 py-1 text-[12px] text-[#f2d6a8] transition hover:bg-[#d8b889]/10"
+                >
+                  {copy.tabSupport}
                 </button>
                 {currentUserId ? (
                   <button
@@ -2758,6 +3134,15 @@ export function AIChatModal({
                 </button>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void requestHumanSupport();
+                    }}
+                    className="inline-flex h-8 items-center justify-center rounded-full border border-[#d8b889]/40 bg-[#d8b889]/10 px-3 text-[11px] font-medium text-[#f2d6a8] transition hover:bg-[#d8b889]/16"
+                  >
+                    {copy.tabSupport}
+                  </button>
                   {currentUserId ? (
                     <button
                       type="button"
@@ -2905,34 +3290,34 @@ export function AIChatModal({
                     <button
                       type="button"
                       onClick={() => imageInputRef.current?.click()}
-                      disabled={isLoading}
+                      disabled={isLoading || isSupportLoading}
                       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 transition hover:border-[#39c6b8]/40 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label={copy.photoUpload}
                       title={copy.photoUpload}
                     >
                       <UploadSimple size={18} weight="bold" />
                     </button>
-                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    <input ref={imageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageUpload} />
 
                     <input
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && !isLoading) {
+                        if (e.key === "Enter" && !isLoading && !isSupportLoading) {
                           e.preventDefault();
                           handleSendMessage();
                         }
                       }}
                       placeholder={composerPlaceholder}
                       className="min-w-0 flex-1 bg-transparent text-[13px] text-zinc-300 outline-none placeholder:text-zinc-400 sm:text-[12px]"
-                      disabled={isLoading}
+                      disabled={isLoading || isSupportLoading}
                     />
 
                     <button
                       type="button"
                       onClick={() => handleSendMessage()}
-                      disabled={isLoading || (!input.trim() && !pendingImage)}
+                      disabled={isLoading || isSupportLoading || (!input.trim() && !pendingImage)}
                       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#39c6b8]/30 bg-[#39c6b8]/12 text-[#9df0e7] transition hover:border-[#39c6b8]/60 hover:bg-[#39c6b8]/18 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={locale === "az" ? "Göndər" : locale === "ru" ? "Отправить" : "Send"}
                       title={locale === "az" ? "Göndər" : locale === "ru" ? "Отправить" : "Send"}
