@@ -27,7 +27,7 @@ export default async function StaffPage() {
     : false;
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1820px] px-3 pb-10 pt-5 sm:px-5 sm:pt-6 lg:px-7 xl:px-9">
+    <main className="min-h-dvh w-full bg-[linear-gradient(135deg,#f8fafc_0%,#ffffff_36%,#f5f3ff_100%)] px-3 pb-8 pt-3 sm:px-5 sm:pt-5 lg:px-7 xl:px-8">
       <StaffOrdersPanelClient
         configured={configured}
         initialAuthenticated={authenticated}

@@ -30,8 +30,14 @@ import {
   XmarkCircleOutlined,
 } from "@lineiconshq/free-icons";
 import Lineicons, { type LineiconsProps } from "@lineiconshq/react-lineicons";
-import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
+import {
+  CARD_DELIVERY_PAYMENT_METHOD,
+  CASH_DELIVERY_PAYMENT_METHOD,
+  CASH_PICKUP_PAYMENT_METHOD,
+  STORE_PICKUP_PAYMENT_METHOD,
+} from "@/lib/checkout-settings";
 import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
+import { resolveDeliveryDisplayEstimate } from "@/lib/delivery-display";
 import { formatMessage, type Locale } from "@/lib/i18n";
 
 const STAFF_SFX_STORAGE_KEY = "perfoumer.staff.sfx-enabled.v1";
@@ -74,6 +80,8 @@ type OrderLog = {
 type OrderItem = {
   perfume_slug: string;
   perfume_name: string;
+  perfume_image: string | null;
+  brand: string | null;
   size_ml: number;
   quantity: number;
   unit_price: number;
@@ -238,6 +246,8 @@ const STAFF_COPY_EN = {
   customerLabel: "Customer",
   pickupLocation: "Pickup location",
   deliveryAddress: "Delivery address",
+  deliveryEstimateCarrier: "Carrier",
+  deliveryEstimateEta: "Estimated time",
   pickupLocationValue: "Main store handoff counter",
   editingAddress: "Editing address",
   viewOnly: "View only",
@@ -414,7 +424,7 @@ const STAFF_COPY_EN = {
   waitAgoMinutes: "{minutes}m ago",
   waitAgoHours: "{hours}h ago",
   waitAgoHoursMinutes: "{hours}h {minutes}m ago",
-  cashOrderSupportHint: "Cash pickup orders only need a cancel option before handoff. Payment is collected in store during pickup.",
+  cashOrderSupportHint: "Payment-at-handoff orders only need a cancel option before preparation or handoff.",
 } as const;
 
 const STAFF_COPY_AZ = {
@@ -468,6 +478,8 @@ const STAFF_COPY_AZ = {
   customerLabel: "Müştəri",
   pickupLocation: "Təhvil nöqtəsi",
   deliveryAddress: "Çatdırılma ünvanı",
+  deliveryEstimateCarrier: "Daşıyıcı",
+  deliveryEstimateEta: "Təxmini müddət",
   pickupLocationValue: "Əsas mağaza təhvil masası",
   editingAddress: "Ünvan redaktə olunur",
   viewOnly: "Yalnız baxış",
@@ -644,7 +656,7 @@ const STAFF_COPY_AZ = {
   waitAgoMinutes: "{minutes} dəq əvvəl",
   waitAgoHours: "{hours} saat əvvəl",
   waitAgoHoursMinutes: "{hours} saat {minutes} dəq əvvəl",
-  cashOrderSupportHint: "Nağd götürmə sifarişlərində təhvilə qədər yalnız ləğv əməliyyatı kifayətdir. Ödəniş mağazada götürmə zamanı alınır.",
+  cashOrderSupportHint: "Təhvil zamanı ödəniş sifarişlərində hazırlığa və ya təhvilə qədər ləğv əməliyyatı kifayətdir.",
 } as const;
 
 const STAFF_COPY = {
@@ -759,6 +771,14 @@ function parseItems(itemsJson: unknown): OrderItem[] {
       return {
         perfume_slug: String(row.perfume_slug ?? ""),
         perfume_name: String(row.perfume_name ?? "Perfume"),
+        perfume_image: typeof row.perfume_image === "string"
+          ? row.perfume_image
+          : typeof row.image === "string"
+            ? row.image
+            : typeof row.image_url === "string"
+              ? row.image_url
+              : null,
+        brand: typeof row.brand === "string" ? row.brand : null,
         size_ml: Number(row.size_ml ?? 0),
         quantity: Number(row.quantity ?? 0),
         unit_price: Number(row.unit_price ?? 0),
@@ -879,6 +899,19 @@ function getAddressSummaryForList(order: StaffOrder, copy: StaffCopy) {
   return parts.join(", ") || copy.deliveryAddressAvailable;
 }
 
+function getDeliveryEstimateForOrder(order: StaffOrder | null, locale: Locale) {
+  if (!order?.delivery_address_json || isPickupAddressRecord(order.delivery_address_json)) {
+    return null;
+  }
+
+  const address = order.delivery_address_json;
+  return resolveDeliveryDisplayEstimate({
+    city: getCity(address),
+    deliveryEstimate: address.deliveryEstimate,
+    locale,
+  });
+}
+
 function buildAddressFormFromOrder(order: StaffOrder | null, copy: StaffCopy): AddressFormState {
   if (!order?.delivery_address_json || isPickupAddressRecord(order.delivery_address_json)) {
     return { ...DEFAULT_ADDRESS_FORM, country: copy.countryDefault };
@@ -920,6 +953,7 @@ function isCashOrder(order: StaffOrder) {
   const paymentMethod = (order.payment_method || "").trim().toLowerCase();
   return (
     paymentMethod === CASH_PICKUP_PAYMENT_METHOD ||
+    paymentMethod === CASH_DELIVERY_PAYMENT_METHOD ||
     paymentMethod.includes("cod") ||
     paymentMethod.includes("cash") ||
     paymentMethod.includes("nagd") ||
@@ -963,6 +997,64 @@ function getPaymentLabel(order: StaffOrder, copy: StaffCopy) {
         .join(" ") || copy.paymentUnknown
       );
   }
+}
+
+function getOperationalPaymentLabel(order: StaffOrder, locale: Locale) {
+  const method = (order.payment_method || "").trim().toLowerCase();
+  const mode = getOrderMode(order);
+
+  if (mode === "pickup" || method === STORE_PICKUP_PAYMENT_METHOD || method === CASH_PICKUP_PAYMENT_METHOD) {
+    return locale === "az" ? "Mağazadan götürmə" : "Store pickup";
+  }
+
+  if (method === CASH_DELIVERY_PAYMENT_METHOD || isCashOrder(order)) {
+    return locale === "az" ? "Qapıda Nağd" : "Cash on Delivery";
+  }
+
+  if (
+    method === CARD_DELIVERY_PAYMENT_METHOD ||
+    method.includes("card") ||
+    method.includes("kart") ||
+    method.includes("kapital") ||
+    method.includes("epoint")
+  ) {
+    return locale === "az" ? "Qapıda Kart" : "Card on Delivery";
+  }
+
+  return locale === "az" ? "Qapıda Kart" : "Card on Delivery";
+}
+
+function formatOrderMoney(amount: number, currency: string) {
+  return `${Number(amount || 0).toFixed(2)} ${currency || "AZN"}`;
+}
+
+function getQueueAccentClass(group: QueueTab) {
+  if (group === "new") return "bg-violet-500";
+  if (group === "preparing") return "bg-orange-500";
+  if (group === "ready") return "bg-emerald-500";
+  return "bg-zinc-400";
+}
+
+function getActionButtonClass(action: ActionConfig) {
+  if (action.nextStatus === "preparing" || action.nextStatus === "confirmed") {
+    return "border-orange-200 bg-orange-500 text-white shadow-[0_16px_34px_rgba(249,115,22,0.25)] hover:bg-orange-600";
+  }
+
+  if (
+    action.nextStatus === "ready_for_pickup" ||
+    action.nextStatus === "ready_for_dispatch" ||
+    action.nextStatus === "out_for_delivery"
+  ) {
+    return "border-emerald-200 bg-emerald-600 text-white shadow-[0_16px_34px_rgba(16,185,129,0.24)] hover:bg-emerald-700";
+  }
+
+  if (action.nextStatus === "completed" || action.nextStatus === "delivered") {
+    return "border-blue-200 bg-blue-600 text-white shadow-[0_16px_34px_rgba(37,99,235,0.24)] hover:bg-blue-700";
+  }
+
+  return action.tone === "primary"
+    ? "border-violet-200 bg-violet-600 text-white shadow-[0_16px_34px_rgba(124,58,237,0.24)] hover:bg-violet-700"
+    : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50";
 }
 
 function getPaymentBadgeClass(order: StaffOrder) {
@@ -1715,11 +1807,75 @@ export function StaffOrdersPanelClient({
   const selectedIsCashOrder = selectedOrder ? isCashOrder(selectedOrder) : false;
   const selectedItems = selectedOrder ? parseItems(selectedOrder.items_json) : [];
   const selectedActions = selectedOrder ? getActions(selectedOrder, copy) : [];
+  const selectedDeliveryEstimate = getDeliveryEstimateForOrder(selectedOrder, locale);
   const pickupCode = selectedOrder ? derivePickupCode(selectedOrder) : "";
   const orderIsLocked = selectedStatus ? isLocked(selectedStatus) : false;
   const selectedIsHistory = getQueueGroup(selectedStatus || "new") === "history";
   const selectedWaitMinutes = selectedOrder ? getOrderWaitMinutes(selectedOrder.created_at) : 0;
   const selectedUrgency = getWaitUrgency(selectedWaitMinutes, copy);
+  const queueMetrics = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    const completedToday = orders.filter((order) => {
+      const statusName = normalizeOperationalStatus(order.status);
+      const completedAt = order.completed_at || (statusName === "completed" ? order.updated_at : "");
+      return statusName === "completed" && completedAt && new Date(completedAt).toDateString() === todayKey;
+    });
+    const totalProcessingMinutes = completedToday.reduce((sum, order) => {
+      const start = new Date(order.created_at).getTime();
+      const end = new Date(order.completed_at || order.updated_at).getTime();
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        return sum;
+      }
+      return sum + Math.max(1, Math.round((end - start) / 60000));
+    }, 0);
+
+    return {
+      new: orders.filter((order) => getQueueGroup(normalizeOperationalStatus(order.status)) === "new").length,
+      preparing: orders.filter((order) => getQueueGroup(normalizeOperationalStatus(order.status)) === "preparing").length,
+      ready: orders.filter((order) => getQueueGroup(normalizeOperationalStatus(order.status)) === "ready").length,
+      completedToday: completedToday.length,
+      averageProcessing: completedToday.length
+        ? Math.round(totalProcessingMinutes / completedToday.length)
+        : 0,
+    };
+  }, [orders]);
+  const selectedTimeline = useMemo(() => {
+    const statusName = selectedStatus || "new";
+    const isPickup = selectedMode !== "delivery";
+    const steps: Array<{ key: OperationalStatus; label: string }> = [
+      { key: "new", label: copy.statusLabels.new },
+      { key: "preparing", label: copy.statusLabels.preparing },
+      {
+        key: isPickup ? "ready_for_pickup" : "ready_for_dispatch",
+        label: isPickup ? copy.statusLabels.ready_for_pickup : copy.statusLabels.ready_for_dispatch,
+      },
+      {
+        key: isPickup ? "handed_over" : "delivered",
+        label: isPickup ? copy.statusLabels.handed_over : copy.statusLabels.delivered,
+      },
+    ];
+    const normalizedStatus = statusName === "confirmed" ? "new" : statusName;
+    const currentIndex = steps.findIndex((step) => step.key === normalizedStatus);
+    const completedIndex = normalizedStatus === "completed" ? steps.length : Math.max(0, currentIndex);
+
+    return steps.map((step, index) => ({
+      ...step,
+      active: normalizedStatus !== "completed" && index === Math.max(0, currentIndex),
+      complete: normalizedStatus === "completed" || index < completedIndex,
+    }));
+  }, [copy, selectedMode, selectedStatus]);
+  const selectedWarning =
+    selectedOrder && !selectedIsHistory && selectedWaitMinutes >= 30
+      ? {
+          tone: "red",
+          message: locale === "az" ? "Diqqət: sifariş gecikir." : "Attention: this order is delayed.",
+        }
+      : selectedOrder && !selectedIsHistory && selectedWaitMinutes >= 20
+        ? {
+            tone: "yellow",
+            message: locale === "az" ? "Bu sifariş 20 dəqiqədən çox gözləyir." : "This order has waited more than 20 minutes.",
+          }
+        : null;
   const maxRefundAmount = Number(selectedOrder?.total_amount ?? 0);
   const refundPreviewAmount = useMemo(() => {
     if (pendingAction !== "refund") {
@@ -2155,15 +2311,15 @@ export function StaffOrdersPanelClient({
   }
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-[0_20px_48px_rgba(17,24,39,0.08)] motion-safe:[animation:fadeInSoft_420ms_cubic-bezier(0.22,1,0.36,1)_both]">
+    <section className="mx-auto w-full max-w-[1760px] space-y-4">
+      <div className="rounded-[28px] border border-white/80 bg-white/88 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] ring-1 ring-zinc-950/[0.03] backdrop-blur-xl motion-safe:[animation:fadeInSoft_420ms_cubic-bezier(0.22,1,0.36,1)_both] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            <div className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
               <AppIcon name="workspace" size={14} />
               {copy.queueEyebrow}
             </div>
-            <h1 className="mt-4 text-[2rem] font-semibold tracking-[-0.05em] text-zinc-950">
+            <h1 className="mt-4 text-[2rem] font-semibold tracking-[-0.04em] text-zinc-950 sm:text-[2.45rem]">
               {copy.queueTitle}
             </h1>
             <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.queueDescription}</p>
@@ -2222,10 +2378,28 @@ export function StaffOrdersPanelClient({
             </button>
           </div>
         </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            [copy.queueLabels.new, queueMetrics.new, "bg-violet-500", "text-violet-700"],
+            [copy.queueLabels.preparing, queueMetrics.preparing, "bg-orange-500", "text-orange-700"],
+            [copy.queueLabels.ready, queueMetrics.ready, "bg-emerald-500", "text-emerald-700"],
+            [locale === "az" ? "Bu gün tamamlanan" : "Completed today", queueMetrics.completedToday, "bg-zinc-900", "text-zinc-900"],
+            [locale === "az" ? "Orta icra" : "Avg processing", queueMetrics.averageProcessing ? `${queueMetrics.averageProcessing} dəq` : "-", "bg-blue-500", "text-blue-700"],
+          ].map(([label, value, dotClass, valueClass]) => (
+            <div key={String(label)} className="rounded-[20px] border border-zinc-200/80 bg-white/86 px-4 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+              <div className="flex items-center gap-2">
+                <span className={cx("h-2.5 w-2.5 rounded-full", String(dotClass))} />
+                <p className="truncate text-xs font-semibold text-zinc-500">{label}</p>
+              </div>
+              <p className={cx("mt-2 text-2xl font-semibold tracking-[-0.03em]", String(valueClass))}>{value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <aside className="rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-[0_14px_36px_rgba(17,24,39,0.06)] xl:sticky xl:top-20 xl:h-[calc(100dvh-6.25rem)]">
+      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="rounded-[26px] border border-white/80 bg-white/88 p-4 shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-zinc-950/[0.03] backdrop-blur-xl xl:sticky xl:top-4 xl:h-[calc(100dvh-2rem)]">
           <div className="flex h-full min-h-0 flex-col">
             <div>
               <h2 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">{copy.orderQueue}</h2>
@@ -2234,7 +2408,7 @@ export function StaffOrdersPanelClient({
 
             <div className="mt-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{copy.status}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-1 rounded-[16px] border border-zinc-200 bg-zinc-50 p-1">
               {([
                 ["new", copy.queueLabels.new],
                 ["preparing", copy.queueLabels.preparing],
@@ -2244,10 +2418,10 @@ export function StaffOrdersPanelClient({
                   key={value}
                   type="button"
                   className={cx(
-                    "rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5",
+                    "rounded-[12px] px-2 py-2 text-xs font-semibold transition-all duration-200",
                     queueTab === value
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50",
+                      ? "bg-white text-zinc-950 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-900",
                   )}
                   onClick={() => startTransition(() => setQueueTab(value))}
                 >
@@ -2259,7 +2433,7 @@ export function StaffOrdersPanelClient({
 
             <div className="mt-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{copy.type}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-1 rounded-[16px] border border-zinc-200 bg-zinc-50 p-1">
                 {([
                   ["all", copy.allFilter],
                   ["pickup", copy.modeLabels.pickup],
@@ -2269,10 +2443,10 @@ export function StaffOrdersPanelClient({
                     key={value}
                     type="button"
                     className={cx(
-                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50",
+                      "rounded-[12px] px-2 py-2 text-xs font-semibold transition-all duration-200",
                       deliveryFilter === value
-                        ? "border-zinc-400 bg-zinc-100 text-zinc-800"
-                        : "border-zinc-200 bg-white text-zinc-500",
+                        ? "bg-white text-zinc-950 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-900",
                     )}
                     onClick={() => setDeliveryFilter(value)}
                   >
@@ -2285,7 +2459,7 @@ export function StaffOrdersPanelClient({
             <label className="relative mt-6 block">
               <AppIcon name="search" size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
-                className="h-11 w-full rounded-2xl border border-zinc-300 px-4 pl-11 text-sm"
+                className="h-12 w-full rounded-[16px] border border-zinc-200 bg-white px-4 pl-11 text-sm font-medium text-zinc-900 outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={copy.searchPlaceholder}
@@ -2337,7 +2511,7 @@ export function StaffOrdersPanelClient({
               </div>
             ) : null}
 
-            <div className="mt-4 flex min-h-0 flex-1 flex-col rounded-[1.5rem] border border-zinc-200 bg-zinc-50/80 p-2">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col rounded-[22px] border border-zinc-200 bg-zinc-50/80 p-2">
               <div className="flex items-center justify-between px-2 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
                 <span>{queueTab === "history" ? copy.historyQueue : copy.activeQueue}</span>
                 <span>{visibleOrders.length}</span>
@@ -2364,14 +2538,15 @@ export function StaffOrdersPanelClient({
                           });
                         }}
                         className={cx(
-                          "w-full rounded-[1.35rem] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5",
+                          "relative w-full overflow-hidden rounded-[18px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5",
                           selectedOrderId === order.id
-                            ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_14px_26px_rgba(17,24,39,0.18)]"
+                            ? "border-violet-400 bg-white text-zinc-950 shadow-[0_16px_32px_rgba(124,58,237,0.14)] ring-2 ring-violet-100"
                             : recentOrderIds.includes(order.id)
                               ? "border-emerald-300 bg-emerald-50 shadow-[0_0_0_1px_rgba(16,185,129,0.18)] hover:border-emerald-400 hover:bg-emerald-50 motion-safe:[animation:orderArrival_520ms_cubic-bezier(0.22,1,0.36,1)_both]"
                               : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50",
                         )}
                       >
+                        <span className={cx("absolute inset-y-4 left-0 w-1 rounded-r-full", getQueueAccentClass(getQueueGroup(statusName)))} />
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
@@ -2383,25 +2558,25 @@ export function StaffOrdersPanelClient({
                               </span>
                               <p className="truncate text-sm font-semibold">{order.order_number}</p>
                             </div>
-                            <p className={cx("mt-1 truncate text-xs", selectedOrderId === order.id ? "text-zinc-300" : "text-zinc-500")}>
+                            <p className="mt-1 truncate text-xs text-zinc-500">
                               {getCustomerName(order, copy)}
                             </p>
                           </div>
-                          <span className={cx("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.06em]", selectedOrderId === order.id ? "border-white/15 bg-white/10 text-white" : getStatusColor(statusName))}>
-                            {getStatusLabel(statusName, copy)}
-                          </span>
+                          <p className="shrink-0 text-right text-sm font-semibold text-zinc-950">
+                            {formatOrderMoney(order.total_amount, order.currency)}
+                          </p>
                         </div>
 
-                        <p className={cx("mt-3 line-clamp-2 text-xs", selectedOrderId === order.id ? "text-zinc-300" : "text-zinc-500")}>
-                          {itemsPreview || copy.noItemPreview}
-                        </p>
-
-                        <div className={cx("mt-3 flex items-center justify-between text-xs", selectedOrderId === order.id ? "text-zinc-300" : "text-zinc-500")}>
-                          <span>{getPaymentLabel(order, copy)}</span>
+                        <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                          <span className={cx("inline-flex items-center rounded-full border px-2 py-1 font-semibold", getPaymentBadgeClass(order))}>{getOperationalPaymentLabel(order, locale)}</span>
                           {queueTab === "history" ? null : (
-                            <span className={selectedOrderId === order.id ? "text-zinc-300" : urgency.className}>{urgency.label}</span>
+                            <span className={cx("inline-flex items-center gap-1 font-semibold", urgency.className)}>
+                              <AppIcon name="wait" size={13} />
+                              {urgency.label}
+                            </span>
                           )}
                         </div>
+                        <p className="mt-2 truncate text-xs text-zinc-500">{itemsPreview || copy.noItemPreview}</p>
                       </button>
                     );
                   })
@@ -2416,14 +2591,14 @@ export function StaffOrdersPanelClient({
           </div>
         </aside>
 
-        <div className="space-y-5">
-          <div className="rounded-[2rem] border border-zinc-200 bg-white p-5 shadow-[0_14px_36px_rgba(17,24,39,0.06)] motion-safe:[animation:fadeUp_360ms_cubic-bezier(0.22,1,0.36,1)_both]">
+        <div className="space-y-4">
+          <div className="rounded-[26px] border border-white/80 bg-white/90 p-5 shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-zinc-950/[0.03] backdrop-blur-xl motion-safe:[animation:fadeUp_360ms_cubic-bezier(0.22,1,0.36,1)_both]">
             <h2 className="text-lg font-semibold text-zinc-900">{copy.orderDetail}</h2>
             {selectedOrder ? (
               <>
                 <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
                   <div className="space-y-4">
-                    <div className="rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                    <div className="rounded-[22px] border border-zinc-200 bg-[linear-gradient(180deg,#ffffff,#fafafa)] p-4 shadow-[0_8px_26px_rgba(15,23,42,0.04)]">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.orderLabel}</p>
@@ -2450,7 +2625,7 @@ export function StaffOrdersPanelClient({
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-[1.4rem] border border-zinc-200 bg-white p-4">
+                      <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.customerLabel}</p>
                         <p className="mt-3 text-base font-semibold text-zinc-900">{getCustomerName(selectedOrder, copy)}</p>
                         <p className="mt-2 inline-flex items-center gap-2 text-sm text-zinc-600">
@@ -2459,7 +2634,7 @@ export function StaffOrdersPanelClient({
                         </p>
                       </div>
 
-                      <div className="rounded-[1.4rem] border border-zinc-200 bg-white p-4">
+                      <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
                           {selectedMode === "pickup" ? copy.pickupLocation : copy.deliveryAddress}
                         </p>
@@ -2468,6 +2643,12 @@ export function StaffOrdersPanelClient({
                             ? copy.pickupLocationValue
                             : getAddressSummaryForList(selectedOrder, copy)}
                         </p>
+                        {selectedMode === "delivery" && selectedDeliveryEstimate ? (
+                          <div className="mt-3 rounded-[14px] border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-600">
+                            <p>{copy.deliveryEstimateCarrier}: <span className="text-zinc-950">{selectedDeliveryEstimate.carrier}</span></p>
+                            <p className="mt-1">{copy.deliveryEstimateEta}: <span className="text-zinc-950">{selectedDeliveryEstimate.etaLabel}</span></p>
+                          </div>
+                        ) : null}
                         {selectedIsCashOrder ? (
                           <p className="mt-3 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
                             {getPaymentLabel(selectedOrder, copy)}
@@ -2626,27 +2807,36 @@ export function StaffOrdersPanelClient({
                       </div>
                     ) : null}
 
-                    <div className="rounded-[1.4rem] border border-zinc-200 bg-white p-4">
+                    <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.items}</p>
                       <div className="mt-4 space-y-3">
                         {selectedItems.map((item, index) => (
-                          <div key={`${item.perfume_slug}-${item.size_ml}-${index}`} className="flex items-start justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3">
-                            <div>
-                              <p className="text-sm font-semibold text-zinc-900">{item.perfume_name}</p>
-                              <p className="mt-1 text-sm text-zinc-500">
-                                {item.size_ml}ML × {item.quantity}
-                              </p>
+                          <div key={`${item.perfume_slug}-${item.size_ml}-${index}`} className="grid grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-zinc-200 bg-zinc-50/80 p-3">
+                            <div className="relative h-[54px] w-[54px] overflow-hidden rounded-[14px] border border-zinc-200 bg-white">
+                              {item.perfume_image ? (
+                                <img src={item.perfume_image} alt={item.perfume_name} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="grid h-full w-full place-items-center text-sm font-semibold text-zinc-400">
+                                  {item.perfume_name.slice(0, 1)}
+                                </span>
+                              )}
                             </div>
-                            <p className="text-sm font-semibold text-zinc-900">
-                              {item.total_price.toFixed(2)} {selectedOrder.currency}
-                            </p>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-zinc-900">{item.perfume_name}</p>
+                              <p className="mt-1 text-sm text-zinc-500">{item.size_ml}ML × {item.quantity}</p>
+                              {item.brand ? <p className="mt-0.5 truncate text-xs text-zinc-400">{item.brand}</p> : null}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-zinc-900">{item.total_price.toFixed(2)} {selectedOrder.currency}</p>
+                              <p className="mt-1 text-xs text-zinc-500">{item.unit_price.toFixed(2)} × {item.quantity}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-4 flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-                        <span className="text-sm text-zinc-500">{copy.total}</span>
-                        <span className="text-base font-semibold text-zinc-950">
-                          {selectedOrder.total_amount} {selectedOrder.currency}
+                      <div className="mt-4 flex items-center justify-between rounded-[18px] border border-violet-100 bg-violet-50 p-4">
+                        <span className="text-sm font-semibold text-violet-700">{copy.total}</span>
+                        <span className="text-xl font-semibold tracking-[-0.03em] text-violet-700">
+                          {formatOrderMoney(selectedOrder.total_amount, selectedOrder.currency)}
                         </span>
                       </div>
                     </div>
@@ -2660,7 +2850,7 @@ export function StaffOrdersPanelClient({
                   </div>
 
                   <div className="space-y-4">
-                    <div className="rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                    <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.actionPanel}</p>
                       {orderIsLocked ? (
                         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-100 p-4 text-sm text-zinc-600">
@@ -2674,10 +2864,8 @@ export function StaffOrdersPanelClient({
                               key={`${selectedOrder.id}-${action.label}`}
                               type="button"
                               className={cx(
-                                "flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0",
-                                action.tone === "primary"
-                                  ? "bg-zinc-900 text-white hover:bg-zinc-800"
-                                  : "border border-zinc-300 bg-white text-zinc-800 hover:border-zinc-400 hover:bg-zinc-50",
+                                "flex min-h-[72px] w-full items-center justify-center gap-3 rounded-[20px] border px-5 text-base font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60",
+                                getActionButtonClass(action),
                               )}
                               disabled={busy}
                               onClick={() => {
@@ -2701,31 +2889,70 @@ export function StaffOrdersPanelClient({
                       )}
                     </div>
 
-                    <div className="rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                    {selectedWarning ? (
+                      <div className={cx(
+                        "rounded-[20px] border px-4 py-3 text-sm font-semibold",
+                        selectedWarning.tone === "red"
+                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                          : "border-amber-200 bg-amber-50 text-amber-800",
+                      )}>
+                        <span className="inline-flex items-center gap-2">
+                          <AppIcon name="warning" size={15} />
+                          {selectedWarning.message}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.operationalSummary}</p>
-                      <div className="mt-4 space-y-3 text-sm text-zinc-600">
-                        {!selectedIsHistory ? (
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="inline-flex items-center gap-2"><AppIcon name="wait" size={15} /> {copy.waiting}</span>
-                            <span className={cx("font-semibold", selectedUrgency.className)}>{selectedUrgency.label}</span>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        {([
+                          [copy.waiting, selectedIsHistory ? "-" : selectedUrgency.label, "wait"],
+                          [copy.payment, getOperationalPaymentLabel(selectedOrder, locale), "money"],
+                          [copy.items, selectedItems.reduce((sum, item) => sum + item.quantity, 0), "package"],
+                          [
+                            selectedDeliveryEstimate ? copy.deliveryEstimateCarrier : copy.total,
+                            selectedDeliveryEstimate ? selectedDeliveryEstimate.carrier : formatOrderMoney(selectedOrder.total_amount, selectedOrder.currency),
+                            "truck",
+                          ],
+                        ] satisfies Array<[string, string | number, AppIconName]>).map(([label, value, icon]) => (
+                          <div key={String(label)} className="rounded-[18px] border border-zinc-200 bg-zinc-50/80 p-3">
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] bg-white text-zinc-500 shadow-sm">
+                              <AppIcon name={icon} size={15} />
+                            </span>
+                            <p className="mt-2 text-xs font-medium text-zinc-500">{label}</p>
+                            <p className="mt-1 truncate text-sm font-semibold text-zinc-950">{value}</p>
                           </div>
-                        ) : null}
-                        <div className="flex items-center justify-between gap-3">
-                          <span>{copy.orderType}</span>
-                          <span className="font-medium text-zinc-900">{selectedMode ? getOrderModeLabel(selectedMode, copy) : copy.modeLabels.pickup}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>{copy.payment}</span>
-                          <span className="font-medium text-zinc-900">{getPaymentLabel(selectedOrder, copy)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>{copy.orderQueue}</span>
-                          <span className="font-medium text-zinc-900">{getQueueGroupLabel(getQueueGroup(selectedStatus || "new"), copy)}</span>
-                        </div>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="rounded-[1.4rem] border border-zinc-200 bg-zinc-50/80 p-4">
+                    <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                        {locale === "az" ? "Status izləmə" : "Status timeline"}
+                      </p>
+                      <div className="mt-4 space-y-3">
+                        {selectedTimeline.map((step, index) => (
+                          <div key={`${step.key}-${index}`} className="flex items-center gap-3">
+                            <span className={cx(
+                              "grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+                              step.active
+                                ? "border-violet-500 bg-violet-600 text-white shadow-[0_8px_18px_rgba(124,58,237,0.25)]"
+                                : step.complete
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "border-zinc-200 bg-zinc-50 text-zinc-400",
+                            )}>
+                              {step.complete ? <AppIcon name="check" size={14} /> : index + 1}
+                            </span>
+                            <span className={cx("text-sm font-semibold", step.active ? "text-violet-700" : step.complete ? "text-zinc-900" : "text-zinc-400")}>
+                              {step.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{copy.orderControls}</p>
                       {orderIsLocked ? (
                         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
@@ -2741,27 +2968,16 @@ export function StaffOrdersPanelClient({
                             {selectedIsCashOrder ? copy.cashOrderSupportHint : copy.supportActionsHint}
                           </p>
 
-                          <div className={cx("mt-4 grid gap-2", selectedIsCashOrder ? "" : "sm:grid-cols-2")}>
+                          <div className="mt-4 grid gap-2">
                             <button
                               type="button"
-                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                               disabled={busy}
                               onClick={() => openActionModal("cancel")}
                             >
                               <AppIcon name="cancel" size={16} />
                               {activeControl === "cancel" ? copy.cancelling : copy.cancelOrder}
                             </button>
-                            {!selectedIsCashOrder ? (
-                              <button
-                                type="button"
-                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-4 text-sm font-semibold text-orange-700 hover:bg-orange-100"
-                                disabled={busy}
-                                onClick={() => openActionModal("refund")}
-                              >
-                                <AppIcon name="refund" size={16} />
-                                {activeControl === "refund" ? copy.refunding : copy.refundOrder}
-                              </button>
-                            ) : null}
                           </div>
                         </>
                       )}

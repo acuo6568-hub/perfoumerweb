@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
+import {
+  CARD_DELIVERY_PAYMENT_METHOD,
+  CASH_DELIVERY_PAYMENT_METHOD,
+  CASH_PICKUP_PAYMENT_METHOD,
+  STORE_PICKUP_PAYMENT_METHOD,
+} from "@/lib/checkout-settings";
 import { sendOrderUpdateEmail } from "@/lib/order-notifications";
 
 export const runtime = "nodejs";
@@ -10,12 +15,18 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-function isCashPickupOrder(paymentMethod: unknown) {
-  return String(paymentMethod || "").trim().toLowerCase() === CASH_PICKUP_PAYMENT_METHOD;
+function isHandoffPaymentOrder(paymentMethod: unknown) {
+  const method = String(paymentMethod || "").trim().toLowerCase();
+  return [
+    CASH_PICKUP_PAYMENT_METHOD,
+    STORE_PICKUP_PAYMENT_METHOD,
+    CASH_DELIVERY_PAYMENT_METHOD,
+    CARD_DELIVERY_PAYMENT_METHOD,
+  ].includes(method);
 }
 
 function isCancellableOrder(status: string, paymentStatus: string, paymentMethod: unknown) {
-  if (!isCashPickupOrder(paymentMethod)) {
+  if (!isHandoffPaymentOrder(paymentMethod)) {
     return false;
   }
 
@@ -119,7 +130,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         locale: "az",
         orderNumber: String(updatedOrder.order_number || ""),
         type: "order_cancelled",
-        details: "Customer cancelled this cash pickup order from the account page.",
+        details: "Customer cancelled this payment-at-handoff order from the account page.",
       });
     }
 

@@ -6,7 +6,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
-import { CASH_PICKUP_PAYMENT_METHOD, type CheckoutSettings } from "@/lib/checkout-settings";
+import {
+  CARD_DELIVERY_PAYMENT_METHOD,
+  CASH_DELIVERY_PAYMENT_METHOD,
+  STORE_PICKUP_PAYMENT_METHOD,
+  type CheckoutSettings,
+} from "@/lib/checkout-settings";
 import { formatCurrencyFromAzn } from "@/lib/currency";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { AZERBAIJAN_CITIES, resolveAzerbaijanCity } from "@/lib/azerbaijan-cities";
@@ -38,7 +43,7 @@ type PickupContact = {
   note: string;
 };
 
-type CheckoutMode = "card" | "cash_pickup";
+type CheckoutMode = "cash_delivery" | "card_delivery" | "store_pickup";
 
 type Copy = {
   loading: string;
@@ -102,6 +107,14 @@ type Copy = {
   deliveryEstimateCarrier: string;
   paymentOptionsTitle: string;
   paymentOptionsBody: string;
+  cashDeliveryTitle: string;
+  cashDeliveryBody: string;
+  cardDeliveryTitle: string;
+  cardDeliveryBody: string;
+  storePickupTitle: string;
+  storePickupBody: string;
+  storePickupPill: string;
+  deliveryContactTitle: string;
   cardPaymentTitle: string;
   cardPaymentBody: string;
   cashPickupTitle: string;
@@ -120,6 +133,9 @@ type Copy = {
   openMap: string;
   paymentMethodLabel: string;
   paymentMethodCard: string;
+  paymentMethodCardDelivery: string;
+  paymentMethodCashDelivery: string;
+  paymentMethodStorePickup: string;
   paymentMethodCashPickup: string;
   cashOrderAction: string;
   cashOrderLoading: string;
@@ -196,37 +212,48 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentStatusPending: "Emal olunur",
     paymentStatusUnknown: "Yoxlanılır",
     orderSummaryTitle: "Sifariş xülasəsi",
-    deliveryEstimateTitle: "Azerpoct ilə çatdırılma təxmini",
+    deliveryEstimateTitle: "Çatdırılma təxmini",
     deliveryEstimateLoading: "Çatdırılma hesablanır...",
     deliveryEstimateEta: "Təxmini müddət",
     deliveryEstimateCarrier: "Daşıyıcı",
     paymentOptionsTitle: "Ödəniş və təhvil seçimi",
-    paymentOptionsBody: "Onlayn kart ödənişini və ya mağazada nağd götürməni seçin. Nağd seçimdə sifarişinizi mağazadan götürüb yerində ödəyəcəksiniz.",
-    cardPaymentTitle: "Kartla onlayn ödəniş",
-    cardPaymentBody: "Çatdırılma ilə davam edin və ödənişi təhlükəsiz şəkildə indi tamamlayın.",
-    cashPickupTitle: "Nağd və mağazadan götürmə",
-    cashPickupBody: "Sifarişi indi rezerv edin, mağazaya gəlib götürərkən nağd ödəyin.",
-    cashPickupPill: "Həmişə mövcuddur",
+    paymentOptionsBody: "Ödəniş yalnız təhvil zamanı edilir: qapıda nağd, qapıda kart və ya mağazadan götürmə.",
+    cashDeliveryTitle: "Qapıda Nağd",
+    cashDeliveryBody: "Sifariş çatdırılır, ödənişi məhsulu təhvil alanda nağd edirsiniz.",
+    cardDeliveryTitle: "Qapıda Kart",
+    cardDeliveryBody: "Sifariş çatdırılır, ödənişi məhsulu təhvil alanda kartla edirsiniz.",
+    storePickupTitle: "Mağazadan Götürmə",
+    storePickupBody: "Sifariş mağazada hazırlanır, götürərkən əməkdaşla ödəniş/təhvil tamamlanır.",
+    storePickupPill: "Sürətli təhvil",
+    deliveryContactTitle: "Çatdırılma üçün ünvan",
+    cardPaymentTitle: "Qapıda Kart",
+    cardPaymentBody: "Ödənişi məhsulu təhvil alanda kartla tamamlayın.",
+    cashPickupTitle: "Mağazadan Götürmə",
+    cashPickupBody: "Sifariş mağazada hazırlanır və götürərkən təhvil verilir.",
+    cashPickupPill: "Sürətli təhvil",
     pickupContactTitle: "Götürmə üçün əlaqə məlumatı",
     pickupContactBody: "Bu məlumat sifarişinizi hazırlayanda sizinlə əlaqə saxlamaq və təhvil zamanı sifarişi yoxlamaq üçün istifadə olunur.",
     pickupNote: "Qeyd",
     pickupNotePlaceholder: "Məsələn: axşam gələcəyəm və ya hədiyyə qablaşdırılması istəyirəm",
-    invalidPickupContact: "Nağd götürmə üçün ad və telefon məlumatını düzgün daxil edin.",
-    pickupSummaryTitle: "Nağd götürmə xülasəsi",
+    invalidPickupContact: "Mağazadan götürmə üçün ad və telefon məlumatını düzgün daxil edin.",
+    pickupSummaryTitle: "Mağazadan götürmə xülasəsi",
     pickupLocationTitle: "Götürmə ünvanı",
     pickupAddressLabel: "Ünvan",
     pickupPhoneLabel: "Əlaqə",
-    pickupPaymentHint: "Ödənişi məhsulu götürərkən nağd şəkildə edəcəksiniz.",
+    pickupPaymentHint: "Ödəniş və təhvil mağazada əməkdaş tərəfindən tamamlanır.",
     openMap: "Xəritədə aç",
     paymentMethodLabel: "Ödəniş üsulu",
-    paymentMethodCard: "Kart",
-    paymentMethodCashPickup: "Nağd götürmə",
-    cashOrderAction: "Nağd götürmə sifarişini tamamla",
+    paymentMethodCard: "Qapıda Kart",
+    paymentMethodCardDelivery: "Qapıda Kart",
+    paymentMethodCashDelivery: "Qapıda Nağd",
+    paymentMethodStorePickup: "Mağazadan Götürmə",
+    paymentMethodCashPickup: "Mağazadan Götürmə",
+    cashOrderAction: "Sifarişi təsdiqlə",
     cashOrderLoading: "Sifariş hazırlanır...",
-    cashOrderError: "Nağd götürmə sifarişi yaradılmadı. Zəhmət olmasa yenidən cəhd edin.",
-    cashSuccessTitle: "Nağd götürmə sifarişiniz qəbul edildi",
-    cashSuccessBody: "Sifarişiniz rezerv edildi. Mağazaya yaxınlaşarkən komanda ilə əlaqə saxlaya və məhsulu götürərkən nağd ödəyə bilərsiniz.",
-    cashStatusReserved: "Mağazada nağd götürmə",
+    cashOrderError: "Sifariş yaradılmadı. Zəhmət olmasa yenidən cəhd edin.",
+    cashSuccessTitle: "Sifarişiniz qəbul edildi",
+    cashSuccessBody: "Sifarişiniz mağaza komandamızın əməliyyat növbəsinə əlavə edildi. Təhvil zamanı seçdiyiniz üsulla ödəniş tamamlanacaq.",
+    cashStatusReserved: "Təhvil zamanı ödəniş",
     pickupOrderSummaryLabel: "Təhvil forması",
   },
   en: {
@@ -285,37 +312,48 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentStatusPending: "Processing",
     paymentStatusUnknown: "Checking",
     orderSummaryTitle: "Order summary",
-    deliveryEstimateTitle: "Estimated delivery via Azerpoct",
+    deliveryEstimateTitle: "Estimated delivery",
     deliveryEstimateLoading: "Calculating delivery...",
     deliveryEstimateEta: "Estimated time",
     deliveryEstimateCarrier: "Carrier",
     paymentOptionsTitle: "Payment and handoff",
-    paymentOptionsBody: "Choose between secure card payment and a store pickup order that you pay for in cash when you collect it.",
-    cardPaymentTitle: "Pay online by card",
-    cardPaymentBody: "Continue with delivery and complete payment securely now.",
-    cashPickupTitle: "Cash on store pickup",
-    cashPickupBody: "Reserve the order now, then visit the store and pay in cash when you pick it up.",
-    cashPickupPill: "Always available",
+    paymentOptionsBody: "Payment is completed at handoff only: cash on delivery, card on delivery, or store pickup.",
+    cashDeliveryTitle: "Cash on Delivery",
+    cashDeliveryBody: "Your order is delivered and you pay cash when you receive it.",
+    cardDeliveryTitle: "Card on Delivery",
+    cardDeliveryBody: "Your order is delivered and you pay by card when you receive it.",
+    storePickupTitle: "Store Pickup",
+    storePickupBody: "Your order is prepared in store and completed with staff at handoff.",
+    storePickupPill: "Fast handoff",
+    deliveryContactTitle: "Delivery address",
+    cardPaymentTitle: "Card on Delivery",
+    cardPaymentBody: "Pay by card when the order is handed over.",
+    cashPickupTitle: "Store Pickup",
+    cashPickupBody: "Your order is prepared in store and handed over by staff.",
+    cashPickupPill: "Fast handoff",
     pickupContactTitle: "Pickup contact details",
     pickupContactBody: "We use these details to prepare your order and verify it smoothly at handoff.",
     pickupNote: "Note",
     pickupNotePlaceholder: "For example: I will come in the evening or I need gift wrapping",
     invalidPickupContact: "Please enter a valid name and phone number for pickup.",
-    pickupSummaryTitle: "Cash pickup summary",
+    pickupSummaryTitle: "Store pickup summary",
     pickupLocationTitle: "Pickup location",
     pickupAddressLabel: "Address",
     pickupPhoneLabel: "Contact",
-    pickupPaymentHint: "You will pay in cash when you collect your order.",
+    pickupPaymentHint: "Payment and handoff are completed with staff in store.",
     openMap: "Open map",
     paymentMethodLabel: "Payment method",
-    paymentMethodCard: "Card",
-    paymentMethodCashPickup: "Cash pickup",
-    cashOrderAction: "Place cash pickup order",
+    paymentMethodCard: "Card on Delivery",
+    paymentMethodCardDelivery: "Card on Delivery",
+    paymentMethodCashDelivery: "Cash on Delivery",
+    paymentMethodStorePickup: "Store Pickup",
+    paymentMethodCashPickup: "Store Pickup",
+    cashOrderAction: "Confirm order",
     cashOrderLoading: "Placing order...",
-    cashOrderError: "We could not create your cash pickup order. Please try again.",
-    cashSuccessTitle: "Your cash pickup order is confirmed",
-    cashSuccessBody: "Your order has been reserved. You can visit the store, collect it, and pay in cash there.",
-    cashStatusReserved: "Cash at pickup",
+    cashOrderError: "We could not create your order. Please try again.",
+    cashSuccessTitle: "Your order is confirmed",
+    cashSuccessBody: "Your order has been added to the store operations queue. Payment will be completed at handoff using your selected method.",
+    cashStatusReserved: "Payment at handoff",
     pickupOrderSummaryLabel: "Pickup format",
   },
   ru: {
@@ -374,37 +412,48 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentStatusPending: "В обработке",
     paymentStatusUnknown: "Проверяется",
     orderSummaryTitle: "Сводка заказа",
-    deliveryEstimateTitle: "Оценка доставки через Azerpoct",
+    deliveryEstimateTitle: "Оценка доставки",
     deliveryEstimateLoading: "Рассчитываем доставку...",
     deliveryEstimateEta: "Оценочное время",
     deliveryEstimateCarrier: "Перевозчик",
     paymentOptionsTitle: "Оплата и получение",
-    paymentOptionsBody: "Выберите безопасную оплату картой или заказ с самовывозом, который вы оплатите наличными при получении.",
-    cardPaymentTitle: "Онлайн-оплата картой",
-    cardPaymentBody: "Продолжайте с доставкой и завершите оплату сейчас.",
-    cashPickupTitle: "Наличные при самовывозе",
-    cashPickupBody: "Зарезервируйте заказ сейчас, затем приезжайте в магазин и оплачивайте наличными при получении.",
-    cashPickupPill: "Всегда доступно",
+    paymentOptionsBody: "Оплата производится только при передаче: наличными при доставке, картой при доставке или при самовывозе.",
+    cashDeliveryTitle: "Наличные при доставке",
+    cashDeliveryBody: "Заказ доставляется, вы оплачиваете наличными при получении.",
+    cardDeliveryTitle: "Картой при доставке",
+    cardDeliveryBody: "Заказ доставляется, вы оплачиваете картой при получении.",
+    storePickupTitle: "Самовывоз из магазина",
+    storePickupBody: "Заказ готовится в магазине и передается сотрудником.",
+    storePickupPill: "Быстрая выдача",
+    deliveryContactTitle: "Адрес доставки",
+    cardPaymentTitle: "Картой при доставке",
+    cardPaymentBody: "Оплатите картой при передаче заказа.",
+    cashPickupTitle: "Самовывоз из магазина",
+    cashPickupBody: "Заказ готовится в магазине и передается сотрудником.",
+    cashPickupPill: "Быстрая выдача",
     pickupContactTitle: "Контакты для самовывоза",
     pickupContactBody: "Эти данные нужны, чтобы подготовить заказ и быстро подтвердить его при выдаче.",
     pickupNote: "Комментарий",
     pickupNotePlaceholder: "Например: приеду вечером или нужна подарочная упаковка",
     invalidPickupContact: "Введите корректные имя и телефон для самовывоза.",
-    pickupSummaryTitle: "Сводка самовывоза с наличными",
+    pickupSummaryTitle: "Сводка самовывоза",
     pickupLocationTitle: "Адрес самовывоза",
     pickupAddressLabel: "Адрес",
     pickupPhoneLabel: "Контакт",
-    pickupPaymentHint: "Оплата наличными производится при получении заказа.",
+    pickupPaymentHint: "Оплата и передача завершаются сотрудником в магазине.",
     openMap: "Открыть карту",
     paymentMethodLabel: "Способ оплаты",
-    paymentMethodCard: "Карта",
-    paymentMethodCashPickup: "Самовывоз за наличные",
-    cashOrderAction: "Оформить заказ на самовывоз",
+    paymentMethodCard: "Картой при доставке",
+    paymentMethodCardDelivery: "Картой при доставке",
+    paymentMethodCashDelivery: "Наличными при доставке",
+    paymentMethodStorePickup: "Самовывоз из магазина",
+    paymentMethodCashPickup: "Самовывоз из магазина",
+    cashOrderAction: "Подтвердить заказ",
     cashOrderLoading: "Оформляем заказ...",
     cashOrderError: "Не удалось создать заказ на самовывоз. Попробуйте еще раз.",
-    cashSuccessTitle: "Заказ на самовывоз оформлен",
-    cashSuccessBody: "Ваш заказ зарезервирован. Вы сможете забрать его в магазине и оплатить наличными на месте.",
-    cashStatusReserved: "Наличные при получении",
+    cashSuccessTitle: "Заказ подтвержден",
+    cashSuccessBody: "Ваш заказ добавлен в очередь магазина. Оплата будет завершена при передаче выбранным способом.",
+    cashStatusReserved: "Оплата при передаче",
     pickupOrderSummaryLabel: "Формат выдачи",
   },
 };
@@ -590,14 +639,13 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
   const [isAddAddressOpen, setIsAddAddressOpen] = useState(false);
 
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>(
-    settings.cardPaymentsEnabled ? "card" : "cash_pickup",
+    "cash_delivery",
   );
   const [pickupContact, setPickupContact] = useState<PickupContact>(emptyPickupContact());
   const [pickupErrors, setPickupErrors] = useState<PickupFieldErrors>({});
   const [cashOrderState, setCashOrderState] = useState<"idle" | "submitting" | "success">("idle");
   const [cashOrderError, setCashOrderError] = useState("");
 
-  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResultKind | null>(null);
   const [isPaymentResultResolving, setIsPaymentResultResolving] = useState(false);
   const [paymentStatusText, setPaymentStatusText] = useState("");
@@ -606,11 +654,6 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
   const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null);
   const [isDeliveryEstimating, setIsDeliveryEstimating] = useState(false);
   const reviewStepEnteredAtRef = useRef(0);
-
-  useEffect(() => {
-    if (settings.cardPaymentsEnabled) return;
-    setCheckoutMode("cash_pickup");
-  }, [settings.cardPaymentsEnabled]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -908,7 +951,14 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
 
   const subtotal = useMemo(() => Math.round(items.reduce((sum, item) => sum + item.lineTotal, 0) * 100) / 100, [items]);
   const selectedShipping = addresses.find((item) => item.id === selectedShippingId) ?? null;
-  const shippingPrice = checkoutMode === "cash_pickup"
+  const isStorePickup = checkoutMode === "store_pickup";
+  const selectedPaymentMethodLabel =
+    checkoutMode === "cash_delivery"
+      ? copy.paymentMethodCashDelivery
+      : checkoutMode === "card_delivery"
+        ? copy.paymentMethodCardDelivery
+        : copy.paymentMethodStorePickup;
+  const shippingPrice = isStorePickup
     ? 0
     : Number.isFinite(deliveryEstimate?.fee)
       ? Number(deliveryEstimate?.fee)
@@ -953,13 +1003,13 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
 
   const canStepForward = useMemo(() => {
     if (step === 0) {
-      return checkoutMode === "cash_pickup" ? isPickupContactValid : Boolean(selectedShipping);
+      return isStorePickup ? isPickupContactValid : Boolean(selectedShipping);
     }
     return true;
-  }, [checkoutMode, isPickupContactValid, selectedShipping, step]);
+  }, [isPickupContactValid, isStorePickup, selectedShipping, step]);
 
   useEffect(() => {
-    if (checkoutMode === "cash_pickup" || !selectedShipping) {
+    if (isStorePickup || !selectedShipping) {
       setDeliveryEstimate(null);
       return;
     }
@@ -1007,7 +1057,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
     return () => {
       isMounted = false;
     };
-  }, [checkoutMode, deliveryMethod, selectedShipping, subtotal, locale]);
+  }, [deliveryMethod, isStorePickup, selectedShipping, subtotal, locale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1072,6 +1122,16 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
           selected_address_id: selectedShipping?.id || null,
           items: payloadItems,
           fulfillment_method: "delivery",
+          delivery_estimate: deliveryEstimate
+            ? {
+                carrier: deliveryEstimate.carrier,
+                etaLabel: deliveryEstimate.etaLabel,
+                fee: shippingPrice,
+                zone: deliveryEstimate.zone,
+                city: deliveryEstimate.city,
+                deliveryMethod,
+              }
+            : null,
         }),
       });
 
@@ -1155,7 +1215,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
             email,
             orderId: canonicalOrderNumber,
             status: isCardSuccess ? paymentStatusText || "" : copy.cashStatusReserved,
-            paymentMethod: isCardSuccess ? "epoint" : CASH_PICKUP_PAYMENT_METHOD,
+            paymentMethod: isCardSuccess ? "epoint" : selectedPaymentMethodLabel,
             total,
             shippingPrice,
             subtotal,
@@ -1174,7 +1234,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
                   country: selectedShipping.country,
                 }
               : null,
-            pickupLocation: isCashSuccess
+            pickupLocation: isCashSuccess && isStorePickup
               ? {
                   name: settings.pickupLocationName,
                   address: settings.pickupAddress,
@@ -1199,12 +1259,14 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
     paymentResult,
     paymentStatusText,
     selectedShipping,
+    selectedPaymentMethodLabel,
     session?.user?.email,
     settings.pickupAddress,
     settings.pickupLocationName,
     settings.pickupPhone,
     shippingPrice,
     subtotal,
+    isStorePickup,
     total,
   ]);
 
@@ -1303,17 +1365,24 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
   const goNext = () => setStep((prev) => Math.min(2, prev + 1));
   const goBack = () => setStep((prev) => Math.max(0, prev - 1));
 
-  const submitCashPickupOrder = async () => {
+  const submitOfflineOrder = async () => {
     if (cashOrderState === "submitting") return;
     if (!session?.access_token) {
       setCashOrderError(copy.cashOrderError);
       return;
     }
 
-    const nextErrors = validatePickupContact(pickupContact, copy);
-    setPickupErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) {
-      setCashOrderError(copy.invalidPickupContact);
+    let normalizedPickupContact: PickupContact | null = null;
+    if (isStorePickup) {
+      const nextErrors = validatePickupContact(pickupContact, copy);
+      setPickupErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) {
+        setCashOrderError(copy.invalidPickupContact);
+        return;
+      }
+      normalizedPickupContact = normalizePickupContact(pickupContact);
+    } else if (!selectedShipping) {
+      setCashOrderError(copy.invalidForm);
       return;
     }
 
@@ -1322,12 +1391,16 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
       return;
     }
 
-    const normalizedPickupContact = normalizePickupContact(pickupContact);
-
     setCashOrderState("submitting");
     setCashOrderError("");
 
     try {
+      const paymentMethod =
+        checkoutMode === "cash_delivery"
+          ? CASH_DELIVERY_PAYMENT_METHOD
+          : checkoutMode === "card_delivery"
+            ? CARD_DELIVERY_PAYMENT_METHOD
+            : STORE_PICKUP_PAYMENT_METHOD;
       const response = await fetch("/api/profile/orders/create", {
         method: "POST",
         headers: {
@@ -1335,16 +1408,29 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          payment_method: CASH_PICKUP_PAYMENT_METHOD,
+          payment_method: paymentMethod,
           payment_status: "pending",
           total_amount: total,
           items: payloadItems,
-          fulfillment_method: "pickup",
-          pickup_contact: {
-            full_name: normalizedPickupContact.fullName,
-            phone: normalizedPickupContact.phone,
-            note: normalizedPickupContact.note || null,
-          },
+          selected_address_id: isStorePickup ? null : selectedShipping?.id || null,
+          fulfillment_method: isStorePickup ? "pickup" : "delivery",
+          delivery_estimate: !isStorePickup && deliveryEstimate
+            ? {
+                carrier: deliveryEstimate.carrier,
+                etaLabel: deliveryEstimate.etaLabel,
+                fee: shippingPrice,
+                zone: deliveryEstimate.zone,
+                city: deliveryEstimate.city,
+                deliveryMethod,
+              }
+            : null,
+          pickup_contact: normalizedPickupContact
+            ? {
+                full_name: normalizedPickupContact.fullName,
+                phone: normalizedPickupContact.phone,
+                note: normalizedPickupContact.note || null,
+              }
+            : undefined,
         }),
       });
 
@@ -1389,7 +1475,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
   };
 
   const handleNext = () => {
-    if (step === 0 && checkoutMode === "cash_pickup") {
+    if (step === 0 && isStorePickup) {
       const nextErrors = validatePickupContact(pickupContact, copy);
       setPickupErrors(nextErrors);
       if (Object.keys(nextErrors).length > 0) {
@@ -1411,13 +1497,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
       return;
     }
 
-    if (checkoutMode === "cash_pickup") {
-      void submitCashPickupOrder();
-      return;
-    }
-
-    setIsRedirectingToPayment(true);
-    window.location.href = paymentHref;
+    void submitOfflineOrder();
   };
 
   if (isSessionLoading || isCartLoading) {
@@ -1628,7 +1708,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
 
             <div key={`checkout-step-${step}`} style={{ animation: "fadeUp 360ms cubic-bezier(0.22,1,0.36,1) both" }}>
               {step === 0 ? (
-                checkoutMode === "cash_pickup" ? (
+                isStorePickup ? (
                   <div className="space-y-4">
                     <div className="rounded-[1.45rem] border border-amber-200 bg-[linear-gradient(145deg,#fffaf1_0%,#fff2de_100%)] p-5">
                       <p className="inline-flex rounded-full border border-amber-300 bg-white/80 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.cashPickupPill}</p>
@@ -1675,7 +1755,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.savedAddresses}</h3>
+                    <h3 className="text-lg font-semibold tracking-[-0.015em] text-zinc-900">{copy.deliveryContactTitle}</h3>
 
                     <div className="space-y-2">
                       {addresses.map((address) => {
@@ -1782,41 +1862,53 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
-                    {settings.cardPaymentsEnabled ? (
-                      <button
-                        type="button"
-                        onClick={() => setCheckoutMode("card")}
-                        className={[
-                          "rounded-[1.35rem] border p-4 text-left transition",
-                          checkoutMode === "card"
-                            ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_18px_28px_rgba(24,24,24,0.18)]"
-                            : "border-zinc-200 bg-white/90 text-zinc-800 hover:border-zinc-300",
-                        ].join(" ")}
-                      >
-                        <p className="text-sm font-semibold">{copy.cardPaymentTitle}</p>
-                        <p className={checkoutMode === "card" ? "mt-2 text-sm leading-6 text-white/80" : "mt-2 text-sm leading-6 text-zinc-600"}>{copy.cardPaymentBody}</p>
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutMode("cash_delivery")}
+                      className={[
+                        "rounded-[1.35rem] border p-4 text-left transition",
+                        checkoutMode === "cash_delivery"
+                          ? "border-zinc-900 bg-zinc-900 text-white shadow-[0_18px_28px_rgba(24,24,24,0.18)]"
+                          : "border-zinc-200 bg-white/90 text-zinc-800 hover:border-zinc-300",
+                      ].join(" ")}
+                    >
+                      <p className="text-sm font-semibold">{copy.cashDeliveryTitle}</p>
+                      <p className={checkoutMode === "cash_delivery" ? "mt-2 text-sm leading-6 text-white/80" : "mt-2 text-sm leading-6 text-zinc-600"}>{copy.cashDeliveryBody}</p>
+                    </button>
 
                     <button
                       type="button"
-                      onClick={() => setCheckoutMode("cash_pickup")}
+                      onClick={() => setCheckoutMode("card_delivery")}
                       className={[
                         "rounded-[1.35rem] border p-4 text-left transition",
-                        checkoutMode === "cash_pickup"
+                        checkoutMode === "card_delivery"
+                          ? "border-blue-300 bg-[linear-gradient(150deg,#eff6ff_0%,#dbeafe_100%)] text-zinc-900 shadow-[0_18px_28px_rgba(37,99,235,0.12)]"
+                          : "border-zinc-200 bg-white/90 text-zinc-800 hover:border-zinc-300",
+                      ].join(" ")}
+                    >
+                      <p className="text-sm font-semibold">{copy.cardDeliveryTitle}</p>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.cardDeliveryBody}</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutMode("store_pickup")}
+                      className={[
+                        "rounded-[1.35rem] border p-4 text-left transition md:col-span-2",
+                        checkoutMode === "store_pickup"
                           ? "border-amber-300 bg-[linear-gradient(150deg,#fff8ed_0%,#ffefcf_100%)] text-zinc-900 shadow-[0_18px_28px_rgba(165,118,36,0.12)]"
                           : "border-zinc-200 bg-white/90 text-zinc-800 hover:border-zinc-300",
                       ].join(" ")}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold">{copy.cashPickupTitle}</p>
-                        <span className="rounded-full border border-amber-300 bg-white/85 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.cashPickupPill}</span>
+                        <p className="text-sm font-semibold">{copy.storePickupTitle}</p>
+                        <span className="rounded-full border border-amber-300 bg-white/85 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.storePickupPill}</span>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.cashPickupBody}</p>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600">{copy.storePickupBody}</p>
                     </button>
                   </div>
 
-                  {checkoutMode === "card" ? (
+                  {!isStorePickup ? (
                     <div className="space-y-3">
                       <h4 className="text-sm font-semibold tracking-[-0.01em] text-zinc-900">{copy.delivery}</h4>
                       <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 bg-white/88 p-3 transition hover:border-zinc-300">
@@ -1884,16 +1976,16 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-xl border border-zinc-200 bg-white/85 p-3 text-sm text-zinc-700">
                       <p className="font-medium text-zinc-900">{copy.paymentMethodLabel}</p>
-                      <p className="mt-1">{checkoutMode === "cash_pickup" ? copy.paymentMethodCashPickup : copy.paymentMethodCard}</p>
+                      <p className="mt-1">{selectedPaymentMethodLabel}</p>
                     </div>
 
                     <div className="rounded-xl border border-zinc-200 bg-white/85 p-3 text-sm text-zinc-700">
                       <p className="font-medium text-zinc-900">{copy.pickupOrderSummaryLabel}</p>
-                      <p className="mt-1">{checkoutMode === "cash_pickup" ? copy.cashPickupTitle : copy.cardPaymentTitle}</p>
+                      <p className="mt-1">{isStorePickup ? copy.storePickupTitle : copy.delivery}</p>
                     </div>
                   </div>
 
-                  {checkoutMode === "cash_pickup" ? (
+                  {isStorePickup ? (
                     <>
                       <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm text-zinc-700">
                         <p className="font-medium text-zinc-900">{copy.pickupContactTitle}</p>
@@ -1939,21 +2031,16 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={isRedirectingToPayment || cashOrderState === "submitting" || !canStepForward}
+                disabled={cashOrderState === "submitting" || !canStepForward}
                 className="inline-flex min-h-10 items-center rounded-full border border-zinc-900 bg-zinc-900 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-45"
               >
-                {isRedirectingToPayment ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
-                    {copy.processingTitle}
-                  </span>
-                ) : cashOrderState === "submitting" ? (
+                {cashOrderState === "submitting" ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
                     {copy.cashOrderLoading}
                   </span>
                 ) : step === 2 ? (
-                  checkoutMode === "cash_pickup" ? copy.cashOrderAction : copy.pay
+                  copy.cashOrderAction
                 ) : copy.next}
               </button>
             </div>
@@ -1975,25 +2062,33 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
                 {settings.cardPaymentsEnabled ? (
                   <span className={[
                     "rounded-full border px-3 py-1.5 text-xs font-semibold",
-                    checkoutMode === "card"
-                      ? "border-zinc-900 bg-zinc-900 text-white"
+                    checkoutMode === "card_delivery"
+                      ? "border-blue-300 bg-blue-100 text-blue-800"
                       : "border-zinc-300 bg-white text-zinc-600",
                   ].join(" ")}>
-                    {copy.paymentMethodCard}
+                    {copy.paymentMethodCardDelivery}
                   </span>
                 ) : null}
                 <span className={[
                   "rounded-full border px-3 py-1.5 text-xs font-semibold",
-                  checkoutMode === "cash_pickup"
+                  checkoutMode === "cash_delivery"
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-300 bg-white text-zinc-600",
+                ].join(" ")}>
+                  {copy.paymentMethodCashDelivery}
+                </span>
+                <span className={[
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold",
+                  isStorePickup
                     ? "border-amber-300 bg-amber-100 text-amber-800"
                     : "border-zinc-300 bg-white text-zinc-600",
                 ].join(" ")}>
-                  {copy.paymentMethodCashPickup}
+                  {copy.paymentMethodStorePickup}
                 </span>
               </div>
             </div>
 
-            {checkoutMode === "cash_pickup" ? (
+            {isStorePickup ? (
               <div className="mt-4 rounded-[1.3rem] border border-amber-200 bg-[linear-gradient(155deg,#fff9ef_0%,#fff0d4_100%)] p-4">
                 <p className="text-[11px] font-semibold tracking-[0.12em] text-amber-700 uppercase">{copy.pickupLocationTitle}</p>
                 <p className="mt-2 text-sm font-medium text-zinc-900">{settings.pickupLocationName}</p>
@@ -2012,7 +2107,7 @@ export function CheckoutClient({ perfumes, locale, supabase: supabaseConfig, set
                 <span>{copy.shipping}</span>
                 <span>{formatCurrencyFromAzn(shippingPrice, selectedCurrency, locale)}</span>
               </div>
-              {checkoutMode === "card" && deliveryEstimate ? (
+              {!isStorePickup && deliveryEstimate ? (
                 <div className="text-xs text-zinc-500">
                   {copy.deliveryEstimateTitle}: {deliveryEstimate.etaLabel}
                 </div>

@@ -14,6 +14,14 @@ type CreateOrderBody = {
   total_amount?: number;
   selected_address_id?: string;
   fulfillment_method?: "delivery" | "pickup";
+  delivery_estimate?: {
+    carrier?: string;
+    etaLabel?: string;
+    fee?: number;
+    zone?: string;
+    city?: string;
+    deliveryMethod?: string;
+  } | null;
   pickup_contact?: {
     full_name?: string;
     phone?: string;
@@ -97,6 +105,17 @@ export async function POST(request: NextRequest) {
     }
 
     let deliveryAddress: Record<string, unknown> | null = null;
+    const deliveryEstimate = body.delivery_estimate && typeof body.delivery_estimate === "object"
+      ? {
+          carrier: typeof body.delivery_estimate.carrier === "string" ? body.delivery_estimate.carrier : "",
+          etaLabel: typeof body.delivery_estimate.etaLabel === "string" ? body.delivery_estimate.etaLabel : "",
+          fee: Number.isFinite(Number(body.delivery_estimate.fee)) ? Number(body.delivery_estimate.fee) : 0,
+          zone: typeof body.delivery_estimate.zone === "string" ? body.delivery_estimate.zone : "",
+          city: typeof body.delivery_estimate.city === "string" ? body.delivery_estimate.city : "",
+          deliveryMethod: typeof body.delivery_estimate.deliveryMethod === "string" ? body.delivery_estimate.deliveryMethod : "",
+        }
+      : null;
+
     if (fulfillmentMethod === "pickup") {
       const pickupName = typeof body.pickup_contact?.full_name === "string" ? body.pickup_contact.full_name.trim() : "";
       const pickupPhone = typeof body.pickup_contact?.phone === "string" ? body.pickup_contact.phone.trim() : "";
@@ -130,6 +149,7 @@ export async function POST(request: NextRequest) {
           city: address.city,
           postalCode: address.postal_code,
           country: address.country,
+          deliveryEstimate,
         };
       }
     }

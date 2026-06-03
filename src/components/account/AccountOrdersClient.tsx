@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CASH_PICKUP_PAYMENT_METHOD } from "@/lib/checkout-settings";
+import {
+  CARD_DELIVERY_PAYMENT_METHOD,
+  CASH_DELIVERY_PAYMENT_METHOD,
+  CASH_PICKUP_PAYMENT_METHOD,
+  STORE_PICKUP_PAYMENT_METHOD,
+} from "@/lib/checkout-settings";
+import { resolveDeliveryDisplayEstimate } from "@/lib/delivery-display";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import {
   formatCurrencyAmount,
@@ -30,6 +36,7 @@ type Order = {
   total_amount: number;
   currency: string;
   items: OrderItem[];
+  delivery_address?: Record<string, unknown>;
   tracking_number?: string;
   created_at: string;
   completed_at?: string;
@@ -74,22 +81,25 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
           progress: "Sifariş irəliləyişi",
           tracking: "Təhvil kodu",
           noTracking: "Henüz təhvil kodu yoxdur",
+          deliveryInfo: "Çatdırılma",
+          carrier: "Daşıyıcı",
+          eta: "Təxmini müddət",
           stepPlaced: "Qəbul edildi",
           stepProcessing: "Hazırlanır",
           stepShipped: "Hazırdır",
           stepDelivered: "Tamamlandı",
           cancelledHint: "Bu sifariş ləğv edilib",
           refundedHint: "Bu sifariş üçün geri ödəniş edilib",
-          pickupHint: "Bu sifariş mağazadan nağd götürmə üçündür.",
+          pickupHint: "Bu sifariş mağazadan götürmə üçündür.",
           pickupDetails: "Götürmə",
-          pickupDetailsValue: "Mağazada nağd ödəniş və götürmə",
+          pickupDetailsValue: "Mağazada təhvil",
           orderSettings: "Sifariş ayarları",
           openSettings: "Ayarları göstər",
           closeSettings: "Ayarları gizlət",
           cancelOrder: "Sifarişi ləğv et",
           cancelling: "Ləğv edilir...",
-          cancelOrderHint: "Hazırlanmamış nağd götürmə sifarişlərini hesabınızdan ləğv edə bilərsiniz.",
-          cancelOrderConfirm: "Bu nağd götürmə sifarişini ləğv etmək istədiyinizə əminsiniz?",
+          cancelOrderHint: "Hazırlanmamış təhvil zamanı ödəniş sifarişlərini hesabınızdan ləğv edə bilərsiniz.",
+          cancelOrderConfirm: "Bu sifarişi ləğv etmək istədiyinizə əminsiniz?",
           cancelOrderSuccess: "Sifariş ləğv edildi.",
           cancelOrderError: "Sifarişi ləğv etmək mümkün olmadı.",
           statusNew: "Yeni",
@@ -112,6 +122,9 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
           paymentRefunded: "Geri ödəndi",
           paymentCashPending: "Mağazada nağd ödəniş",
           paymentCashCompleted: "Mağazada ödənilib",
+          paymentCashDelivery: "Qapıda Nağd",
+          paymentCardDelivery: "Qapıda Kart",
+          paymentStorePickup: "Mağazadan Götürmə",
         }
       : locale === "ru"
         ? {
@@ -128,22 +141,25 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             progress: "Прогресс заказа",
             tracking: "Номер отслеживания",
             noTracking: "Номер отслеживания еще недоступен",
+            deliveryInfo: "Доставка",
+            carrier: "Перевозчик",
+            eta: "Оценочное время",
             stepPlaced: "Принят",
             stepProcessing: "Готовится",
             stepShipped: "Готов",
             stepDelivered: "Завершен",
             cancelledHint: "Этот заказ отменен",
             refundedHint: "По этому заказу оформлен возврат",
-            pickupHint: "Этот заказ оформлен как самовывоз с оплатой наличными в магазине.",
+            pickupHint: "Этот заказ оформлен как самовывоз из магазина.",
             pickupDetails: "Выдача",
-            pickupDetailsValue: "Самовывоз и оплата наличными в магазине",
+            pickupDetailsValue: "Выдача в магазине",
             orderSettings: "Настройки заказа",
             openSettings: "Показать настройки",
             closeSettings: "Скрыть настройки",
             cancelOrder: "Отменить заказ",
             cancelling: "Отмена...",
-            cancelOrderHint: "Неоплаченные заказы на самовывоз можно отменить прямо из аккаунта.",
-            cancelOrderConfirm: "Вы уверены, что хотите отменить этот заказ на самовывоз?",
+            cancelOrderHint: "Заказы с оплатой при передаче можно отменить до подготовки.",
+            cancelOrderConfirm: "Вы уверены, что хотите отменить этот заказ?",
             cancelOrderSuccess: "Заказ отменен.",
             cancelOrderError: "Не удалось отменить заказ.",
             statusNew: "Новый",
@@ -166,6 +182,9 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             paymentRefunded: "Возвращено",
             paymentCashPending: "Наличные при получении",
             paymentCashCompleted: "Оплачено в магазине",
+            paymentCashDelivery: "Наличными при доставке",
+            paymentCardDelivery: "Картой при доставке",
+            paymentStorePickup: "Самовывоз из магазина",
           }
         : {
             title: "Past orders",
@@ -181,22 +200,25 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             progress: "Order progress",
             tracking: "Tracking",
             noTracking: "Tracking number not available yet",
+            deliveryInfo: "Delivery",
+            carrier: "Carrier",
+            eta: "Estimated time",
             stepPlaced: "Placed",
             stepProcessing: "Preparing",
             stepShipped: "Ready",
             stepDelivered: "Completed",
             cancelledHint: "This order was cancelled",
             refundedHint: "This order was refunded",
-            pickupHint: "This order is set for store pickup with cash payment in store.",
+            pickupHint: "This order is set for store pickup.",
             pickupDetails: "Pickup",
-            pickupDetailsValue: "Store pickup and cash payment",
+            pickupDetailsValue: "Store handoff",
             orderSettings: "Order settings",
             openSettings: "Open settings",
             closeSettings: "Hide settings",
             cancelOrder: "Cancel order",
             cancelling: "Cancelling...",
-            cancelOrderHint: "You can cancel unpaid cash pickup orders directly from your account.",
-            cancelOrderConfirm: "Are you sure you want to cancel this cash pickup order?",
+            cancelOrderHint: "You can cancel payment-at-handoff orders before preparation.",
+            cancelOrderConfirm: "Are you sure you want to cancel this order?",
             cancelOrderSuccess: "Order cancelled.",
             cancelOrderError: "We could not cancel this order.",
             statusNew: "New",
@@ -219,15 +241,43 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
             paymentRefunded: "Refunded",
             paymentCashPending: "Cash on pickup",
             paymentCashCompleted: "Paid in store",
+            paymentCashDelivery: "Cash on Delivery",
+            paymentCardDelivery: "Card on Delivery",
+            paymentStorePickup: "Store Pickup",
           };
 
-  const isCashPickupOrder = (order: Order) =>
-    (order.payment_method || "").trim().toLowerCase() === CASH_PICKUP_PAYMENT_METHOD;
+  const getPaymentMethod = (order: Order) => (order.payment_method || "").trim().toLowerCase();
+
+  const isPickupOrder = (order: Order) =>
+    getPaymentMethod(order) === CASH_PICKUP_PAYMENT_METHOD ||
+    getPaymentMethod(order) === STORE_PICKUP_PAYMENT_METHOD ||
+    order.delivery_address?.fulfillmentMethod === "pickup";
+
+  const isHandoffPaymentOrder = (order: Order) =>
+    [
+      CASH_PICKUP_PAYMENT_METHOD,
+      STORE_PICKUP_PAYMENT_METHOD,
+      CASH_DELIVERY_PAYMENT_METHOD,
+      CARD_DELIVERY_PAYMENT_METHOD,
+    ].includes(getPaymentMethod(order));
 
   const isOrderCancellable = (order: Order) =>
-    isCashPickupOrder(order) &&
+    isHandoffPaymentOrder(order) &&
     order.payment_status.trim().toLowerCase() === "pending" &&
     ["new", "confirmed", "preparing", "ready_for_pickup", "pending", "processing"].includes(order.status.trim().toLowerCase());
+
+  const getDeliveryEstimate = (order: Order) => {
+    if (!order.delivery_address || isPickupOrder(order)) {
+      return null;
+    }
+
+    const city = typeof order.delivery_address.city === "string" ? order.delivery_address.city : "";
+    return resolveDeliveryDisplayEstimate({
+      city,
+      deliveryEstimate: order.delivery_address.deliveryEstimate,
+      locale,
+    });
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -307,7 +357,20 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
   };
 
   const getPaymentLabel = (order: Order) => {
-    if (isCashPickupOrder(order)) {
+    const method = getPaymentMethod(order);
+    if (method === CASH_DELIVERY_PAYMENT_METHOD) {
+      return copy.paymentCashDelivery;
+    }
+
+    if (method === CARD_DELIVERY_PAYMENT_METHOD) {
+      return copy.paymentCardDelivery;
+    }
+
+    if (isPickupOrder(order)) {
+      if (method === STORE_PICKUP_PAYMENT_METHOD) {
+        return copy.paymentStorePickup;
+      }
+
       if (order.payment_status === "completed") {
         return copy.paymentCashCompleted;
       }
@@ -347,7 +410,7 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
   };
 
   const getPaymentColor = (order: Order) => {
-    if (isCashPickupOrder(order)) {
+    if (isHandoffPaymentOrder(order)) {
       if (order.payment_status === "completed") {
         return "border-emerald-200 bg-emerald-50/90 text-emerald-700";
       }
@@ -636,7 +699,7 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
               </div>
             </div>
 
-            {isCashPickupOrder(order) ? (
+            {isPickupOrder(order) ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-900">
                 <p className="font-medium">{copy.pickupHint}</p>
                 <p className="mt-2">
@@ -645,7 +708,18 @@ export function AccountOrdersClient({ locale, supabase: supabaseConfig }: Accoun
               </div>
             ) : (
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-600">
-                {copy.tracking}: <span className="font-medium text-zinc-900">{order.tracking_number || copy.noTracking}</span>
+                {(() => {
+                  const estimate = getDeliveryEstimate(order);
+                  return estimate ? (
+                    <div>
+                      <p className="font-medium text-zinc-900">{copy.deliveryInfo}</p>
+                      <p className="mt-2">{copy.carrier}: <span className="font-semibold text-zinc-900">{estimate.carrier}</span></p>
+                      <p className="mt-1">{copy.eta}: <span className="font-semibold text-zinc-900">{estimate.etaLabel}</span></p>
+                    </div>
+                  ) : (
+                    <p>{copy.tracking}: <span className="font-medium text-zinc-900">{order.tracking_number || copy.noTracking}</span></p>
+                  );
+                })()}
               </div>
             )}
 

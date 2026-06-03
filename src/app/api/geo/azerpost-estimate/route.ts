@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  getBakuCourierEtaLabel,
+  getBakuCourierLabel,
+  getAzerpoctEtaLabel,
+  isBakuCity,
+} from "@/lib/delivery-display";
 
 export const runtime = "nodejs";
 
@@ -15,7 +21,7 @@ type EstimateRequest = {
 type Zone = "baku" | "absheron" | "regional" | "remote";
 
 type Estimate = {
-  carrier: "Azerpoct";
+  carrier: string;
   zone: Zone;
   city: string;
   fee: number;
@@ -30,7 +36,16 @@ type SupportedLocale = "az" | "en" | "ru";
 const OUTSIDE_BAKU_STANDARD_FEE = 2.5;
 
 function normalize(value: string | undefined): string {
-  return (value || "").trim().toLowerCase();
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/ı/g, "i")
+    .replace(/ə/g, "e")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ğ/g, "g")
+    .replace(/ş/g, "s")
+    .replace(/ç/g, "c");
 }
 
 function resolveLocale(value: string | undefined): SupportedLocale {
@@ -41,45 +56,11 @@ function resolveLocale(value: string | undefined): SupportedLocale {
   return "az";
 }
 
-function resolveEtaLabel(locale: SupportedLocale, key: "today_next" | "d1_2" | "d2_3" | "d2_4" | "d3_5" | "d1_3" | "d2_4_std") {
-  const copy: Record<SupportedLocale, Record<typeof key, string>> = {
-    az: {
-      today_next: "Bu gün və ya növbəti iş günü",
-      d1_2: "1-2 iş günü",
-      d2_3: "2-3 iş günü",
-      d2_4: "2-4 iş günü",
-      d3_5: "3-5 iş günü",
-      d1_3: "1-3 iş günü",
-      d2_4_std: "2-4 iş günü",
-    },
-    en: {
-      today_next: "Today or next business day",
-      d1_2: "1-2 business days",
-      d2_3: "2-3 business days",
-      d2_4: "2-4 business days",
-      d3_5: "3-5 business days",
-      d1_3: "1-3 business days",
-      d2_4_std: "2-4 business days",
-    },
-    ru: {
-      today_next: "Сегодня или на следующий рабочий день",
-      d1_2: "1-2 рабочих дня",
-      d2_3: "2-3 рабочих дня",
-      d2_4: "2-4 рабочих дня",
-      d3_5: "3-5 рабочих дней",
-      d1_3: "1-3 рабочих дня",
-      d2_4_std: "2-4 рабочих дня",
-    },
-  };
-
-  return copy[locale][key];
-}
-
 function resolveZone(city: string): Zone {
   const normalized = normalize(city);
   if (!normalized) return "regional";
 
-  if (["baku", "baku city", "baki", "бакy", "баку"].includes(normalized)) {
+  if (isBakuCity(city) || ["baku", "baku city", "baki", "baki city", "бакy", "баку"].includes(normalized)) {
     return "baku";
   }
 
@@ -105,13 +86,13 @@ function buildEstimate(
   if (zone === "baku") {
     const fee = method === "express" ? 5 : 0;
     return {
-      carrier: "Azerpoct",
+      carrier: getBakuCourierLabel(locale),
       zone,
       city: city.trim(),
       fee,
-      etaMinDays: 1,
-      etaMaxDays: method === "express" ? 1 : 2,
-      etaLabel: method === "express" ? resolveEtaLabel(locale, "today_next") : resolveEtaLabel(locale, "d1_2"),
+      etaMinDays: 0,
+      etaMaxDays: 0,
+      etaLabel: getBakuCourierEtaLabel(locale),
       freeThreshold: 0,
     };
   }
@@ -125,7 +106,7 @@ function buildEstimate(
       fee,
       etaMinDays: 1,
       etaMaxDays: method === "express" ? 2 : 3,
-      etaLabel: method === "express" ? resolveEtaLabel(locale, "d1_2") : resolveEtaLabel(locale, "d2_3"),
+      etaLabel: getAzerpoctEtaLabel(locale),
       freeThreshold: 0,
     };
   }
@@ -139,7 +120,7 @@ function buildEstimate(
       fee,
       etaMinDays: method === "express" ? 2 : 3,
       etaMaxDays: method === "express" ? 4 : 5,
-      etaLabel: method === "express" ? resolveEtaLabel(locale, "d2_4") : resolveEtaLabel(locale, "d3_5"),
+      etaLabel: getAzerpoctEtaLabel(locale),
       freeThreshold: 0,
     };
   }
@@ -152,7 +133,7 @@ function buildEstimate(
     fee,
     etaMinDays: method === "express" ? 1 : 2,
     etaMaxDays: method === "express" ? 3 : 4,
-    etaLabel: method === "express" ? resolveEtaLabel(locale, "d1_3") : resolveEtaLabel(locale, "d2_4_std"),
+    etaLabel: getAzerpoctEtaLabel(locale),
     freeThreshold: 0,
   };
 }

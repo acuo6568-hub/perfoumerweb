@@ -1,6 +1,9 @@
 import { SEO_CONTACT, SEO_LOCAL_BUSINESS } from "@/lib/seo";
 
 export const CASH_PICKUP_PAYMENT_METHOD = "cash_pickup";
+export const CASH_DELIVERY_PAYMENT_METHOD = "cash_delivery";
+export const CARD_DELIVERY_PAYMENT_METHOD = "card_delivery";
+export const STORE_PICKUP_PAYMENT_METHOD = "store_pickup";
 
 export type CheckoutSettings = {
   cardPaymentsEnabled: boolean;

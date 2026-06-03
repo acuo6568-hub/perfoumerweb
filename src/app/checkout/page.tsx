@@ -29,9 +29,7 @@ export default async function CheckoutPage() {
             Sifarişi tamamla
           </h1>
           <p className="mt-2 max-w-2xl text-zinc-600">
-            {checkoutSettings.cardPaymentsEnabled
-              ? "Seçilmiş ətirlərinizi bir neçə addımda təsdiqləyin, onlayn ödənişi tamamlayın və ya mağazada nağd götürməni seçin."
-              : "Seçilmiş ətirlərinizi bir neçə addımda təsdiqləyin və mağazada nağd götürmə üçün sifarişinizi tamamlayın."}
+            Seçilmiş ətirlərinizi təsdiqləyin və təhvil zamanı ödəniş üsulunu seçin: Qapıda Nağd, Qapıda Kart və ya Mağazadan Götürmə.
           </p>
         </section>
 
