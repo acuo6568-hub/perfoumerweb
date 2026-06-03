@@ -407,7 +407,7 @@ export function LiveStatsClient() {
     void load();
     const id = window.setInterval(() => {
       void load();
-    }, 10000);
+    }, 300000);
 
     return () => {
       mounted = false;
