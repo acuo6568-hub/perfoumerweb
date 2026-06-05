@@ -7,6 +7,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const ANALYTICS_VERSION = "v2";
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000;
+const HEARTBEAT_MIN_GAP_MS = 5 * 60 * 1000;
+const VISITOR_MESSAGE_INTERVAL_MS = 10 * 60 * 1000;
 const SESSION_LAST_SEEN_KEY = "perfoumer.analytics.v2.session-last-seen";
 const ANONYMOUS_ID_KEY = "perfoumer.analytics.v2.anonymous-id";
 const SESSION_ID_KEY = "perfoumer.analytics.v2.session-id";
@@ -117,7 +120,7 @@ export function SiteTracker() {
       if (eventType === "v2_page_view" && lastPageViewPathRef.current === fullPath) {
         return;
       }
-      if (eventType === "v2_heartbeat" && now - lastSentRef.current < 20000) {
+      if (eventType === "v2_heartbeat" && now - lastSentRef.current < HEARTBEAT_MIN_GAP_MS) {
         return;
       }
       lastSentRef.current = now;
@@ -157,7 +160,7 @@ export function SiteTracker() {
       void send("v2_page_view");
       heartbeatId = window.setInterval(() => {
         void send("v2_heartbeat");
-   }, 120000);
+      }, HEARTBEAT_INTERVAL_MS);
     };
 
     if (typeof window.requestIdleCallback === "function") {
@@ -222,7 +225,7 @@ export function SiteTracker() {
     };
 
     void fetchMessages();
-  intervalId = window.setInterval(fetchMessages, 120000);
+    intervalId = window.setInterval(fetchMessages, VISITOR_MESSAGE_INTERVAL_MS);
 
     return () => {
       isDisposed = true;

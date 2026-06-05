@@ -1536,7 +1536,7 @@ export function AdminDashboard({
       }
       void fetchStats(dateFilter, startDate, endDate);
       void fetchUsers();
-    }, 60000);
+    }, 15 * 60 * 1000);
 
     return () => {
       window.clearInterval(intervalId);

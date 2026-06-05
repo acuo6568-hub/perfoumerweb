@@ -8,6 +8,7 @@ import {
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+const ADMIN_ANALYTICS_EVENT_READ_LIMIT = 15000;
 
 type AnalyticsEventRow = {
   id: string;
@@ -111,7 +112,7 @@ async function listAnalyticsEvents(
     const pageRows = (data ?? []) as AnalyticsEventRow[];
     rows = rows.concat(pageRows);
 
-    if (pageRows.length < pageSize) {
+    if (pageRows.length < pageSize || rows.length >= ADMIN_ANALYTICS_EVENT_READ_LIMIT) {
       break;
     }
 

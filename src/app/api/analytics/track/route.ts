@@ -180,11 +180,13 @@ export async function POST(request: Request) {
   };
   const { event_type: _eventType, ...sessionPayload } = payload;
 
-  const { data: existing } = await supabase
-    .from("website_live_sessions")
-    .select("session_id,page_views")
-    .eq("session_id", sessionId)
-    .maybeSingle();
+  const { data: existing } = eventType === "v2_page_view"
+    ? await supabase
+      .from("website_live_sessions")
+      .select("session_id,page_views")
+      .eq("session_id", sessionId)
+      .maybeSingle()
+    : { data: null };
 
   if (existing) {
     const nextPageViews =
@@ -219,6 +221,33 @@ export async function POST(request: Request) {
     if (updateError) {
       return NextResponse.json({ error: "Failed to update analytics session." }, { status: 500 });
     }
+  } else if (eventType === "v2_heartbeat") {
+    const { error: heartbeatError } = await supabase
+      .from("website_live_sessions")
+      .update({
+        anonymous_id: sessionPayload.anonymous_id,
+        user_id: sessionPayload.user_id,
+        is_logged_in: sessionPayload.is_logged_in,
+        device_type: sessionPayload.device_type,
+        os: sessionPayload.os,
+        browser: sessionPayload.browser,
+        locale: sessionPayload.locale,
+        path: sessionPayload.path,
+        referrer: sessionPayload.referrer,
+        timezone: sessionPayload.timezone,
+        country_code: sessionPayload.country_code,
+        country: sessionPayload.country,
+        region: sessionPayload.region,
+        city: sessionPayload.city,
+        user_agent: sessionPayload.user_agent,
+        is_suspected_bot: sessionPayload.is_suspected_bot,
+        traffic_reason: sessionPayload.traffic_reason,
+        last_seen: new Date().toISOString(),
+      })
+      .eq("session_id", sessionId);
+    if (heartbeatError) {
+      return NextResponse.json({ error: "Failed to refresh analytics session." }, { status: 500 });
+    }
   } else {
     const { error: insertSessionError } = await supabase
       .from("website_live_sessions")
@@ -233,6 +262,10 @@ export async function POST(request: Request) {
     if (insertSessionError) {
       return NextResponse.json({ error: "Failed to create analytics session." }, { status: 500 });
     }
+  }
+
+  if (eventType === "v2_heartbeat") {
+    return NextResponse.json({ ok: true }, { status: 200 });
   }
 
   const { error: insertEventError } = await supabase
