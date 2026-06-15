@@ -5,7 +5,7 @@ import {
   isAdminConfigured,
   validateAdminSessionToken,
 } from "@/lib/admin-auth";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -27,7 +27,7 @@ async function ensureAuthorized() {
   return null;
 }
 
-async function listAllUsers(supabase: ReturnType<typeof createClient>) {
+async function listAllUsers(supabase: SupabaseClient) {
   const perPage = 1000;
   let page = 1;
   let users: Array<{
