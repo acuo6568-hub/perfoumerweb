@@ -2681,15 +2681,16 @@ export function AIChatModal({
   };
 
   const frameInset = isCompactViewport ? 12 : 24;
+  const expandedTopInset = isCompactViewport
+    ? `calc(env(safe-area-inset-top, 0px) + ${frameInset}px)`
+    : "calc(var(--promo-banner-height, 0px) + 6.5rem)";
   const canHoverExpandTrigger = !isExpanded && !isCompactViewport;
   const isPreviewExpanded = canHoverExpandTrigger && (isTriggerHovered || isAutoNudging);
   const collapsedTriggerWidth = canHoverExpandTrigger ? (isPreviewExpanded ? 220 : 68) : 220;
   const availableWidth = `calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - ${
     frameInset * 2
   }px)`;
-  const availableHeight = `calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - ${
-    frameInset * 2
-  }px)`;
+  const availableHeight = `calc(100dvh - ${expandedTopInset} - env(safe-area-inset-bottom, 0px) - ${frameInset}px)`;
 
   const panelStyle: CSSProperties = {
     width: isExpanded ? (isCompactViewport ? availableWidth : 420) : collapsedTriggerWidth,

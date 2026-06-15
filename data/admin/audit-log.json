@@ -1,0 +1,37 @@
+[
+  {
+    "id": "1281d113-6cc9-4b9b-9e67-4699b43702d7",
+    "createdAt": "2026-06-05T23:03:48.588Z",
+    "actor": "PerfoumerAdmin",
+    "action": "admin_newsletter_send",
+    "section": "newsletter",
+    "targetType": "campaign",
+    "targetId": "Perfoumer yenilikləri",
+    "targetLabel": "Perfoumer yenilikləri",
+    "summary": "Sent newsletter \"Perfoumer yenilikləri\" to 7 subscribers (0 failed).",
+    "changes": [
+      {
+        "path": "subject",
+        "before": "(empty)",
+        "after": "Perfoumer yenilikləri"
+      },
+      {
+        "path": "templateMode",
+        "before": "(empty)",
+        "after": "preset"
+      },
+      {
+        "path": "deliveryMode",
+        "before": "(empty)",
+        "after": "newsletter"
+      }
+    ],
+    "metadata": {
+      "sent": 7,
+      "failed": 0,
+      "skippedUnsubscribed": 0
+    },
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15"
+  }
+]
