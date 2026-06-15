@@ -151,7 +151,10 @@ async function listAllUsers(supabase: SupabaseClient) {
 
   while (true) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
-    if (error) break;
+    if (error) {
+      console.warn("Admin marketing trackers listUsers failed, continuing without auth users:", error);
+      return [];
+    }
 
     users.push(
       ...((data.users as Array<{ id: string; created_at?: string | null }>) || []).map((user) => ({

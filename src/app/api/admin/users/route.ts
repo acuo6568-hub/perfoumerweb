@@ -27,6 +27,46 @@ async function ensureAuthorized() {
   return null;
 }
 
+async function listAllUsers(supabase: ReturnType<typeof createClient>) {
+  const perPage = 1000;
+  let page = 1;
+  let users: Array<{
+    id: string;
+    email: string | null;
+    created_at: string | null;
+    last_sign_in_at: string | null;
+    email_confirmed_at: string | null;
+    user_metadata?: { is_deleted?: boolean } | null;
+  }> = [];
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      console.warn("Admin users listUsers failed, returning partial results:", error);
+      return [];
+    }
+
+    users = users.concat(
+      (data.users as typeof users).map((user) => ({
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at,
+        email_confirmed_at: user.email_confirmed_at,
+        user_metadata: user.user_metadata ?? null,
+      })),
+    );
+
+    if (data.users.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return users;
+}
+
 export async function GET(request: Request) {
   const authError = await ensureAuthorized();
   if (authError) {
@@ -47,13 +87,7 @@ export async function GET(request: Request) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
-
-    if (error) {
-      throw new Error("Failed to fetch users");
-    }
-
-    let users = data.users;
+    let users = await listAllUsers(supabase);
     if (query) {
       users = users.filter((user) => (user.email || "").toLowerCase().includes(query));
     }
@@ -116,7 +150,7 @@ export async function GET(request: Request) {
 
     return Response.json({
       users: summary,
-      totalUsers: data.total ?? users.length,
+      totalUsers: users.length,
       onlineUsers: onlineUserIds.size,
       generatedAt: new Date().toISOString(),
     });

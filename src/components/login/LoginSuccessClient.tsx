@@ -85,7 +85,25 @@ const copyByLocale: Record<Locale, Copy> = {
   },
 };
 
-const normalizeNextPath = (input: string) => (input.startsWith("/") ? input : "/wishlist");
+const FALLBACK_NEXT_PATH = "/wishlist";
+
+const normalizeNextPath = (input: string) => {
+  const trimmed = input.trim();
+  if (!trimmed) return FALLBACK_NEXT_PATH;
+
+  try {
+    const parsed = new URL(trimmed, "https://perfoumer.local");
+    if (parsed.origin !== "https://perfoumer.local") return FALLBACK_NEXT_PATH;
+
+    const normalized = `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
+    if (!normalized.startsWith("/") || normalized.startsWith("//")) return FALLBACK_NEXT_PATH;
+    if (/[\u0000-\u001f\u007f\s]/.test(normalized)) return FALLBACK_NEXT_PATH;
+
+    return normalized;
+  } catch {
+    return FALLBACK_NEXT_PATH;
+  }
+};
 
 export function LoginSuccessClient({ locale, nextPath, email, pending, flow, supabase: supabaseConfig }: LoginSuccessClientProps) {
   const copy = copyByLocale[locale];

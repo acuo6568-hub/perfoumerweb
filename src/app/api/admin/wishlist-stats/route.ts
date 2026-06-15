@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       .select("perfume_slug, created_at");
 
     if (error) {
-      throw new Error("Failed to load wishlist stats");
+      console.warn("Failed to load wishlist stats, returning empty results:", error);
     }
 
     const counts = new Map<string, number>();

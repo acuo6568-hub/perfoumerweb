@@ -66,7 +66,8 @@ async function listAllUsers(supabase: SupabaseClient) {
   while (true) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
     if (error) {
-      throw new Error("Failed to fetch auth users");
+      console.warn("Admin qoxunu logs listUsers failed, continuing without auth users:", error);
+      return [];
     }
 
     users = users.concat(

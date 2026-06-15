@@ -26,7 +26,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const locale = await getCurrentLocale();
   const supabaseConfig = getSupabasePublicConfigFromServer();
   const params = await searchParams;
-  const next = params.next || "/wishlist";
+  const next = typeof params.next === "string" && params.next.trim() ? params.next.trim() : "/wishlist";
   const mode = params.mode === "signup" ? "signup" : "login";
   const email = params.email || "";
   const reason = params.reason;

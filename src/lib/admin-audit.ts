@@ -222,21 +222,27 @@ async function saveSupabaseAuditLog(entries: AdminAuditEntry[]) {
 }
 
 async function getLocalAuditLog() {
+  const writableDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+  const writablePath = path.join(writableDir, "audit-log.json");
+
   try {
-    const raw = await readFile(ADMIN_AUDIT_PATH, "utf-8");
+    const raw = await readFile(writablePath, "utf-8");
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as AdminAuditEntry[]) : [];
   } catch {
-    return [];
+    try {
+      const raw = await readFile(ADMIN_AUDIT_PATH, "utf-8");
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as AdminAuditEntry[]) : [];
+    } catch {
+      return [];
+    }
   }
 }
 
 async function saveLocalAuditLog(entries: AdminAuditEntry[]) {
-  const writableDir = process.env.WRITABLE_DATA_DIR || ADMIN_DATA_DIR;
-  const writablePath =
-    writableDir === ADMIN_DATA_DIR
-      ? ADMIN_AUDIT_PATH
-      : path.join(writableDir || os.tmpdir(), "audit-log.json");
+  const writableDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+  const writablePath = path.join(writableDir, "audit-log.json");
 
   await mkdir(path.dirname(writablePath), { recursive: true });
   await writeFile(writablePath, `${JSON.stringify(entries, null, 2)}\n`, "utf-8");

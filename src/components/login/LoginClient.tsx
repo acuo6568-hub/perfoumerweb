@@ -209,7 +209,25 @@ const copyByLocale: Record<Locale, Copy> = {
   },
 };
 
-const normalizeNextPath = (input: string) => (input.startsWith("/") ? input : "/wishlist");
+const FALLBACK_NEXT_PATH = "/wishlist";
+
+const normalizeNextPath = (input: string) => {
+  const trimmed = input.trim();
+  if (!trimmed) return FALLBACK_NEXT_PATH;
+
+  try {
+    const parsed = new URL(trimmed, "https://perfoumer.local");
+    if (parsed.origin !== "https://perfoumer.local") return FALLBACK_NEXT_PATH;
+
+    const normalized = `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
+    if (!normalized.startsWith("/") || normalized.startsWith("//")) return FALLBACK_NEXT_PATH;
+    if (/[\u0000-\u001f\u007f\s]/.test(normalized)) return FALLBACK_NEXT_PATH;
+
+    return normalized;
+  } catch {
+    return FALLBACK_NEXT_PATH;
+  }
+};
 const usernamePattern = /^[\p{L}\p{N}][\p{L}\p{N}._-]{2,23}$/u;
 const EMAIL_OTP_LENGTH = 8;
 const OTP_EXPIRES_SECONDS = 3600;

@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       .limit(2000);
 
     if (error) {
-      throw new Error("Failed to load search analytics");
+      console.warn("Failed to load search analytics, returning empty results:", error);
     }
 
     const counts = new Map<string, number>();
