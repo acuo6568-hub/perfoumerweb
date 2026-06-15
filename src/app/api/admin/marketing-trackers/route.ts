@@ -220,8 +220,12 @@ async function loadStats(request: Request, links: MarketingTrackerLink[]) {
     listAllUsers(supabase),
   ]);
 
-  if (eventsError) throw new Error("Failed to load tracker events");
-  if (sessionsError) throw new Error("Failed to load tracker sessions");
+  if (eventsError) {
+    console.warn("Failed to load tracker events, returning empty results:", eventsError);
+  }
+  if (sessionsError) {
+    console.warn("Failed to load tracker sessions, returning empty results:", sessionsError);
+  }
 
   const events = ((eventsData || []) as EventRow[]).filter((event) => !event.is_suspected_bot);
   const sessions = ((sessionsData || []) as SessionRow[]).filter((session) => !session.is_suspected_bot);

@@ -107,7 +107,8 @@ async function listAnalyticsEvents(
 
     const { data, error } = await query;
     if (error) {
-      throw new Error("Failed to fetch analytics events");
+      console.warn("Failed to fetch analytics events, returning empty results:", error);
+      return [];
     }
 
     const pageRows = (data ?? []) as AnalyticsEventRow[];
