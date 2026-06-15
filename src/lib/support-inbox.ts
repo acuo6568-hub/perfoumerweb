@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -86,13 +87,9 @@ type AddMessageInput = {
 
 const SUPPORT_DATA_PATH = path.join(process.cwd(), "data", "admin", "support-inbox.json");
 
-function canUseLocalSupportData() {
-  return (
-    process.env.NODE_ENV !== "production" &&
-    !process.env.VERCEL &&
-    !process.env.AWS_LAMBDA_FUNCTION_NAME &&
-    !process.cwd().startsWith("/var/task")
-  );
+function getWritableSupportDataPath() {
+  const writableDir = process.env.WRITABLE_DATA_DIR || os.tmpdir();
+  return path.join(writableDir, "support-inbox.json");
 }
 
 function hasSupabaseConfig() {
@@ -131,12 +128,9 @@ function getSupabase(): SupabaseClient | null {
 }
 
 async function readLocalData(): Promise<LocalSupportData> {
-  if (!canUseLocalSupportData()) {
-    return { conversations: [], messages: [], attachments: [] };
-  }
-
+  const writablePath = getWritableSupportDataPath();
   try {
-    const raw = await readFile(SUPPORT_DATA_PATH, "utf-8");
+    const raw = await readFile(writablePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<LocalSupportData>;
     return {
       conversations: Array.isArray(parsed.conversations) ? parsed.conversations : [],
@@ -144,17 +138,24 @@ async function readLocalData(): Promise<LocalSupportData> {
       attachments: Array.isArray(parsed.attachments) ? parsed.attachments : [],
     };
   } catch {
-    return { conversations: [], messages: [], attachments: [] };
+    try {
+      const raw = await readFile(SUPPORT_DATA_PATH, "utf-8");
+      const parsed = JSON.parse(raw) as Partial<LocalSupportData>;
+      return {
+        conversations: Array.isArray(parsed.conversations) ? parsed.conversations : [],
+        messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+        attachments: Array.isArray(parsed.attachments) ? parsed.attachments : [],
+      };
+    } catch {
+      return { conversations: [], messages: [], attachments: [] };
+    }
   }
 }
 
 async function writeLocalData(data: LocalSupportData) {
-  if (!canUseLocalSupportData()) {
-    throw supportStorageError("write");
-  }
-
-  await mkdir(path.dirname(SUPPORT_DATA_PATH), { recursive: true });
-  await writeFile(SUPPORT_DATA_PATH, JSON.stringify(data, null, 2), "utf-8");
+  const writablePath = getWritableSupportDataPath();
+  await mkdir(path.dirname(writablePath), { recursive: true });
+  await writeFile(writablePath, JSON.stringify(data, null, 2), "utf-8");
 }
 
 function buildThreads(data: LocalSupportData): SupportThread[] {
@@ -233,7 +234,7 @@ async function tryListSupabaseThreads(limit = 80): Promise<SupportThread[] | nul
     .order("last_message_at", { ascending: false })
     .limit(limit);
   if (error) {
-    if (!canUseLocalSupportData()) throw supportStorageError("read", error);
+    console.warn("Support inbox read failed from Supabase, falling back to local data:", error);
     return null;
   }
 
@@ -245,7 +246,7 @@ async function tryListSupabaseThreads(limit = 80): Promise<SupportThread[] | nul
     supabase.from("support_attachments").select("*").in("conversation_id", ids).order("created_at", { ascending: true }),
   ]);
   if (messagesError || attachmentsError) {
-    if (!canUseLocalSupportData()) throw supportStorageError("read", messagesError || attachmentsError);
+    console.warn("Support inbox thread hydration failed from Supabase, falling back to local data:", messagesError || attachmentsError);
     return null;
   }
 
@@ -260,7 +261,9 @@ async function tryUpsertSupabaseConversation(conversation: SupportConversation) 
   const supabase = getSupabase();
   if (!supabase) return false;
   const { error } = await supabase.from("support_conversations").upsert(conversation, { onConflict: "id" });
-  if (error && !canUseLocalSupportData()) throw supportStorageError("save", error);
+  if (error) {
+    console.warn("Support inbox conversation save failed in Supabase, falling back to local data:", error);
+  }
   return !error;
 }
 
@@ -269,13 +272,13 @@ async function tryInsertSupabaseMessage(message: SupportMessage, attachment?: Su
   if (!supabase) return false;
   const { error } = await supabase.from("support_messages").insert(message);
   if (error) {
-    if (!canUseLocalSupportData()) throw supportStorageError("message save", error);
+    console.warn("Support inbox message save failed in Supabase, falling back to local data:", error);
     return false;
   }
   if (attachment) {
     const { error: attachmentError } = await supabase.from("support_attachments").insert(attachment);
     if (attachmentError) {
-      if (!canUseLocalSupportData()) throw supportStorageError("attachment save", attachmentError);
+      console.warn("Support inbox attachment save failed in Supabase, falling back to local data:", attachmentError);
       return false;
     }
   }
@@ -288,8 +291,8 @@ async function tryInsertSupabaseMessage(message: SupportMessage, attachment?: Su
       closed_at: null,
     })
     .eq("id", message.conversation_id);
-  if (conversationError && !canUseLocalSupportData()) {
-    throw supportStorageError("conversation update", conversationError);
+  if (conversationError) {
+    console.warn("Support inbox conversation update failed in Supabase, falling back to local data:", conversationError);
   }
   return true;
 }
@@ -298,7 +301,9 @@ async function tryPatchSupabaseConversation(id: string, patch: Partial<SupportCo
   const supabase = getSupabase();
   if (!supabase) return false;
   const { error } = await supabase.from("support_conversations").update(patch).eq("id", id);
-  if (error && !canUseLocalSupportData()) throw supportStorageError("conversation update", error);
+  if (error) {
+    console.warn("Support inbox conversation patch failed in Supabase, falling back to local data:", error);
+  }
   return !error;
 }
 
@@ -313,7 +318,7 @@ async function markUserMessagesRead(conversationId: string, readAt = nowIso()) {
       .is("read_at", null);
 
     if (!error) return;
-    if (!canUseLocalSupportData()) throw supportStorageError("message read update", error);
+    console.warn("Support inbox read update failed in Supabase, falling back to local data:", error);
   }
 
   const local = await readLocalData();
@@ -335,9 +340,6 @@ async function markUserMessagesRead(conversationId: string, readAt = nowIso()) {
 export async function listSupportThreads(limit = 80): Promise<SupportThread[]> {
   const fromSupabase = await tryListSupabaseThreads(limit);
   if (fromSupabase) return fromSupabase;
-  if (!canUseLocalSupportData() && !hasSupabaseConfig()) {
-    throw supportStorageError("read");
-  }
   const local = await readLocalData();
   return buildThreads(local).slice(0, limit);
 }
