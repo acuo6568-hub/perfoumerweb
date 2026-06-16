@@ -42,8 +42,8 @@ async function listAllUsers(supabase: SupabaseClient) {
   while (true) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
     if (error) {
-      console.warn("Admin users listUsers failed, returning partial results:", error);
-      return [];
+      console.error("Admin users listUsers failed:", error);
+      throw new Error(`Failed to fetch users: ${error.message}`);
     }
 
     users = users.concat(
