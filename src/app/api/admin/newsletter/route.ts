@@ -259,26 +259,58 @@ export async function POST(request: Request) {
     const contactsByEmail = new Map(contacts.map((contact) => [contact.email, contact]));
     
     let registeredEmails: Set<string> | null = null;
+    let registeredContacts: Array<NewsletterSubscriber> = [];
+
     if (recipients === "registered") {
-      // Fetch registered users from Supabase auth
+      // Fetch registered users from Supabase auth and include website accounts even if they're not yet newsletter contacts.
       try {
-        const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
-        if (usersError) {
-          console.warn("Failed to fetch registered users:", usersError);
-          registeredEmails = new Set();
-        } else {
-          registeredEmails = new Set(
-            (users.users || [])
-              .map((user) => normalizeEmail(user.email || ""))
-              .filter((email) => email && EMAIL_PATTERN.test(email))
-          );
+        const users: string[] = [];
+        const perPage = 1000;
+        let page = 1;
+
+        while (true) {
+          const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+          if (error) {
+            console.warn("Failed to fetch registered users:", error);
+            break;
+          }
+
+          const fetchedUsers = Array.isArray(data?.users) ? data.users : [];
+          fetchedUsers.forEach((user) => {
+            const email = normalizeEmail(user.email || "");
+            if (email && EMAIL_PATTERN.test(email)) {
+              users.push(email);
+            }
+          });
+
+          if (fetchedUsers.length < perPage) {
+            break;
+          }
+          page += 1;
         }
+
+        registeredEmails = new Set(users);
       } catch (err) {
         console.warn("Error fetching registered users:", err);
-        registeredEmails = new Set();
+      }
+
+      if (registeredEmails) {
+        registeredContacts = Array.from(registeredEmails).map((email) => {
+          const contact = contactsByEmail.get(email);
+          return (
+            contact ?? {
+              email,
+              locale: "az",
+              source: "registered",
+              status: "subscribed",
+              createdAt: "",
+              unsubscribedAt: "",
+            }
+          );
+        });
       }
     }
-    
+
     const targetContacts =
       recipients === "selected"
         ? selectedEmails.map((email) => contactsByEmail.get(email) || {
@@ -290,7 +322,7 @@ export async function POST(request: Request) {
             unsubscribedAt: "",
           })
         : recipients === "registered"
-          ? contacts.filter((item) => item.status === "subscribed" && registeredEmails?.has(item.email))
+          ? registeredContacts
           : contacts.filter((item) => recipients === "all" || item.status === "subscribed");
     const activeTargets = targetContacts.filter((item) =>
       recipients === "selected"

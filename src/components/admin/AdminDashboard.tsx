@@ -517,6 +517,8 @@ const dashboardCopy = {
     export: "İxrac et",
     sendNewsletterCta: "Newsletter göndər",
     sendAllSubscribers: "Bütün abunələrə göndər",
+    sendRegisteredUsers: "Sayt hesablarına göndər",
+    recipientCount: "Alıcılar",
     selectAll: "Hamısını seç",
     selectedUsers: "Seçilmiş istifadəçilər",
     cancel: "İmtina et",
@@ -705,6 +707,8 @@ const dashboardCopy = {
     export: "Export",
     sendNewsletterCta: "Send newsletter",
     sendAllSubscribers: "Send all subscribers",
+    sendRegisteredUsers: "Send to registered website accounts",
+    recipientCount: "Recipients",
     selectAll: "Select all",
     selectedUsers: "Selected users",
     cancel: "Cancel",
@@ -1984,9 +1988,13 @@ export function AdminDashboard({
     () => newsletterSubscribers.filter((subscriber) => subscriber.status === "subscribed").length,
     [newsletterSubscribers],
   );
-  const newsletterRegisteredCount = useMemo(
+  const newsletterRegisteredSubscriberCount = useMemo(
     () => newsletterSubscribers.filter((subscriber) => subscriber.status === "subscribed" && subscriber.source === "registered").length,
     [newsletterSubscribers],
+  );
+  const registeredWebsiteUserCount = useMemo(
+    () => users.length || usersMeta.total,
+    [users, usersMeta.total],
   );
   const newsletterUnsubscribedCount = newsletterSubscribers.length - newsletterSubscribedCount;
   const newsletterPreviewHtml = useMemo(() => {
@@ -3555,8 +3563,8 @@ export function AdminDashboard({
                     <button type="button" onClick={() => setNewsletterConfirmTarget("selected")} disabled={selectedUserEmails.length === 0 || isNewsletterSending} className="h-11 rounded-[14px] bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50">
                       {copy.sendNewsletterCta}
                     </button>
-                    <button type="button" onClick={() => setNewsletterConfirmTarget("registered")} disabled={newsletterRegisteredCount === 0 || isNewsletterSending} className="h-11 rounded-[14px] border border-amber-200 bg-amber-50 px-5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
-                      Send to registered users ({newsletterRegisteredCount})
+                    <button type="button" onClick={() => setNewsletterConfirmTarget("registered")} disabled={registeredWebsiteUserCount === 0 || isNewsletterSending} className="h-11 rounded-[14px] border border-amber-200 bg-amber-50 px-5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
+                      {copy.sendRegisteredUsers} ({registeredWebsiteUserCount})
                     </button>
                     <button type="button" onClick={() => setNewsletterConfirmTarget("subscribed")} disabled={newsletterSubscribedCount === 0 || isNewsletterSending} className="h-11 rounded-[14px] border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">
                       {copy.sendAllSubscribers}
@@ -3574,11 +3582,11 @@ export function AdminDashboard({
             <div className="my-auto w-[min(420px,100%)] rounded-[20px] border border-zinc-200 bg-white p-5 shadow-[0_26px_90px_rgba(2,6,23,0.28)]">
               <h3 className="text-lg font-semibold text-zinc-950">{copy.newsletterSendConfirm}</h3>
               <p className="mt-3 text-sm font-medium text-zinc-500">
-                {copy.selectedUsers}: {(
+                {copy.recipientCount}: {(
                   newsletterConfirmTarget === "selected" 
                     ? selectedUserEmails.length 
                     : newsletterConfirmTarget === "registered"
-                      ? newsletterRegisteredCount
+                      ? registeredWebsiteUserCount
                       : newsletterSubscribedCount
                 ).toLocaleString()}
               </p>

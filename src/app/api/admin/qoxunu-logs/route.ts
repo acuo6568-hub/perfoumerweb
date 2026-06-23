@@ -99,10 +99,22 @@ function sanitizeAnswers(value: unknown) {
 
   const entries = Object.entries(value as Record<string, unknown>);
   return entries.reduce<Record<string, string>>((accumulator, [key, entry]) => {
-    if (typeof entry !== "string") return accumulator;
-    const trimmed = entry.trim();
-    if (!trimmed) return accumulator;
-    accumulator[key] = trimmed;
+    let normalized = "";
+
+    if (typeof entry === "string") {
+      normalized = entry.trim();
+    } else if (typeof entry === "number" || typeof entry === "boolean") {
+      normalized = String(entry);
+    } else if (Array.isArray(entry) || typeof entry === "object") {
+      try {
+        normalized = JSON.stringify(entry);
+      } catch {
+        normalized = "";
+      }
+    }
+
+    if (!normalized) return accumulator;
+    accumulator[key] = normalized;
     return accumulator;
   }, {});
 }
