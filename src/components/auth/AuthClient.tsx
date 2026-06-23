@@ -133,40 +133,28 @@ export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthC
     }
 
     const successRedirect = `${window.location.origin}/auth/success?next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`;
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: successRedirect,
-      },
-    });
-
-    if (error) {
-      const normalized = error.message.toLowerCase();
-      if (isEmailProviderNotConfiguredError(normalized)) {
-        try {
-          await sendFallbackSignupEmail({
-            email,
-            password,
-            redirectTo: successRedirect,
-          });
-          router.push(`/auth/success?pending=1&next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`);
-          router.refresh();
-          return;
-        } catch (fallbackError) {
-          setMessage(fallbackError instanceof Error ? fallbackError.message : fallbackError?.toString() || "");
-          setIsSubmitting(false);
-          return;
-        }
+    try {
+      await sendFallbackSignupEmail({
+        email,
+        password,
+        redirectTo: successRedirect,
+      });
+      router.push(`/auth/success?pending=1&next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`);
+      router.refresh();
+      return;
+    } catch (signupError) {
+      const normalized = (signupError instanceof Error ? signupError.message : String(signupError)).toLowerCase();
+      if (normalized.includes("user already registered") || normalized.includes("already registered")) {
+        setMode("signIn");
+        setMessage(copy.accountExists);
+      } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
+        setMessage(copy.weakPassword);
+      } else {
+        setMessage(signupError instanceof Error ? signupError.message : copy.genericError);
       }
-
-      setMessage(error.message);
       setIsSubmitting(false);
       return;
     }
-
-    router.push(`/auth/success?pending=1&next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`);
-    router.refresh();
   };
 
   if (!isSupabaseConfigured(supabaseConfig ?? undefined)) {

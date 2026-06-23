@@ -378,37 +378,19 @@ export function LoginClient({
 
     setPendingPassword(password);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: successRedirect,
+    try {
+      await sendFallbackSignupEmail({
+        email: email.trim(),
+        password,
+        redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
         data: { username: normalizedUsername },
-      },
-    });
+      });
 
-    if (error) {
-      const normalized = error.message.toLowerCase();
-
-      if (isEmailProviderNotConfiguredError(normalized)) {
-        try {
-          await sendFallbackSignupEmail({
-            email: email.trim(),
-            password,
-            redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
-            data: { username: normalizedUsername },
-          });
-
-          await transitionToVerification(email.trim());
-          setIsSubmitting(false);
-          return;
-        } catch (fallbackError) {
-          setMessage(fallbackError instanceof Error ? fallbackError.message : copy.genericError);
-          setUiStage("form");
-          setIsSubmitting(false);
-          return;
-        }
-      }
+      await transitionToVerification(email.trim());
+      setIsSubmitting(false);
+      return;
+    } catch (signupError) {
+      const normalized = (signupError instanceof Error ? signupError.message : String(signupError)).toLowerCase();
 
       if (normalized.includes("user already registered") || normalized.includes("already registered")) {
         setMode("login");
@@ -416,38 +398,13 @@ export function LoginClient({
       } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
         setMessage(copy.weakPassword);
       } else {
-        setMessage(error.message || copy.genericError);
+        setMessage(signupError instanceof Error ? signupError.message : copy.genericError);
       }
 
       setUiStage("form");
       setIsSubmitting(false);
       return;
     }
-
-    // Supabase can return no error for existing users while giving a user with no identities.
-    const identityCount = data.user?.identities?.length ?? 0;
-    if (data.user && identityCount === 0) {
-      setMode("login");
-      setMessage(copy.accountExists);
-      setUiStage("form");
-      setIsSubmitting(false);
-      return;
-    }
-
-    // If project has email confirmation disabled and user is immediately signed in, continue directly.
-    const emailConfirmedAt =
-      (data.user?.email_confirmed_at as string | null | undefined) ??
-      ((data.user as { confirmed_at?: string | null } | null)?.confirmed_at ?? null);
-
-    if (data.session && emailConfirmedAt) {
-      setUiStage("form");
-      router.push(safeNextPath);
-      router.refresh();
-      return;
-    }
-
-    await transitionToVerification(email.trim());
-    setIsSubmitting(false);
   };
 
   const verifyEmailCode = async () => {
@@ -478,47 +435,29 @@ export function LoginClient({
   };
 
   const resendEmailCode = async () => {
-    if (!supabase || !pendingEmail.trim()) return;
+    if (!pendingEmail.trim() || !pendingPassword.trim()) {
+      setMessage(copy.genericError);
+      return;
+    }
 
     setIsSubmitting(true);
     setMessage("");
 
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: pendingEmail.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
-      },
-    });
-
-    if (error) {
-      const normalized = error.message.toLowerCase();
-      if (isEmailProviderNotConfiguredError(normalized) && pendingPassword.trim()) {
-        try {
-          await sendFallbackSignupEmail({
-            email: pendingEmail.trim(),
-            password: pendingPassword,
-            redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
-          });
-          setMessage(copy.codeSent);
-          setExpiresIn(OTP_EXPIRES_SECONDS);
-          setIsSubmitting(false);
-          return;
-        } catch (fallbackError) {
-          setMessage(fallbackError instanceof Error ? fallbackError.message : copy.genericError);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      setMessage(error.message || copy.genericError);
+    try {
+      await sendFallbackSignupEmail({
+        email: pendingEmail.trim(),
+        password: pendingPassword,
+        redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
+      });
+      setMessage(copy.codeSent);
+      setExpiresIn(OTP_EXPIRES_SECONDS);
+      setIsSubmitting(false);
+      return;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : copy.genericError);
       setIsSubmitting(false);
       return;
     }
-
-    setMessage(copy.codeSent);
-    setExpiresIn(OTP_EXPIRES_SECONDS);
-    setIsSubmitting(false);
   };
 
   const updateOtpAt = (index: number, value: string) => {
