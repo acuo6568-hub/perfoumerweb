@@ -8,6 +8,7 @@ import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider
 import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isEmailProviderNotConfiguredError, sendFallbackSignupEmail } from "@/lib/auth-email";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
 type AuthClientProps = {
@@ -141,6 +142,24 @@ export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthC
     });
 
     if (error) {
+      const normalized = error.message.toLowerCase();
+      if (isEmailProviderNotConfiguredError(normalized)) {
+        try {
+          await sendFallbackSignupEmail({
+            email,
+            password,
+            redirectTo: successRedirect,
+          });
+          router.push(`/auth/success?pending=1&next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`);
+          router.refresh();
+          return;
+        } catch (fallbackError) {
+          setMessage(fallbackError instanceof Error ? fallbackError.message : fallbackError?.toString() || "");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       setMessage(error.message);
       setIsSubmitting(false);
       return;

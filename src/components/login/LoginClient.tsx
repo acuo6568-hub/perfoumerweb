@@ -8,6 +8,7 @@ import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider
 import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isEmailProviderNotConfiguredError, sendFallbackSignupEmail } from "@/lib/auth-email";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
 type LoginReason = "account_exists" | "invalid_credentials" | "email_unverified" | "weak_password";
@@ -261,6 +262,7 @@ export function LoginClient({
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [pendingEmail, setPendingEmail] = useState(initialEmail.trim());
+  const [pendingPassword, setPendingPassword] = useState("");
   const [expiresIn, setExpiresIn] = useState(OTP_EXPIRES_SECONDS);
   const [message, setMessage] = useState(() => resolveReasonMessage(initialReason, copy));
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -374,6 +376,8 @@ export function LoginClient({
       return;
     }
 
+    setPendingPassword(password);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -385,6 +389,26 @@ export function LoginClient({
 
     if (error) {
       const normalized = error.message.toLowerCase();
+
+      if (isEmailProviderNotConfiguredError(normalized)) {
+        try {
+          await sendFallbackSignupEmail({
+            email: email.trim(),
+            password,
+            redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
+            data: { username: normalizedUsername },
+          });
+
+          await transitionToVerification(email.trim());
+          setIsSubmitting(false);
+          return;
+        } catch (fallbackError) {
+          setMessage(fallbackError instanceof Error ? fallbackError.message : copy.genericError);
+          setUiStage("form");
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
       if (normalized.includes("user already registered") || normalized.includes("already registered")) {
         setMode("login");
@@ -468,6 +492,25 @@ export function LoginClient({
     });
 
     if (error) {
+      const normalized = error.message.toLowerCase();
+      if (isEmailProviderNotConfiguredError(normalized) && pendingPassword.trim()) {
+        try {
+          await sendFallbackSignupEmail({
+            email: pendingEmail.trim(),
+            password: pendingPassword,
+            redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
+          });
+          setMessage(copy.codeSent);
+          setExpiresIn(OTP_EXPIRES_SECONDS);
+          setIsSubmitting(false);
+          return;
+        } catch (fallbackError) {
+          setMessage(fallbackError instanceof Error ? fallbackError.message : copy.genericError);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       setMessage(error.message || copy.genericError);
       setIsSubmitting(false);
       return;
