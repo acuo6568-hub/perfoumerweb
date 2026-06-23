@@ -3804,17 +3804,26 @@ export function AdminPanelClient({
       const nextSettings = normalizeSiteSettings(body.settings);
       applyServerData(nextPerfumes, nextNotes, nextSettings);
       console.log("[AdminClient] Server data applied. Setting success status");
+      
+      // Check if Supabase save succeeded
+      const savedToSupabase = body.savedToSupabase ?? true;
+      const successMessage = savedToSupabase 
+        ? t("statusSaved") 
+        : "✓ Saved locally (Supabase sync failed - changes may not persist on production)";
+      
+      console.log("[AdminClient] Supabase save status:", { savedToSupabase, message: successMessage });
+      
       const successTimer = setTimeout(() => {
         setSaveStatus((current) =>
           current.tone === "success" ? { tone: "idle", message: "" } : current,
         );
         setSaveStatusTimerId(null);
-      }, 2200);
+      }, savedToSupabase ? 2200 : 4000); // Show warning longer if Supabase failed
       setSaveStatusTimerId(successTimer);
-      setSaveStatus({ tone: "success", message: t("statusSaved") });
+      setSaveStatus({ tone: savedToSupabase ? "success" : "warning", message: successMessage });
       setStatus({
-        tone: "success",
-        message: t("statusSaved"),
+        tone: savedToSupabase ? "success" : "warning",
+        message: successMessage,
       });
     } catch (err) {
       console.log("[AdminClient] Exception during save:", err);

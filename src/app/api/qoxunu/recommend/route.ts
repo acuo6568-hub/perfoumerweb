@@ -251,6 +251,7 @@ async function logQoxunuResult(request: Request, payload: {
 }) {
   const config = getSupabaseServiceConfigFromServer();
   if (!config) {
+    console.warn("[Qoxunu Logging] Supabase config not available, skipping logging");
     return;
   }
 
@@ -266,7 +267,7 @@ async function logQoxunuResult(request: Request, payload: {
 
   const body = payload;
 
-  await supabase.from("qoxunu_quiz_logs").insert([
+  const { data, error } = await supabase.from("qoxunu_quiz_logs").insert([
     {
       user_id: body.userId,
       anonymous_id: body.userId || `guest-${Date.now().toString(36)}`,
@@ -293,6 +294,23 @@ async function logQoxunuResult(request: Request, payload: {
       timezone: sanitizeText(body.timezone || request.headers.get("x-timezone") || "", "", 80),
     },
   ]);
+
+  if (error) {
+    console.error("[Qoxunu Logging] Failed to insert log:", {
+      errorMessage: error.message,
+      errorCode: error.code,
+      userEmail: body.email,
+      userId: body.userId,
+    });
+    throw new Error(`Failed to log Qoxunu result: ${error.message}`);
+  }
+
+  console.log("[Qoxunu Logging] ✓ Successfully logged", {
+    logId: data?.[0]?.id,
+    userEmail: body.email,
+    userId: body.userId,
+    recommendationsCount: body.recommendations.length,
+  });
 }
 
 export async function POST(request: Request) {
@@ -409,7 +427,8 @@ export async function POST(request: Request) {
     warning: usedFallback ? "no_ai_selection" : null,
   };
 
-  void logQoxunuResult(request, {
+  // Fire-and-forget logging (doesn't block response, but still tracks promise for error handling)
+  logQoxunuResult(request, {
     locale,
     timezone,
     userId,
@@ -441,7 +460,7 @@ export async function POST(request: Request) {
     usedFallback,
     warning: usedFallback ? "no_ai_selection" : "",
   }).catch((error) => {
-    console.error("Failed to store Qoxunu log:", error);
+    console.error("[Qoxunu Logging Error]", error instanceof Error ? error.message : error);
   });
 
   return NextResponse.json(responsePayload);

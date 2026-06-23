@@ -2728,7 +2728,7 @@ export function AIChatModal({
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 ${shouldUseFocusedModal ? "bg-black/35 backdrop-blur-sm" : "bg-transparent"}`}
+        className={`fixed inset-0 z-[999] ${shouldUseFocusedModal ? "bg-black/35 backdrop-blur-sm" : "bg-transparent"}`}
         onClick={shouldUseFocusedModal ? onClose : undefined}
         style={{
           opacity: isExpanded && shouldUseFocusedModal ? 1 : 0,
@@ -2738,7 +2738,7 @@ export function AIChatModal({
       />
 
       <div
-        className={`fixed z-50 overflow-hidden bg-gradient-to-b from-zinc-950 via-black to-zinc-950 transform-gpu will-change-transform [transition:transform_640ms_cubic-bezier(0.16,1,0.3,1)] ${
+        className={`fixed z-[1000] overflow-hidden bg-gradient-to-b from-zinc-950 via-black to-zinc-950 transform-gpu will-change-transform [transition:transform_640ms_cubic-bezier(0.16,1,0.3,1)] ${
           isExpanded ? "scale-100" : isCompactViewport ? "scale-100" : "hover:scale-[1.03]"
         }`}
         onMouseEnter={canHoverExpandTrigger ? () => setIsTriggerHovered(true) : undefined}

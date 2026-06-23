@@ -98,7 +98,19 @@ export async function PUT(request: Request) {
     await appendAdminAuditLog(auditEntries);
 
     console.log("[API] PUT - Returning success response");
-    return Response.json({ ok: true, ...data });
+    console.log("[API] PUT - Supabase persistence status:", {
+      savedToSupabase: data.savedToSupabase,
+      perfumesCount: (data.perfumes as unknown[]).length,
+      notesCount: (data.notes as unknown[]).length,
+    });
+    return Response.json({
+      ok: true,
+      perfumes: data.perfumes,
+      notes: data.notes,
+      settings: data.settings,
+      savedToSupabase: data.savedToSupabase,
+      message: data.savedToSupabase ? "Data saved locally and to Supabase" : "Data saved locally (Supabase save failed)",
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save admin data.";
     console.log("[API] PUT - Error:", message);

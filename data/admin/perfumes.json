@@ -2,7 +2,7 @@
   {
     "id": "perfume-mpfrwro0",
     "slug": "lacosteessentialcollectoredition",
-    "name": "Lacoste Essential Collector Edition",
+    "name": "Lacoste Essential Collector Editions",
     "brand": "Lacoste",
     "gender": "Kişi",
     "image": "/api/uploads/admin/perfumes/untitled-design-2-1779385472458-w2gvxv.png",
@@ -52,12 +52,6 @@
         "pauli",
         "nbr"
       ]
-    },
-    "mediaScale": 0.73,
-    "mediaScaleByDevice": {
-      "mobile": 0.73,
-      "laptop": 0.73,
-      "monitor": 0.73
     }
   },
   {
@@ -25101,12 +25095,6 @@
         "vanil",
         "nbr"
       ]
-    },
-    "mediaScale": 0.82,
-    "mediaScaleByDevice": {
-      "mobile": 0.82,
-      "laptop": 0.82,
-      "monitor": 0.82
     }
   },
   {
