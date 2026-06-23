@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 
 import { getPerfumes } from "@/lib/catalog";
 import { getStartingPrice as getQoxunuStartingPrice, rankQoxunuPerfumes } from "@/lib/qoxunu-engine";
+import type { QoxunuArchetype } from "@/lib/qoxunu-engine";
 import { getSupabaseServiceConfigFromServer } from "@/lib/supabase/env.server";
 import type { Perfume } from "@/types/catalog";
 
@@ -94,6 +95,10 @@ function enforceSecondPersonVoice(summary: string, locale: NonNullable<Recommend
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
+}
+
+function isValidUuid(value: string | null | undefined) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function getStartingPrice(perfume: Perfume) {
@@ -269,7 +274,7 @@ async function logQoxunuResult(request: Request, payload: {
 
   const { data, error } = await supabase.from("qoxunu_quiz_logs").insert([
     {
-      user_id: body.userId,
+      user_id: isValidUuid(body.userId) ? body.userId : null,
       anonymous_id: body.userId || `guest-${Date.now().toString(36)}`,
       is_signed_in: body.isSignedIn,
       is_guest: body.isGuest,
@@ -383,49 +388,66 @@ export async function POST(request: Request) {
     }),
   });
 
+  const fallbackSlugs = (body.fallbackSlugs ?? []).slice(0, 3);
+  let responsePayload: {
+    slugs: string[];
+    matches: Array<{ slug: string; matchPercent: number; reasons: string[]; archetype: QoxunuArchetype | null }>;
+    summary: string;
+    usedFallback: boolean;
+    warning: string | null;
+  };
+
   if (!completionResponse.ok) {
-    const fallback = (body.fallbackSlugs ?? []).slice(0, 3);
-    return NextResponse.json({
-      slugs: fallback,
+    responsePayload = {
+      slugs: fallbackSlugs,
+      matches: fallbackSlugs.map((slug) => {
+        const match = matchBySlug.get(slug);
+        return {
+          slug,
+          matchPercent: match?.matchPercent ?? 0,
+          reasons: match?.reasons ?? [],
+          archetype: match?.archetype ?? null,
+        };
+      }),
       summary: "",
       usedFallback: true,
       warning: "provider_unavailable",
-    });
+    };
+  } else {
+    const completionJson = (await completionResponse.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const content = completionJson.choices?.[0]?.message?.content ?? "{}";
+    const parsed = parseJsonObject(content);
+
+    const allowedSlugs = new Set(candidates.map((item) => item.slug));
+    const selected = (parsed.slugs ?? [])
+      .filter((slug) => allowedSlugs.has(slug))
+      .slice(0, 3);
+
+    const uniqueSelected = Array.from(new Set(selected));
+    const fallback = (body.fallbackSlugs ?? []).filter((slug) => allowedSlugs.has(slug));
+
+    const finalSlugs = [...uniqueSelected, ...fallback].slice(0, 3);
+    const usedFallback = uniqueSelected.length === 0;
+
+    responsePayload = {
+      slugs: finalSlugs,
+      matches: finalSlugs.map((slug) => {
+        const match = matchBySlug.get(slug);
+        return {
+          slug,
+          matchPercent: match?.matchPercent ?? 0,
+          reasons: match?.reasons ?? [],
+          archetype: match?.archetype ?? null,
+        };
+      }),
+      summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",
+      usedFallback,
+      warning: usedFallback ? "no_ai_selection" : null,
+    };
   }
-
-  const completionJson = (await completionResponse.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = completionJson.choices?.[0]?.message?.content ?? "{}";
-  const parsed = parseJsonObject(content);
-
-  const allowedSlugs = new Set(candidates.map((item) => item.slug));
-  const selected = (parsed.slugs ?? [])
-    .filter((slug) => allowedSlugs.has(slug))
-    .slice(0, 3);
-
-  const uniqueSelected = Array.from(new Set(selected));
-  const fallback = (body.fallbackSlugs ?? []).filter((slug) => allowedSlugs.has(slug));
-
-  const finalSlugs = [...uniqueSelected, ...fallback].slice(0, 3);
-  const usedFallback = uniqueSelected.length === 0;
-
-  const responsePayload = {
-    slugs: finalSlugs,
-    matches: finalSlugs.map((slug) => {
-      const match = matchBySlug.get(slug);
-      return {
-        slug,
-        matchPercent: match?.matchPercent ?? 0,
-        reasons: match?.reasons ?? [],
-        archetype: match?.archetype ?? null,
-      };
-    }),
-    summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",
-    usedFallback,
-    warning: usedFallback ? "no_ai_selection" : null,
-  };
 
   // Fire-and-forget logging (doesn't block response, but still tracks promise for error handling)
   logQoxunuResult(request, {
@@ -438,7 +460,7 @@ export async function POST(request: Request) {
     isGuest,
     answers,
     freeText,
-    recommendations: finalSlugs.map((slug) => {
+    recommendations: responsePayload.slugs.map((slug) => {
       const perfume = candidates.find((item) => item.slug === slug);
       return perfume
         ? {
@@ -456,9 +478,9 @@ export async function POST(request: Request) {
           }
         : { slug, name: slug, brand: "", gender: "", top: [], heart: [], base: [], minPrice: 0 };
     }),
-    summary: typeof parsed.summary === "string" ? enforceSecondPersonVoice(parsed.summary, locale) : "",
-    usedFallback,
-    warning: usedFallback ? "no_ai_selection" : "",
+    summary: responsePayload.summary,
+    usedFallback: responsePayload.usedFallback,
+    warning: responsePayload.warning ?? "",
   }).catch((error) => {
     console.error("[Qoxunu Logging Error]", error instanceof Error ? error.message : error);
   });
