@@ -2239,14 +2239,37 @@ export function AdminPanelClient({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      const isPrimary = event.metaKey || event.ctrlKey;
+      const isAltKey = event.altKey;
+      const key = event.key.toLowerCase();
+
+      if (isPrimary && !isAltKey && key === "k") {
         event.preventDefault();
-        if (view !== "perfumes") {
-          setView("perfumes");
-        }
+        setView("perfumes");
         setIsPerfumePickerOpen(true);
         setIsShortcutPopupOpen(true);
         focusSearchInput();
+        return;
+      }
+
+      if (isPrimary && isAltKey && /^[0-9]$/.test(key)) {
+        event.preventDefault();
+        const navMap: Record<string, string> = {
+          "1": "dashboard",
+          "2": "perfumes",
+          "3": "notes",
+          "4": "brands",
+          "5": "promotions",
+          "6": "weather",
+          "7": "branding",
+          "8": "aiChat",
+          "9": "support",
+          "0": "audit",
+        };
+        const target = navMap[key];
+        if (target) {
+          handleShortcutAction(target);
+        }
         return;
       }
 
@@ -2337,33 +2360,72 @@ export function AdminPanelClient({
     [copy, locale],
   );
   const currentViewLabel = navItems.find((item) => item.value === view)?.label || copy.adminWorkspace;
-  const shortcutKeyLabel = isMacOs ? "⌘K" : "Ctrl+K";
+  const primaryModifier = isMacOs ? "⌘" : "Ctrl";
+  const altModifier = isMacOs ? "⌥" : "Alt";
+  const shortcutKeyLabel = `${primaryModifier}K`;
   const shortcutItems: Array<{ id: string; label: string; keys: string[] }> = [
-    { id: "search", label: adminText(locale, "Perfume axtar", "Search perfumes"), keys: [isMacOs ? "⌘" : "Ctrl", "K"] },
-    { id: "dashboard", label: copy.dashboard, keys: [isMacOs ? "⌘" : "Ctrl", "1"] },
-    { id: "perfumes", label: copy.perfumes, keys: [isMacOs ? "⌘" : "Ctrl", "2"] },
-    { id: "notes", label: copy.notes, keys: [isMacOs ? "⌘" : "Ctrl", "3"] },
+    { id: "search", label: adminText(locale, "Perfume axtar", "Search perfumes"), keys: [primaryModifier, "K"] },
+    { id: "dashboard", label: copy.dashboard, keys: [primaryModifier, altModifier, "1"] },
+    { id: "perfumes", label: copy.perfumes, keys: [primaryModifier, altModifier, "2"] },
+    { id: "notes", label: copy.notes, keys: [primaryModifier, altModifier, "3"] },
+    { id: "brands", label: adminText(locale, "Brendlər", "Brands"), keys: [primaryModifier, altModifier, "4"] },
+    { id: "promotions", label: copy.promotions, keys: [primaryModifier, altModifier, "5"] },
+    { id: "weather", label: adminText(locale, "Hava tövsiyələri", "Weather scents"), keys: [primaryModifier, altModifier, "6"] },
+    { id: "branding", label: copy.branding, keys: [primaryModifier, altModifier, "7"] },
+    { id: "aiChat", label: copy.aiChat, keys: [primaryModifier, altModifier, "8"] },
+    { id: "support", label: "Support", keys: [primaryModifier, altModifier, "9"] },
+    { id: "audit", label: adminText(locale, "Audit", "Audit"), keys: [primaryModifier, altModifier, "0"] },
     { id: "close", label: adminText(locale, "Bağla", "Close"), keys: ["Esc"] },
   ];
 
   const handleShortcutAction = (id: string) => {
     setIsShortcutPopupOpen(false);
+    setMobileNavOpen(false);
     switch (id) {
       case "search":
-        if (view !== "perfumes") {
-          setView("perfumes");
-        }
+        setView("perfumes");
         setIsPerfumePickerOpen(true);
         focusSearchInput();
         return;
       case "dashboard":
         setView("dashboard");
+        setIsPerfumePickerOpen(false);
         return;
       case "perfumes":
         setView("perfumes");
+        setIsPerfumePickerOpen(false);
         return;
       case "notes":
         setView("notes");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "brands":
+        setView("brands");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "promotions":
+        setView("promotions");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "weather":
+        setView("weather");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "branding":
+        setView("branding");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "aiChat":
+        setView("aiChat");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "support":
+        setView("support");
+        setIsPerfumePickerOpen(false);
+        return;
+      case "audit":
+        setView("audit");
+        setIsPerfumePickerOpen(false);
         return;
       case "close":
       default:
@@ -4409,8 +4471,6 @@ export function AdminPanelClient({
                       type="button"
                       onClick={() => {
                         setIsShortcutPopupOpen((current) => !current);
-                        setIsPerfumePickerOpen(true);
-                        focusSearchInput();
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 transition hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     >
@@ -4423,20 +4483,20 @@ export function AdminPanelClient({
                       className="absolute right-0 top-full z-50 mt-2 w-[min(26rem,100%)] max-w-[24rem] overflow-hidden rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.16)]"
                     >
                       <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{adminText(locale, "Qısayollar", "Shortcuts")}</div>
-                      <div className="space-y-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         {shortcutItems.map((item) => (
                           <button
                             key={item.id}
                             type="button"
                             onClick={() => handleShortcutAction(item.id)}
-                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-white hover:border-zinc-300"
+                            className="grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-3xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-white hover:border-zinc-300"
                           >
-                            <span>{item.label}</span>
+                            <span className="truncate font-medium">{item.label}</span>
                             <span className="flex items-center gap-1">
                               {item.keys.map((key) => (
                                 <kbd
                                   key={key}
-                                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700"
+                                  className="rounded border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700"
                                 >
                                   {key}
                                 </kbd>
@@ -4504,8 +4564,6 @@ export function AdminPanelClient({
                     type="button"
                     onClick={() => {
                       setIsShortcutPopupOpen((current) => !current);
-                      setIsPerfumePickerOpen(true);
-                      focusSearchInput();
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 transition hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   >
