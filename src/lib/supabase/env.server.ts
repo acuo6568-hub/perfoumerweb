@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
+let cachedFileEnv: Record<string, string> | null = null;
+
 function parseEnvFile(filePath: string) {
   try {
     const raw = readFileSync(filePath, "utf-8");
@@ -42,11 +44,16 @@ function parseEnvFile(filePath: string) {
 }
 
 function getFileEnv() {
+  if (cachedFileEnv) {
+    return cachedFileEnv;
+  }
+
   const root = process.cwd();
   const fromEnv = parseEnvFile(path.join(root, ".env"));
   const fromEnvLocal = parseEnvFile(path.join(root, ".env.local"));
 
-  return { ...fromEnv, ...fromEnvLocal };
+  cachedFileEnv = { ...fromEnv, ...fromEnvLocal };
+  return cachedFileEnv;
 }
 
 function getEnvValue(key: string) {

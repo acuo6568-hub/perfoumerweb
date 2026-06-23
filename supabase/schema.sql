@@ -1,5 +1,14 @@
 create extension if not exists pgcrypto;
 
+create table if not exists public.admin_data (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists admin_data_updated_at_idx
+  on public.admin_data (updated_at desc);
+
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

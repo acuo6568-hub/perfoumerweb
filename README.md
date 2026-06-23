@@ -21,19 +21,43 @@ You can manage perfumes and notes from `/admin`.
 
 ### Env setup
 
-Add these variables to your environment:
+Add these variables to your environment. These are the only ones the app needs for the web app and admin panel to run.
 
-- `ADMIN_PASSWORD` (required)
+Core:
+
+- `NEXT_PUBLIC_SUPABASE_URL` (required)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (required)
+- `SUPABASE_SERVICE_ROLE_KEY` (required for admin/staff APIs and dashboards)
+- `NEXT_PUBLIC_SITE_URL` (recommended, for canonical links and email redirects)
+
+- `ADMIN_PASSWORD` (required for the admin panel)
 - `ADMIN_USERNAME` (optional, default: `admin`)
 - `ADMIN_SESSION_SECRET` (optional but recommended)
 
 Example:
 
 ```bash
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_ANON_KEY"
+SUPABASE_SERVICE_ROLE_KEY="YOUR_SERVICE_ROLE_KEY"
+NEXT_PUBLIC_SITE_URL="https://perfoumer.az"
 ADMIN_PASSWORD="strong-password"
 ADMIN_USERNAME="admin"
 ADMIN_SESSION_SECRET="long-random-secret"
 ```
+
+If you are setting this in Vercel, keep only one value for each variable name. Do not duplicate site URL settings under `SITE_URL` or `PERFOUMER_SITE_URL`; use `NEXT_PUBLIC_SITE_URL` only.
+
+If you want the AI chat / recommendation features, also add:
+
+- `QOXUNU_OPENAI_API_KEY` (required for AI chat and perfume recommendations)
+- `OPENAI_MODEL` (optional, default: `gpt-4.1-mini`)
+
+If you want email notifications for orders or newsletters, also add:
+
+- `RESEND_API_KEY` (required for email sending)
+- `ORDER_EMAIL_FROM` (required, for the sender address)
+- `RESEND_FROM_EMAIL` is a fallback alias, so you do not need both
 
 ### How it works
 
@@ -124,7 +148,14 @@ Add to `.env` (or `.env.local`):
 ```bash
 NEXT_PUBLIC_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_ANON_KEY"
+SUPABASE_SERVICE_ROLE_KEY="YOUR_SERVICE_ROLE_KEY"
+NEXT_PUBLIC_SITE_URL="https://perfoumer.az"
+ADMIN_PASSWORD="strong-password"
+ADMIN_USERNAME="admin"
+ADMIN_SESSION_SECRET="long-random-secret"
 ```
+
+Use `SUPABASE_SERVICE_ROLE_KEY` only on the server. Never expose it in client-side code.
 
 ### 3) Create database tables and RLS policies
 

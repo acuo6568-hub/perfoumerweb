@@ -167,11 +167,9 @@ function isDisallowedPublicHost(url: URL) {
 }
 
 function getPublicBaseUrl(_request: Request) {
-  const candidates = [
-    process.env.PERFOUMER_SITE_URL,
-    process.env.NEXT_PUBLIC_SITE_URL,
-    process.env.SITE_URL,
-  ].filter((value): value is string => Boolean(value && value.trim()));
+  const candidates = [process.env.NEXT_PUBLIC_SITE_URL].filter(
+    (value): value is string => Boolean(value && value.trim()),
+  );
 
   for (const candidate of candidates) {
     try {
