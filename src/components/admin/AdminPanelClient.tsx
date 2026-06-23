@@ -2160,6 +2160,14 @@ export function AdminPanelClient({
   const [view, setView] = useState<AdminView>("perfumes");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isShortcutPopupOpen, setIsShortcutPopupOpen] = useState(false);
+  const [isMacOs, setIsMacOs] = useState(false);
+  const searchInputRefDesktop = useRef<HTMLInputElement | null>(null);
+  const searchInputRefMobile = useRef<HTMLInputElement | null>(null);
+  const shortcutPopupRefDesktop = useRef<HTMLDivElement | null>(null);
+  const shortcutPopupRefMobile = useRef<HTMLDivElement | null>(null);
+  const shortcutButtonRefDesktop = useRef<HTMLButtonElement | null>(null);
+  const shortcutButtonRefMobile = useRef<HTMLButtonElement | null>(null);
   const [perfumeEditorTab, setPerfumeEditorTab] = useState<PerfumeEditorTab>("basics");
   const [resizeModalOpen, setResizeModalOpen] = useState(false);
   const [resizeScale, setResizeScale] = useState(1);
@@ -2198,7 +2206,62 @@ export function AdminPanelClient({
     };
   }, [mobileNavOpen]);
 
-  
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent || navigator.platform || "";
+    setIsMacOs(/macintosh|mac os x|iphone|ipad|ipod/i.test(ua));
+  }, []);
+
+  useEffect(() => {
+    if (!isShortcutPopupOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        !shortcutPopupRefDesktop.current?.contains(event.target as Node | null) &&
+        !shortcutPopupRefMobile.current?.contains(event.target as Node | null) &&
+        !shortcutButtonRefDesktop.current?.contains(event.target as Node | null) &&
+        !shortcutButtonRefMobile.current?.contains(event.target as Node | null)
+      ) {
+        setIsShortcutPopupOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isShortcutPopupOpen]);
+
+  const focusSearchInput = () => {
+    searchInputRefDesktop.current?.focus();
+    searchInputRefMobile.current?.focus();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (view !== "perfumes") {
+          setView("perfumes");
+        }
+        setIsPerfumePickerOpen(true);
+        setIsShortcutPopupOpen(true);
+        focusSearchInput();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setIsShortcutPopupOpen(false);
+        setIsPerfumePickerOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [view]);
+
   const [noteEditorTab, setNoteEditorTab] = useState<NoteEditorTab>("content");
   const [perfumeListFilter, setPerfumeListFilter] = useState<PerfumeListFilter>("all");
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>("all");
@@ -2274,6 +2337,41 @@ export function AdminPanelClient({
     [copy, locale],
   );
   const currentViewLabel = navItems.find((item) => item.value === view)?.label || copy.adminWorkspace;
+  const shortcutKeyLabel = isMacOs ? "⌘K" : "Ctrl+K";
+  const shortcutItems: Array<{ id: string; label: string; keys: string[] }> = [
+    { id: "search", label: adminText(locale, "Perfume axtar", "Search perfumes"), keys: [isMacOs ? "⌘" : "Ctrl", "K"] },
+    { id: "dashboard", label: copy.dashboard, keys: [isMacOs ? "⌘" : "Ctrl", "1"] },
+    { id: "perfumes", label: copy.perfumes, keys: [isMacOs ? "⌘" : "Ctrl", "2"] },
+    { id: "notes", label: copy.notes, keys: [isMacOs ? "⌘" : "Ctrl", "3"] },
+    { id: "close", label: adminText(locale, "Bağla", "Close"), keys: ["Esc"] },
+  ];
+
+  const handleShortcutAction = (id: string) => {
+    setIsShortcutPopupOpen(false);
+    switch (id) {
+      case "search":
+        if (view !== "perfumes") {
+          setView("perfumes");
+        }
+        setIsPerfumePickerOpen(true);
+        focusSearchInput();
+        return;
+      case "dashboard":
+        setView("dashboard");
+        return;
+      case "perfumes":
+        setView("perfumes");
+        return;
+      case "notes":
+        setView("notes");
+        return;
+      case "close":
+      default:
+        setIsPerfumePickerOpen(false);
+        return;
+    }
+  };
+
   const siteName = settings.siteName || DEFAULT_SITE_NAME;
   const effectiveMetaKeywords = useMemo(
     () => resolveSiteMetaKeywords(settings.metaKeywords, siteName),
@@ -4287,27 +4385,69 @@ export function AdminPanelClient({
               </div>
 
               {showTopSearch ? (
-                <label className="relative hidden w-full max-w-2xl flex-1 lg:block">
-                  <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
-                  <MagnifyingGlass
-                    size={15}
-                    weight="bold"
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
-                  />
-                  <input
-                    value={perfumePickerQuery}
-                    onChange={(event) => {
-                      setPerfumePickerQuery(event.target.value);
-                      setIsPerfumePickerOpen(true);
-                    }}
-                    onFocus={() => setIsPerfumePickerOpen(true)}
-                    placeholder={locale === "az" ? "Axtar..." : "Search..."}
-                    className="h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
-                    ⌘K
-                  </span>
-                </label>
+                <div className="relative hidden w-full max-w-2xl flex-1 lg:block">
+                  <label className="relative block">
+                    <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
+                    <MagnifyingGlass
+                      size={15}
+                      weight="bold"
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                    />
+                    <input
+                      ref={searchInputRefDesktop}
+                      value={perfumePickerQuery}
+                      onChange={(event) => {
+                        setPerfumePickerQuery(event.target.value);
+                        setIsPerfumePickerOpen(true);
+                      }}
+                      onFocus={() => setIsPerfumePickerOpen(true)}
+                      placeholder={locale === "az" ? "Axtar..." : "Search..."}
+                      className="h-11 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                    />
+                    <button
+                      ref={shortcutButtonRefDesktop}
+                      type="button"
+                      onClick={() => {
+                        setIsShortcutPopupOpen((current) => !current);
+                        setIsPerfumePickerOpen(true);
+                        focusSearchInput();
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 transition hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      {shortcutKeyLabel}
+                    </button>
+                  </label>
+                  {isShortcutPopupOpen ? (
+                    <div
+                      ref={shortcutPopupRefDesktop}
+                      className="absolute right-0 top-full z-50 mt-2 w-[min(26rem,100%)] max-w-[24rem] overflow-hidden rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.16)]"
+                    >
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{adminText(locale, "Qısayollar", "Shortcuts")}</div>
+                      <div className="space-y-2">
+                        {shortcutItems.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleShortcutAction(item.id)}
+                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-white hover:border-zinc-300"
+                          >
+                            <span>{item.label}</span>
+                            <span className="flex items-center gap-1">
+                              {item.keys.map((key) => (
+                                <kbd
+                                  key={key}
+                                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700"
+                                >
+                                  {key}
+                                </kbd>
+                              ))}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <div className="hidden flex-1 lg:block" />
               )}
@@ -4340,27 +4480,69 @@ export function AdminPanelClient({
             </div>
 
             {showTopSearch ? (
-              <label className="relative mt-3 block w-full lg:hidden">
-                <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
-                <MagnifyingGlass
-                  size={15}
-                  weight="bold"
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
-                />
-                <input
-                  value={perfumePickerQuery}
-                  onChange={(event) => {
-                    setPerfumePickerQuery(event.target.value);
-                    setIsPerfumePickerOpen(true);
-                  }}
-                  onFocus={() => setIsPerfumePickerOpen(true)}
-                  placeholder={locale === "az" ? "Axtar..." : "Search..."}
-                  className="h-10 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 pr-12 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
-                  ⌘K
-                </span>
-              </label>
+              <div className="relative mt-3 block w-full lg:hidden">
+                <label className="relative block">
+                  <span className="sr-only">{locale === "az" ? "Axtar..." : "Search..."}</span>
+                  <MagnifyingGlass
+                    size={15}
+                    weight="bold"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                  />
+                  <input
+                    ref={searchInputRefMobile}
+                    value={perfumePickerQuery}
+                    onChange={(event) => {
+                      setPerfumePickerQuery(event.target.value);
+                      setIsPerfumePickerOpen(true);
+                    }}
+                    onFocus={() => setIsPerfumePickerOpen(true)}
+                    placeholder={locale === "az" ? "Axtar..." : "Search..."}
+                    className="h-10 w-full rounded-full border border-[#E5E7EB] bg-white px-3.5 pl-10 pr-12 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                  />
+                  <button
+                    ref={shortcutButtonRefMobile}
+                    type="button"
+                    onClick={() => {
+                      setIsShortcutPopupOpen((current) => !current);
+                      setIsPerfumePickerOpen(true);
+                      focusSearchInput();
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 transition hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    {shortcutKeyLabel}
+                  </button>
+                </label>
+                {isShortcutPopupOpen ? (
+                  <div
+                    ref={shortcutPopupRefMobile}
+                    className="absolute right-0 top-full z-50 mt-2 w-[min(26rem,100%)] max-w-[24rem] overflow-hidden rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.16)]"
+                  >
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{adminText(locale, "Qısayollar", "Shortcuts")}</div>
+                    <div className="space-y-2">
+                      {shortcutItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleShortcutAction(item.id)}
+                          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-white hover:border-zinc-300"
+                        >
+                          <span>{item.label}</span>
+                          <span className="flex items-center gap-1">
+                            {item.keys.map((key) => (
+                              <kbd
+                                key={key}
+                                className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700"
+                              >
+                                {key}
+                              </kbd>
+                            ))}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
           </div>
 
