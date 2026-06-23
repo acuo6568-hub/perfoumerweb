@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface SaveStatusPillProps {
-  status: "idle" | "saving" | "success" | "error";
+  status: "idle" | "saving" | "success" | "error" | "warning";
   message: string;
   onSave: () => void;
   onReset: () => void;

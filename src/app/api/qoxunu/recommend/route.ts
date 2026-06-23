@@ -306,7 +306,7 @@ async function logQoxunuResult(request: Request, payload: {
   }
 
   console.log("[Qoxunu Logging] ✓ Successfully logged", {
-    logId: data?.[0]?.id,
+    logId: (data as unknown as { id: string }[] | null)?.[0]?.id || "unknown",
     userEmail: body.email,
     userId: body.userId,
     recommendationsCount: body.recommendations.length,

@@ -117,13 +117,13 @@ type PromotionCopyPreset = {
   label: Record<SitePromotionLocale, string>;
   text: Record<SitePromotionLocale, string>;
 };
-type StatusTone = "success" | "error" | "neutral";
+type StatusTone = "success" | "error" | "neutral" | "warning";
 type StatusState = {
   tone: StatusTone;
   message: string;
 };
 type SaveStatusState = {
-  tone: "idle" | "saving" | "success" | "error";
+  tone: "idle" | "saving" | "success" | "error" | "warning";
   message: string;
 };
 type PerfumeEditorTab = "basics" | "notes" | "discounts" | "media";

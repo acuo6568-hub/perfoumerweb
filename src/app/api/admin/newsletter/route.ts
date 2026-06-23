@@ -29,7 +29,7 @@ type SendRequest = {
   customHtml?: string;
   templateMode?: "preset" | "custom";
   deliveryMode?: "newsletter" | "direct";
-  recipients?: "subscribed" | "all" | "selected";
+  recipients?: "subscribed" | "all" | "selected" | "registered";
   selectedEmails?: string[];
 };
 
@@ -224,7 +224,7 @@ export async function POST(request: Request) {
   const customHtml = normalizeText(payload.customHtml, "", 60_000);
   const templateMode = payload.templateMode === "custom" ? "custom" : "preset";
   const deliveryMode = payload.deliveryMode === "direct" ? "direct" : "newsletter";
-  const recipients = payload.recipients === "all" || payload.recipients === "selected" ? payload.recipients : "subscribed";
+  const recipients = payload.recipients === "all" || payload.recipients === "selected" || payload.recipients === "registered" ? payload.recipients : "subscribed";
   const selectedEmails = Array.isArray(payload.selectedEmails)
     ? Array.from(new Set(payload.selectedEmails.map(normalizeEmail).filter((email) => EMAIL_PATTERN.test(email))))
     : [];
@@ -257,6 +257,28 @@ export async function POST(request: Request) {
     });
     const contacts = await getNewsletterContacts();
     const contactsByEmail = new Map(contacts.map((contact) => [contact.email, contact]));
+    
+    let registeredEmails: Set<string> | null = null;
+    if (recipients === "registered") {
+      // Fetch registered users from Supabase auth
+      try {
+        const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+        if (usersError) {
+          console.warn("Failed to fetch registered users:", usersError);
+          registeredEmails = new Set();
+        } else {
+          registeredEmails = new Set(
+            (users.users || [])
+              .map((user) => normalizeEmail(user.email || ""))
+              .filter((email) => email && EMAIL_PATTERN.test(email))
+          );
+        }
+      } catch (err) {
+        console.warn("Error fetching registered users:", err);
+        registeredEmails = new Set();
+      }
+    }
+    
     const targetContacts =
       recipients === "selected"
         ? selectedEmails.map((email) => contactsByEmail.get(email) || {
@@ -267,7 +289,9 @@ export async function POST(request: Request) {
             createdAt: "",
             unsubscribedAt: "",
           })
-        : contacts.filter((item) => recipients === "all" || item.status === "subscribed");
+        : recipients === "registered"
+          ? contacts.filter((item) => item.status === "subscribed" && registeredEmails?.has(item.email))
+          : contacts.filter((item) => recipients === "all" || item.status === "subscribed");
     const activeTargets = targetContacts.filter((item) =>
       recipients === "selected"
         ? EMAIL_PATTERN.test(item.email)

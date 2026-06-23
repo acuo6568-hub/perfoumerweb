@@ -1107,7 +1107,7 @@ export function AdminDashboard({
   const [userSearch, setUserSearch] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "newsletter" | "recent">("all");
   const [selectedUserEmails, setSelectedUserEmails] = useState<string[]>([]);
-  const [newsletterConfirmTarget, setNewsletterConfirmTarget] = useState<"selected" | "subscribed" | null>(null);
+  const [newsletterConfirmTarget, setNewsletterConfirmTarget] = useState<"selected" | "subscribed" | "registered" | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
@@ -1394,7 +1394,7 @@ export function AdminDashboard({
     void fetchNewsletterSubscribers();
   }, [fetchNewsletterSubscribers]);
 
-  const handleSendNewsletter = useCallback(async (target: "selected" | "subscribed" = "subscribed") => {
+  const handleSendNewsletter = useCallback(async (target: "selected" | "subscribed" | "registered" = "subscribed") => {
     setIsNewsletterSending(true);
     setNewsletterError(null);
     setNewsletterStatus(null);
@@ -1982,6 +1982,10 @@ export function AdminDashboard({
   );
   const newsletterSubscribedCount = useMemo(
     () => newsletterSubscribers.filter((subscriber) => subscriber.status === "subscribed").length,
+    [newsletterSubscribers],
+  );
+  const newsletterRegisteredCount = useMemo(
+    () => newsletterSubscribers.filter((subscriber) => subscriber.status === "subscribed" && subscriber.source === "registered").length,
     [newsletterSubscribers],
   );
   const newsletterUnsubscribedCount = newsletterSubscribers.length - newsletterSubscribedCount;
@@ -3551,6 +3555,9 @@ export function AdminDashboard({
                     <button type="button" onClick={() => setNewsletterConfirmTarget("selected")} disabled={selectedUserEmails.length === 0 || isNewsletterSending} className="h-11 rounded-[14px] bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50">
                       {copy.sendNewsletterCta}
                     </button>
+                    <button type="button" onClick={() => setNewsletterConfirmTarget("registered")} disabled={newsletterRegisteredCount === 0 || isNewsletterSending} className="h-11 rounded-[14px] border border-amber-200 bg-amber-50 px-5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
+                      Send to registered users ({newsletterRegisteredCount})
+                    </button>
                     <button type="button" onClick={() => setNewsletterConfirmTarget("subscribed")} disabled={newsletterSubscribedCount === 0 || isNewsletterSending} className="h-11 rounded-[14px] border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">
                       {copy.sendAllSubscribers}
                     </button>
@@ -3567,7 +3574,13 @@ export function AdminDashboard({
             <div className="my-auto w-[min(420px,100%)] rounded-[20px] border border-zinc-200 bg-white p-5 shadow-[0_26px_90px_rgba(2,6,23,0.28)]">
               <h3 className="text-lg font-semibold text-zinc-950">{copy.newsletterSendConfirm}</h3>
               <p className="mt-3 text-sm font-medium text-zinc-500">
-                {copy.selectedUsers}: {(newsletterConfirmTarget === "selected" ? selectedUserEmails.length : newsletterSubscribedCount).toLocaleString()}
+                {copy.selectedUsers}: {(
+                  newsletterConfirmTarget === "selected" 
+                    ? selectedUserEmails.length 
+                    : newsletterConfirmTarget === "registered"
+                      ? newsletterRegisteredCount
+                      : newsletterSubscribedCount
+                ).toLocaleString()}
               </p>
               {newsletterError ? (
                 <p className="mt-3 rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{newsletterError}</p>
