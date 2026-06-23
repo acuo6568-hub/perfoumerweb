@@ -10,6 +10,7 @@ import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
 import { formatCurrencyFromAzn, type SupportedCurrency } from "@/lib/currency";
 import { getDictionary, toLocalePath, type Locale } from "@/lib/i18n";
+import { DEFAULT_HOME_HEADER_SETTINGS } from "@/lib/site-branding";
 import type { SiteHomeHeaderSettings, SiteHomeHeaderSlide } from "@/lib/site-branding";
 import type { Perfume } from "@/types/catalog";
 
@@ -947,7 +948,7 @@ export function Hero({ locale, spotlights, allPerfumes, homeHeader }: HeroProps)
                   <video
                     ref={videoRef}
                     className="block h-full w-full rounded-[inherit] object-cover"
-                    src={homeHeader.videoUrl}
+                    src={homeHeader.videoUrl || DEFAULT_HOME_HEADER_SETTINGS.videoUrl}
                     autoPlay
                     muted
                     loop={false}

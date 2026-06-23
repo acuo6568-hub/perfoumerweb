@@ -63,6 +63,7 @@ import {
 
 import {
   DEFAULT_SITE_NAME,
+  DEFAULT_HOME_HEADER_SETTINGS,
   buildDefaultSiteDescription,
   buildDefaultSiteTitle,
   normalizeKeywordList,
@@ -429,6 +430,7 @@ const adminCopy = {
     headerVideoDescription: "Video təsviri",
     headerVideoCtaLabel: "CTA yazısı",
     headerVideoCtaHref: "CTA keçidi",
+    headerVideoReset: "KAY ALI videosuna sıfırla",
     headerVideoPreview: "Video önizləməsi",
     headerTranslate: "AI tərcümə",
     headerTranslateWorking: "Tərcümə hazırlanır...",
@@ -781,6 +783,7 @@ const adminCopy = {
     headerVideoDescription: "Video description",
     headerVideoCtaLabel: "CTA label",
     headerVideoCtaHref: "CTA link",
+    headerVideoReset: "Reset to KAY ALI video",
     headerVideoPreview: "Video preview",
     headerTranslate: "AI translate",
     headerTranslateWorking: "Translating...",
@@ -5746,12 +5749,34 @@ export function AdminPanelClient({
                   {settings.homeHeader.mode === "video" ? (
                     <div className="mt-5 grid gap-4">
                       <Field label={copy.headerVideoUrl} hint={adminText(locale, "Mp4 URL və ya /perfumevid.MP4 kimi açıq fayl yolu istifadə edin.", "Use an mp4 URL or a public file path like /perfumevid.MP4")}>
-                        <input
-                          className={ui.input}
-                          value={settings.homeHeader.videoUrl}
-                          onChange={(event) => setHomeHeaderField("videoUrl", event.target.value)}
-                          placeholder={adminText(locale, "/perfumevid.MP4", "/perfumevid.MP4")}
-                        />
+                        <div className="flex flex-col gap-2">
+                          <input
+                            className={ui.input}
+                            value={settings.homeHeader.videoUrl}
+                            onChange={(event) => setHomeHeaderField("videoUrl", event.target.value)}
+                            placeholder={adminText(locale, "/perfumevid.MP4", "/perfumevid.MP4")}
+                          />
+                          <button
+                            type="button"
+                            className={cx(ui.compactButton, "self-start border-zinc-300 bg-white text-zinc-700")}
+                            onClick={() => {
+                              setHomeHeader((current) => ({
+                                ...current,
+                                mode: "video",
+                                videoUrl: DEFAULT_HOME_HEADER_SETTINGS.videoUrl,
+                                videoTitle: DEFAULT_HOME_HEADER_SETTINGS.videoTitle,
+                                videoDescription: DEFAULT_HOME_HEADER_SETTINGS.videoDescription,
+                                videoCtaLabel: DEFAULT_HOME_HEADER_SETTINGS.videoCtaLabel,
+                                videoTitleByLocale: DEFAULT_HOME_HEADER_SETTINGS.videoTitleByLocale,
+                                videoDescriptionByLocale: DEFAULT_HOME_HEADER_SETTINGS.videoDescriptionByLocale,
+                                videoCtaLabelByLocale: DEFAULT_HOME_HEADER_SETTINGS.videoCtaLabelByLocale,
+                                videoCtaHref: DEFAULT_HOME_HEADER_SETTINGS.videoCtaHref,
+                              }));
+                            }}
+                          >
+                            {copy.headerVideoReset}
+                          </button>
+                        </div>
                       </Field>
                       <Field label={copy.headerVideoTitle}>
                         <input
