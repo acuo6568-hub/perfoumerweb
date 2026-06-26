@@ -378,7 +378,7 @@ export function LoginClient({
     setPendingPassword(password);
 
     try {
-      const { error: signupError } = await supabase.auth.signUp({
+      const { data, error: signupError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -388,6 +388,7 @@ export function LoginClient({
 
       if (signupError) {
         const normalized = signupError.message.toLowerCase();
+        console.error("Supabase signup error:", signupError);
 
         if (normalized.includes("user already registered") || normalized.includes("already registered")) {
           setMode("login");
@@ -403,12 +404,16 @@ export function LoginClient({
         return;
       }
 
+      // Even if signup succeeds, we need to verify the email
+      // Supabase returns data with user and session info
+      console.log("Signup successful, transitioning to verification");
       await transitionToVerification(email.trim());
       setIsSubmitting(false);
       return;
     } catch (signupError) {
-      const normalized = (signupError instanceof Error ? signupError.message : String(signupError)).toLowerCase();
-      setMessage(signupError instanceof Error ? signupError.message : copy.genericError);
+      const errorMessage = signupError instanceof Error ? signupError.message : String(signupError);
+      console.error("Signup exception:", errorMessage);
+      setMessage(errorMessage || copy.genericError);
       setUiStage("form");
       setIsSubmitting(false);
       return;

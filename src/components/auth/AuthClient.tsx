@@ -132,13 +132,15 @@ export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthC
     }
 
     try {
-      const { error: signupError } = await supabase.auth.signUp({
+      const { data, error: signupError } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (signupError) {
         const normalized = signupError.message.toLowerCase();
+        console.error("Supabase signup error:", signupError);
+        
         if (normalized.includes("user already registered") || normalized.includes("already registered")) {
           setMode("signIn");
           setMessage("An account already exists for this email.");
@@ -151,11 +153,14 @@ export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthC
         return;
       }
 
+      console.log("Signup successful");
       router.push(`/auth/success?pending=1&next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`);
       router.refresh();
       return;
     } catch (signupError) {
-      setMessage(signupError instanceof Error ? signupError.message : "Something went wrong. Please try again.");
+      const errorMessage = signupError instanceof Error ? signupError.message : "Something went wrong. Please try again.";
+      console.error("Signup exception:", errorMessage);
+      setMessage(errorMessage);
       setIsSubmitting(false);
       return;
     }
