@@ -8,7 +8,6 @@ import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider
 import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { isEmailProviderNotConfiguredError, sendFallbackSignupEmail } from "@/lib/auth-email";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
 type AuthClientProps = {
@@ -132,26 +131,31 @@ export function AuthClient({ locale, nextPath, supabase: supabaseConfig }: AuthC
       return;
     }
 
-    const successRedirect = `${window.location.origin}/auth/success?next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`;
     try {
-      await sendFallbackSignupEmail({
+      const { error: signupError } = await supabase.auth.signUp({
         email,
         password,
-        redirectTo: successRedirect,
       });
+
+      if (signupError) {
+        const normalized = signupError.message.toLowerCase();
+        if (normalized.includes("user already registered") || normalized.includes("already registered")) {
+          setMode("signIn");
+          setMessage("An account already exists for this email.");
+        } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
+          setMessage("Password is too weak. Use at least 6 characters.");
+        } else {
+          setMessage(signupError.message);
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
       router.push(`/auth/success?pending=1&next=${encodeURIComponent(safeNextPath)}&email=${encodeURIComponent(email)}`);
       router.refresh();
       return;
     } catch (signupError) {
-      const normalized = (signupError instanceof Error ? signupError.message : String(signupError)).toLowerCase();
-      if (normalized.includes("user already registered") || normalized.includes("already registered")) {
-        setMode("signIn");
-        setMessage(copy.accountExists);
-      } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
-        setMessage(copy.weakPassword);
-      } else {
-        setMessage(signupError instanceof Error ? signupError.message : copy.genericError);
-      }
+      setMessage(signupError instanceof Error ? signupError.message : "Something went wrong. Please try again.");
       setIsSubmitting(false);
       return;
     }

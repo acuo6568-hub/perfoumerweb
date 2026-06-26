@@ -8,7 +8,6 @@ import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider
 import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { isEmailProviderNotConfiguredError, sendFallbackSignupEmail } from "@/lib/auth-email";
 import type { SupabasePublicConfig } from "@/lib/supabase/client";
 
 type LoginReason = "account_exists" | "invalid_credentials" | "email_unverified" | "weak_password";
@@ -379,28 +378,37 @@ export function LoginClient({
     setPendingPassword(password);
 
     try {
-      await sendFallbackSignupEmail({
+      const { error: signupError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
-        data: { username: normalizedUsername },
+        options: {
+          data: { username: normalizedUsername },
+        },
       });
+
+      if (signupError) {
+        const normalized = signupError.message.toLowerCase();
+
+        if (normalized.includes("user already registered") || normalized.includes("already registered")) {
+          setMode("login");
+          setMessage(copy.accountExists);
+        } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
+          setMessage(copy.weakPassword);
+        } else {
+          setMessage(signupError.message || copy.genericError);
+        }
+
+        setUiStage("form");
+        setIsSubmitting(false);
+        return;
+      }
 
       await transitionToVerification(email.trim());
       setIsSubmitting(false);
       return;
     } catch (signupError) {
       const normalized = (signupError instanceof Error ? signupError.message : String(signupError)).toLowerCase();
-
-      if (normalized.includes("user already registered") || normalized.includes("already registered")) {
-        setMode("login");
-        setMessage(copy.accountExists);
-      } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
-        setMessage(copy.weakPassword);
-      } else {
-        setMessage(signupError instanceof Error ? signupError.message : copy.genericError);
-      }
-
+      setMessage(signupError instanceof Error ? signupError.message : copy.genericError);
       setUiStage("form");
       setIsSubmitting(false);
       return;
@@ -435,7 +443,7 @@ export function LoginClient({
   };
 
   const resendEmailCode = async () => {
-    if (!pendingEmail.trim() || !pendingPassword.trim()) {
+    if (!supabase || !pendingEmail.trim()) {
       setMessage(copy.genericError);
       return;
     }
@@ -444,11 +452,17 @@ export function LoginClient({
     setMessage("");
 
     try {
-      await sendFallbackSignupEmail({
+      const { error } = await supabase.auth.resend({
+        type: "signup",
         email: pendingEmail.trim(),
-        password: pendingPassword,
-        redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
       });
+
+      if (error) {
+        setMessage(error.message || copy.genericError);
+        setIsSubmitting(false);
+        return;
+      }
+
       setMessage(copy.codeSent);
       setExpiresIn(OTP_EXPIRES_SECONDS);
       setIsSubmitting(false);
