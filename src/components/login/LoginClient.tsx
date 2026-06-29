@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useSiteSettings } from "@/components/site-settings/SiteSettingsProvider";
+import { sendFallbackSignupEmail } from "@/lib/auth-email";
 import { applySiteBranding } from "@/lib/site-branding";
 import { toLocalePath, type Locale } from "@/lib/i18n";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -355,7 +356,6 @@ export function LoginClient({
       return;
     }
 
-    const successRedirect = `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`;
     const normalizedUsername = username.trim();
 
     if (mode === "signup") {
@@ -378,42 +378,30 @@ export function LoginClient({
     setPendingPassword(password);
 
     try {
-      const { data, error: signupError } = await supabase.auth.signUp({
+      await sendFallbackSignupEmail({
         email: email.trim(),
         password,
-        options: {
-          data: { username: normalizedUsername },
-        },
+        redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
+        data: { username: normalizedUsername },
       });
 
-      if (signupError) {
-        const normalized = signupError.message.toLowerCase();
-        console.error("Supabase signup error:", signupError);
-
-        if (normalized.includes("user already registered") || normalized.includes("already registered")) {
-          setMode("login");
-          setMessage(copy.accountExists);
-        } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
-          setMessage(copy.weakPassword);
-        } else {
-          setMessage(signupError.message || copy.genericError);
-        }
-
-        setUiStage("form");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Even if signup succeeds, we need to verify the email
-      // Supabase returns data with user and session info
-      console.log("Signup successful, transitioning to verification");
       await transitionToVerification(email.trim());
       setIsSubmitting(false);
       return;
     } catch (signupError) {
       const errorMessage = signupError instanceof Error ? signupError.message : String(signupError);
       console.error("Signup exception:", errorMessage);
-      setMessage(errorMessage || copy.genericError);
+
+      const normalized = errorMessage.toLowerCase();
+      if (normalized.includes("user already registered") || normalized.includes("already registered")) {
+        setMode("login");
+        setMessage(copy.accountExists);
+      } else if (normalized.includes("password") && (normalized.includes("weak") || normalized.includes("short"))) {
+        setMessage(copy.weakPassword);
+      } else {
+        setMessage(errorMessage || copy.genericError);
+      }
+
       setUiStage("form");
       setIsSubmitting(false);
       return;
@@ -457,16 +445,11 @@ export function LoginClient({
     setMessage("");
 
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
+      await sendFallbackSignupEmail({
         email: pendingEmail.trim(),
+        password: pendingPassword,
+        redirectTo: `${window.location.origin}/login?next=${encodeURIComponent(safeNextPath)}`,
       });
-
-      if (error) {
-        setMessage(error.message || copy.genericError);
-        setIsSubmitting(false);
-        return;
-      }
 
       setMessage(copy.codeSent);
       setExpiresIn(OTP_EXPIRES_SECONDS);

@@ -131,6 +131,17 @@ type PerfumeEditorTab = "basics" | "notes" | "discounts" | "media";
 type NoteEditorTab = "content" | "media";
 type PerfumeListFilter = "all" | "missingImage" | "missingNotes";
 type NoteListFilter = "all" | "linked" | "unlinked" | "missingImage";
+type PerfumeVariantGroup = {
+  slug: string;
+  name: string;
+  brand: string;
+  gender: string;
+  image: string;
+  variants: PerfumeDraft[];
+  noteLinks: number;
+  totalSizes: number;
+  searchPool: string;
+};
 type PromoAnalyticsState = {
   totalClicks: number;
   uniqueClickers: number;
@@ -1483,6 +1494,14 @@ function formatPerfumeMeta(perfume: PerfumeDraft, copy: (typeof adminCopy)[Admin
   return parts.join(" • ");
 }
 
+function getPerfumeVariantKey(perfume: PerfumeDraft) {
+  return normalizeSlug(perfume.slug) || perfume.id;
+}
+
+function getPerfumeNoteLinkCount(perfume: PerfumeDraft) {
+  return perfume.noteSlugs.top.length + perfume.noteSlugs.heart.length + perfume.noteSlugs.base.length;
+}
+
 function toneClasses(tone: StatusTone) {
   if (tone === "success") {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
@@ -2450,6 +2469,104 @@ export function AdminPanelClient({
       null,
     [perfumes, selectedPerfumeId],
   );
+  const perfumeVariantGroups = useMemo(() => {
+    const groups = new Map<string, PerfumeDraft[]>();
+
+    for (const perfume of perfumes) {
+      const key = getPerfumeVariantKey(perfume);
+      if (!key) {
+        continue;
+      }
+
+      const current = groups.get(key) ?? [];
+      current.push(perfume);
+      groups.set(key, current);
+    }
+
+    return Array.from(groups.entries())
+      .map(([slug, variants]) => {
+        const primary = variants[0];
+        const noteLinks = variants.reduce((sum, perfume) => sum + getPerfumeNoteLinkCount(perfume), 0);
+        const totalSizes = variants.reduce((sum, perfume) => sum + perfume.sizes.length, 0);
+        const searchPool = normalizeSearchText(
+          variants
+            .map((perfume) =>
+              [
+                perfume.id,
+                perfume.slug,
+                perfume.name,
+                perfume.brand,
+                perfume.gender,
+                perfume.externalLink,
+                perfume.noteSlugs.top.join(" "),
+                perfume.noteSlugs.heart.join(" "),
+                perfume.noteSlugs.base.join(" "),
+              ].join(" "),
+            )
+            .join(" "),
+        );
+
+        return {
+          slug,
+          name: primary.name,
+          brand: primary.brand,
+          gender: primary.gender,
+          image: variants.find((perfume) => perfume.image)?.image || "",
+          variants,
+          noteLinks,
+          totalSizes,
+          searchPool,
+        } satisfies PerfumeVariantGroup;
+      })
+      .sort((left, right) => {
+        const brandCompare = left.brand.localeCompare(right.brand);
+        if (brandCompare !== 0) {
+          return brandCompare;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+  }, [perfumes]);
+  const selectedPerfumeGroup = useMemo(() => {
+    if (!selectedPerfume) {
+      return null;
+    }
+
+    const key = getPerfumeVariantKey(selectedPerfume);
+    return perfumeVariantGroups.find((group) => group.slug === key) ?? null;
+  }, [perfumeVariantGroups, selectedPerfume]);
+  const selectedPerfumeVariants = selectedPerfumeGroup?.variants ?? [];
+  const filteredPerfumeGroups = useMemo(() => {
+    const searchMatched = perfumeVariantGroups.filter((group) =>
+      matchesSearchPool(group.searchPool, normalizedSearch),
+    );
+
+    const filtered = searchMatched.filter((group) => {
+      if (perfumeListFilter === "missingImage") {
+        return group.variants.some((variant) => !variant.image);
+      }
+
+      if (perfumeListFilter === "missingNotes") {
+        return group.variants.some((variant) => getPerfumeNoteLinkCount(variant) === 0);
+      }
+
+      return true;
+    });
+
+    if (normalizedSearch) {
+      filtered.sort((left, right) => {
+        const rightScore = Math.max(...right.variants.map((variant) => scorePerfumeSearch(variant, normalizedSearch)));
+        const leftScore = Math.max(...left.variants.map((variant) => scorePerfumeSearch(variant, normalizedSearch)));
+        if (rightScore !== leftScore) {
+          return rightScore - leftScore;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+    }
+
+    return filtered;
+  }, [normalizedSearch, perfumeListFilter, perfumeVariantGroups]);
   useEffect(() => {
     if (!resizeModalOpen) return;
     // initialize slider from saved perfume values for current device
@@ -3483,6 +3600,37 @@ export function AdminPanelClient({
     setStatus({ tone: "neutral", message: t("statusPerfumeDuplicated") });
   };
 
+  const addPerfumeVariant = () => {
+    if (!selectedPerfume) {
+      return;
+    }
+
+    const seed = Date.now().toString(36);
+    const cloned: PerfumeDraft = {
+      ...cloneDeep(selectedPerfume),
+      id: `${getPerfumeVariantKey(selectedPerfume)}__variant_${seed}`,
+      slug: selectedPerfume.slug,
+      name: selectedPerfume.name,
+    };
+    const selectedIndex = perfumes.findIndex((perfume) => perfume.id === selectedPerfume.id);
+    const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+
+    setPerfumes((current) => [
+      ...current.slice(0, insertIndex),
+      cloned,
+      ...current.slice(insertIndex),
+    ]);
+    startTransition(() => {
+      setView("perfumes");
+      setPerfumeEditorTab("basics");
+      setSelectedPerfumeId(cloned.id);
+    });
+    setStatus({
+      tone: "neutral",
+      message: adminText(locale, "Yeni variant əlavə edildi.", "New perfume variant added."),
+    });
+  };
+
   const deletePerfume = async () => {
     if (!selectedPerfume) {
       return;
@@ -4334,6 +4482,15 @@ export function AdminPanelClient({
                     <button type="button" className={cx(ui.primaryButton, "h-9 px-3 text-[13px]")} onClick={addPerfume}>
                       <Plus size={16} weight="bold" />
                       {copy.addPerfume}
+                    </button>
+                    <button
+                      type="button"
+                      className={cx(ui.secondaryButton, "h-9 px-3 text-[13px]")}
+                      onClick={addPerfumeVariant}
+                      disabled={!selectedPerfume}
+                    >
+                      <Rows size={16} weight="bold" />
+                      {adminText(locale, "Variant əlavə et", "Add variant")}
                     </button>
                     <button
                       type="button"
@@ -6472,6 +6629,224 @@ export function AdminPanelClient({
           ) : view === "perfumes" ? (
             selectedPerfume ? (
               <div className="space-y-6">
+                <div className={cx(ui.soft, "p-4 sm:p-5")}>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <SectionLabel
+                      icon={<Rows size={16} weight="bold" />}
+                      title={adminText(locale, "Variant qrupları", "Variant groups")}
+                      detail={t("recordsShown", {
+                        shown: filteredPerfumeGroups.length,
+                        total: perfumeVariantGroups.length,
+                      })}
+                      action={
+                        <span className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600">
+                          {adminText(locale, "{count} dublikat qrup", "{count} duplicate groups").replace(
+                            "{count}",
+                            String(perfumeVariantGroups.filter((group) => group.variants.length > 1).length),
+                          )}
+                        </span>
+                      }
+                    />
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" className={ui.primaryButton} onClick={addPerfume}>
+                        <Plus size={16} weight="bold" />
+                        {copy.addPerfume}
+                      </button>
+                      <button
+                        type="button"
+                        className={ui.secondaryButton}
+                        onClick={addPerfumeVariant}
+                        disabled={!selectedPerfume}
+                      >
+                        <Rows size={16} weight="bold" />
+                        {adminText(locale, "Variant əlavə et", "Add variant")}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(260px,0.36fr)_minmax(0,1fr)]">
+                    <div className="space-y-3">
+                      <label className="relative block">
+                        <span className="sr-only">{copy.searchPerfumes}</span>
+                        <MagnifyingGlass
+                          size={15}
+                          weight="bold"
+                          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                        />
+                        <input
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
+                          placeholder={copy.searchPerfumes}
+                          className="h-11 w-full rounded-[12px] border border-[#E5E7EB] bg-white px-3.5 pl-10 text-sm text-zinc-900 outline-none transition duration-200 placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                        />
+                        {isFiltering ? (
+                          <ArrowsClockwise
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-indigo-500"
+                            size={15}
+                            weight="bold"
+                          />
+                        ) : null}
+                      </label>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {([
+                          ["all", copy.all],
+                          ["missingImage", copy.missingImage],
+                          ["missingNotes", copy.missingNotes],
+                        ] as const).map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            className={cx(
+                              "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition",
+                              perfumeListFilter === value
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50",
+                            )}
+                            onClick={() => setPerfumeListFilter(value)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="min-h-0 rounded-[16px] border border-[#E5E7EB] bg-white p-2">
+                      <div className="max-h-[332px] overflow-y-auto pr-1">
+                        <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+                          {filteredPerfumeGroups.length ? (
+                            filteredPerfumeGroups.map((group) => {
+                              const isActive = selectedPerfumeGroup?.slug === group.slug;
+
+                              return (
+                                <button
+                                  key={group.slug}
+                                  type="button"
+                                  className={cx(
+                                    "group rounded-[16px] border p-3 text-left transition duration-200",
+                                    isActive
+                                      ? "border-indigo-500 bg-indigo-50/70 shadow-[0_8px_20px_rgba(99,102,241,0.08)]"
+                                      : "border-transparent bg-white hover:border-[#E5E7EB] hover:bg-[#FAFAFB]",
+                                  )}
+                                  onClick={() => {
+                                    startTransition(() => {
+                                      setSelectedPerfumeId(group.variants[0]?.id || group.slug);
+                                    });
+                                  }}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[13px] border border-[#E5E7EB] bg-zinc-100">
+                                      {group.image ? (
+                                        <Image src={group.image} alt={group.name} fill sizes="48px" className="object-cover transition duration-300 group-hover:scale-105" />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                                          {group.name.slice(0, 2)}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-semibold text-zinc-950">{group.name}</p>
+                                      <p className="mt-0.5 truncate text-xs text-zinc-500">
+                                        {group.brand || "Unbranded"} · {group.slug}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3 flex flex-wrap gap-1.5">
+                                    <span className={cx(ui.compactChip, isActive ? "border-indigo-200 bg-white text-indigo-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
+                                      {adminText(locale, "{count} variant", "{count} variants").replace("{count}", String(group.variants.length))}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
+                                      {t("sizeCount", { count: group.totalSizes })}
+                                    </span>
+                                    {group.variants.length > 1 ? (
+                                      <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                                        {adminText(locale, "Dublikat", "Duplicate")}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="md:col-span-2 2xl:col-span-3">
+                              <EmptyState
+                                title={copy.noPerfumesFound}
+                                detail={copy.noPerfumesFoundDescription}
+                                action={
+                                  <button type="button" className={ui.secondaryButton} onClick={addPerfume}>
+                                    <Plus size={16} weight="bold" />
+                                    {copy.addPerfume}
+                                  </button>
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedPerfumeGroup ? (
+                    <div className="mt-5 rounded-[16px] border border-zinc-200 bg-zinc-50/70 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                            {adminText(locale, "Seçilmiş variantlar", "Selected variants")}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-zinc-900">
+                            {selectedPerfumeGroup.brand || "Unbranded"} {selectedPerfumeGroup.name}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className={cx(ui.compactPrimaryButton, "h-9")}
+                          onClick={addPerfumeVariant}
+                        >
+                          <Plus size={15} weight="bold" />
+                          {adminText(locale, "Variant əlavə et", "Add variant")}
+                        </button>
+                      </div>
+
+                      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        {selectedPerfumeVariants.map((variant, index) => {
+                          const active = selectedPerfume?.id === variant.id;
+
+                          return (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              className={cx(
+                                "min-w-[220px] rounded-[14px] border px-3 py-2.5 text-left transition",
+                                active
+                                  ? "border-indigo-500 bg-white text-zinc-950 shadow-sm"
+                                  : "border-zinc-200 bg-white/70 text-zinc-700 hover:border-zinc-300 hover:bg-white",
+                              )}
+                              onClick={() => {
+                                startTransition(() => {
+                                  setSelectedPerfumeId(variant.id);
+                                  setPerfumeEditorTab("basics");
+                                });
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-xs font-semibold text-zinc-500">
+                                  {adminText(locale, "Variant {count}", "Variant {count}").replace("{count}", String(index + 1))}
+                                </span>
+                                {active ? <CheckCircle size={15} weight="fill" className="text-indigo-600" /> : null}
+                              </div>
+                              <p className="mt-1 truncate text-sm font-semibold">{variant.id}</p>
+                              <p className="mt-1 truncate text-xs text-zinc-500">{formatStartingPrice(variant, copy)}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
